@@ -85,18 +85,11 @@ end
 end
 function Cube(Placement,center::AbstractVector,side::Number,weight::Number) 
     T = promote_type(eltype(center),typeof(side),typeof(weight)) 
-    Cube{Placement,length(center),T}(;
-        center=SVector{length(center),T}(center),
-        side=T(side),
-        weight=T(weight)
-    )
+    Cube{Placement,length(center),T}(;center=SVector{length(center),T}(center), side=T(side), weight=T(weight))
 end
 function Cube(Placement,center::AbstractVector,side::Number) 
     T = promote_type(eltype(center),typeof(side),Int)
-    Cube{Placement,length(center),T}(;
-        center=SVector{length(center),T}(center),
-        side=T(side)
-    )
+    Cube{Placement,length(center),T}(;center=SVector{length(center),T}(center), side=T(side))
 end
 InsideCube(args...) = Cube(Inside,args...)
 OutsideCube(args...) = Cube(Outside,args...)
