@@ -149,7 +149,7 @@ function Sphere{Placement}(;center::AbstractVector,radius::Number,weight::Number
     Sphere{Placement,N,T}(SVector{N,T}(center), T(radius), T(weight))
 end
 Sphere{Placement}(center::AbstractVector,radius::Number) where Placement =
-    Sphere{Placement}(;center=SVector{N,T}(center), radius=T(radius))
+    Sphere{Placement}(;center=center, radius=radius)
 
 InsideSphere(args...;kargs...) = Sphere{Inside}(args...;kargs...)
 OutsideSphere(args...;kargs...) = Sphere{Outside}(args...;kargs...)
