@@ -26,6 +26,13 @@ function Base.show(io::IO,::MIME"text/plain",c::Constraint)
     print(io,"    $(fnames[end]) = $(getfield(c,fnames[end]))")
 end
 
+# Default weights
+
+const weight_default = (
+    box = 5.0, 
+    sphere = 5.0
+)
+
 #
 # Base constraint functions for cubes and boxes
 #
@@ -78,21 +85,23 @@ end
 #
 # Cube
 #
-@with_kw struct Cube{Placement,N,T} <: Constraint{Placement,N,T}
+struct Cube{Placement,N,T} <: Constraint{Placement,N,T}
     center::SVector{N,T}
     side::T
-    weight::T = T(5)
+    weight::T
 end
-function Cube(Placement,center::AbstractVector,side::Number,weight::Number) 
+function Cube{Placement}(;center::AbstractVector, side::Number, weight::Number=weight_default[:box]) where Placement
     T = promote_type(eltype(center),typeof(side),typeof(weight)) 
-    Cube{Placement,length(center),T}(;center=SVector{length(center),T}(center), side=T(side), weight=T(weight))
+    N = length(center)
+    Cube{Placement,N,T}(SVector{N,T}(center), T(side), T(weight))
 end
-function Cube(Placement,center::AbstractVector,side::Number) 
-    T = promote_type(eltype(center),typeof(side),Int)
-    Cube{Placement,length(center),T}(;center=SVector{length(center),T}(center), side=T(side))
-end
-InsideCube(args...) = Cube(Inside,args...)
-OutsideCube(args...) = Cube(Outside,args...)
+Cube{Placement}(center::AbstractVector,side::Number) where Placement  =
+    Cube{Placement}(;center=center, side=side)
+Cube{Placement}(center::AbstractVector,side::Number,weight::Number) where Placement =
+    Cube{Placement}(;center=center, side=side, weight=weight)
+
+InsideCube(args...;kargs...) = Cube{Inside}(args...;kargs...)
+OutsideCube(args...;kargs...) = Cube{Outside}(args...;kargs...)
 
 constraint_penalty(c::Cube{Placement}, x) where Placement = 
     sum(orthogonal_wall(Placement, c.center[i], c.side, c.weight, x[i]) for i in 1:length(x))
@@ -102,25 +111,24 @@ constraint_gradient(c::Cube{Placement}, x) where Placement =
 #
 # Box
 #
-@with_kw struct Box{Placement,N,T} <: Constraint{Placement,N,T}
+struct Box{Placement,N,T} <: Constraint{Placement,N,T}
     center::SVector{N,T}
     sides::SVector{N,T}
-    weight::T = T(5)
+    weight::T
 end
-function Box(Placement,center::AbstractVector,sides::AbstractVector,weight::Number) 
+function Box{Placement}(;center::AbstractVector,sides::AbstractVector,weight::Number=weight_default[:box]) where Placement
     @assert length(center) == length(sides) "Box: Center coordinates and sides must have same dimensions."
     N = length(center)
-    T = promote_type(eltype(center),eltype(side),typeof(weight)) 
-    Box{Placement,N,T}(center=SVector{N,T}(center), sides=SVector{N,T}(sides), weight=T(weight))
+    T = promote_type(eltype(center),eltype(sides),typeof(weight)) 
+    Box{Placement,N,T}(SVector{N,T}(center), SVector{N,T}(sides), T(weight))
 end
-function Box(Placement,center::AbstractVector,sides::AbstractVector) 
-    @assert length(center) == length(sides) "Box: Center coordinates and sides must have same dimensions."
-    N = length(center)
-    T = promote_type(eltype(center),eltype(sides),Int)
-    Box{Placement,N,T}(center=SVector{N,T}(center), sides=SVector{N,T}(sides))
-end
-InsideBox(args...) = Box(Inside,args...)
-OutsideBox(args...) = Box(Outside,args...)
+Box{Placement}(center::AbstractVector,sides::AbstractVector) where Placement = 
+    Box{Placement}(;center=center, sides=sides)
+Box{Placement}(center::AbstractVector,sides::AbstractVector, weight::Number) where Placement = 
+    Box{Placement}(;center=center, sides=sides, weight=weight)
+
+InsideBox(args...;kargs...) = Box{Inside}(args...;kargs...)
+OutsideBox(args...;kargs...) = Box{Outside}(args...;kargs...)
 
 constraint_penalty(c::Box{Placement}, x) where Placement = 
     sum(orthogonal_wall(Placement, c.center[i], c.sides[i], c.weight, x[i]) for i in 1:length(x))
@@ -130,23 +138,21 @@ constraint_gradient(c::Box{Placement}, x) where Placement =
 #
 # Spheres
 #
-@with_kw struct Sphere{Placement,N,T} <: Constraint{Placement,N,T}
+struct Sphere{Placement,N,T} <: Constraint{Placement,N,T}
     center::SVector{N,T}
     radius::T
-    weight::T = T(5)
+    weight::T
 end
-function Sphere(Placement,center::AbstractVector,radius::Number,weight::Number) 
+function Sphere{Placement}(;center::AbstractVector,radius::Number,weight::Number=weight_default[:sphere]) where Placement
     N = length(center) 
     T = promote_type(eltype(center),typeof(radius),typeof(weight)) 
-    Sphere{Placement,N,T}(;center=SVector{N,T}(center), radius=T(radius), weight=T(weight))
+    Sphere{Placement,N,T}(SVector{N,T}(center), T(radius), T(weight))
 end
-function Sphere(Placement,center::AbstractVector,radius::Number)
-    N = length(center) 
-    T = promote_type(eltype(center),typeof(radius),Int)
-    Sphere{Placement,N,T}(;center=SVector{N,T}(center), radius=T(radius))
-end
-InsideSphere(args...) = Sphere(Inside, args...)
-OutsideSphere(args...) = Sphere(Outside, args...)
+Sphere{Placement}(center::AbstractVector,radius::Number) where Placement =
+    Sphere{Placement}(;center=SVector{N,T}(center), radius=T(radius))
+
+InsideSphere(args...;kargs...) = Sphere{Inside}(args...;kargs...)
+OutsideSphere(args...;kargs...) = Sphere{Outside}(args...;kargs...)
 
 function constraint_penalty(c::Sphere{Inside}, x)
     @unpack center, radius, weight = c
