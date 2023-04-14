@@ -5,10 +5,12 @@ $(INTERNAL)
 
 ## Extended help
 
-This routine was added because it defines the rotation in the "human" way, an is thus used
-to set the position of the fixed molecules. `deg` can only be `"degree"`, in which
+This routine returns a rotation matrix that rotates a vector by `beta`, `gamma`, and `theta` angles.
+
+It defines the rotation in the "human" way, an is thus used to set the position of the fixed molecules. `deg` can only be `"degree"`, in which
 case the angles with be considered in degrees. If no `deg` argument
 is provided, radians are used.
+
 That means: `beta` is a counterclockwise rotation around `x` axis.
             `gamma` is a counterclockwise rotation around `y` axis.
             `theta` is a counterclockwise rotation around `z` axis.
@@ -98,7 +100,7 @@ The new position is returned in `x_new`, a previously allocated array.
 function random_move!(
     x::AbstractVector{<:SVector{3}},
     irefatom::Int,
-    unitcell,
+    system,
     RNG,
 )
     # To avoid boundary problems, the center of coordinates are generated in a 
@@ -107,17 +109,17 @@ function random_move!(
 
     # Generate random coordinates for the center of mass
     cmin, cmax = PeriodicSystems.get_computing_box(system)
-    newcm = SVector{3}(scale * (cmin[i] + random(RNG, Float64) * (cmax[i] - cmin[i])) for i in 1:3)
+    newcm = SVector{3}(scale * (cmin[i] + rand(RNG, Float64) * (cmax[i] - cmin[i])) for i in 1:3)
 
     # Generate random rotation angles 
-    beta = 2π * random(RNG, Float64)
-    gamma = 2π * random(RNG, Float64)
-    theta = 2π * random(RNG, Float64)
+    beta = 2π * rand(RNG, Float64)
+    gamma = 2π * rand(RNG, Float64)
+    theta = 2π * rand(RNG, Float64)
 
     # Take care that this molecule is not split by periodic boundary conditions, by
     # wrapping its coordinates around its reference atom
     for iat in eachindex(x)
-        x[iat] = CellListMap.wrap_relative_to(x[iat], x[irefatom], unitcell)
+        x[iat] = CellListMap.wrap_relative_to(x[iat], x[irefatom], system.unitcell)
     end
 
     # Move molecule to new position
@@ -131,6 +133,8 @@ end
     using StaticArrays
     using LinearAlgebra: norm
     using CellListMap.PeriodicSystems
+    import Random
+
     function check_internal_distances(x, y)
         for i = firstindex(x):lastindex(x)-1
             for j = i+1:lastindex(x)
@@ -144,7 +148,7 @@ end
         return true
     end
 
-    RNG = Packmol.init_random(Options())
+    RNG = Random.Xoshiro()
     # Orthorhombic cell
     x = [-1.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
     system = PeriodicSystem(positions=x, cutoff=0.1, unitcell=SVector(10.0, 10.0, 10.0), output=0.0)

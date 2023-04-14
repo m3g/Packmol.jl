@@ -3,9 +3,10 @@ module Packmol
 using TestItems
 using Parameters
 using StaticArrays
-using CellListMap
+using CellListMap.PeriodicSystems
 using SPGBox
-using LinearAlgebra: norm
+import LinearAlgebra: norm
+import Statistics: mean
 
 # Flag for internal function doc entries
 const INTERNAL = "Internal function or structure - interface may change."
