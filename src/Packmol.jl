@@ -1,12 +1,16 @@
 module Packmol
 
+using TestItems
 using Parameters
 using StaticArrays
 using CellListMap
 using SPGBox
 using LinearAlgebra: norm
 
-include("./polar_to_cart.jl")
+# Flag for internal function doc entries
+const INTERNAL = "Internal function or structure - interface may change."
+
+include("./rigid_body.jl")
 include("./constraints.jl")
 
 @with_kw struct Structure{N,T}
