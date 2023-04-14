@@ -9,13 +9,16 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 SPGBox = "bf97046b-3e66-4aa0-9aed-26efb7fac769"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
+CellListMap = "0.8.16"
 julia = "1"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [targets]
-test = ["Test", "ForwardDiff"]
+test = ["Test", "ForwardDiff", "TestItemRunner"]
