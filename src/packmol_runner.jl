@@ -1,5 +1,8 @@
 import Packmol_jll
+
 packmol_runner = Packmol_jll.packmol()
+
+export run_packmol
 
 function run_packmol(input_file::String)
     isfile(input_file) || error("Input file not found: $input_file")
