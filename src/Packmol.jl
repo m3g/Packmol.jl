@@ -24,4 +24,7 @@ include("./constraints.jl")
     constraints::Vector{<:Constraint}
 end
 
+# Runner for the legacy packmol 
+include("./packmol_runner.jl")
+
 end
