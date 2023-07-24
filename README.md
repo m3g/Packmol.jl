@@ -19,6 +19,7 @@ julia> import Pkg; Pkg.add("Packmol")
 ```julia
 julia> using Packmol
 
-julia> run_packmol("C:/my_files/my_input_file.inp")
+julia> run_packmol("C:\\users\\my_user\\my_files\\my_input_file.inp")
 ```
 
+**Note:** the `\\` are necessary to specify paths on Windows systems, because `\` is a scape-character.
