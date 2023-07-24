@@ -2,7 +2,7 @@
 
 Currently this serves as a multi-platform runner for Packmol.
 
-Use it with:
+## Installation
 
 1. Install Julia in your system, with [juliaup](https://github.com/JuliaLang/juliaup#juliaup---julia-version-manager)
 
@@ -11,6 +11,8 @@ Use it with:
 ```julia
 julia> import Pkg; Pkg.add("Packmol")
 ```
+
+## Usage
 
 3. Run packmol in your input file with:
 
