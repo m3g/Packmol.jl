@@ -20,10 +20,11 @@ function run_packmol()
 end
 
 @testitem "run_packmol" begin
-    run_packmol("../test/run_packmol/water_box.inp")
-    @test isfile("../test/run_packmol/water_box.pdb")
-    run_packmol("../test/run_packmol/ieee_signaling.inp")
-    @test isfile("../test/run_packmol/ieee_signaling_box.pdb")
+    test_dir = "$(@__DIR__)/../test/run_packmol"
+    run_packmol("$test_dir/water_box.inp")
+    @test isfile("$test_dir/water_box.pdb")
+    run_packmol("$test_dir/ieee_signaling.inp")
+    @test isfile("$test_dir/ieee_signaling_box.pdb")
 end
 
 
