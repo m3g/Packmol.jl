@@ -3,6 +3,7 @@ module Packmol
 using TestItems
 using Parameters
 using StaticArrays
+import CellListMap
 using CellListMap.PeriodicSystems
 using SPGBox
 import LinearAlgebra: norm
