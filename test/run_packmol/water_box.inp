@@ -1,0 +1,12 @@
+#
+# A box with water
+#
+
+tolerance 2.0
+filetype pdb
+output water_box.pdb
+
+structure water.pdb
+  number 1000
+  inside box 0. 0. 0. 40. 40. 40.
+end structure

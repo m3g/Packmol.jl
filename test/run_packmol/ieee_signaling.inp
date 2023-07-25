@@ -1,0 +1,23 @@
+tolerance 6.0
+output ieee_signaling_box.pdb
+filetype pdb
+structure ieee_signaling.pdb
+   number 6916
+   inside sphere 0. 0. 0. 385.
+   outside sphere 0. 0. 0. 370.
+end structure
+structure ieee_signaling.pdb
+   number 7377
+   inside sphere 0. 0. 0. 315.
+   outside sphere 0. 0. 0. 300.
+end structure
+structure ieee_signaling.pdb
+   number 4783
+   inside sphere 0. 0. 0. 255.
+   outside sphere 0. 0. 0. 240.
+end structure
+structure ieee_signaling.pdb
+   number 2766
+   inside sphere 0. 0. 0. 205.
+   outside sphere 0. 0. 0. 195.
+end structure
