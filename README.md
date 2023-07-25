@@ -1,4 +1,4 @@
-# Packmol
+# Packmol.jl
 
 Currently this Julia package serves as a multi-platform runner for [packmol](http://github.com/m3g/packmol). In the future this will be an 
 independent package with a faster and improved version of the Packmol.
