@@ -16,12 +16,12 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
 CellListMap = "0.8.16"
+NativeFileDialog = "0.2.1"
+Packmol_jll = "20"
 Parameters = "0.12"
-SPGBox = "0.5"
+SPGBox = "0.5, 0.6"
 StaticArrays = "1"
 Statistics = "1"
-Packmol_jll = "20"
-NativeFileDialog = "0.2.1"
 TestItems = "0.1"
 julia = "1"
 
