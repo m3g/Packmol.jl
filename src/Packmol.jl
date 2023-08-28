@@ -25,6 +25,9 @@ include("./constraints.jl")
     constraints::Vector{<:Constraint}
 end
 
+# Monatomic packing
+include("./mono_atomic.jl")
+
 # Runner for the legacy packmol 
 include("./packmol_runner.jl")
 
