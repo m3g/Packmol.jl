@@ -9,6 +9,9 @@ using SPGBox
 import LinearAlgebra: norm
 import Statistics: mean
 
+# API: exported functions
+export pack_monoatomic!
+
 # Flag for internal function doc entries
 const INTERNAL = "Internal function or structure - interface may change."
 
