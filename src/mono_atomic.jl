@@ -72,7 +72,7 @@ The coordinates and the unitcells can be two- or three-dimensional.
 """
 function pack_monoatomic(x::AbstractVector{<:SVector{N,T}}, unitcell, tol) where {N,T}
     #  The gradient vector will be allocated by SPGBox, as an auxiliary array
-    auxvecs = SPBBox.VAux(x, zero(T))
+    auxvecs = SPGBox.VAux(x, zero(T))
     # And now we use it as the gradient vector of the periodic system structure
     g = fill!(auxvecs.g, zero(SVector{N,T})) 
     system = PeriodicSystem(
