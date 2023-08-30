@@ -28,10 +28,18 @@ end
 
 # Updates the function and gradient of the system given a pair of 
 # particles within the cutoff.
-function monoatomic_u_and_g!(x, y, i, j, d2, fg::MonoAtomicFG, tol)
-    fg.dmin = min(sqrt(d2), fg.dmin)
-    fg.f += (d2 - tol^2)^2
-    dvdd = 4 * (d2 - tol^2) * (y - x)
+function monoatomic_u_and_g!(x::T, y::T, i, j, d2, fg::MonoAtomicFG, tol) where {T}
+    d = sqrt(d2)
+    fg.dmin = min(d, fg.dmin)
+    fg.f += (d - tol)^2
+    dv = y - x
+    if d > 0
+        dvdd = 2 * (d - tol) * dv / d
+    else
+        vrand = rand(T)
+        vrand = (0.1 * tol) * vrand / norm(vrand)
+        dvdd = 2 * (d - tol) * vrand
+    end
     fg.g[i] -= dvdd
     fg.g[j] += dvdd
     return fg
@@ -60,7 +68,7 @@ function pack_monoatomic_callback(spgresult, system, precision, iprint)
     if spgresult.nit % iprint == 0
         println(
             " Iteration: ", spgresult.nit,
-            " Minimum distance: ", system.fg.dmin,
+            " Minimum distance: ", min(system.fg.dmin, system.cutoff),
             " Function value: ", spgresult.f
         )
     end
@@ -113,8 +121,8 @@ function pack_monoatomic!(
     for i in eachindex(positions)
         positions[i] = eltype(positions)(@view(x[:, i]))
     end
-    println(spgboxresult)
-    println("Minimum distance obtained: ", system.fg.dmin)
+    println(spgboxresult, "\n")
+    println("Minimum distance obtained: ", min(system.fg.dmin, system.cutoff))
     for i in eachindex(positions)
         positions[i] = CellListMap.wrap_to_first(positions[i], system.unitcell)
     end
