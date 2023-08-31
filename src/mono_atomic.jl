@@ -83,7 +83,7 @@ end
     pack_monoatomic!(positions::AbstractVector{<:SVector{N,T}}, unitcell, tol)
 
 Pack a monoatomic system with iniital positions `x` and distance tolerance `tol`,
-into the unitcell defined by `unitecell`, considering periodic boundary conditions.
+into the unitcell defined by `unitcell`, considering periodic boundary conditions.
 
 The unitcell can be a vector, in the case of orthorhombic cells, or a matrix, in the
 case of triclinic cells.
