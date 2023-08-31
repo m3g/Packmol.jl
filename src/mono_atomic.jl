@@ -90,13 +90,27 @@ case of triclinic cells.
 
 The coordinates and the unitcells can be two- or three-dimensional. 
 
+# Example
+
+```julia-repl
+julia> using Packmol, StaticArrays
+
+julia> coordinates = 100 * rand(SVector{3,Float64}, 10^5);
+
+julia> unitcell = [100.0, 100.0, 100.0]; tolerance = 2.0;
+
+julia> pack_monoatomic!(coordinates, unitcell, tolerance)
+```
+
+After packing, the `coordinates` array will have updated positions for the
+atoms without overlaps. 
+
 """
 function pack_monoatomic!(
     positions::AbstractVector{<:SVector{N,T}},
     unitcell,
     tol;
     parallel::Bool=true,
-    precision=1e-3,
     iprint=10
 ) where {N,T}
     #  The gradient vector will be allocated by SPGBox, as an auxiliary array
@@ -111,6 +125,8 @@ function pack_monoatomic!(
     packing_tol = tol + tol/10 # this avoids slow convergence 
     ncells = min(volume / packing_tol^N, length(positions))
     cutoff = (volume / ncells)^(1/N)
+    println("Using cell list cutoff: ", cutoff)
+    println("Using packing tolerance: ", packing_tol)
     system = PeriodicSystem(
         xpositions=positions,
         unitcell=unitcell,

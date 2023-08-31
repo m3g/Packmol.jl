@@ -2,3 +2,5 @@
 /test/run_packmol/water_box.pdb
 /test/run_packmol/ieee_signaling_box.pdb
 .vscode/settings.json
+docs/build
+docs/Manifest.toml

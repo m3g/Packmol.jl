@@ -5,6 +5,15 @@ packmol_runner = Packmol_jll.packmol()
 
 export run_packmol
 
+"""
+    run_packmol(input_file::String)
+
+Runs the packmol executable with the input file `input_file`. This will run
+the classical `http://m3g.iqm.unicamp.br/packmol` program, which is a
+pre-compiled binary. The input file is a text file with the same syntax as
+the packmol input files.
+
+"""
 function run_packmol(input_file::String)
     isfile(input_file) || error("Input file not found: $input_file")
     cd(dirname(input_file))
