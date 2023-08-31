@@ -1,7 +1,7 @@
 name = "Packmol"
 uuid = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
 authors = ["Leandro Martinez <leandro@iqm.unicamp.br> and contributors"]
-version = "0.1.4"
+version = "0.1.5-DEV"
 
 [deps]
 Packmol_jll = "eb89d173-8f78-57a0-9e6e-c2e8c44a5e61"
