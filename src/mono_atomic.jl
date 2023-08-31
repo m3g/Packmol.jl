@@ -31,28 +31,29 @@ end
 function monoatomic_u_and_g!(x::T, y::T, i, j, d2, fg::MonoAtomicFG, tol) where {T}
     d = sqrt(d2)
     fg.dmin = min(d, fg.dmin)
-    fg.f += (d - tol)^2
-    dv = y - x
-    if d > 0
-        dvdd = 2 * (d - tol) * dv / d
-    else
-        vrand = rand(T)
-        vrand = (0.1 * tol) * vrand / norm(vrand)
-        dvdd = 2 * (d - tol) * vrand
+    if d < tol
+        fg.f += (d - tol)^2
+        dv = y - x
+        if d > 0
+            dvdd = 2 * (d - tol) * dv / d
+        else
+            vrand = rand(T)
+            vrand = (0.1 * tol) * vrand / norm(vrand)
+            dvdd = 2 * (d - tol) * vrand
+        end
+        fg.g[i] -= dvdd
+        fg.g[j] += dvdd
     end
-    fg.g[i] -= dvdd
-    fg.g[j] += dvdd
     return fg
 end
 
 # Function that computes the function and gradient, and returns the function
 # value and mutates the gradient array, to conform with the interface of SPGBox
-function fg!(g, x, system)
+function fg!(g, x, system, tol)
     # update positions in the system from x matrix
     for i in eachindex(system.xpositions)
         system.xpositions[i] = eltype(system.xpositions)(@view(x[:, i]))
     end
-    tol = system.cutoff
     map_pairwise!(
         (x, y, i, j, d2, fg) -> monoatomic_u_and_g!(x, y, i, j, d2, fg, tol),
         system,
@@ -64,13 +65,16 @@ function fg!(g, x, system)
     return system.fg.f
 end
 
-function pack_monoatomic_callback(spgresult, system, precision, iprint)
+function pack_monoatomic_callback(spgresult, system, tol, iprint)
     if spgresult.nit % iprint == 0
         println(
             " Iteration: ", spgresult.nit,
             " Minimum distance: ", min(system.fg.dmin, system.cutoff),
             " Function value: ", spgresult.f
         )
+    end
+    if system.fg.dmin > tol
+        return true
     end
     return false
 end
@@ -99,10 +103,18 @@ function pack_monoatomic!(
     x = copy(reinterpret(reshape, T, positions))
     auxvecs = SPGBox.VAux(x, zero(T))
     println("Initializing periodic system...")
+    if unitcell isa AbstractMatrix
+        volume = det(unitcell)
+    else
+        volume = prod(unitcell)
+    end
+    packing_tol = tol + tol/10 # this avoids slow convergence 
+    ncells = min(volume / packing_tol^N, length(positions))
+    cutoff = (volume / ncells)^(1/N)
     system = PeriodicSystem(
         xpositions=positions,
         unitcell=unitcell,
-        cutoff=tol,
+        cutoff=cutoff,
         output=MonoAtomicFG(zero(T), similar(positions), typemax(T)),
         output_name=:fg,
         parallel=parallel,
@@ -111,9 +123,9 @@ function pack_monoatomic!(
     # and the gradient, which in this case is better
     println("Packing...")
     spgboxresult = spgbox!(
-        (g, x) -> fg!(g, x, system), x;
+        (g, x) -> fg!(g, x, system, packing_tol), x;
         callback=
-        (spgresult) -> pack_monoatomic_callback(spgresult, system, precision, iprint),
+        (spgresult) -> pack_monoatomic_callback(spgresult, system, tol, iprint),
         vaux=auxvecs,
         nitmax=1000
     )
@@ -149,9 +161,9 @@ end
         )
         g = similar(x)
         if !return_grad
-            return fg!(g, x, system)
+            return fg!(g, x, system, tol)
         end
-        f = fg!(g, x, system)
+        f = fg!(g, x, system, tol)
         return f, g
     end
     x = rand(2, 100)
