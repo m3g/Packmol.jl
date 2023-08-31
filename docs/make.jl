@@ -8,7 +8,6 @@ makedocs(
     sitename = "Packmol.jl",
     pages = [
         "Home" => "index.md",
-        "Help entries" => "help.md",
     ],
 )
 deploydocs(

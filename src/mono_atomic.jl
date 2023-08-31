@@ -85,7 +85,7 @@ end
 Pack a monoatomic system with iniital positions `x` and distance tolerance `tol`,
 into the unitcell defined by `unitecell`, considering periodic boundary conditions.
 
-The unitcell can be a vector, in the case of Orthorhombic cells, or a matrix, in the
+The unitcell can be a vector, in the case of orthorhombic cells, or a matrix, in the
 case of triclinic cells.
 
 The coordinates and the unitcells can be two- or three-dimensional. 
