@@ -9,6 +9,8 @@ using SPGBox
 import LinearAlgebra: norm
 import Statistics: mean
 
+const src_dir = @__DIR__
+
 # API: exported functions
 export pack_monoatomic!
 
