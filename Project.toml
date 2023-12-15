@@ -1,7 +1,7 @@
 name = "Packmol"
 uuid = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
 authors = ["Leandro Martinez <leandro@iqm.unicamp.br> and contributors"]
-version = "0.1.6"
+version = "0.1.7-DEV"
 
 [deps]
 CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
