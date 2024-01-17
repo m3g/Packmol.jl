@@ -11,13 +11,6 @@ independent package with a faster and improved version of the Packmol package.
 
 1. Install Julia in your system, with [juliaup](https://github.com/JuliaLang/juliaup#juliaup---julia-version-manager)
 
--  Currently, for Windows, until [this bug](https://github.com/JuliaLang/Pkg.jl/issues/3643) is fixed, we recommend
-    installing the Julia 1.9.4 version. To do this, after installing `juliaup`, open the Windows Power Shell and type:
-    ```
-    juliaup add 1.9
-    juliaup default 1.9
-    ```
-
 2. Launch julia and install this package:
 
 ```julia
