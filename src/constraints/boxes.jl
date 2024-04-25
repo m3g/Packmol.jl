@@ -7,7 +7,6 @@ export Box, InsideBox, OutsideBox
 # Default weights
 weight_default[:box] = 5.0
 
-
 #
 # Base constraint functions for cubes and boxes
 #
@@ -86,21 +85,11 @@ constraint_gradient(c::Cube{Placement}, x) where {Placement} =
 #
 # Box
 #
-struct Box{Placement,N,T} <: Constraint{Placement,N,T}
+@kwdef struct Box{Placement,N,T} <: Constraint{Placement,N,T}
     center::SVector{N,T}
     sides::SVector{N,T}
-    weight::T
+    weight::T = weight_default[:box]
 end
-function Box{Placement}(; center::AbstractVector, sides::AbstractVector, weight::Number=weight_default[:box]) where {Placement}
-    @assert length(center) == length(sides) "Box: Center coordinates and sides must have same dimensions."
-    N = length(center)
-    T = promote_type(eltype(center), eltype(sides), typeof(weight))
-    Box{Placement,N,T}(SVector{N,T}(center), SVector{N,T}(sides), T(weight))
-end
-Box{Placement}(center::AbstractVector, sides::AbstractVector) where {Placement} =
-    Box{Placement}(; center=center, sides=sides)
-Box{Placement}(center::AbstractVector, sides::AbstractVector, weight::Number) where {Placement} =
-    Box{Placement}(; center=center, sides=sides, weight=weight)
 
 InsideBox(args...; kargs...) = Box{Inside}(args...; kargs...)
 OutsideBox(args...; kargs...) = Box{Outside}(args...; kargs...)
@@ -110,89 +99,24 @@ constraint_penalty(c::Box{Placement}, x) where {Placement} =
 constraint_gradient(c::Box{Placement}, x) where {Placement} =
     orthogonal_wall_derivative.(Placement, c.center, c.sides, c.weight, x)
 
-#
-# Spheres
-#
-struct Sphere{Placement,N,T} <: Constraint{Placement,N,T}
-    center::SVector{N,T}
-    radius::T
-    weight::T
-end
-function Sphere{Placement}(; center::AbstractVector, radius::Number, weight::Number=weight_default[:sphere]) where {Placement}
-    N = length(center)
-    T = promote_type(eltype(center), typeof(radius), typeof(weight))
-    Sphere{Placement,N,T}(SVector{N,T}(center), T(radius), T(weight))
-end
-Sphere{Placement}(center::AbstractVector, radius::Number) where {Placement} =
-    Sphere{Placement}(; center=center, radius=radius)
-
-InsideSphere(args...; kargs...) = Sphere{Inside}(args...; kargs...)
-OutsideSphere(args...; kargs...) = Sphere{Outside}(args...; kargs...)
-
-function constraint_penalty(c::Sphere{Inside}, x)
-    @unpack center, radius, weight = c
-    d = norm(x - center)
-    if d > radius
-        return weight * (d^2 - radius^2)
-    else
-        return zero(eltype(x))
-    end
-end
-
-function constraint_penalty(c::Sphere{Outside}, x)
-    @unpack center, radius, weight = c
-    d = norm(x - center)
-    if d < radius
-        return weight * (radius^2 - d^2)
-    else
-        return zero(eltype(x))
-    end
-end
-
-function constraint_gradient(c::Sphere{Inside}, x)
-    @unpack center, radius, weight = c
-    dx = x - center
-    d = norm(dx)
-    if d > radius
-        return 2 * weight * dx
-    else
-        return zero(x)
-    end
-end
-
-function constraint_gradient(c::Sphere{Outside}, x)
-    @unpack center, radius, weight = c
-    dx = x - center
-    d = norm(dx)
-    if d < radius
-        return -2 * weight * dx
-    else
-        return zero(x)
-    end
-end
-
 @testitem "Box constructors" begin
-
     @test InsideCube([0,0,0],1.) == Cube{Inside,3,Float64}([0.,0.,0.],1.,5.0)
     @test InsideCube(center=[0,0,0],side=1.) == Cube{Inside,3,Float64}([0.,0.,0.],1.,5.0)
     @test InsideCube(center=[0,0,0],side=1.,weight=2.0) == Cube{Inside,3,Float64}([0.,0.,0.],1.,2.0)
     @test OutsideCube([0,0,0],1.) == Cube{Outside,3,Float64}([0.,0.,0.],1.,5.0)
     @test OutsideCube(center=[0,0,0],side=1.) == Cube{Outside,3,Float64}([0.,0.,0.],1.,5.0)
     @test OutsideCube(center=[0,0,0],side=1.,weight=2.0) == Cube{Outside,3,Float64}([0.,0.,0.],1.,2.0)
-
     @test InsideBox([0,0,0],[1.,1.,1.]) == Box{Inside,3,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
     @test InsideBox(center=[0,0,0],sides=[1.,1.,1.]) == Box{Inside,3,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
     @test InsideBox(center=[0,0,0],sides=[1.,1.,1.],weight=2.0) == Box{Inside,3,Float64}([0.,0.,0.],[1.,1.,1.],2.0)
     @test OutsideBox([0,0,0],[1.,1.,1.]) == Box{Outside,3,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
     @test OutsideBox(center=[0,0,0],sides=[1.,1.,1.]) == Box{Outside,3,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
     @test OutsideBox(center=[0,0,0],sides=[1.,1.,1.],weight=2.0) == Box{Outside,3,Float64}([0.,0.,0.],[1.,1.,1.],2.0)
-
 end
 
 @testitem "Constraint gradients" begin
     using ForwardDiff
     using StaticArrays
-
     x = SVector{3,Float64}(1.5,1.0,0.)
     c = InsideCube([0.2, 0., 0.1], 0.5)
     @test ForwardDiff.gradient(x -> Packmol.constraint_penalty(c,x), x) ≈ Packmol.constraint_gradient(c,x)
@@ -202,7 +126,44 @@ end
     @test ForwardDiff.gradient(x -> Packmol.constraint_penalty(c,x), x) ≈ Packmol.constraint_gradient(c,x)
     c = OutsideBox([0.2, 0., 0.1], [0.5, 0.7, 1.0])
     @test ForwardDiff.gradient(x -> Packmol.constraint_penalty(c,x), x) ≈ Packmol.constraint_gradient(c,x)
-
 end
 
+#
+# Input parsing functions: must be appended to the "parse_constraint" dictionary:
+#
+parse_constraint["inside box"] = (structure_data, data::Vector{<:AbstractString}; T=Float64, N=3) -> begin
+    center, sides = try
+        parse.(T, data[2+1:2+N]), parse.(T, data[2+1+N:end])
+    catch
+        error("Error parsing 'inside box' constraint data for $(structure_data[:filename]).")
+    end
+    return Box{Inside,N,T}(;center, sides)
+end
+
+parse_constraint["outside box"] = (structure_data, data::Vector{<:AbstractString}; T=Float64, N=3) -> begin
+    center, sides = try
+        parse.(T, data[2+1:2+N]), parse.(T, data[2+1+N:end])
+    catch
+        error("Error parsing 'outside box' constraint data for $(structure_data[:filename]).")
+    end
+    return Box{Outside,N,T}(;center, sides)
+end
+
+parse_constraint["inside cube"] = (structure_data, data::Vector{<:AbstractString}; T=Float64, N=3) -> begin
+    center, side = try
+        parse.(T, data[2+1:2+N]), parse.(T, last(data))
+    catch
+        error("Error parsing 'inside cube' constraint data for $(structure_data[:filename]).")
+    end
+    return Cube{Inside,N,T}(;center, side)
+end
+
+parse_constraint["outside cube"] = (structure_data, data::Vector{<:AbstractString}; T=Float64, N=3) -> begin
+    center, side = try
+        parse.(T, data[2+1:2+N]), parse.(T, last(data))
+    catch
+        error("Error parsing 'outside cube' constraint data for $(structure_data[:filename]).")
+    end
+    return Cube{Outside,N,T}(;center, side)
+end
 

@@ -3,42 +3,23 @@
 #
 export Sphere, InsideSphere, OutsideSphere
 
-#
-# Generic show function for constraints
-#
-function Base.show(io::IO, ::MIME"text/plain", c::Constraint)
-    println(io, typeof(c))
-    fnames = fieldnames(typeof(c))
-    for i in 1:length(fnames)-1
-        println(io, "    $(fnames[i]) = $(getfield(c,fnames[i]))")
-    end
-    print(io, "    $(fnames[end]) = $(getfield(c,fnames[end]))")
-end
-
 # Default weights
 weight_default[:sphere] = 5.0
 
 #
 # Spheres
 #
-struct Sphere{Placement,N,T} <: Constraint{Placement,N,T}
+@kwdef struct Sphere{Placement,N,T} <: Constraint{Placement,N,T}
     center::SVector{N,T}
     radius::T
-    weight::T
+    weight::T = weight_default[:sphere]
 end
-function Sphere{Placement}(; center::AbstractVector, radius::Number, weight::Number=weight_default[:sphere]) where {Placement}
-    N = length(center)
-    T = promote_type(eltype(center), typeof(radius), typeof(weight))
-    Sphere{Placement,N,T}(SVector{N,T}(center), T(radius), T(weight))
-end
-Sphere{Placement}(center::AbstractVector, radius::Number) where {Placement} =
-    Sphere{Placement}(; center=center, radius=radius)
 
 InsideSphere(args...; kargs...) = Sphere{Inside}(args...; kargs...)
 OutsideSphere(args...; kargs...) = Sphere{Outside}(args...; kargs...)
 
 function constraint_penalty(c::Sphere{Inside}, x)
-    @unpack center, radius, weight = c
+    (; center, radius, weight) = c
     d = norm(x - center)
     if d > radius
         return weight * (d^2 - radius^2)
@@ -48,7 +29,7 @@ function constraint_penalty(c::Sphere{Inside}, x)
 end
 
 function constraint_penalty(c::Sphere{Outside}, x)
-    @unpack center, radius, weight = c
+    (; center, radius, weight) = c
     d = norm(x - center)
     if d < radius
         return weight * (radius^2 - d^2)
@@ -58,7 +39,7 @@ function constraint_penalty(c::Sphere{Outside}, x)
 end
 
 function constraint_gradient(c::Sphere{Inside}, x)
-    @unpack center, radius, weight = c
+    (; center, radius, weight) = c
     dx = x - center
     d = norm(dx)
     if d > radius
@@ -69,7 +50,7 @@ function constraint_gradient(c::Sphere{Inside}, x)
 end
 
 function constraint_gradient(c::Sphere{Outside}, x)
-    @unpack center, radius, weight = c
+    (; center, radius, weight) = c
     dx = x - center
     d = norm(dx)
     if d < radius
@@ -98,5 +79,24 @@ end
     @test ForwardDiff.gradient(x -> Packmol.constraint_penalty(c,x), x) ≈ Packmol.constraint_gradient(c,x)
 end
 
+#
+# Input parsing functions: must be appended to the "parse_constraint" dictionary:
+#
+parse_constraint["inside sphere"] = (structure_data, data::Vector{<:AbstractString}; T=Float64, N=3) -> begin
+    center, radius = try
+        parse.(T, data[2+1:2+N]), parse.(T, last(data))
+    catch
+        error("Error parsing 'inside sphere' constraint data for $(structure_data[:filename]).")
+    end
+    return Sphere{Inside,N,T}(;center, radius)
+end
 
+parse_constraint["outside sphere"] = (structure_data, data::Vector{<:AbstractString}; T=Float64, N=3) -> begin
+    center, radius = try
+        parse.(T, data[2+1:2+N]), parse.(T, last(data))
+    catch
+        error("Error parsing 'outside sphere' constraint data for $(structure_data[:filename]).")
+    end
+    return Sphere{Outside,N,T}(;center, radius)
+end
 

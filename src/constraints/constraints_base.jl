@@ -23,7 +23,14 @@ end
 
 #
 # Default weights
-const weight_default = Dict{Symbool,Float64}()
+const weight_default = Dict{Symbol,Float64}()
+
+# 
+# Dictionary containing the functions required for parsing each type
+# of constraint. The functions for parsing each constraint are defined
+# in the corresponding files, and appended to this dictionary.
+#
+const parse_constraint = Dict{String,Function}()
 
 
 
