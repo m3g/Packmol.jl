@@ -1,5 +1,5 @@
 import Random
-using StableRNGs
+import StableRNGs
 function init_random(options)
     if options.seed > 0
         if options.StableRNG == true
@@ -17,5 +17,3 @@ function init_random(options)
     end
     return RNG
 end
-random(RNG) = rand(RNG)
-random(RNG, arg) = rand(RNG, arg)
