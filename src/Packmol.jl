@@ -6,7 +6,7 @@ using LinearAlgebra: norm
 using Statistics: mean
 using Base: @kwdef
 using Base.Threads: @spawn
-using PDBTools: readPDB, coor 
+using PDBTools: Atom, readPDB, coor 
 
 const src_dir = @__DIR__
 
