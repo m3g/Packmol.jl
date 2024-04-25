@@ -1,37 +1,12 @@
 #
-# Types of constraints 
+# Box types of constraints: Cubes, Boxes, Planes
 #
-
-abstract type Constraint{Placement,N,T} end
-
-struct Inside end
-struct Outside end
-struct Over end
-struct Below end
-export Inside, Outside, Over, Below
-
 export Cube, InsideCube, OutsideCube
 export Box, InsideBox, OutsideBox
-export Sphere, InsideSphere, OutsideSphere
-
-#
-# Generic show function for constraints
-#
-function Base.show(io::IO, ::MIME"text/plain", c::Constraint)
-    println(io, typeof(c))
-    fnames = fieldnames(typeof(c))
-    for i in 1:length(fnames)-1
-        println(io, "    $(fnames[i]) = $(getfield(c,fnames[i]))")
-    end
-    print(io, "    $(fnames[end]) = $(getfield(c,fnames[end]))")
-end
 
 # Default weights
+weight_default[:box] = 5.0
 
-const weight_default = (
-    box=5.0,
-    sphere=5.0
-)
 
 #
 # Base constraint functions for cubes and boxes
@@ -196,5 +171,38 @@ function constraint_gradient(c::Sphere{Outside}, x)
     end
 end
 
+@testitem "Box constructors" begin
+
+    @test InsideCube([0,0,0],1.) == Cube{Inside,3,Float64}([0.,0.,0.],1.,5.0)
+    @test InsideCube(center=[0,0,0],side=1.) == Cube{Inside,3,Float64}([0.,0.,0.],1.,5.0)
+    @test InsideCube(center=[0,0,0],side=1.,weight=2.0) == Cube{Inside,3,Float64}([0.,0.,0.],1.,2.0)
+    @test OutsideCube([0,0,0],1.) == Cube{Outside,3,Float64}([0.,0.,0.],1.,5.0)
+    @test OutsideCube(center=[0,0,0],side=1.) == Cube{Outside,3,Float64}([0.,0.,0.],1.,5.0)
+    @test OutsideCube(center=[0,0,0],side=1.,weight=2.0) == Cube{Outside,3,Float64}([0.,0.,0.],1.,2.0)
+
+    @test InsideBox([0,0,0],[1.,1.,1.]) == Box{Inside,3,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
+    @test InsideBox(center=[0,0,0],sides=[1.,1.,1.]) == Box{Inside,3,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
+    @test InsideBox(center=[0,0,0],sides=[1.,1.,1.],weight=2.0) == Box{Inside,3,Float64}([0.,0.,0.],[1.,1.,1.],2.0)
+    @test OutsideBox([0,0,0],[1.,1.,1.]) == Box{Outside,3,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
+    @test OutsideBox(center=[0,0,0],sides=[1.,1.,1.]) == Box{Outside,3,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
+    @test OutsideBox(center=[0,0,0],sides=[1.,1.,1.],weight=2.0) == Box{Outside,3,Float64}([0.,0.,0.],[1.,1.,1.],2.0)
+
+end
+
+@testitem "Constraint gradients" begin
+    using ForwardDiff
+    using StaticArrays
+
+    x = SVector{3,Float64}(1.5,1.0,0.)
+    c = InsideCube([0.2, 0., 0.1], 0.5)
+    @test ForwardDiff.gradient(x -> Packmol.constraint_penalty(c,x), x) ≈ Packmol.constraint_gradient(c,x)
+    c = OutsideCube([0.2, 0., 0.1], 2.)
+    @test ForwardDiff.gradient(x -> Packmol.constraint_penalty(c,x), x) ≈ Packmol.constraint_gradient(c,x)
+    c = InsideBox([0.2, 0., 0.1], [0.5, 0.7, 1.0])
+    @test ForwardDiff.gradient(x -> Packmol.constraint_penalty(c,x), x) ≈ Packmol.constraint_gradient(c,x)
+    c = OutsideBox([0.2, 0., 0.1], [0.5, 0.7, 1.0])
+    @test ForwardDiff.gradient(x -> Packmol.constraint_penalty(c,x), x) ≈ Packmol.constraint_gradient(c,x)
+
+end
 
 
