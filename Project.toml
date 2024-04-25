@@ -1,6 +1,6 @@
 name = "Packmol"
 uuid = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
-authors = ["Leandro Martinez <leandro@iqm.unicamp.br> and contributors"]
+authors = ["Leandro Martinez <lmartine@unicamp.br> and contributors"]
 version = "0.1.7-DEV"
 
 [deps]
