@@ -15,15 +15,15 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
 Aqua = "0.8"
-CellListMap = "0.8.16"
+CellListMap = "0.8.27"
 FiniteDifferences = "0.12.30"
 NativeFileDialog = "0.2.1"
 Packmol_jll = "20"
 SPGBox = "0.7"
-StaticArrays = "1"
-Statistics = "1"
+StaticArrays = "1.6"
+Statistics = "1.9"
 TestItems = "0.1"
-julia = "1.6"
+julia = "1.9"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
