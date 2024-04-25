@@ -1,7 +1,7 @@
 module Packmol
 
 using TestItems: @testitem
-using StaticArrays: SVector, SMatrix
+using StaticArrays: SVector, SMatrix, @SMatrix
 using LinearAlgebra: norm
 using Statistics: mean
 using Base: @kwdef
