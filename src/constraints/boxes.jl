@@ -59,21 +59,11 @@ end
 #
 # Cube
 #
-struct Cube{Placement,N,T} <: Constraint{Placement,N,T}
-    center::SVector{N,T}
+@kwdef struct Cube{Placement,T} <: Constraint{Placement,3,T}
+    center::SVector{3,T}
     side::T
-    weight::T
+    weight::T = weight_default[:box]
 end
-function Cube{Placement}(; center::AbstractVector, side::Number, weight::Number=weight_default[:box]) where {Placement}
-    T = promote_type(eltype(center), typeof(side), typeof(weight))
-    N = length(center)
-    Cube{Placement,N,T}(SVector{N,T}(center), T(side), T(weight))
-end
-Cube{Placement}(center::AbstractVector, side::Number) where {Placement} =
-    Cube{Placement}(; center=center, side=side)
-Cube{Placement}(center::AbstractVector, side::Number, weight::Number) where {Placement} =
-    Cube{Placement}(; center=center, side=side, weight=weight)
-
 InsideCube(args...; kargs...) = Cube{Inside}(args...; kargs...)
 OutsideCube(args...; kargs...) = Cube{Outside}(args...; kargs...)
 
@@ -85,12 +75,11 @@ constraint_gradient(c::Cube{Placement}, x) where {Placement} =
 #
 # Box
 #
-@kwdef struct Box{Placement,N,T} <: Constraint{Placement,N,T}
-    center::SVector{N,T}
-    sides::SVector{N,T}
+@kwdef struct Box{Placement,T} <: Constraint{Placement,3,T}
+    center::SVector{3, T}
+    sides::SVector{3,T}
     weight::T = weight_default[:box]
 end
-
 InsideBox(args...; kargs...) = Box{Inside}(args...; kargs...)
 OutsideBox(args...; kargs...) = Box{Outside}(args...; kargs...)
 
@@ -131,39 +120,39 @@ end
 #
 # Input parsing functions: must be appended to the "parse_constraint" dictionary:
 #
-parse_constraint["inside box"] = (structure_data, data::Vector{<:AbstractString}; T=Float64, N=3) -> begin
+parse_constraint["inside box"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
     center, sides = try
-        parse.(T, data[2+1:2+N]), parse.(T, data[2+1+N:end])
+        parse.(T, data[1:3]), parse.(T, data[4:6])
     catch
         error("Error parsing 'inside box' constraint data for $(structure_data[:filename]).")
     end
-    return Box{Inside,N,T}(;center, sides)
+    return Box{Inside,T}(;center, sides)
 end
 
-parse_constraint["outside box"] = (structure_data, data::Vector{<:AbstractString}; T=Float64, N=3) -> begin
+parse_constraint["outside box"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
     center, sides = try
-        parse.(T, data[2+1:2+N]), parse.(T, data[2+1+N:end])
+        parse.(T, data[1:3]), parse.(T, data[4:6])
     catch
         error("Error parsing 'outside box' constraint data for $(structure_data[:filename]).")
     end
-    return Box{Outside,N,T}(;center, sides)
+    return Box{Outside,T}(;center, sides)
 end
 
-parse_constraint["inside cube"] = (structure_data, data::Vector{<:AbstractString}; T=Float64, N=3) -> begin
+parse_constraint["inside cube"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
     center, side = try
-        parse.(T, data[2+1:2+N]), parse.(T, last(data))
+        parse.(T, data[1:3]), parse.(T, data[4])
     catch
         error("Error parsing 'inside cube' constraint data for $(structure_data[:filename]).")
     end
-    return Cube{Inside,N,T}(;center, side)
+    return Cube{Inside,T}(;center, side)
 end
 
-parse_constraint["outside cube"] = (structure_data, data::Vector{<:AbstractString}; T=Float64, N=3) -> begin
+parse_constraint["outside cube"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
     center, side = try
-        parse.(T, data[2+1:2+N]), parse.(T, last(data))
+        parse.(T, data[1:3]), parse.(T, data[4])
     catch
         error("Error parsing 'outside cube' constraint data for $(structure_data[:filename]).")
     end
-    return Cube{Outside,N,T}(;center, side)
+    return Cube{Outside,T}(;center, side)
 end
 

@@ -9,12 +9,11 @@ weight_default[:sphere] = 5.0
 #
 # Spheres
 #
-@kwdef struct Sphere{Placement,N,T} <: Constraint{Placement,N,T}
-    center::SVector{N,T}
+@kwdef struct Sphere{Placement,T} <: Constraint{Placement,3,T}
+    center::SVector{3,T}
     radius::T
     weight::T = weight_default[:sphere]
 end
-
 InsideSphere(args...; kargs...) = Sphere{Inside}(args...; kargs...)
 OutsideSphere(args...; kargs...) = Sphere{Outside}(args...; kargs...)
 
@@ -82,21 +81,21 @@ end
 #
 # Input parsing functions: must be appended to the "parse_constraint" dictionary:
 #
-parse_constraint["inside sphere"] = (structure_data, data::Vector{<:AbstractString}; T=Float64, N=3) -> begin
+parse_constraint["inside sphere"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
     center, radius = try
-        parse.(T, data[2+1:2+N]), parse.(T, last(data))
+        parse.(T, data[1:3]), parse.(T, data[4])
     catch
         error("Error parsing 'inside sphere' constraint data for $(structure_data[:filename]).")
     end
-    return Sphere{Inside,N,T}(;center, radius)
+    return Sphere{Inside,T}(;center, radius)
 end
 
-parse_constraint["outside sphere"] = (structure_data, data::Vector{<:AbstractString}; T=Float64, N=3) -> begin
+parse_constraint["outside sphere"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
     center, radius = try
-        parse.(T, data[2+1:2+N]), parse.(T, last(data))
+        parse.(T, data[1:3]), parse.(T, data[4])
     catch
         error("Error parsing 'outside sphere' constraint data for $(structure_data[:filename]).")
     end
-    return Sphere{Outside,N,T}(;center, radius)
+    return Sphere{Outside,T}(;center, radius)
 end
 
