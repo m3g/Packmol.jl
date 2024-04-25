@@ -1,26 +1,27 @@
 module Packmol
 
-using TestItems
-using Parameters
-using StaticArrays
-import CellListMap
-using CellListMap.PeriodicSystems
-using SPGBox
-import LinearAlgebra: norm
-import Statistics: mean
+using TestItems: @testitem
+using StaticArrays: SVector, SMatrix
+using LinearAlgebra: norm
+using Statistics: mean
+using Base: @kwdef
+using Base.Threads: @spawn
 
 const src_dir = @__DIR__
 
 # API: exported functions
 export pack_monoatomic!
 
-# Flag for internal function doc entries
-const INTERNAL = "Internal function or structure - interface may change."
+# Rigid body transformations 
+include("./rigid_body/rigid_body.jl")
+include("./rigid_body/chain_rule.jl")
 
-include("./rigid_body.jl")
-include("./constraints.jl")
+# Constraints
+include("./constraints/constraints_base.jl")
+include("./constraints/boxes.jl")
+include("./constraints/spheres.jl")
 
-@with_kw struct Structure{N,T}
+@kwdef struct Structure{N,T}
     number::Int
     coor::Vector{SVector{N,T}}
     fixed::Bool = false
@@ -28,6 +29,10 @@ include("./constraints.jl")
     residue_numbering::Int = 1
     connect::Vector{Vector{Int}} = Vector{Int}[]
     constraints::Vector{<:Constraint}
+end
+
+@kwdef PackmolSystem{N,T}
+
 end
 
 # Monatomic packing
