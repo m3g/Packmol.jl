@@ -1,6 +1,6 @@
-using CellListMap.PeriodicSystems
-using StaticArrays
-using SPGBox
+using CellListMap.PeriodicSystems: PeriodicSystem, map_pairwise, map_pairwise!
+using StaticArrays: SVector, SMatrix
+using SPGBox: spgbox!
 
 # Structure carrying the function and gradient of a monoatomic system,
 # and the minimum distance between atoms so far.
@@ -157,7 +157,7 @@ function pack_monoatomic!(
     return positions
 end
 
-@testitem "gradient" begin
+@testitem "monoatomic gradient" begin
     using StaticArrays
     using FiniteDifferences
     using CellListMap.PeriodicSystems
