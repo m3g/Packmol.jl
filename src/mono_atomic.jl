@@ -1,5 +1,4 @@
 using CellListMap.PeriodicSystems: PeriodicSystem, map_pairwise, map_pairwise!
-using StaticArrays: SVector, SMatrix
 using SPGBox: spgbox!
 
 # Structure carrying the function and gradient of a monoatomic system,
@@ -161,7 +160,6 @@ end
     using StaticArrays
     using FiniteDifferences
     using CellListMap.PeriodicSystems
-    import Packmol: MonoAtomicFG, fg!
 
     # Testing function that computes the function value with the definition 
     # of fg! above, to use finite-differences to check the gradient
@@ -171,15 +169,15 @@ end
             xpositions=positions,
             unitcell=unitcell,
             cutoff=tol,
-            output=MonoAtomicFG(0.0, similar(positions), +Inf),
+            output=Packmol.MonoAtomicFG(0.0, similar(positions), +Inf),
             output_name=:fg,
             parallel=parallel,
         )
         g = similar(x)
         if !return_grad
-            return fg!(g, x, system, tol)
+            return Packmol.fg!(g, x, system, tol)
         end
-        f = fg!(g, x, system, tol)
+        f = Packmol.fg!(g, x, system, tol)
         return f, g
     end
     x = rand(2, 100)
