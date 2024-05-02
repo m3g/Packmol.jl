@@ -16,7 +16,7 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
 Aqua = "0.8"
-CellListMap = "0.8.27"
+CellListMap = "0.8.30, 0.9"
 FiniteDifferences = "0.12.30"
 NativeFileDialog = "0.2.1"
 PDBTools = "1.5.1"
