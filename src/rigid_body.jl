@@ -108,7 +108,7 @@ function random_move!(
     scale = 100.0
 
     # Generate random coordinates for the center of mass
-    cmin, cmax = PeriodicSystems.get_computing_box(system)
+    cmin, cmax = CellListMap.get_computing_box(system)
     newcm = SVector{3}(scale * (cmin[i] + rand(RNG, Float64) * (cmax[i] - cmin[i])) for i in 1:3)
 
     # Generate random rotation angles 
@@ -132,7 +132,7 @@ end
     using Packmol
     using StaticArrays
     using LinearAlgebra: norm
-    using CellListMap.PeriodicSystems
+    using CellListMap
     import Random
 
     function check_internal_distances(x, y)
@@ -151,7 +151,7 @@ end
     RNG = Random.Xoshiro()
     # Orthorhombic cell
     x = [-1.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
-    system = PeriodicSystem(positions=x, cutoff=0.1, unitcell=SVector(10.0, 10.0, 10.0), output=0.0)
+    system = ParticleSystem(positions=x, cutoff=0.1, unitcell=SVector(10.0, 10.0, 10.0), output=0.0)
     @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
     system.xpositions .= [-9.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
     @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
@@ -160,7 +160,7 @@ end
 
     # Triclinic cell
     x = [-1.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
-    system = PeriodicSystem(positions=x, cutoff=0.1, unitcell=@SMatrix[10.0 5.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0], output=0.0)
+    system = ParticleSystem(positions=x, cutoff=0.1, unitcell=@SMatrix[10.0 5.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0], output=0.0)
     @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
     system.xpositions .= [-9.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
     @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))

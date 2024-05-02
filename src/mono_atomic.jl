@@ -1,4 +1,4 @@
-using CellListMap.PeriodicSystems
+using CellListMap
 using StaticArrays
 using SPGBox
 
@@ -11,7 +11,7 @@ mutable struct MonoAtomicFG{N,T}
 end
 
 # Custom copy, reset and reducer functions
-import CellListMap.PeriodicSystems: copy_output, reset_output!, reducer
+import CellListMap: copy_output, reset_output!, reducer
 copy_output(x::MonoAtomicFG) = MonoAtomicFG(x.f, copy(x.g), x.dmin)
 function reset_output!(output::MonoAtomicFG{N,T}) where {N,T}
     output.f = zero(T)
@@ -127,7 +127,7 @@ function pack_monoatomic!(
     cutoff = (volume / ncells)^(1/N)
     println("Using cell list cutoff: ", cutoff)
     println("Using packing tolerance: ", packing_tol)
-    system = PeriodicSystem(
+    system = ParticleSystem(
         xpositions=positions,
         unitcell=unitcell,
         cutoff=cutoff,
@@ -160,14 +160,14 @@ end
 @testitem "gradient" begin
     using StaticArrays
     using FiniteDifferences
-    using CellListMap.PeriodicSystems
+    using CellListMap
     import Packmol: MonoAtomicFG, fg!
 
     # Testing function that computes the function value with the definition 
     # of fg! above, to use finite-differences to check the gradient
     function f(x; dimension=2, unitcell=[1, 1], tol=0.1, parallel=false, return_grad=false)
         positions = [SVector{dimension}(x[i:i+dimension-1]) for i in 1:dimension:length(x)]
-        system = PeriodicSystem(
+        system = ParticleSystem(
             xpositions=positions,
             unitcell=unitcell,
             cutoff=tol,
