@@ -1,7 +1,7 @@
 name = "Packmol"
 uuid = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
 authors = ["Leandro Martinez <leandro@iqm.unicamp.br> and contributors"]
-version = "0.1.7-DEV"
+version = "0.1.7"
 
 [deps]
 CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
@@ -16,7 +16,7 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
 Aqua = "0.6, 0.7"
-CellListMap = "0.8.16"
+CellListMap = "0.8.30, 0.9"
 FiniteDifferences = "0.12.30"
 NativeFileDialog = "0.2.1"
 Packmol_jll = "20"
