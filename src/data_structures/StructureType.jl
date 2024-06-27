@@ -45,7 +45,6 @@ function read_structure_data(input_file_block::AbstractString, tolerance; T=Floa
     iconstraint = 0
     for line in eachline(IOBuffer(input_file_block))
         keyword, values... = split(line)
-        data = split(line)
         if keyword == "atoms"
             atoms_block = true
         end
