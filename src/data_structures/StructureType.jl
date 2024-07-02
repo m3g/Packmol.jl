@@ -5,32 +5,35 @@
 Structure that contains the input data for a structure block in the input file. 
 
 =#
-@kwdef struct StructureType{N,T}
+@kwdef struct StructureType{D,T}
     filename::String
     natoms::Int
     atoms::Vector{Atom}
     number_of_molecules::Int
     fixed::Bool = false
-    reference_coordinates::Vector{SVector{N,T}}
+    reference_coordinates::Vector{SVector{D,T}}
     radii::Vector{T} = T[]
     residue_numbering::Int = 1
     connect::Vector{Vector{Int}} = Vector{Int}[]
     constraints::Vector{<:Constraint}
-    atom_constraints::Vector{Vector{Int}}
+    atom_constraints::Vector{Vector{Int}} = Vector{Int}[]
     move_bad_molecules::Symbol = :low_density_region
 end
 
 #=
 
-    read_structure_data(input_file_block::AbstractString, tolerance; T=Float64, N=3)
+    read_structure_data(input_file_block::AbstractString, tolerance; T=Float64, D=3)
 
 Reads the structure data from a structure block of the input file. Requires the `tolerance`
 parameter to set atom radii by default. The function returns a `StructureType` object. 
 
-The type `T` defines the number type (Float32, Float64, etc.) and `N` the number of dimensions.
+The type `T` defines the number type (Float32, Float64, etc.) and `D` the number of dimensions (2 or 3).
 
 =#
-function read_structure_data(input_file_block::AbstractString, tolerance; T=Float64, N=3)
+function read_structure_data(input_file_block::IOBuffer, tolerance; 
+    D::Int=3, T::DataType=Float64, path::String="",
+)
+    input_file_block = String(take!(input_file_block))
     constraint_placements = first.(split.(keys(parse_constraint)))
     structure_data = Dict{Symbol,Any}(
         :filename => nothing,
@@ -52,10 +55,10 @@ function read_structure_data(input_file_block::AbstractString, tolerance; T=Floa
             atoms_block = false
         end
         if keyword == "structure"
-            filename = String(values[1])
+            filename = joinpath(path, string(values[1]))
             atoms = readPDB(filename)
+            structure_data[:filename] = filename
             structure_data[:natoms] = length(atoms)
-            structure_data[:filename] = filename;
             structure_data[:atoms] = atoms
             structure_data[:reference_coordinates] = coor(atoms)
             structure_data[:radii] = fill(T(tolerance), structure_data[:natoms])
@@ -102,7 +105,8 @@ function read_structure_data(input_file_block::AbstractString, tolerance; T=Floa
             end
         end
     end
-    return StructureType{N,T}(;structure_data...)
+    @show structure_data
+    return StructureType{D,T}(;structure_data...)
 end
 
 @testitem "read_structure_data" begin

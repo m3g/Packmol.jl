@@ -1,6 +1,7 @@
 @kwdef mutable struct PackmolSystem{D,T}
+    filetype::String
     input_file::String
-    output_file::String = "packmol_output.pdb"
+    output_file::String
     tolerance::T = 2.0
     structure_types::Vector{StructureType{D,T}} = StructureType{D,T}[]
     tolerance_precision::T = 1e-2
@@ -13,14 +14,17 @@
     random_initial_point::Bool = false
     seed::Int = 1234567
     avoid_overlap::Bool = true
-    writeout::Int = 20 
+    writeout::Int = 20
     writebad::Bool = false
     optim_print_level::Int = 0
     chkgrad::Bool = false
 end
 
 function Base.show(io::IO, sys::PackmolSystem{D,T}) where {D,T}
-    println(io, "PackmolSystem{D,T} with $(length(sys.structure_types)) structure types")
+    println(io, "PackmolSystem{$D,$T} with $(length(sys.structure_types)) structure types")
+    for field in fieldnames(PackmolSystem)
+        println(io, "  $field: $(getfield(sys, field))")
+    end
 end
 
 #=
@@ -35,7 +39,8 @@ value is not valid for the given input keyword.
 =#
 function _parse_value(T::DataType, keyword::String, input_value; _val_check=x -> nothing)
     input_value isa T && return input_value
-    value = tryparse(T, input_value) 
+    (T == String && input_value isa AbstractString) && return string(input_value)
+    value = tryparse(T, input_value)
     if isnothing(value)
         throw(ArgumentError("""\n
             Could not parse value $input_value for keyword $keyword. Expected type: $T.
@@ -46,70 +51,45 @@ function _parse_value(T::DataType, keyword::String, input_value; _val_check=x ->
     return value
 end
 
-function _parse_options(T::DataType, keyword::String, input_value, options::Tuple) 
-    input_value = _parse_value(T, keyword, input_value)
-    for (option, value) in options
-        input_value == option && return value
-    end
-    throw(ArgumentError("""\n 
-        Could not parse value "$input_value" for keyword: $keyword. 
-        Expected one of: $(join(options, ','))
-
-    """))
-end
-
 _check_movefrac(x) = 0.0 <= x <= 1.0 ? x : throw(ArgumentError("movefrac must be between 0 and 1"))
 
-##! format: off
-packmol_input_keywords = Dict{String, Function}(
-    "output"                   => (T, val) -> _parse_value(String, "output", val),
-    "tolerance"                => (T, val) -> _parse_value(T, "tolerance", val),
-    "tolerance_precision"      => (T, val) -> _parse_value(T, "tolerance_precision", val),
-    "constraint_precision"     => (T, val) -> _parse_value(T, "constraint_precision", val),
-#    "precision"                => (Real,   [(:tolerance_precision => :first), (:constraint_precision => :first)]),
-    "maxit"                 => (T, val) -> _parse_value(Int, "max_iter", val),
-    "add_amber_ter"            => (T, val) -> _parse_value(Bool, "add_amber_ter", val),
-    "amber_ter_preserve"       => (T, val) -> true,
-    "add_box_sides"            => (T, val) -> true,
-    "connect"                  => (T, val) -> _parse_options(String, "connect", val, ("yes" => true, "no" => false)),
-    "randominitialpoint"       => (T, val) -> true,
-    "seed"                     => (T, val) -> _parse_value(Int, "seed", val),
-    "avoid_overlap"            => (T, val) -> _parse_options(String, "avoid_overlap", val, ("yes" => true, "no" => false)),
-    "writeout"                 => (T, val) -> _parse_value(Int, "writeout", val),
-    "writebad"                 => (T, val) -> true,
-    "optimization_print_level" => (T, val) -> _parse_value(Int, "optim_print_level", val),
-    "chkgrad"                  => (T, val) -> true,
-    "use_short_tol"            => (T, val) -> true,
-    "short_tol_dist"           => (T, val) -> _parse_value(T, "short_tol_dist", val),
-    "short_tol_scale"          => (T, val) -> _parse_value(T, "short_tol_scale", val),
-    "short_radius"             => (T, val) -> _parse_value(T, "short_radius", val),
-    "short_radius_scale"       => (T, val) -> _parse_value(T, "short_radius_scale", val),
-    "movebadrandom"            => (T, val) -> true,
-    "movefrac"                 => (T, val) -> _parse_value(T, "movefrac", val; _val_check=_check_movefrac),
+#! format: off
+packmol_input_keywords = Dict{String,Function}(
+    "filetype"                 => (T, val) -> (:filetype, _parse_value(String, "filetype", val)),
+    "output"                   => (T, val) -> (:output_file, _parse_value(String, "output", val)),
+    "tolerance"                => (T, val) -> (:tolerance, _parse_value(T, "tolerance", val)),
+    "tolerance_precision"      => (T, val) -> (:tolerance_precision, _parse_value(T, "tolerance_precision", val)),
+    "constraint_precision"     => (T, val) -> (:constraint_precision, _parse_value(T, "constraint_precision", val)),
+    "maxit"                    => (T, val) -> (:maxit, _parse_value(Int, "max_iter", val)),
+    "add_amber_ter"            => (T, val) -> (:add_amber_ter, _parse_value(Bool, "add_amber_ter", val)),
+    "amber_ter_preserve"       => (T, val) -> (:amber_ter_preserve, true),
+    "add_box_sides"            => (T, val) -> (:add_box_sides, true),
+    "connect"                  => (T, val) -> (:connect, _parse_options(String, "connect", val, ("yes" => true, "no" => false))),
+    "randominitialpoint"       => (T, val) -> (:randominitialpoint, true),
+    "seed"                     => (T, val) -> (:seed, _parse_value(Int, "seed", val)),
+    "avoid_overlap"            => (T, val) -> (:avoid_overlap, _parse_options(String, "avoid_overlap", val, ("yes" => true, "no" => false))),
+    "writeout"                 => (T, val) -> (:writeout, _parse_value(Int, "writeout", val)),
+    "writebad"                 => (T, val) -> (:writebad, true),
+    "optimization_print_level" => (T, val) -> (:optimization_print_level, _parse_value(Int, "optim_print_level", val)),
+    "chkgrad"                  => (T, val) -> (:check_gradient, true),
+    "use_short_tol"            => (T, val) -> (:use_short_tol, true),
+    "short_tol_dist"           => (T, val) -> (:short_tol_dist, _parse_value(T, "short_tol_dist", val)),
+    "short_tol_scale"          => (T, val) -> (:short_tol_scale, _parse_value(T, "short_tol_scale", val)),
+    "short_radius"             => (T, val) -> (:short_radiues, _parse_value(T, "short_radius", val)),
+    "short_radius_scale"       => (T, val) -> (:short_radius_scale, _parse_value(T, "short_radius_scale", val)),
+    "movebadrandom"            => (T, val) -> (:movebadrandom, true),
+    "movefrac"                 => (T, val) -> (:movefrac, _parse_value(T, "movefrac", val; _val_check=_check_movefrac)),
 )
 #! format: on
 
-packmol_legacy_keywords = Dict{String, String}(
+packmol_legacy_keywords = Dict{String,String}(
     "fscale" => "fscale legacy keyword was ignored.",
     "fbins" => "fbins legacy keyword was ignored.",
     "iprint1" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
     "iprint2" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
     "iprint3" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
+    "precision" => "precision legacy keyword was ignored, instead use: tolerance_precision and/or constraint_precision",
 )
-
-function set_packmol_input_data!(input_data, line; keywords = packmol_input_keywords)
-    keyword, values = split(line)
-    if haskey(keyword, keywords)
-        for key in keywords[keyword]
-            input_data[key] = values[1]
-        end
-    else
-        throw(ArgumentError("Keyword $keyword not recognized"))
-    end
-    return input_data
-end
-
-
 
 #=
 
@@ -118,55 +98,76 @@ end
 Reads the packmol input file to create a `PackmolSystem` object.
 
 =#
-function read_packmol_input(input_file::String; D=3, T=Float64)
-    packmol_input_data = Dict{Symbol,Any}(
+function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
+    input_data = Dict{Symbol,Any}(
         :input_file => input_file,
+        :structure_types => StructureType{D,T}[],
     )
+    structure_section = false
     open(input_file) do io
-        structure_field = 0
         for line in eachline(io)
             line = strip(line)
             (startswith(line, "#") || isempty(line)) && continue
             keyword, values... = split(line)
-            if keyword == "output"
-                packmol_input_data[:output_file] = values[1]
-            elseif keyword == "tolerance"
-                packmol_input_data[:tolerance] = parse(T, values[1])
-            elseif keyword == "tolerance_precision"
-                packmol_input_data[:tolerance_precision] = parse(T, values[1])
-            elseif keyword == "constraint_precision"
-                packmol_input_data[:tolerance_precision] = parse(T, values[1])
-            elseif keyword == "precision" 
-                packmol_input_data[:tolerance_precision] = parse(T, values[1])
-                packmol_input_data[:constraint_precision] = parse(T, values[1])
-            elseif keyword == "max_iter"
-                packmol_input_data[:max_iter] = parse(Int, values[1])
-            elseif keyword == "add_amber_ter"
-                packmol_input_data[:add_amber_ter] = true
-            elseif keyword == "amber_ter_preserve"
-                packmol_input_data[:amber_ter_preserve] = true
-            elseif keyword == "add_box_sides"
-                packmol_input_data[:add_amber_ter] = true
-            elseif keyword == "connect"
-                packmol_input_data[:connect] = values[1] == "yes" ? true : false
-            elseif keyword == "randominitialpoint"
-                packmol_input_data[:random_initial_point] = true
-            elseif keyword == "seed"
-                packmol_input_data[:seed] = parse(Int, values[1])
-            elseif keyword == "avoid_overlap"
-                packmol_input_data[:avoid_overlap] = values[1] == "yes" ? true : false
-            elseif keyword == "writeout"
-                packmol_input_data[:writeout] = parse(Int,values[1])
-            elseif keyword == "writebad"
-                packmol_input_data[:writebad] = true
-            elseif keyword == "optim_print_level"
-                packmol_input_data[:optim_print_level] = parse(Int,values[1])
-            elseif keyword == "chkgrad"
-                packmol_input_data[:chkgrad] = true
+            if haskey(packmol_input_keywords, keyword)
+                field_name, field_value = packmol_input_keywords[keyword](T, first(values))
+                input_data[field_name] = field_value
+                continue
+            elseif haskey(packmol_legacy_keywords, keyword)
+                @warn begin
+                    packmol_legacy_keywords[keyword]
+                end _line = line _file = input_file
+                continue
+            end
+            if keyword == "structure"
+                structure_section = true
+                continue
+            end
+            if keyword == "end" && values[1] == "structure"
+                if structure_section
+                    structure_section = false
+                end 
+                continue
+            end
+            if structure_section
+                continue
+            end
+            throw(ArgumentError("Keyword $keyword not recognized"))
+        end
+    end
+    if structure_section
+        throw(ArgumentError("Structure block not closed"))
+    end
+    # Read structure data
+    open(input_file) do io
+        local structure_input
+        for line in eachline(io)
+            line = strip(line)
+            (startswith(line, "#") || isempty(line)) && continue
+            keyword, values... = split(line)
+            if keyword == "structure"
+                structure_section = true
+                structure_input = IOBuffer()
+                print(structure_input, line, "\n")
+                continue
+            end
+            if keyword == "end" && values[1] == "structure"
+                print(structure_input, line, "\n")
+                if structure_section
+                    push!(input_data[:structure_types], 
+                        read_structure_data(structure_input, input_data[:tolerance]; D, T, path=dirname(input_file))
+                    )
+                    structure_section = false
+                end 
+                continue
+            end
+            if structure_section
+                print(structure_input, line, "\n")
+                continue
             end
         end
     end
-    return PackmolSystem{D,T}(;packmol_input_data...)
+    return PackmolSystem{D,T}(; input_data...)
 end
 
 @testitem "_parse_value" begin
@@ -186,11 +187,11 @@ end
 
 @testitem "read_packmol_input" begin
     using Packmol: read_packmol_input
-    file = Packmol.src_dir*"/../test/run_packmol/water_box.inp"
+    file = Packmol.src_dir * "/../test/run_packmol/water_box.inp"
     sys = read_packmol_input(file)
 
 
-    sys = read_packmol_input(file; T = Float32)
+    sys = read_packmol_input(file; T=Float32)
 
     sys = read_packmol_input(file; D=2)
 
