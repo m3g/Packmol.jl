@@ -20,9 +20,23 @@ Structure that contains the input data for a structure block in the input file.
     move_bad_molecules::Symbol = :low_density_region
 end
 
-#=
+function _show(s::StructureType{D,T}) where {D,T}
+    chomp(
+        """
+        StructureType{$D,$T}
+            filename: $(basename(s.filename))
+            natoms: $(s.natoms)
+            number_of_molecules: $(s.number_of_molecules)
+            fixed: $(s.fixed)
+            number of constraints: $(length(s.constraints))
+        """
+    )
+end
+Base.show(io::IO, ::MIME"text/plain", s::StructureType) = print(io, _show(s))
 
-    read_structure_data(input_file_block::AbstractString, tolerance; T=Float64, D=3)
+#=
+    read_structure_data(input_file_block::IOBuffer, tolerance; T=Float64, D=3)
+    read_structure_data(input_file_block::AbstractString, args... kargs..)
 
 Reads the structure data from a structure block of the input file. Requires the `tolerance`
 parameter to set atom radii by default. The function returns a `StructureType` object. 
@@ -30,10 +44,12 @@ parameter to set atom radii by default. The function returns a `StructureType` o
 The type `T` defines the number type (Float32, Float64, etc.) and `D` the number of dimensions (2 or 3).
 
 =#
+read_structure_data(input_file_block::AbstractString, args...; kargs...) = 
+    read_structure_data(IOBuffer(input_file_block), args...; kargs...)
+
 function read_structure_data(input_file_block::IOBuffer, tolerance; 
     D::Int=3, T::DataType=Float64, path::String="",
 )
-    input_file_block = String(take!(input_file_block))
     constraint_placements = first.(split.(keys(parse_constraint)))
     structure_data = Dict{Symbol,Any}(
         :filename => nothing,
@@ -44,9 +60,10 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
         :constraints => Constraint[]
     )
     # Read basic structure data first
+    seekstart(input_file_block)
     atoms_block = false
     iconstraint = 0
-    for line in eachline(IOBuffer(input_file_block))
+    for line in eachline(input_file_block)
         keyword, values... = split(line)
         if keyword == "atoms"
             atoms_block = true
@@ -82,8 +99,9 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
     #
     atoms_block = false
     iconstraint = 0
+    seekstart(input_file_block)
     local atoms_in_block
-    for line in eachline(IOBuffer(input_file_block))
+    for line in eachline(input_file_block)
         keyword, values... = split(line)
         if keyword == "atoms" 
             atoms_block = true
@@ -105,7 +123,6 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
             end
         end
     end
-    @show structure_data
     return StructureType{D,T}(;structure_data...)
 end
 

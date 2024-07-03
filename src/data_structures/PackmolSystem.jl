@@ -20,10 +20,29 @@
     chkgrad::Bool = false
 end
 
-function Base.show(io::IO, sys::PackmolSystem{D,T}) where {D,T}
-    println(io, "PackmolSystem{$D,$T} with $(length(sys.structure_types)) structure types")
+function _indent(s::AbstractString; n=4)
+    idented_str = IOBuffer()
+    for line in eachline(IOBuffer(s))
+        println(idented_str, repeat(" ", n) * line)
+    end
+    return String(take!(idented_str))
+end
+
+function Base.show(io::IO, mime::MIME"text/plain", sys::PackmolSystem{D,T}) where {D,T}
+    printstyled(io, "PackmolSystem{$D,$T}"; bold=true, color=:blue)
+    if length(sys.input_file) > 0 
+        printstyled(" - read from: $(basename(sys.input_file))"; color=:blue) 
+    end
+    println(io)
+    printstyled(io, _indent("Structure types:\n"); bold=true)
+    for (i,st) in enumerate(sys.structure_types)
+        print(io, _indent("$i."*_show(st)))
+    end
+    printstyled(io, _indent("Options:\n"); bold=true)
     for field in fieldnames(PackmolSystem)
-        println(io, "  $field: $(getfield(sys, field))")
+        if !(field in (:structure_types, :input_file))
+            print(io, _indent("$field: $(getfield(sys, field))"; n=8))
+        end
     end
 end
 
@@ -153,12 +172,9 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
             end
             if keyword == "end" && values[1] == "structure"
                 print(structure_input, line, "\n")
-                if structure_section
-                    push!(input_data[:structure_types], 
-                        read_structure_data(structure_input, input_data[:tolerance]; D, T, path=dirname(input_file))
-                    )
-                    structure_section = false
-                end 
+                push!(input_data[:structure_types], 
+                    read_structure_data(structure_input, input_data[:tolerance]; D, T, path=dirname(input_file))
+                )
                 continue
             end
             if structure_section
