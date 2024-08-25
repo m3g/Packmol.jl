@@ -4,7 +4,7 @@ using TestItems
 using Parameters
 using StaticArrays
 import CellListMap
-using CellListMap.PeriodicSystems
+using CellListMap
 using SPGBox
 import LinearAlgebra: norm
 import Statistics: mean
