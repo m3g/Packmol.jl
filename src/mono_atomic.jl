@@ -160,6 +160,7 @@ end
     using StaticArrays
     using FiniteDifferences
     using CellListMap
+    import Packmol: MonoAtomicFG, fg!
 
     # Testing function that computes the function value with the definition 
     # of fg! above, to use finite-differences to check the gradient
