@@ -54,36 +54,21 @@ julia> Pkg.add("Packmol")
 julia> exit()
 ```
 
-Next, write a script like:
+Next, copy this into a `packmol.jl` file:
 
 ```julia
 import Pkg; Pkg.activate("Packmol", shared=true) # Activate Packmol environment
 using Packmol
-input_file = raw"C:\users\my_user\my_files\my_input_file.inp" 
-run_packmol(input_file)
-```
-
-This script can be executed from the command line with
-```
-julia script.jl
-```
-
-If you want to run `packmol` in multiple files, a vector of files
-can be provided:
-
-```julia
-import Pkg; Pkg.activate("Packmol", shared=true) # Activate Packmol environment
-using Packmol
-input_files = [
-    raw"C:\users\my_user\my_files\my_input_file1.inp",
-    raw"C:\users\my_user\my_files\my_input_file2.inp", 
-    raw"C:\users\my_user\my_files\my_input_file3.inp",
-]
-for input_file in input_files
+for input_file in ARGS
     run_packmol(input_file)
 end
 ```
 
+This script can be executed from the command line with
+```
+julia packmol.jl packmol_input1.inp packmol_input2.inp
+```
 
+to run `packmol` for one or more input files.
 
 
