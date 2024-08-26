@@ -13,7 +13,7 @@ independent package with a faster and improved version of the Packmol package.
 
 2. Launch julia and install this package:
 
-```julia
+```julia-repl
 julia> import Pkg; Pkg.add("Packmol")
 ```
 
@@ -23,7 +23,7 @@ julia> import Pkg; Pkg.add("Packmol")
 
 Run packmol in your input file with:
 
-```julia
+```julia-repl
 julia> using Packmol
 
 julia> run_packmol()
@@ -34,7 +34,7 @@ Packmol will run immediately once the file is open.
 
 Alternativelly, you can provide the path to the file explicitly, with:
 
-```julia
+```julia-repl
 julia> run_packmol(raw"C:\users\my_user\my_files\my_input_file.inp")
 ```
 
@@ -44,7 +44,7 @@ For command-line usage, we suggest the following procedure:
 
 Start Julia and create an environment where packmol is installed:
 
-```julia
+```julia-repl
 julia> import Pkg
 
 julia> Pkg.activate("Packmol", shared=true)
@@ -70,5 +70,14 @@ julia packmol.jl packmol_input1.inp packmol_input2.inp
 ```
 
 to run `packmol` for one or more input files.
+
+To keep Packmol up-to-date, use:
+```julia-repl
+julia> import Pkg; Pkg.activate("Packmol"; shared=true); Pkg.update()
+```
+
+(or type `] activate @Packmol` and then `] up`, at the `julia>` prompt). 
+
+
 
 
