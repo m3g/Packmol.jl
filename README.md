@@ -76,7 +76,7 @@ To keep Packmol up-to-date, use:
 julia> import Pkg; Pkg.activate("Packmol"; shared=true); Pkg.update()
 ```
 
-(or type `] activate @Packmol` and then `] up`). 
+(or type `] activate @Packmol` and then `] up`, at the `julia>` prompt). 
 
 
 
