@@ -71,4 +71,13 @@ julia packmol.jl packmol_input1.inp packmol_input2.inp
 
 to run `packmol` for one or more input files.
 
+To keep Packmol up-to-date, use:
+```julia-repl
+julia> import Pkg; Pkg.activate("Packmol"; shared=true); Pkg.update()
+```
+
+(or type `] activate @Packmol` and then `] up`). 
+
+
+
 
