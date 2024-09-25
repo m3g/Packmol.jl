@@ -23,7 +23,6 @@ function run_packmol end
 @doc (@doc run_packmol)
 function run_packmol(input_file::String)
     isfile(input_file) || error("Input file not found: $input_file")
-    # go into directory of input file
     current_dir = pwd()
     println("Current directory: $current_dir")
     input_file_dir = dirname(abspath(input_file))
@@ -41,8 +40,10 @@ function run_packmol(input_file::String)
     println("Output file: $ouput_file_name")
     # Run packmol  
     try 
+        cd(input_file_dir)
         run(pipeline(`$packmol_runner`, stdin=input_file))
         println("Wrote output to: ", ouput_file_name)
+        cd(current_dir)
     catch 
         cd(current_dir)
         @error "Error running packmol" _file=nothing _line=nothing
@@ -59,11 +60,10 @@ end
 @testitem "run_packmol" begin
     using Packmol
     test_dir = Packmol.src_dir*"/../test/run_packmol"
-    cd(test_dir)
-    run_packmol("water_box.inp")
-    @test isfile("water_box.pdb")
-    run_packmol("ieee_signaling.inp")
-    @test isfile("ieee_signaling_box.pdb")
+    run_packmol("$test_dir/water_box.inp")
+    @test isfile("$test_dir/water_box.pdb")
+    run_packmol("$test_dir/ieee_signaling.inp")
+    @test isfile("$test_dir/ieee_signaling_box.pdb")
     cd(test_dir)
     rm("water_box.pdb")
     run_packmol("water_box.inp")
