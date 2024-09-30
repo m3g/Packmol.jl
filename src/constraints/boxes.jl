@@ -12,16 +12,16 @@ weight_default[:box] = 5.0
 #
 function orthogonal_wall(::Type{Inside}, center, side, weight, x)
     xc = x - center
-    if xc > side / 2 || xc < -side / 2
-        return weight * (xc - side / 2)^2
-    else
+    if -side / 2 < xc < side / 2
         return zero(x)
+    else
+        return weight * (xc - side / 2)^2
     end
 end
 
 function orthogonal_wall(::Type{Outside}, center, side, weight, x)
     xc = x - center
-    if xc < side / 2 && xc > -side / 2
+    if -side / 2 < xc < side / 2
         return weight * (xc - side / 2)^2
     else
         return zero(x)
