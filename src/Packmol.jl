@@ -1,12 +1,13 @@
 module Packmol
 
-using TestItems: @testitem
-using StaticArrays: SVector, SMatrix, @SMatrix
-using LinearAlgebra: norm
+using TestItems: @testitem, @testsnippet
+using StaticArrays: SVector, SMatrix, @SMatrix, MMatrix
+using LinearAlgebra: norm, eigen
 using Statistics: mean
 using Base: @kwdef
 using Base.Threads: @spawn
 using PDBTools: Atom, readPDB, coor 
+import CellListMap
 
 const src_dir = @__DIR__
 

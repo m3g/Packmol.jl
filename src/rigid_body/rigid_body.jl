@@ -68,8 +68,7 @@ function move!(x::AbstractVector{T}, newcm::T, beta, gamma, theta) where {T<:SVe
     return x
 end
 
-@testitem "move!" begin
-    using StaticArrays
+@testitem "move!" setup=[RigidMolecules] begin
     x = [SVector(1.0, 0.0, 0.0), SVector(0.0, 0.0, 0.0)]
     @test Packmol.move!(copy(x), SVector(0.0, 0.0, 0.0), 0.0, 0.0, 0.0) ≈
           SVector{3,Float64}[[0.5, 0.0, 0.0], [-0.5, 0.0, 0.0]]
@@ -106,35 +105,108 @@ function random_move!(
     # To avoid boundary problems, the center of coordinates are generated in a 
     # much larger region, and wrapped aftwerwards
     scale = 100.0
-
     # Generate random coordinates for the center of mass
     cmin, cmax = CellListMap.get_computing_box(system)
     newcm = SVector{3}(scale * (cmin[i] + rand(RNG, Float64) * (cmax[i] - cmin[i])) for i in 1:3)
-
     # Generate random rotation angles 
     beta = 2π * rand(RNG, Float64)
     gamma = 2π * rand(RNG, Float64)
     theta = 2π * rand(RNG, Float64)
-
     # Take care that this molecule is not split by periodic boundary conditions, by
     # wrapping its coordinates around its reference atom
     for iat in eachindex(x)
         x[iat] = CellListMap.wrap_relative_to(x[iat], x[irefatom], system.unitcell)
     end
-
     # Move molecule to new position
     move!(x, newcm, beta, gamma, theta)
-
     return x
 end
 
-@testitem "random_move!" begin
+
+@testitem "random_move!" setup=[RigidMolecules] begin
+    # Orthorhombic cell
+    x = [-1.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
+    system = ParticleSystem(positions=x, cutoff=0.1, unitcell=SVector(10.0, 10.0, 10.0), output=0.0)
+    @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
+    system.xpositions .= [-9.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
+    @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
+    system.xpositions .= [4.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
+    @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
+    # Triclinic cell
+    x = [-1.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
+    system = ParticleSystem(positions=x, cutoff=0.1, unitcell=@SMatrix[10.0 5.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0], output=0.0)
+    @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
+    system.xpositions .= [-9.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
+    @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
+    system.xpositions .= [4.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
+    @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
+end
+
+#
+# The following function takes the vector of coordinates of a molecule, and rotates
+# and translates it to put the center of mass in the origin and the principal moment
+# of inertia (assuming all equal masses) along the z-axis. That will define the orientation
+# of the reference coordinates.
+#
+function set_reference_coordinates!(x::AbstractVector{<:SVector{3,T}}) where {T<:Real}
+    # Center of mass
+    cm = mean(x)
+    x .= x .- Ref(cm)
+    # Inertia tensor
+    I = zeros(MMatrix{3,3,T,9})
+    for xi in x
+        I[1,1] += xi[2]^2 + xi[3]^2
+        I[2,2] += xi[1]^2 + xi[3]^2
+        I[3,3] += xi[1]^2 + xi[2]^2
+        I[1,2] -= xi[1] * xi[2]
+        I[1,3] -= xi[1] * xi[3]
+        I[2,3] -= xi[2] * xi[3]
+    end
+    I[2,1] = I[1,2]
+    I[3,1] = I[1,3]
+    I[3,2] = I[2,3]
+    I = SMatrix(I)
+    # Diagonalize
+    evals, evecs = eigen(I)
+    # Sort eigenvectors by eigenvalues
+    idx = sortperm(evals, rev=true)
+    evecs = evecs[:, idx]
+    # Rotate
+    for i in eachindex(x)
+        x[i] = evecs' * x[i]
+    end
+    return x
+end
+
+@testitem "set_reference_coordinates!" setup=[rigid_molecules] begin
+    using PDBTools
+    using StaticArrays
+    using BenchmarkTools
+    x = [ SVector(0.0, 0.0, 0.0), SVector(√3/3, √3/3, √3/3) ]
+    Packmol.set_reference_coordinates!(x)
+    @test x[1] ≈ SVector(0., 0., -0.5)
+    @test x[2] ≈ SVector(0., 0., 0.5)
+    x = [ SVector(√3/3, √3/3, √3/3), SVector(0.0, 0.0, 0.0) ]
+    Packmol.set_reference_coordinates!(x)
+    @test x[1] ≈ SVector(0.0, 0.0, 0.5)
+    @test x[2] ≈ SVector(0.0, 0.0, -0.5)
+    water = coor(readPDB(joinpath(Packmol.src_dir, "..", "test", "data", "water.pdb")))
+    water_save = copy(water)
+    a = @ballocated Packmol.set_reference_coordinates!($water) samples=1 evals=1
+    @test a == 0
+    @test mean(water) ≈ SVector(0.0, 0.0, 0.0) atol = 1e-10
+    @test all(isapprox(v[1],0.0,atol=1e-10) for v in water)
+    @test check_internal_distances(water, water_save)
+end
+
+@testsnippet RigidMolecules begin
     using Packmol
+    using CellListMap
     using StaticArrays
     using LinearAlgebra: norm
-    using CellListMap
     import Random
-
+    RNG = Random.Xoshiro()
+    # Function that checks that the internal distances of a molecule are preserved
     function check_internal_distances(x, y)
         for i = firstindex(x):lastindex(x)-1
             for j = i+1:lastindex(x)
@@ -147,24 +219,4 @@ end
         end
         return true
     end
-
-    RNG = Random.Xoshiro()
-    # Orthorhombic cell
-    x = [-1.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
-    system = ParticleSystem(positions=x, cutoff=0.1, unitcell=SVector(10.0, 10.0, 10.0), output=0.0)
-    @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
-    system.xpositions .= [-9.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
-    @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
-    system.xpositions .= [4.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
-    @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
-
-    # Triclinic cell
-    x = [-1.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
-    system = ParticleSystem(positions=x, cutoff=0.1, unitcell=@SMatrix[10.0 5.0 0.0; 0.0 10.0 0.0; 0.0 0.0 10.0], output=0.0)
-    @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
-    system.xpositions .= [-9.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
-    @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
-    system.xpositions .= [4.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
-    @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
-
 end
