@@ -61,14 +61,21 @@ Translates and rotates a molecule according to the desired input center of coord
 =#
 function move!(x::AbstractVector{T}, newcm::T, beta, gamma, theta) where {T<:SVector}
     cm = mean(x)
+    x .= x .- Ref(cm)
+    rotate!(x, beta, gamma, theta)
+    x .= x .+ Ref(newcm)
+    return x
+end
+
+function rotate!(x::AbstractVector{T}, beta, gamma, theta) where {T<:SVector}
     A = eulermat(beta, gamma, theta)
     for i in eachindex(x)
-        x[i] = A * (x[i] - cm) + newcm
+        x[i] = A * x[i]
     end
     return x
 end
 
-@testitem "move!" setup=[RigidMolecules] begin
+@testitem "move!" setup=[RigidBody] begin
     x = [SVector(1.0, 0.0, 0.0), SVector(0.0, 0.0, 0.0)]
     @test Packmol.move!(copy(x), SVector(0.0, 0.0, 0.0), 0.0, 0.0, 0.0) ≈
           SVector{3,Float64}[[0.5, 0.0, 0.0], [-0.5, 0.0, 0.0]]
@@ -123,7 +130,7 @@ function random_move!(
 end
 
 
-@testitem "random_move!" setup=[RigidMolecules] begin
+@testitem "random_move!" setup=[RigidBody] begin
     # Orthorhombic cell
     x = [-1.0 .+ 2 * rand(SVector{3,Float64}) for _ = 1:5]
     system = ParticleSystem(positions=x, cutoff=0.1, unitcell=SVector(10.0, 10.0, 10.0), output=0.0)
@@ -148,10 +155,20 @@ end
 # of inertia (assuming all equal masses) along the z-axis. That will define the orientation
 # of the reference coordinates.
 #
-function set_reference_coordinates!(x::AbstractVector{<:SVector{3,T}}) where {T<:Real}
-    # Center of mass
+function set_reference_coordinates!(x::AbstractVector{<:SVector{3,T}}; fixed::Tuple{Bool, String, Vector{T}}) where {T<:Real}
+    # Move center of mass to the origin
     cm = mean(x)
     x .= x .- Ref(cm)
+    # If the molecule is fixed, apply the transformation that sets its position, and return
+    if first(fixed)
+        # Rotate molecule according to parameters of fixed position
+        rotate!(x, fixed[3][4], fixed[3][5], fixed[3][6])
+        if fixed[2] == "absolute"
+            x .= x + Ref(SVector(fixed[3][1:3]...))
+        end
+        return x
+    end
+    # If the molecule is not fixed, rotate it to align the principal moments of inertia
     # Inertia tensor
     I = zeros(MMatrix{3,3,T,9})
     for xi in x
@@ -199,7 +216,7 @@ end
     @test check_internal_distances(water, water_save)
 end
 
-@testsnippet RigidMolecules begin
+@testsnippet RigidBody begin
     using Packmol
     using CellListMap
     using StaticArrays

@@ -57,18 +57,21 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
         :atoms => nothing,
         :number_of_molecules => nothing,
         :reference_coordinates => nothing,
-        :constraints => Constraint[]
+        :constraints => Constraint[],
+        :fixed => (false, ),
+        :center => false,
     )
     # Read basic structure data first
     seekstart(input_file_block)
     atoms_block = false
     iconstraint = 0
+    seekstart(input_file_block)
     for line in eachline(input_file_block)
         keyword, values... = split(line)
         if keyword == "atoms"
             atoms_block = true
         end
-        if keyword == "end" && atoms_block
+        if atoms_block && keyword == "end"
             atoms_block = false
         end
         if keyword == "structure"
@@ -77,11 +80,15 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
             structure_data[:filename] = filename
             structure_data[:natoms] = length(atoms)
             structure_data[:atoms] = atoms
-            structure_data[:reference_coordinates] = set_reference_coordinates!(coor(atoms))
+            structure_data[:reference_coordinates] = coor(atoms)
             structure_data[:radii] = fill(T(tolerance), structure_data[:natoms])
             structure_data[:atom_constraints] = [Int[] for _ in 1:structure_data[:natoms]]
         elseif keyword == "number"
             structure_data[:number_of_molecules] = parse(Int, values[1]) 
+        elseif keyword == "fixed"
+            structure_data[:fixed] = (true, parse.(T, values))
+        elseif keyword == "center" 
+            structure_data[:center] = true
         elseif keyword in constraint_placements
             iconstraint += 1
             push!(structure_data[:constraints], parse_constraint["$keyword $(values[1])"](structure_data, values[2:end]; T=T))
@@ -94,6 +101,16 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
             structure_data[:radii] .= parse(T, values[1])
         end
     end
+    # If molecule is fixed, apply transformation to obtain the reference coordinates
+    if first(structure_data[:fixed])
+        position_fixed_molecule!(structure_data)
+        structure_data[:fixed] = true
+    else
+        if structure_data[:center]
+            throw(ArgumentError("option 'center' cannot be set without fixed position"))
+        end
+    end
+    pop!(structure_data, :center)
     #
     # Read custom atom radii and set constraints, according to atom blocks
     #
@@ -126,7 +143,24 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
     return StructureType{D,T}(;structure_data...)
 end
 
-@testitem "read_structure_data" begin
+# Functio to put fixed molecle in the position 
+# defined by the input file
+function position_fixed_molecule!(structure_data)
+    x = structure_data[:reference_coordinates]
+    cm = mean(x)
+    newcm = SVector(structure_data[:fixed][2][1:3]...)
+    rotation_angles = SVector(structure_data[:fixed][2][4:6]...)
+    move!(x, newcm, rotation_angles...)
+    # If the displacement is absolute, move the center of mass to the new position
+    if !structure_data[:center]
+        x .= x .+ Ref(cm)
+    end
+end
+
+@testitem "read_structure_data" setup=[RigidBody] begin
+    using Packmol
+    using PDBTools
+
     file = Packmol.src_dir*"/../test/data/water.pdb"
     tolerance = 2.0
 
@@ -183,6 +217,91 @@ end
     @test s.radii == Float32[1.0, 1.0, 2.0]
     @test s.constraints[1] == Box{Inside, Float32}([0.0, 0.0, 0.0], [40.0, 40.0, 40.0], 5.0)
     @test s.constraints[2] == Sphere{Outside, Float32}([0.0, 0.0, 0.0], 10.0, 5.0)
+
+
 end
 
+@testitem "fixed molecules" setup=[RigidBody] begin
+    using Packmol, PDBTools
+    file = Packmol.src_dir*"/../test/data/diatomic.pdb"
+    tolerance = 2.0
+
+    # Fixed molecule: do not move
+    input_file_block = """
+    structure $file        
+        number 1
+        fixed 0. 0. 0. 0. 0. 0.
+    end structure
+    """
+    s = Packmol.read_structure_data(input_file_block, tolerance) 
+    @test s.fixed == true
+    @test coor(s.atoms) ≈ s.reference_coordinates
+
+    # Fixed molecule without rotation: center of mass at origin
+    input_file_block = """
+    structure $file        
+        number 1
+        center
+        fixed 0. 0. 0. 0. 0. 0.
+    end structure
+    """
+    s = Packmol.read_structure_data(input_file_block, tolerance) 
+    @test s.reference_coordinates ≈ SVector{3, Float64}[[0.0, 0.0, -0.5], [0.0, 0.0, 0.5]] 
+
+    # Fixed molecule without rotation: center of mass at (10, 10, 10)
+    input_file_block = """
+    structure $file        
+        number 1
+        center
+        fixed 10. 10. 10. 0. 0. 0.
+    end structure
+    """
+    s = Packmol.read_structure_data(input_file_block, tolerance) 
+    @test s.reference_coordinates ≈ SVector{3, Float64}[[10.0, 10.0, 9.5], [10.0, 10.0, 10.5]]
+
+    # Rotate fixed molecule π/2 around x-axis (counterclockwise)
+    input_file_block = """
+    structure $file        
+        number 1
+        center
+        fixed 0. 0. 0. $(π/2) 0. 0.
+    end structure
+    """
+    s = Packmol.read_structure_data(input_file_block, tolerance) 
+    @test s.reference_coordinates ≈ SVector{3, Float64}[[0.0, 0.5, 0.0], [0.0, -0.5, 0.0]]
+
+    # Rotate fixed molecule π/2 around y-axis (counterclockwise)
+    input_file_block = """
+    structure $file        
+        number 1
+        center
+        fixed 0. 0. 0. 0. $(π/2) 0. 
+    end structure
+    """
+    s = Packmol.read_structure_data(input_file_block, tolerance) 
+    @test s.reference_coordinates ≈ SVector{3, Float64}[[-0.5, 0.0, 0.0], [0.5, 0.0, 0.0]]
+
+    # Rotate fixed molecule π/2 around z-axis (counterclockwise)
+    input_file_block = """
+    structure $file        
+        number 1
+        center
+        fixed 0. 0. 0. 0. 0. $(π/2)
+    end structure
+    """
+    s = Packmol.read_structure_data(input_file_block, tolerance) 
+    @test s.reference_coordinates ≈ SVector{3, Float64}[[0.0, 0.0, -0.5], [0.0, 0.0, 0.5]]
+
+    # Rotate fixed molecule π/2 around z-axis (counterclockwise) and move it to (10, 10, 10)
+    input_file_block = """
+    structure $file        
+        number 1
+        center
+        fixed 10. 10. 10. 0. 0. $(π/2)
+    end structure
+    """
+    s = Packmol.read_structure_data(input_file_block, tolerance) 
+    @test s.reference_coordinates ≈ SVector{3, Float64}[[10.0, 10.0, 9.5], [10.0, 10.0, 10.5]]
+
+end
 

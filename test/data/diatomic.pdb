@@ -1,0 +1,4 @@
+HEADER    diatomic
+HETATM    1  O   HOH     1       0.000   0.000   0.000
+HETATM    2  O   HOH     1       0.000   0.000   1.000
+END
