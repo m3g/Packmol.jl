@@ -14,8 +14,7 @@ mutable struct InteratomicDistanceFG{D,T}
 end
 
 # Custom copy, reset and reducer functions
-import CellListMap: copy_output, reset_output!, reducer
-function copy_output(x::InteratomicDistanceFG)
+function CellListMap.copy_output(x::InteratomicDistanceFG)
     InteratomicDistanceFG(
         x.f, 
         copy(x.g),
@@ -24,7 +23,7 @@ function copy_output(x::InteratomicDistanceFG)
         copy(x.gxcar),
     )
 end
-function reset_output!(output::InteratomicDistanceFG{D,T}) where {D,T}
+function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,T}
     output.f = zero(T)
     fill!(output.g, zero(MoleculePositions{D,T})) 
     output.dmin = typemax(T)
@@ -32,7 +31,7 @@ function reset_output!(output::InteratomicDistanceFG{D,T}) where {D,T}
     fill!(output.gxcar, zero(SVector{D,T})) 
     return output
 end
-function reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
+function CellListMap.reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
     x.f += y.f
     x.g += y.g
     x.dmin = max(x.dmin, y.dmin)
@@ -71,7 +70,7 @@ end
 # Function that computes the function and gradient, and returns the function
 # value and mutates the gradient array, to conform with the interface of SPGBox
 # This function mutates the system.fg field. 
-function fg!(system::PeriodicSystem, packmol_system::PackmolSystem)
+function fg!(system::CellListMap.ParticleSystem1, packmol_system::PackmolSystem)
     # Compute the function value and component of the gradient relative to the cartesian
     # coordinates for each atom
     map_pairwise!(
