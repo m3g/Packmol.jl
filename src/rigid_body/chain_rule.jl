@@ -32,8 +32,8 @@ end
 =#
 function partial_derivatives!(packmol_system, imol::Int, structure_type, gxcar)
     g_cm = packmol_system.gradient[imol].cm # vector of gradient relative to the center of mass
-    g_rot = packmol_system.gradient[imol].rotation_angles # vector of gradient relative to the rotations
-    (sb, cb), (sg, cg), (st, ct) = sincos.(packmol_system.molecule_position[imol].rotation_angles)
+    g_rot = packmol_system.gradient[imol].angles # vector of gradient relative to the rotations
+    (sb, cb), (sg, cg), (st, ct) = sincos.(packmol_system.molecule_position[imol].angles)
     #!format off
     ∂v∂β = sum(SMatrix[
         -cb*sg*ct-sb*cg  -cb*cg*ct+sb*sg     cb*st

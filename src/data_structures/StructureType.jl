@@ -149,8 +149,8 @@ function position_fixed_molecule!(structure_data)
     x = structure_data[:reference_coordinates]
     cm = mean(x)
     newcm = SVector(structure_data[:fixed][2][1:3]...)
-    rotation_angles = SVector(structure_data[:fixed][2][4:6]...)
-    move!(x, newcm, rotation_angles...)
+    angles = SVector(structure_data[:fixed][2][4:6]...)
+    move!(x, newcm, angles...)
     # If the displacement is absolute, move the center of mass to the new position
     if !structure_data[:center]
         x .= x .+ Ref(cm)
