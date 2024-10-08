@@ -20,7 +20,7 @@ function chain_rule!(fg, packmol_system::PackmolSystem{D,T}) where {D,T}
             gmol = partial_derivatives(
                 fg.g[imol],
                 packmol_system.molecule_positon[imol].angles,
-                structure_type.reference_coordinates,
+                structure_type.reference_coordinates, 
                 @view(fg.gxcar[ifmol:ilmol]),
             )
             fg.g[imol] = gmol
@@ -37,9 +37,12 @@ minimum distance between atoms relative to the rotations and translations of the
 molecule, given the gradient of the minimum distance between atoms relative to the
 displacement of the atoms in cartesian coordinates.
 
+This function does not mutate any argument. It returns the gradient for the 
+molecule as a MoleculePosition data structure, to be used in the chain_rule! function.
+
 =#
 function partial_derivatives(
-    gmol::MoleculePosition{D,T},
+    gmol::MoleculePosition{D,T}, 
     angles::SVector{D,T},
     reference_coordinates::Vector{SVector{D,T}},
     gxcar::SVector{D,T},
