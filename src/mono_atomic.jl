@@ -121,9 +121,9 @@ function pack_monoatomic!(
     else
         volume = prod(unitcell)
     end
-    packing_tol = tol + tol/10 # this avoids slow convergence 
+    packing_tol = tol + tol / 10 # this avoids slow convergence 
     ncells = min(volume / packing_tol^N, length(positions))
-    cutoff = (volume / ncells)^(1/N)
+    cutoff = (volume / ncells)^(1 / N)
     println("Using cell list cutoff: ", cutoff)
     println("Using packing tolerance: ", packing_tol)
     system = ParticleSystem(
