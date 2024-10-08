@@ -3,7 +3,7 @@ using SPGBox: spgbox!
 
 # Structure used to evaluate the function and gradient of the distance between atoms
 # in a single pass, using CellListMap.
-mutable struct InteratomicDistanceFG{D,T}
+@kwdef mutable struct InteratomicDistanceFG{D,T}
     f::T
     g::Vector{MoleculePosition{D,T}}
     dmin::T
@@ -12,6 +12,19 @@ mutable struct InteratomicDistanceFG{D,T}
     gxcar::Vector{SVector{D,T}}
     # Gradient, expressed as Vector{MoleculePosition{D,T}}, which can be reinterpted as a Vector{T}
 end
+function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
+    fg = InteratomicDistanceFG(
+        f = zero(T),
+        g = copy(packmol_system.molecule_positions),
+        dmin = typemax(T),
+        fmol = fill(zero(T), packmol_system.nmols),
+        gxcar = fill(zero(SVector{D,T}), length(packmol_system.nmols)),
+    )
+    return fg
+end
+    
+
+
 
 # Custom copy, reset and reducer functions
 function CellListMap.copy_output(x::InteratomicDistanceFG)
@@ -70,7 +83,8 @@ end
 # Function that computes the function and gradient, and returns the function
 # value and mutates the gradient array, to conform with the interface of SPGBox
 # This function mutates the system.fg field. 
-function fg!(system::CellListMap.ParticleSystem1, packmol_system::PackmolSystem)
+function fg!(g, x, system::CellListMap.ParticleSystem1, packmol_system::PackmolSystem)
+    system.positions .= reinterpret(SVector{D,T}, x)
     # Compute the function value and component of the gradient relative to the cartesian
     # coordinates for each atom
     map_pairwise!(
@@ -80,10 +94,11 @@ function fg!(system::CellListMap.ParticleSystem1, packmol_system::PackmolSystem)
     # Use the chain rule to compute the gradient relative to the rotations
     # and translations of the molecules
     chain_rule!(fg, packmol_system)
+    g .= reinterpret(T, fg.g)
     return system.fg.f
 end
 
-function pack(spgresult, system, tol, iprint)
+function spgbox_callback(spgresult, system, tol, iprint)
     if spgresult.nit % iprint == 0
         println(
             " Iteration: ", spgresult.nit,
@@ -101,9 +116,14 @@ end
     packmol()
 
 """
-function packmol()
-    #  The gradient vector will be allocated by SPGBox, as an auxiliary array
-    x = copy(reinterpret(reshape, T, positions))
+function packmol(
+    packmol_system::PackmolSystem{D,T},
+    parallel::Bool=true,
+    iprint::Int=1,
+    nitmax=1000,
+) where {D,T}
+    positions = packmol_system.molecule_positions
+    x = reinterpret(T, positions)
     auxvecs = SPGBox.VAux(x, zero(T))
     println("Initializing periodic system...")
     if unitcell isa AbstractMatrix
@@ -120,7 +140,7 @@ function packmol()
         xpositions=positions,
         unitcell=unitcell,
         cutoff=cutoff,
-        output=MonoAtomicFG(zero(T), similar(positions), typemax(T)),
+        output=zero(T),
         output_name=:fg,
         parallel=parallel,
     )
@@ -128,22 +148,17 @@ function packmol()
     # and the gradient, which in this case is better
     println("Packing...")
     spgboxresult = spgbox!(
-        (g, x) -> fg!(g, x, system, packing_tol), x;
+        (g, x) -> fg!(g, x, system, packmol_system), x;
         callback=
-        (spgresult) -> pack_monoatomic_callback(spgresult, system, tol, iprint),
+        (spgresult) -> spgbox_callback(spgresult, system, tol, iprint),
         vaux=auxvecs,
-        nitmax=1000
+        nitmax=nitmax,
     )
     # update the positions vector with the new coordinates
-    for i in eachindex(positions)
-        positions[i] = eltype(positions)(@view(x[:, i]))
-    end
+    positions .= reinterpret(MoleculePosition{D,T}, x)
     println(spgboxresult, "\n")
     println("Minimum distance obtained: ", min(system.fg.dmin, system.cutoff))
-    for i in eachindex(positions)
-        positions[i] = CellListMap.wrap_to_first(positions[i], system.unitcell)
-    end
-    return positions
+    return # cartesian coordinates
 end
 
 @testitem "monoatomic gradient" begin
