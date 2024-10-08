@@ -1,6 +1,8 @@
 using CellListMap: ParticleSystem, map_pairwise, map_pairwise!
 using SPGBox: spgbox!
 
+# Structure used to evaluate the function and gradient of the distance between atoms
+# in a single pass, using CellListMap.
 mutable struct InteratomicDistanceFG{D,T}
     f::T
     dmin::T
@@ -73,9 +75,10 @@ function fg!(g, system, packmol_system)
     # Use the chain rule to compute the gradient relative to the rotations
     # and translations of the molecules
     chain_rule!(packmol_system, fg)
-
     return system.fg.f
 end
+
+function f(
 
 function pack_monoatomic_callback(spgresult, system, tol, iprint)
     if spgresult.nit % iprint == 0
