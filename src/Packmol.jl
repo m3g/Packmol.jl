@@ -33,6 +33,9 @@ include("./rigid_body/chain_rule.jl")
 # Monatomic packing
 include("./mono_atomic.jl")
 
+# Function and gradient of the distance between atoms
+include("./interatomic_distance_fg.jl")
+
 # Runner for the legacy packmol 
 include("./packmol_runner.jl")
 

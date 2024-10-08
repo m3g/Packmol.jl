@@ -1,3 +1,33 @@
+struct AtomData{D,T}
+    molecule_index::Int
+    structure_type_index::Int
+    radius::T
+    constraints::Vector{Constraint}
+end
+
+# MoleculePosition: This is a central data structure that 
+# contains the center of mass and the rotation angles for each molecule.
+# This data structure is used to build the array that contains 
+# rotation angles and center of mass for each molecule, which are 
+# the variables of the optimization problem. The data structure can,
+# and will, be reinterpreted as a linear vector, to conform with the 
+# interface of the optimization rotations, using:
+#
+#     reinterpret(Float64, molecule_positions)
+#  
+# The resulting vector contains, in order, the center of mass and the
+# rotation angles for each molecule. The same data structure will
+# be used to store the gradient of the objective function relative to
+# the rotations and translation of the rigid-body molecules.
+struct MoleculePosition{N,T}
+    cm::SVector{N,T}
+    angles::SVector{N,T}
+end
+Base.copy(x::MoleculePosition) = MoleculePosition(x.cm, x.angles)
+import Base: + 
++(x::MoleculePosition, y::MoleculePosition) = MoleculePosition(x.cm + y.cm, x.angles + y.angles)
+Base.zero(::Type{MoleculePosition{N,T}}) where {N,T} = MoleculePosition(zero(SVector{N,T}), zero(SVector{N,T}))
+
 @kwdef mutable struct PackmolSystem{D,T}
     filetype::String
     input_file::String
@@ -18,6 +48,9 @@
     writebad::Bool = false
     optim_print_level::Int = 0
     chkgrad::Bool = false
+    atoms::Vector{AtomData{D,T}} = AtomData{D,T}[]
+    molecule_positions::MoleculePosition{D,T} = MoleculePosition{D,T}[]
+    gradient::MoleculePositions{D,T} = MoleculePosition{D,T}[]
 end
 
 function _indent(s::AbstractString; n=4)
@@ -121,6 +154,8 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
     input_data = Dict{Symbol,Any}(
         :input_file => input_file,
         :structure_types => StructureType{D,T}[],
+        :atoms => AtomData{D,T}[]
+        :molecule_positions => MoleculePosition{D,T}[]
     )
     structure_section = false
     open(input_file) do io
@@ -183,6 +218,33 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
             end
         end
     end
+    #
+    # Initialize atom data and molecule position arrays
+    #
+    mol_index = 0
+    atom_index = 0
+    atoms = input_data[:atoms]
+    molecule_positions = input_data[:molecule_positions]
+    for (itype, structure_type) in enumerate(input_data[:structure_types])
+        for _ in 1:structure_type.number_of_molecules
+            mol_index += 1 
+            push!(molecule_positions, 
+                MoleculePosition(zeros(SVector{D,T}), zeros(SVectors{D,T}))
+            )
+            for iatom in 1:structure_type.number_of_atoms
+                atom_index += 1
+                push!(atoms, 
+                    AtomData(
+                        mol_index, 
+                        itype,
+                        structure_type.radii[iatom],
+                        structure_type.constraints[iatom]
+                    )
+                )
+            end
+        end
+    end
+
     return PackmolSystem{D,T}(; input_data...)
 end
 
