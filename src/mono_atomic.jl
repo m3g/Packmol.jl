@@ -21,7 +21,7 @@ end
 function reducer(x::MonoAtomicFG, y::MonoAtomicFG)
     x.f += y.f
     x.g .+= y.g
-    x.dmin = min(x.dmin, y.dmin)
+    x.dmin = max(x.dmin, y.dmin)
     return x
 end
 

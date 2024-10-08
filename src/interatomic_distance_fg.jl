@@ -35,7 +35,7 @@ end
 function reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
     x.f += y.f
     x.g += y.g
-    x.dmin = min(x.dmin, y.dmin)
+    x.dmin = max(x.dmin, y.dmin)
     x.fmol .+= y.fmol
     x.gxcar .+= y.gxcar
     return x
@@ -43,7 +43,7 @@ end
 
 # Updates the function and gradient of the system given a pair of 
 # particles within the cutoff.
-function interatomic_fg!(x::T, y::T, i, j, d2, fg::InteratomicDistanceFG, packmol_system) where {T}
+function cartesian_fg!(x::T, y::T, i, j, d2, fg::InteratomicDistanceFG, packmol_system) where {T}
     iatom = packmol_system.atoms[i]
     jatom = packmol_system.atoms[j]
     if iatom.molecule_index == jatom.molecule_index
@@ -70,12 +70,12 @@ end
 
 # Function that computes the function and gradient, and returns the function
 # value and mutates the gradient array, to conform with the interface of SPGBox
-function fg!(g, system, packmol_system)
-    fg = system.fg
+# This function mutates the system.fg field. 
+function fg!(system::PeriodicSystem, packmol_system::PackmolSystem)
     # Compute the function value and component of the gradient relative to the cartesian
     # coordinates for each atom
     map_pairwise!(
-        (x, y, i, j, d2, fg) -> interatomic_fg!(x, y, i, j, d2, fg, packmol_system),
+        (x, y, i, j, d2, output) -> cartesian_fg!(x, y, i, j, d2, output, packmol_system),
         system,
     )
     # Use the chain rule to compute the gradient relative to the rotations
