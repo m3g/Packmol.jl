@@ -49,6 +49,7 @@ Base.zero(::Type{MoleculePosition{N,T}}) where {N,T} = MoleculePosition(zero(SVe
     optim_print_level::Int = 0
     chkgrad::Bool = false
     atoms::Vector{AtomData{D,T}} = AtomData{D,T}[]
+    nmols::Int = 0
     molecule_positions::MoleculePosition{D,T} = MoleculePosition{D,T}[]
 end
 
@@ -155,6 +156,7 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
         :structure_types => StructureType{D,T}[],
         :atoms => AtomData{D,T}[]
         :molecule_positions => MoleculePosition{D,T}[]
+        :nmols => 0,
     )
     structure_section = false
     open(input_file) do io
@@ -243,6 +245,7 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
             end
         end
     end
+    input_data[:nmols] = mol_index
 
     return PackmolSystem{D,T}(; input_data...)
 end
