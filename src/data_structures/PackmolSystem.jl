@@ -50,7 +50,6 @@ Base.zero(::Type{MoleculePosition{N,T}}) where {N,T} = MoleculePosition(zero(SVe
     chkgrad::Bool = false
     atoms::Vector{AtomData{D,T}} = AtomData{D,T}[]
     molecule_positions::MoleculePosition{D,T} = MoleculePosition{D,T}[]
-    gradient::MoleculePositions{D,T} = MoleculePosition{D,T}[]
 end
 
 function _indent(s::AbstractString; n=4)

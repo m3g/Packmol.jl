@@ -6,11 +6,10 @@ the gradient computed from the displacement of the atoms in cartesian coordinate
 
 This was implemented originally in the Fortran code of Packmol, by J. M. Martínez.
 
-Extended here for the 2D case.
+>> The function modifies the fg.g vector
 
 =#
-function chain_rule!(packmol_system::PackmolSystem{D,T}, fg) where {D,T}
-    fill!(zero(MoleculePositions{D,T}), packmol_system.gradient)
+function chain_rule!(fg, packmol_system::PackmolSystem{D,T}) where {D,T}
     imol = 0
     iat = 0
     for structure_type in packmol_system.structure_types
@@ -18,7 +17,13 @@ function chain_rule!(packmol_system::PackmolSystem{D,T}, fg) where {D,T}
             imol += 1
             ifmol = iat + 1
             ilmol = iat + structure_type.natoms
-            partial_derivatives!(imol, structure_type, packmol_system, @view(fg.gxcar[ifmol:ilmol]))
+            gmol = partial_derivatives(
+                fg.g[imol],
+                packmol_system.molecule_positon[imol].angles,
+                structure_type.reference_coordinates, 
+                @view(fg.gxcar[ifmol:ilmol]),
+            )
+            fg.g[imol] = gmol
             iat += structure_type.natoms
         end
     end
@@ -27,13 +32,21 @@ end
 
 #=
 
-3D case
+For a single molecule, computes the partial derivatives of the gradient of the
+minimum distance between atoms relative to the rotations and translations of the
+molecule, given the gradient of the minimum distance between atoms relative to the
+displacement of the atoms in cartesian coordinates.
 
 =#
-function partial_derivatives!(packmol_system, imol::Int, structure_type, gxcar)
-    g_cm = packmol_system.gradient[imol].cm # vector of gradient relative to the center of mass
-    g_rot = packmol_system.gradient[imol].angles # vector of gradient relative to the rotations
-    (sb, cb), (sg, cg), (st, ct) = sincos.(packmol_system.molecule_position[imol].angles)
+function partial_derivatives(
+    gmol::MoleculePosition{D,T}, 
+    angles::SVector{D,T},
+    reference_coordinates::Vector{SVector{D,T}},
+    gxcar::SVector{D,T},
+) where {D,T}
+    gcm = gmol.cm
+    grot = gmol.angles
+    (sb, cb), (sg, cg), (st, ct) = sincos.(angles)
     #!format off
     ∂v∂β = sum(SMatrix[
         -cb*sg*ct-sb*cg  -cb*cg*ct+sb*sg     cb*st
@@ -52,14 +65,13 @@ function partial_derivatives!(packmol_system, imol::Int, structure_type, gxcar)
     ]; dims=1)
     ∂rot = vcat(∂v∂β, ∂v∂γ, ∂v∂θ)
     #!format on
-    for i in eachindex(structure_type.reference_coordinates, gxcar)
-        x = structure_type.reference_coordinates[i]
+    for i in eachindex(reference_coordinates, gxcar)
+        x = reference_coordinates[i]
         gx = gxcar[i]
-        g_cm += gx
-        g_rot += x' * ∂rot * gx
-        packmol_system.gradient = MoleculePositions{D,T}(g_cm, g_rot)
+        gcm += gx
+        grot += x' * ∂rot * gx
     end
-    return packmol_system.gradient
+    return MoleculePosition{D,T}(gcm, grot)
 end
 
 #=

@@ -5,9 +5,12 @@ using SPGBox: spgbox!
 # in a single pass, using CellListMap.
 mutable struct InteratomicDistanceFG{D,T}
     f::T
+    g::Vector{MoleculePosition{D,T}}
     dmin::T
     fmol::Vector{T} # contribution of each molecule to the function value
-    gxcar::Vector{SVector{D,T}} # Auxiliary array for gradient
+    # Auxiliary array for gradient: carries the gradient relative to the cartesian coordinates of each atom
+    gxcar::Vector{SVector{D,T}}
+    # Gradient, expressed as Vector{MoleculePosition{D,T}}, which can be reinterpted as a Vector{T}
 end
 
 # Custom copy, reset and reducer functions
@@ -15,20 +18,23 @@ import CellListMap: copy_output, reset_output!, reducer
 function copy_output(x::InteratomicDistanceFG)
     InteratomicDistanceFG(
         x.f, 
+        copy(x.g),
         x.dmin, 
         copy(x.fmol),
         copy(x.gxcar),
     )
 end
-function reset_output!(output::InteratomicDistanceFG{N,T}) where {N,T}
+function reset_output!(output::InteratomicDistanceFG{D,T}) where {D,T}
     output.f = zero(T)
+    fill!(output.g, zero(MoleculePositions{D,T})) 
     output.dmin = typemax(T)
     fill!(output.fmol, zero(T))
-    fill!(output.gxcar, zero(SVector{N,T})) 
+    fill!(output.gxcar, zero(SVector{D,T})) 
     return output
 end
 function reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
     x.f += y.f
+    x.g += y.g
     x.dmin = min(x.dmin, y.dmin)
     x.fmol .+= y.fmol
     x.gxcar .+= y.gxcar
@@ -74,13 +80,11 @@ function fg!(g, system, packmol_system)
     )
     # Use the chain rule to compute the gradient relative to the rotations
     # and translations of the molecules
-    chain_rule!(packmol_system, fg)
+    chain_rule!(fg, packmol_system)
     return system.fg.f
 end
 
-function f(
-
-function pack_monoatomic_callback(spgresult, system, tol, iprint)
+function pack(spgresult, system, tol, iprint)
     if spgresult.nit % iprint == 0
         println(
             " Iteration: ", spgresult.nit,
@@ -95,39 +99,10 @@ function pack_monoatomic_callback(spgresult, system, tol, iprint)
 end
 
 """
-    pack_monoatomic!(positions::AbstractVector{<:SVector{N,T}}, unitcell, tol)
-
-Pack a monoatomic system with iniital positions `x` and distance tolerance `tol`,
-into the unitcell defined by `unitcell`, considering periodic boundary conditions.
-
-The unitcell can be a vector, in the case of orthorhombic cells, or a matrix, in the
-case of triclinic cells.
-
-The coordinates and the unitcells can be two- or three-dimensional. 
-
-# Example
-
-```julia-repl
-julia> using Packmol, StaticArrays
-
-julia> coordinates = 100 * rand(SVector{3,Float64}, 10^5);
-
-julia> unitcell = [100.0, 100.0, 100.0]; tolerance = 2.0;
-
-julia> pack_monoatomic!(coordinates, unitcell, tolerance)
-```
-
-After packing, the `coordinates` array will have updated positions for the
-atoms without overlaps. 
+    packmol()
 
 """
-function pack_monoatomic!(
-    positions::AbstractVector{<:SVector{N,T}},
-    unitcell,
-    tol;
-    parallel::Bool=true,
-    iprint=10
-) where {N,T}
+function packmol()
     #  The gradient vector will be allocated by SPGBox, as an auxiliary array
     x = copy(reinterpret(reshape, T, positions))
     auxvecs = SPGBox.VAux(x, zero(T))
