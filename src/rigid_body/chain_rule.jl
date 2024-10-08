@@ -20,7 +20,7 @@ function chain_rule!(fg, packmol_system::PackmolSystem{D,T}) where {D,T}
             gmol = partial_derivatives(
                 fg.g[imol],
                 packmol_system.molecule_positon[imol].angles,
-                structure_type.reference_coordinates, 
+                structure_type.reference_coordinates,
                 @view(fg.gxcar[ifmol:ilmol]),
             )
             fg.g[imol] = gmol
@@ -39,7 +39,7 @@ displacement of the atoms in cartesian coordinates.
 
 =#
 function partial_derivatives(
-    gmol::MoleculePosition{D,T}, 
+    gmol::MoleculePosition{D,T},
     angles::SVector{D,T},
     reference_coordinates::Vector{SVector{D,T}},
     gxcar::SVector{D,T},
@@ -47,7 +47,7 @@ function partial_derivatives(
     gcm = gmol.cm
     grot = gmol.angles
     (sb, cb), (sg, cg), (st, ct) = sincos.(angles)
-    #!format off
+    #!format: off
     ∂v∂β = sum(SMatrix[
         -cb*sg*ct-sb*cg  -cb*cg*ct+sb*sg     cb*st
         -sb*sg*ct+cb*cg  -sb*cg*ct-cb*sg     sb*st
@@ -64,7 +64,7 @@ function partial_derivatives(
            sg*ct      cg*ct      -st
     ]; dims=1)
     ∂rot = vcat(∂v∂β, ∂v∂γ, ∂v∂θ)
-    #!format on
+    #!format: on
     for i in eachindex(reference_coordinates, gxcar)
         x = reference_coordinates[i]
         gx = gxcar[i]
