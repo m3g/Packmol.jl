@@ -87,7 +87,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
             structure_data[:natoms] = length(atoms)
             structure_data[:atoms] = atoms
             structure_data[:reference_coordinates] = coor(atoms)
-            structure_data[:radii] = fill(T(tolerance), structure_data[:natoms])
+            structure_data[:radii] = fill(T(tolerance/2), structure_data[:natoms])
             structure_data[:atom_constraints] = [Int[] for _ in 1:structure_data[:natoms]]
         elseif keyword == "number"
             structure_data[:number_of_molecules] = parse(Int, values[1]) 
