@@ -14,16 +14,14 @@ using SPGBox: spgbox!
 end
 function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
     fg = InteratomicDistanceFG(
-        f = zero(T),
-        g = copy(packmol_system.molecule_positions),
-        dmin = typemax(T),
-        fmol = fill(zero(T), packmol_system.nmols),
-        gxcar = fill(zero(SVector{D,T}), length(packmol_system.nmols)),
+        f = zero(T), # function value
+        g = zero(packmol_system.molecule_positions), # gradient
+        dmin = typemax(T), # minimum distance overall
+        fmol = fill(zero(T), packmol_system.nmols), # contribution of each molecule to the function value
+        gxcar = fill(zero(SVector{D,T}), length(packmol_system.nmols)), # gradient relative to the cartesian coordinates
     )
     return fg
 end
-    
-
 
 
 # Custom copy, reset and reducer functions
