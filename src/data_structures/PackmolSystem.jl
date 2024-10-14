@@ -244,10 +244,20 @@ end
     using Packmol: read_packmol_input
     file = Packmol.src_dir * "/../test/run_packmol/water_box.inp"
     sys = read_packmol_input(file)
-
+    @test sys.filetype == "pdb"
+    @test sys.output_file == "water_box.pdb"
+    @test sys.nmols == 1000
+    @test length(sys.atoms) == 3000
+    @test all(at.molecule_index == 1 for at in sys.atoms[1:3])
+    @test all(at.molecule_index == 2 for at in sys.atoms[4:6])
+    @test all(at.molecule_index == 1000 for at in sys.atoms[2998:3000])
+    @test all(at.radius ≈ 1.0 for at in sys.atoms)
+    @test length(sys.molecule_positions) == 1000
 
     sys = read_packmol_input(file; T=Float32)
+    @test typeof(sys.tolerance) == Float32
+    @test eltype(sys.molecule_positions) == Packmol.MoleculePosition{3,Float32}
 
-    sys = read_packmol_input(file; D=2)
-
+    # 2D: Currently not supported
+    # sys = read_packmol_input(file; D=2)
 end
