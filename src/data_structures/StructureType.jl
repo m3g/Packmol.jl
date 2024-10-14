@@ -10,7 +10,7 @@ Structure that contains the input data for a structure block in the input file.
     natoms::Int
     atoms::Vector{Atom}
     number_of_molecules::Int
-    fixed::Bool = false
+    fixed::FixedMoleculeData{D,T} = zero(FixedMoleculeData{D,T})
     reference_coordinates::Vector{SVector{D,T}}
     radii::Vector{T} = T[]
     residue_numbering::Int = 1
@@ -27,12 +27,18 @@ function _show(s::StructureType{D,T}) where {D,T}
             filename: $(basename(s.filename))
             natoms: $(s.natoms)
             number_of_molecules: $(s.number_of_molecules)
-            fixed: $(s.fixed)
+            fixed: $(s.fixed.fixed)
             number of constraints: $(length(s.constraints))
         """
     )
 end
 Base.show(io::IO, ::MIME"text/plain", s::StructureType) = print(io, _show(s))
+
+function Base.show(io::IO, ::MIME"text/plain", v::AbstractVector{<:StructureType})
+    print(io, chomp("""
+        Vector{StructureType} with $(length(v)) structure(s).
+    """))
+end
 
 #=
     read_structure_data(input_file_block::IOBuffer, tolerance; T=Float64, D=3)
@@ -58,7 +64,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
         :number_of_molecules => nothing,
         :reference_coordinates => nothing,
         :constraints => Constraint[],
-        :fixed => (false, ),
+        :fixed => zero(FixedMoleculeData{D,T}),
         :center => false,
     )
     # Read basic structure data first
@@ -86,7 +92,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
         elseif keyword == "number"
             structure_data[:number_of_molecules] = parse(Int, values[1]) 
         elseif keyword == "fixed"
-            structure_data[:fixed] = (true, parse.(T, values))
+            structure_data[:fixed] = FixedMoleculeData(true, MoleculePosition{D,T}(parse.(T, values)...))
         elseif keyword == "center" 
             structure_data[:center] = true
         elseif keyword in constraint_placements
@@ -102,9 +108,14 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
         end
     end
     # If molecule is fixed, apply transformation to obtain the reference coordinates
-    if first(structure_data[:fixed])
-        position_fixed_molecule!(structure_data)
-        structure_data[:fixed] = true
+    if structure_data[:fixed].fixed
+        if structure_data[:center]
+            move!(structure_data[:reference_coordinates], structure_data[:fixed].position)
+        else
+            cm = mean(structure_data[:reference_coordinates])
+            move!(structure_data[:reference_coordinates], structure_data[:fixed].position)
+            structure_data[:reference_coordinates] .+= Ref(cm)
+        end
     else
         if structure_data[:center]
             throw(ArgumentError("option 'center' cannot be set without fixed position"))
@@ -141,20 +152,6 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
         end
     end
     return StructureType{D,T}(;structure_data...)
-end
-
-# Functio to put fixed molecle in the position 
-# defined by the input file
-function position_fixed_molecule!(structure_data)
-    x = structure_data[:reference_coordinates]
-    cm = mean(x)
-    newcm = SVector(structure_data[:fixed][2][1:3]...)
-    angles = SVector(structure_data[:fixed][2][4:6]...)
-    move!(x, newcm, angles...)
-    # If the displacement is absolute, move the center of mass to the new position
-    if !structure_data[:center]
-        x .= x .+ Ref(cm)
-    end
 end
 
 @testitem "read_structure_data" setup=[RigidBody] begin
