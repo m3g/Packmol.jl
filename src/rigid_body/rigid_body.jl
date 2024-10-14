@@ -66,6 +66,8 @@ function move!(x::AbstractVector{T}, newcm::T, beta, gamma, theta) where {T<:SVe
     x .= x .+ Ref(newcm)
     return x
 end
+move!(x::AbstractVector{<:SVector{D,T}}, pos::MoleculePosition{D,T}) where {D,T} =
+    move!(x, pos.cm, pos.angles...)
 
 function rotate!(x::AbstractVector{T}, beta, gamma, theta) where {T<:SVector}
     A = eulermat(beta, gamma, theta)
@@ -74,6 +76,8 @@ function rotate!(x::AbstractVector{T}, beta, gamma, theta) where {T<:SVector}
     end
     return x
 end
+rotate!(x::AbstractVector{<:SVector{D,T}}, pos::MoleculePosition{D,T}) where {D,T} =
+    rotate!(x, pos.angles...)
 
 @testitem "move!" setup=[RigidBody] begin
     x = [SVector(1.0, 0.0, 0.0), SVector(0.0, 0.0, 0.0)]
@@ -86,6 +90,10 @@ end
     @test Packmol.move!(copy(x), SVector(0.0, 0.0, 0.0), 0.0, π, 0.0) ≈
           SVector{3,Float64}[[-0.5, 0.0, 0.0], [0.5, 0.0, 0.0]]
     @test Packmol.move!(copy(x), SVector(0.0, 0.0, 0.0), 0.0, 0.0, π) ≈
+          SVector{3,Float64}[[-0.5, 0.0, 0.0], [0.5, 0.0, 0.0]]
+    @test Packmol.move!(copy(x), Packmol.MoleculePosition(SVector(0.0, 0.0, 0.0), SVector(0.0, π, 0.0))) ≈
+          SVector{3,Float64}[[-0.5, 0.0, 0.0], [0.5, 0.0, 0.0]]
+    @test Packmol.move!(copy(x), Packmol.MoleculePosition(SVector(0.0, 0.0, 0.0), SVector(0.0, 0.0, π))) ≈
           SVector{3,Float64}[[-0.5, 0.0, 0.0], [0.5, 0.0, 0.0]]
 end
 
