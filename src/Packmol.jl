@@ -20,6 +20,7 @@ include("./constraints/boxes.jl")
 include("./constraints/spheres.jl")
 
 # Data structures
+include("./data_structures/atoms_and_molecules.jl")
 include("./data_structures/StructureType.jl")
 include("./data_structures/PackmolSystem.jl")
 
