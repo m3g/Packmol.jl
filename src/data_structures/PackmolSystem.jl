@@ -1,32 +1,4 @@
-struct AtomData{D,T}
-    molecule_index::Int
-    structure_type_index::Int
-    radius::T
-    constraints::Vector{Constraint}
-end
 
-# MoleculePosition: This is a central data structure that 
-# contains the center of mass and the rotation angles for each molecule.
-# This data structure is used to build the array that contains 
-# rotation angles and center of mass for each molecule, which are 
-# the variables of the optimization problem. The data structure can,
-# and will, be reinterpreted as a linear vector, to conform with the 
-# interface of the optimization rotations, using:
-#
-#     reinterpret(Float64, molecule_positions)
-#  
-# The resulting vector contains, in order, the center of mass and the
-# rotation angles for each molecule. The same data structure will
-# be used to store the gradient of the objective function relative to
-# the rotations and translation of the rigid-body molecules.
-struct MoleculePosition{N,T}
-    cm::SVector{N,T}
-    angles::SVector{N,T}
-end
-Base.copy(x::MoleculePosition) = MoleculePosition(x.cm, x.angles)
-import Base: + 
-+(x::MoleculePosition, y::MoleculePosition) = MoleculePosition(x.cm + y.cm, x.angles + y.angles)
-Base.zero(::Type{MoleculePosition{N,T}}) where {N,T} = MoleculePosition(zero(SVector{N,T}), zero(SVector{N,T}))
 
 @kwdef mutable struct PackmolSystem{D,T}
     filetype::String
@@ -48,9 +20,10 @@ Base.zero(::Type{MoleculePosition{N,T}}) where {N,T} = MoleculePosition(zero(SVe
     writebad::Bool = false
     optim_print_level::Int = 0
     chkgrad::Bool = false
-    atoms::Vector{AtomData{D,T}} = AtomData{D,T}[]
+    # Internal data for the optimization
     nmols::Int = 0
-    molecule_positions::MoleculePosition{D,T} = MoleculePosition{D,T}[]
+    atoms::Vector{AtomData{T}} = AtomData{T}[]
+    molecule_positions::Vector{MoleculePosition{D,T}} = MoleculePosition{D,T}[]
 end
 
 function _indent(s::AbstractString; n=4)
@@ -61,19 +34,21 @@ function _indent(s::AbstractString; n=4)
     return String(take!(idented_str))
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", sys::PackmolSystem{D,T}) where {D,T}
+function Base.show(io::IO, ::MIME"text/plain", sys::PackmolSystem{D,T}) where {D,T}
     printstyled(io, "PackmolSystem{$D,$T}"; bold=true, color=:blue)
     if length(sys.input_file) > 0 
         printstyled(" - read from: $(basename(sys.input_file))"; color=:blue) 
     end
     println(io)
+    printstyled(io, _indent("Number of types of structures: $(length(sys.structure_types))\n"); bold=true)
+    printstyled(io, _indent("Total number of molecules: $(sys.nmols)\n"); bold=true)
     printstyled(io, _indent("Structure types:\n"); bold=true)
     for (i,st) in enumerate(sys.structure_types)
         print(io, _indent("$i."*_show(st)))
     end
     printstyled(io, _indent("Options:\n"); bold=true)
     for field in fieldnames(PackmolSystem)
-        if !(field in (:structure_types, :input_file))
+        if !(field in (:structure_types, :input_file, :atoms, :molecule_positions, :nmols))
             print(io, _indent("$field: $(getfield(sys, field))"; n=8))
         end
     end
@@ -154,8 +129,8 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
     input_data = Dict{Symbol,Any}(
         :input_file => input_file,
         :structure_types => StructureType{D,T}[],
-        :atoms => AtomData{D,T}[]
-        :molecule_positions => MoleculePosition{D,T}[]
+        :atoms => AtomData{T}[],
+        :molecule_positions => MoleculePosition{D,T}[],
         :nmols => 0,
     )
     structure_section = false
@@ -191,7 +166,7 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
         end
     end
     if structure_section
-        throw(ArgumentError("Structure block not closed"))
+        throw(ArgumentError("Structure block not closed with 'end structure'"))
     end
     # Read structure data
     open(input_file) do io
@@ -230,16 +205,16 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
         for _ in 1:structure_type.number_of_molecules
             mol_index += 1 
             push!(molecule_positions, 
-                MoleculePosition(zeros(SVector{D,T}), zeros(SVectors{D,T}))
+                MoleculePosition(zeros(SVector{D,T}), zeros(SVector{D,T}))
             )
-            for iatom in 1:structure_type.number_of_atoms
+            for iatom in 1:structure_type.natoms
                 atom_index += 1
                 push!(atoms, 
                     AtomData(
                         mol_index, 
                         itype,
                         structure_type.radii[iatom],
-                        structure_type.constraints[iatom]
+                        structure_type.atom_constraints[iatom],
                     )
                 )
             end
