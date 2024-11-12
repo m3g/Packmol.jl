@@ -14,7 +14,9 @@ pre-compiled binary. The input file is a text file with the same syntax as
 the packmol input files.
 
 If no input file is provided, a file explorer will be opened to choose the 
-input file.
+input file. 
+
+To disable the file explorer, set the environment variable `PACKMOL_GUI="false"`.
 
 """
 function run_packmol end
