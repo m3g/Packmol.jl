@@ -78,6 +78,12 @@ julia> import Pkg; Pkg.activate("Packmol"; shared=true); Pkg.update()
 
 (or type `] activate @Packmol` and then `] up`, at the `julia>` prompt). 
 
+Additionally, it is possible to disable the loading of the file-dialog machinery
+by setting the system environment variable `PACKMOL_GUI="false"`. This might be
+important to run packmol through this interface in computers without a GUI. 
+
+
+
 
 
 

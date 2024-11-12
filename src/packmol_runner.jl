@@ -1,5 +1,4 @@
 import Packmol_jll
-import NativeFileDialog
 
 packmol_runner = Packmol_jll.packmol()
 
@@ -15,7 +14,9 @@ pre-compiled binary. The input file is a text file with the same syntax as
 the packmol input files.
 
 If no input file is provided, a file explorer will be opened to choose the 
-input file.
+input file. 
+
+To disable the file explorer, set the environment variable `PACKMOL_GUI="false"`.
 
 """
 function run_packmol end
@@ -51,12 +52,6 @@ function run_packmol(input_file::String)
     return nothing
 end
 
-@doc (@doc run_packmol)
-function run_packmol()
-    input_file = NativeFileDialog.pick_file() 
-    run_packmol(input_file)
-end
-
 @testitem "run_packmol" begin
     using Packmol
     test_dir = Packmol.src_dir*"/../test/run_packmol"
@@ -70,4 +65,19 @@ end
     @test isfile("water_box.pdb")
 end
 
+@static if haskey(ENV, "PACKMOL_GUI") && ENV["PACKMOL_GUI"] == "false"
+    function run_packmol()
+        throw(ArgumentError("""\n
+            Environment variable PACKMOL_GUI is set to false. Set it to true to use the file dialog.
+            
+        """))
+    end
+else
+    import NativeFileDialog
+    @doc (@doc run_packmol)
+    function run_packmol()
+        input_file = NativeFileDialog.pick_file() 
+        run_packmol(input_file)
+    end
+end
 
