@@ -1,7 +1,7 @@
 name = "Packmol"
 uuid = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
 authors = ["Leandro Martinez <lmartine@unicamp.br> and contributors"]
-version = "0.1.11"
+version = "0.1.12"
 
 [deps]
 CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
@@ -21,7 +21,7 @@ LinearAlgebra = "1.9"
 FiniteDifferences = "0.12.30"
 ForwardDiff = "0.10"
 NativeFileDialog = "0.2.1"
-Packmol_jll = "20"
+Packmol_jll = "20, 21"
 Parameters = "0.12"
 Random = "1.9"
 SPGBox = "0.5, 0.6, 0.7"
