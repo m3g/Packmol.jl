@@ -36,4 +36,7 @@ include("./mono_atomic.jl")
 # Runner for the legacy packmol 
 include("./packmol_runner.jl")
 
+# Packmol input file creator
+include("./PackmolInputCreator/PackmolInputCreator.jl")
+
 end

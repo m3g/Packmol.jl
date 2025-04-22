@@ -1,0 +1,20 @@
+# SHALMASHI, A  y  AMANI, F. 
+# Densities and excess molar volumes for binary solution of 
+# water + ethanol, + methanol and + propanol from (283.15 TO 313.15) 
+# K. Lat. Am. appl. res. [online]. 2014, vol.44, n.2 [citado  2023-12-13], pp.163-166. 
+# http://www.scielo.org.ar/scielo.php?script=sci_arttext&pid=S0327-07932014000200009&lng=es&nrm=iso
+#
+# at 293.15   
+#
+# x ethanol     density
+   0.0000       0.9981
+   0.0416       0.9820
+   0.0890       0.9685
+   0.1434       0.9537
+   0.2066       0.9369
+   0.2809       0.9151
+   0.3695       0.8923
+   0.4769       0.8685
+   0.6098       0.8450
+   0.7786       0.8195
+   1.0000       0.7906
