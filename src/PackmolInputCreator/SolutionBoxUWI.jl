@@ -13,6 +13,34 @@ mutable struct SolutionBoxUWI <: SolutionBox
     anion_molar_mass::Float64
 end
 
+# Density of NaCl(aq) (concentrations in mol/kg, densities in g/mL), at 25°C
+# From: https://advancedthermo.com/electrolytes/density_NaCl_Jun2021.html
+const density_NaCl_aq = [ 
+   0.1 	   1.00116 
+   0.2 	   1.00520 
+   0.3 	   1.00921 
+   0.4 	   1.01317 
+   0.5 	   1.01709 
+   0.6 	   1.02098 
+   0.7 	   1.02483 
+   0.8 	   1.02866 
+   0.9 	   1.03245 
+   1.0 	   1.03621 
+   1.2 	   1.04366 
+   1.4 	   1.05096 
+   1.6 	   1.05817 
+   1.8 	   1.06527 
+   2.0 	   1.07227 
+   2.5 	   1.08932 
+   3.0 	   1.10579 
+   3.5 	   1.12170 
+   4.0 	   1.13709 
+   4.5 	   1.15199 
+   5.0 	   1.16644 
+   5.5 	   1.18048 
+   6.0 	   1.19412 
+]
+
 """
     SolutionBoxUWI(; 
         solute_pdbfile::String, 
@@ -40,7 +68,7 @@ function SolutionBoxUWI(;
     anion_pdbfile::Union{Nothing,String}=nothing,
     cation_charge::Union{Nothing,Integer}=nothing,
     anion_charge::Union{Nothing,Integer}=nothing,
-    density::Real=1.0,
+    density::Real=1.00520,
     density_units::Union{Nothing,String}="g/mL",
     solute_molar_mass::Union{Nothing,Real}=nothing,
     cation_molar_mass::Union{Nothing,Real}=nothing,
@@ -146,7 +174,6 @@ function Base.show(io::IO, ::MIME"text/plain", system::SolutionBoxUWI)
         Cation pdb file and charge: $(basename(system.cation_pdbfile)) +$(system.cation_charge)
         Anion pdb file: $(basename(system.anion_pdbfile)) $(system.anion_charge)
         Density: $(system.density) g/mL
-        Ion concentration: $(system.ionic_concentration) mol/L
         Solute molar mass:  $(system.solute_molar_mass) g/mol
         Cation molar mass: $(system.cation_molar_mass) g/mol
         Anion molar mass: $(system.anion_molar_mass) g/mol
@@ -175,7 +202,7 @@ function write_packmol_input(
     input="box.inp",
     output="system.pdb",
     # box size
-    box_sides::AbstractVector{<:Real}=nothing, # or
+    box_sides::Union{Nothing,AbstractVector{<:Real}}=nothing, # or
     margin::Real=0.0,
     cubic::Bool = false,
 )
@@ -215,11 +242,11 @@ function write_packmol_input(
     vs = vbox - vsolute
 
     # Number of ionic "molecules" in solution
-    nions = round(Int, ionic_concentration * vs / CMC)
+    nions = round(Int, CMC * ionic_concentration * vs)
 
     # The actual number of cations or anions depends on their charges
     ncation = nions ÷ system.cation_charge - round(Int, system.solute_charge/2, RoundUp)
-    nanion = nions ÷ system.anion_charge + round(Int, system.solute_charge/2, RoundDown)
+    nanion = nions ÷ (-1*system.anion_charge) + round(Int, system.solute_charge/2, RoundDown)
 
     # Total final charge (for checking)
     total_charge = ncation * system.cation_charge + nanion * system.anion_charge + system.solute_charge
@@ -241,10 +268,10 @@ function write_packmol_input(
        Summary:
        ==================================================================
    
-       Target ionic concentration = $(system.ionic_concentration) mol/L
+       Target ionic concentration = $ionic_concentration mol/L
    
        Box volume = $vbox Å³
-       Solution volume = $vs Å³   
+       Solution volume (excluding solute) = $vs Å³   
        Solute extrema = [ $(join(-0.5*solute_extrema, ", ")), $(join(0.5*solute_extrema, ", ")) ] Å
        Periodic box = [ $(join( -1.0*l, ", ")), $(join( l, ", ")) ] Å 
    
@@ -259,6 +286,8 @@ function write_packmol_input(
        ==================================================================
        """
     println(summary)
+
+    return
    
     open(input, "w") do io
         print(io,

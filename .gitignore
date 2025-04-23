@@ -4,3 +4,7 @@
 .vscode/settings.json
 docs/build
 docs/Manifest.toml
+src/PackmolInputCreator/test/data/CHLORIDE.pdb
+src/PackmolInputCreator/test/data/packmol_input.inp
+src/PackmolInputCreator/test/data/SODIUM.pdb
+src/PackmolInputCreator/test/data/WATER.pdb
