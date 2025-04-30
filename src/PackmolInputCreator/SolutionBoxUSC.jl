@@ -42,7 +42,7 @@ function SolutionBoxUSC(;
     )
     if isnothing(concentration_units)
         concentration_units = "x"
-        @warn "Concentration units not provided, assuming molar fraction." _file=nothing _line=nothing
+        @warn "Concentration units not provided, assuming molar fraction (x)." _file=nothing _line=nothing
     end
     if !(density_table[begin, 1] == 0.0)
         throw(ArgumentError("First line of density table must be the density of pure solvent, with cossolvent concentration equal to 0.0"))
@@ -69,8 +69,8 @@ function SolutionBoxUSC(;
         solvent_molar_mass,
         cossolvent_molar_mass,
     )
-    if concentration_units == "mol/L"
-        x = convert_concentration(system, density_table[end, 1], "mol/L" => "x")
+    if concentration_units in ("mol/L", "mol/kg")
+        x = convert_concentration(system, density_table[end, 1], "mol/kg" => "x")
         if !(x ≈ 1)
             throw(ArgumentError(chomp("""
             Conversion of concentration of last line into molar fraction gives: $x which is different from 1.0. 
@@ -92,7 +92,8 @@ function Base.show(io::IO, ::MIME"text/plain", system::SolutionBoxUSC)
         Solvent pdb file: $(basename(system.solvent_pdbfile))
         Cossolvent pdb file: $(basename(system.cossolvent_pdbfile))
         Density of pure solvent: $(density_pure_solvent(system)) g/mL
-        Density of pure cossolvent: $(density_pure_cossolvent(system)) g/mL
+        Cosolvent concentration at highest concentration: $(last(system.density_table[:, 1])) $(system.concentration_units)
+        Density of cosolvent solution at highest concentration: $(density_highest_cosolvent_concentration(system)) g/mL
         Molar masses: 
             solute: $(system.solute_molar_mass) g/mol
             solvent: $(system.solvent_molar_mass) g/mol
@@ -101,6 +102,65 @@ function Base.show(io::IO, ::MIME"text/plain", system::SolutionBoxUSC)
         Cocentration range: $(first(system.density_table[:, 1])) - $(last(system.density_table[:, 1]))
     ==================================================================
     """))
+end
+
+#=
+
+Convert concentration from molarity (mol/L) to the other supported units.
+
+This function is used as to convert the concentration of the solution from one unit to another.
+
+=#
+function _convert_concentration_molarity_to(
+    target_units::String,
+    input_concentration::Real,
+    system::SolutionBoxUSC,
+)
+    (; solvent_molar_mass, cossolvent_molar_mass) = system
+
+    # If the units didn't change, just return the input concentrations
+    target_units == "mol/L" && return input_concentration
+
+    # Obtain density of the solution by interpolation
+    if system.concentration_units != "mol/L"
+        input_concentration_units = system.concentration_units
+        convert_density_table!(system, "mol/L")
+        ρ = interpolate_concentration(system, input_concentration)
+        convert_density_table!(system, input_concentration_units)
+    else
+        ρ = interpolate_concentration(system, input_concentration)
+    end
+
+    ρw = density_pure_solvent(system) # density of the pure solvent
+    Mw = solvent_molar_mass # molar mass of solvent 
+    Mc = cossolvent_molar_mass # molar mass of the cossolvent
+
+    pure_c = 1000 * ρc / Mc  
+    if !(0 <= input_concentration <= pure_c) && !(input_concentration ≈ pure_c)
+        @show input_concentration
+        throw(ArgumentError("Cossolvent molarity must be in the [0,$pure_c] range."))
+    end
+
+    # Convert from molarity to the other units
+    if last(units) == "vv"
+        ρc = density_pure_cossolvent(system) # density of the pure cossolvent
+        vc = nc * Mc / ρc
+        vw = nw * Mw / ρw
+        return fixrange(vc / (vc + vw))
+    end
+
+    nc = input_concentration / 1000
+    nw = (ρ - nc * Mc) / Mw
+    if last(units) == "x"
+        return fixrange(nc / (nc + nw))
+    end
+    if last(units) == "mm"
+        return fixrange(nc * Mc / (nc * Mc + nw * Mw))
+    end
+    if last(units) == "mol/kg"
+        return 1000 * nc / (nc * Mc + nw * Mw) # mol/kg
+    end
+
 end
 
 """
@@ -120,6 +180,7 @@ The supported concentration units are:
 - `"x"`: molar fraction
 - `"vv"`: volume fraction
 - `"mm"`: mass fraction
+- `mol/kg`: molarity in kg of solvent
 
 Conversion among types consists in passing the `units` keyword argument,
 which is a pair of the form `"from" => "to"`, where `"from"` and `"to"`
@@ -170,14 +231,21 @@ function convert_concentration(
         vv = input_concentration
         Nc = (ρc * vv) / Mc # number of cossolvent molecules in 1mL of ideal solution
         Nw = ρw * (1 - vv) / Mw # number of solvent molecules in 1mL of ideal solution
-        if last(units) == "x"
-            x = Nc / (Nc + Nw) # molar fraction
-            return fixrange(x)
-        end
         if last(units) == "mol/L"
             mt = Nc * Mc + Nw * Mw # mass of the solution (for 1 mol total)
             v = mt / (1000*ρ) # volume of the solution (for 1 mol total)
             return Nc / v # mol/L
+        end
+        return _convert_concentration_molarity_to(last(units), input_concentration, system)
+    end 
+
+        if last(units) == "x"
+            x = Nc / (Nc + Nw) # molar fraction
+            return fixrange(x)
+        end
+        if last(units) == "mol/kg"
+            mt = Nc * Mc + Nw * Mw # mass of the solution (for 1 mol total)
+            return Nc / (mt / 1000) # mol/kg
         end
         if last(units) == "mm"
             return fixrange(Nc * Mc / (Nc * Mc + Nw * Mw))
@@ -193,6 +261,10 @@ function convert_concentration(
             m = x * Mc + (1 - x) * Mw # g/mol: mass of the solution
             v = m / (ρ*1000) # L/mol: volume
             return x / v # mol/L: molarity of the solution 
+        end
+        if last(units) == "mol/kg"
+            m = x * Mc + (1 - x) * Mw # g/mol: mass of the solution
+            return x / (m / 1000) # mol/kg: molarity of the solution 
         end
         if last(units) == "vv"
             vc = Mc *  x / ρc # Volume of x mols of pure cossolvent 
@@ -224,6 +296,9 @@ function convert_concentration(
         if last(units) == "mm"
             return fixrange(nc * Mc / (nc * Mc + nw * Mw))
         end
+        if last(units) == "mol/kg"
+            return 1000 * nc / (nc * Mc + nw * Mw) # mol/kg
+        end
     end
 
     if first(units) == "mm"
@@ -245,7 +320,17 @@ function convert_concentration(
             v = 1 / ρ # volume of 1g of solution
             return 1000 * Nc / v # mol/L
         end
+        if last(units) == "mol/kg"
+            return 1000 * Nc # mol/kg
+        end
     end
+
+    if first(units) == "mol/kg"
+
+
+    end
+
+
 end
 
 """
