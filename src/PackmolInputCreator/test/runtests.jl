@@ -1,8 +1,9 @@
 @testitem "Consistency tests" begin
     using ShowMethodTesting
     using PDBTools
-    using MolSimToolkit.PackmolInputCreator
-    test_dir = PackmolInputCreator.PackmolInputCreatorDirectory*"/test"
+    using Packmol
+
+    test_dir = Packmol.PackmolInputCreatorDirectory*"/test"
 
     # system with water only, with constant density
     system = SolutionBoxUSC(
@@ -126,72 +127,6 @@
         concentration_units = "mol/L",
     )
 
-    # system with water only
-    system = SolutionBoxUS(
-        solute_pdbfile = "$test_dir/data/poly_h.pdb",
-        solvent_pdbfile = "$test_dir/data/water.pdb",
-        density=55.5,
-        density_units="mol/L",
-    ) 
-    @test system.solvent_molar_mass ≈ 18.01 atol = 0.01
-    @test system.density ≈ 1.0 atol = 0.01
-    system = SolutionBoxUS(
-        solute_pdbfile = "$test_dir/data/poly_h.pdb",
-        solvent_pdbfile = "$test_dir/data/water.pdb",
-        density=1.0,
-        density_units="g/mL",
-    ) 
-    @test system.solvent_molar_mass ≈ 18.01 atol = 0.01
-    @test system.density ≈ 1.0 atol = 0.01
-    system = SolutionBoxUS(
-        solute_pdbfile = "$test_dir/data/poly_h.pdb",
-        solvent_pdbfile = "$test_dir/data/water.pdb",
-        density=1.0,
-    ) 
-    @test system.solvent_molar_mass ≈ 18.01 atol = 0.01
-    @test system.density ≈ 1.0 atol = 0.01
-    @test_throws ArgumentError SolutionBoxUS(
-        solute_pdbfile = "$test_dir/data/poly_h.pdb",
-        solvent_pdbfile = "$test_dir/data/water.pdb",
-        density=0.0,
-    ) 
-    @test_throws ArgumentError SolutionBoxUS(
-        solute_pdbfile = "$test_dir/data/poly_h.pdb",
-        solvent_pdbfile = "$test_dir/data/water.pdb",
-        density=1000.0,
-        density_units="g/L"
-    ) 
-    system = SolutionBoxUS(
-        solute_pdbfile = "$test_dir/data/poly_h.pdb",
-        solvent_pdbfile = "$test_dir/data/water.pdb",
-        density=55.5,
-        density_units="mol/L",
-        solvent_molar_mass=18.01534,
-        solute_molar_mass=5612.79194,
-    ) 
-    @test system.density ≈ 1.0 atol = 0.01
-
-    # Test show methods
-    system = SolutionBoxUS(
-        solute_pdbfile = "$test_dir/data/poly_h.pdb",
-        solvent_pdbfile = "$test_dir/data/water.pdb",
-        density=1.0,
-        density_units="g/mL",
-    ) 
-    @test parse_show(system) ≈ """
-    ==================================================================
-    SolutionBoxUS properties (Solute + Solvent):
-    ==================================================================
-        Solute pdb file: poly_h.pdb
-        Solvent pdb file: water.pdb
-        Density of pure solvent: 1.0 g/mL
-        Molarity of pure solvent: 55.508250191225926 mol/L
-        Density units: g/mL (false)
-        Molar masses: 
-            solute: 5612.791939999981 g/mol
-            solvent: 18.01534 g/mol
-    ==================================================================
-    """
     system = SolutionBoxUSC(
         solute_pdbfile = "$test_dir/data/poly_h.pdb",
         solvent_pdbfile = "$test_dir/data/water.pdb",
@@ -300,22 +235,5 @@ end
     system.density_table .= density_table
     @test_throws ArgumentError write_packmol_input(system; concentration = 0.5, margin = 20.0, input = tmp_input_file, debug = true)
 
-    # System with water only
-    system = SolutionBoxUS(
-        solute_pdbfile = "$test_dir/data/poly_h.pdb",
-        solvent_pdbfile = "$test_dir/data/water.pdb",
-        density=1.0,
-        density_units="g/mL",
-    ) 
-    rm(tmp_input_file, force=true)
-    r1 = write_packmol_input(system; margin = 20.0, input = tmp_input_file, debug = true)
-    @test r1[1] == 41528
-    @test r1[2] ≈ [117.37, 89.79, 118.81] 
-    @test isfile(tmp_input_file)
-    rm(tmp_input_file, force=true)
-    r1 = write_packmol_input(system; margin = 20.0, input = tmp_input_file, debug = true, cubic = true)
-    @test r1[1] == 55730
-    @test r1[2] ≈ [118.81, 118.81, 118.81]
-    @test isfile(tmp_input_file)
 
 end
