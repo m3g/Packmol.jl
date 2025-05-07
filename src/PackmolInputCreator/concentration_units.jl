@@ -21,6 +21,13 @@ struct NumberDensity <: AbstractConcentrationUnit end   # Represents count/Volum
 # Default Units and Helper Function
 # ==============================================================================
 
+_oneunit(::Type{Molarity}) = 1u"mol/L"
+_oneunit(::Type{Molality}) = 1u"mol/kg"
+_oneunit(::Type{MoleFraction}) = 1
+_oneunit(::Type{MassFraction}) = 1
+_oneunit(::Type{VolumeFraction}) = 1
+_oneunit(::Type{NumberDensity}) = 1u"Å^-3"
+
 const DEFAULT_MOLARITY_UNIT = u"mol/L"
 const DEFAULT_MOLALITY_UNIT = u"mol/kg"
 const DEFAULT_MASS_UNIT = u"g/mol" # For molar mass
@@ -693,13 +700,17 @@ m3 = cconvert(0.2, "mole fraction" => "molality"; M_solvent=18.015) # M_H2O in g
 function cconvert(value, units::Pair{String, String}; kwargs...)
     unit_in_str = strip(units.first)
     unit_out_str = strip(units.second)
-    
+
     T_in = get(UNIT_TYPE_MAP, unit_in_str, nothing)
     T_out = get(UNIT_TYPE_MAP, unit_out_str, nothing)
     
+    if value isa Quantity
+        oneunit(value) == _oneunit(T_in) || throw(ArgumentError("Unit of input value ($value) does not match input unit type $T_in ($unit_in_str)"))
+    end
+
     if isnothing(T_in) throw(ArgumentError("Unknown input unit string: $(units.first)")) end
     if isnothing(T_out) throw(ArgumentError("Unknown output unit string: $(units.second)")) end
-    
+
     # Handle % vs fraction for dimensionless units based on input string
     input_val = value
     is_percent_in = occursin('%', unit_in_str) || occursin("percent", unit_in_str) # Check original case for %? No, lower is fine.
@@ -1167,6 +1178,7 @@ end
     # Test unknown units
     @test_throws ArgumentError cconvert(1.0, "bad_unit" => "Molarity")
     @test_throws ArgumentError cconvert(1.0, "Molarity" => "bad_unit")
+    @test_throws ArgumentError cconvert(1.0u"mol/kg", "Molarity" => "Molarity")
 
     # Test missing kwargs via wrapper
     @test_throws UndefKeywordError cconvert(0.5, "w/w" => "Molarity"; M_solute=M_EtOH) # Missing rho_solution
