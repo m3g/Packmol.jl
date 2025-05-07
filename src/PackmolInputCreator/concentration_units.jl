@@ -594,9 +594,13 @@ OrderedCollections.OrderedDict{String, DataType} with 26 entries:
   "%vol/vol"       => VolumeFraction
   "NumberDensity"  => NumberDensity
   "numberdensity"  => NumberDensity
-  "Å^-3"           => NumberDensity
-  "A^-3"           => NumberDensity
-  "molecule/angs3" => NumberDensity
+  "Å^-3"           => NumberDensity,
+  "molecule/angs3" => NumberDensity,
+  "molecules/angs3"=> NumberDensity,
+  "molecule/Å^-3"  => NumberDensity,
+  "molecules/Å^-3" => NumberDensity,
+  "molecule/Å³"    => NumberDensity,
+  "molecules/Å³"   => NumberDensity,
 ```
 
 """
@@ -632,8 +636,12 @@ const UNIT_TYPE_MAP = OrderedDict(
   "NumberDensity"  => NumberDensity,
   "numberdensity"  => NumberDensity,
   "Å^-3"           => NumberDensity,
-  "A^-3"           => NumberDensity,
   "molecule/angs3" => NumberDensity,
+  "molecules/angs3"=> NumberDensity,
+  "molecule/Å^-3"  => NumberDensity,
+  "molecules/Å^-3" => NumberDensity,
+  "molecule/Å³"    => NumberDensity,
+  "molecules/Å³"   => NumberDensity,
 )
 
 """
@@ -707,9 +715,8 @@ function cconvert(value, units::Pair{String, String}; kwargs...)
     if value isa Quantity
         oneunit(value) == _oneunit(T_in) || throw(ArgumentError("Unit of input value ($value) does not match input unit type $T_in ($unit_in_str)"))
     end
-
-    if isnothing(T_in) throw(ArgumentError("Unknown input unit string: $(units.first)")) end
-    if isnothing(T_out) throw(ArgumentError("Unknown output unit string: $(units.second)")) end
+    isnothing(T_in) && throw(ArgumentError("Unknown input concentration unit: $(units.first)"))
+    isnothing(T_out) && throw(ArgumentError("Unknown output concentration unit: $(units.second)"))
 
     # Handle % vs fraction for dimensionless units based on input string
     input_val = value
