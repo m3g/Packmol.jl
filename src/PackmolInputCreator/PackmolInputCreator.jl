@@ -21,7 +21,7 @@ include("./concentration_units.jl")
 
 
 # System types
-#include("./SolutionBoxUS.jl")
+include("./SolutionBoxUS.jl")
 #include("./SolutionBoxUSC.jl")
 #include("./SolutionBoxUWI.jl")
 
