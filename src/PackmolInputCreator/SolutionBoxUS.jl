@@ -6,6 +6,27 @@ mutable struct SolutionBoxUS <: SolutionBox
     solvent_molar_mass::Quantity
 end
 
+function set_box_sides(system, box_sides, margin, cubic)
+    # Set box side
+    if isnothing(box_sides) && isnothing(margin)
+        throw(ArgumentError("Either box_sides or margin must be provided."))
+    elseif !isnothing(box_sides) && !isnothing(margin)
+        throw(ArgumentError("Either box_sides or margin must be provided, but not both."))
+    end
+    solute_atoms = read_pdb(system.solute_pdbfile)
+    solute_extrema = 1.0u"Å" * round.(maxmin(solute_atoms).xlength; digits=3)
+    if !isnothing(margin)
+        margin = _ensure_unit(margin, u"Å")
+        box_sides = (solute_extrema .+ 2 .* margin)
+    end
+    box_sides = _ensure_unit.(box_sides, u"Å")
+    if cubic
+        max_side = maximum(box_sides)
+        box_sides .= max_side
+    end
+    return box_sides, solute_extrema
+end
+
 """
     SolutionBoxUS(; 
         solute_pdbfile::String, 
@@ -118,28 +139,9 @@ function write_packmol_input(
     # Convert solvent concentration in molecules/Å³
     cs = cconvert(ms, "mol/L" => "molecules/Å^-3")
 
-    # Set box side
-    if isnothing(box_sides) && isnothing(margin)
-        throw(ArgumentError("Either box_sides or margin must be provided."))
-    elseif !isnothing(box_sides) && !isnothing(margin)
-        throw(ArgumentError("Either box_sides or margin must be provided, but not both."))
-    end
-    solute_atoms = read_pdb(system.solute_pdbfile)
-    solute_extrema = 1.0u"Å" * round.(maxmin(solute_atoms).xlength; digits=3)
-    if !isnothing(margin)
-        margin = _ensure_unit(margin, u"Å")
-        box_sides = (solute_extrema .+ 2 .* margin)
-    end
-    box_sides = _ensure_unit.(box_sides, u"Å")
-
-    # Box volume (Å³)
-    if !cubic
-        vbox = box_sides[1] * box_sides[2] * box_sides[3]
-    else
-        max_side = maximum(box_sides)
-        vbox = max_side^3
-        box_sides .= max_side
-    end
+    # Set box sides and volume
+    box_sides, solute_extrema = set_box_sides(system, box_sides, margin, cubic)
+    vbox = prod(box_sides)
         
     # Solution volume (vbox - vsolute) - vsolute is estimated
     # as if it had the same mass density of the pure solvent
