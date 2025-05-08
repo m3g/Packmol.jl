@@ -1,61 +1,47 @@
 mutable struct SolutionBoxUS <: SolutionBox
-    density_units::String
     solute_pdbfile::String
     solvent_pdbfile::String
-    density::Float64
-    solute_molar_mass::Float64
-    solvent_molar_mass::Float64
+    density::Quantity
+    solute_molar_mass::Quantity
+    solvent_molar_mass::Quantity
 end
 
 """
     SolutionBoxUS(; 
         solute_pdbfile::String, 
         solvent_pdbfile::String,
-        density::Float64,
-        density_units = "g/mL",
+        density::Union{Quantity,Real}, # density, using Unitful units, or assumed to be g/mL
         solute_molar_mass = nothing, # optional
         solvent_molar_mass = nothing, # optional
     )
 
 Setup a system composed of a solute (U) and a solvent (S). 
 
-The mass or molar density can be provided, and the units are either
-`"g/mL"` or `"mol/L"`. The default is `"g/mL"`. 
+The mass or molar density can be provided. If unitless specified, the density will be assumed to be in g/mL, and the molar masses in g/mol.
 
-The molar masses of the solute and solvent can be provided manually. If
-not, they will be computed from the atom types in the PDB file.
+If the molar masses are not provided, they will be computed from the atom types in the PDB file.
 
 """
 function SolutionBoxUS(;
         solute_pdbfile::String, 
         solvent_pdbfile::String,
-        density::Float64,
-        density_units::Union{Nothing,String} = nothing,
-        solute_molar_mass::Union{Nothing,Real} = nothing,
-        solvent_molar_mass::Union{Nothing,Real} = nothing,
+        density::Number, # density, using Unitful units, or assumed to be g/mL
+        solute_molar_mass::Union{Nothing,Number} = nothing,
+        solvent_molar_mass::Union{Nothing,Number} = nothing,
     )
-    if isnothing(density_units)
-        density_units = "g/mL"
+    if unit(density) == NoUnits
         @warn "Density units not provided, assuming g/mL." _file=nothing _line=nothing
+        density = density * 1.0u"g/mL"
     end
-    if density <= 0.0
-        throw(ArgumentError("Density must be positive."))
-    end
-    if !(density_units in ("g/mL", "mol/L"))
-        throw(ArgumentError("Density units must be g/mL or mol/L."))
-    end
-    if isnothing(solute_molar_mass)
-        solute_molar_mass = mass(read_pdb(solute_pdbfile))
-    end
-    if isnothing(solvent_molar_mass)
-        solvent_molar_mass = mass(read_pdb(solvent_pdbfile))
-    end
+    ustrip(density) <= 0.0 && throw(ArgumentError("Density must be positive."))
+    isnothing(solute_molar_mass) && (solute_molar_mass = mass(read_pdb(solute_pdbfile)) * 1.0u"g/mol")
+    solute_molar_mass = _ensure_unit(solute_molar_mass, u"g/mol")
+    isnothing(solvent_molar_mass) && (solvent_molar_mass = mass(read_pdb(solvent_pdbfile)) * 1.0u"g/mol")
+    solvent_molar_mass = _ensure_unit(solvent_molar_mass, u"g/mol")
     # Convert density in mol/L to g/mL
-    if density_units == "mol/L"
-        density = density * solvent_molar_mass / 1000
-    end
+    unit(density) == u"mol/L" && (density = uconvert(u"g/mL", density * solvent_molar_mass))
+    # Construct system
     system = SolutionBoxUS(
-        density_units,
         solute_pdbfile,
         solvent_pdbfile,
         density,
@@ -72,12 +58,11 @@ function Base.show(io::IO, ::MIME"text/plain", system::SolutionBoxUS)
     ==================================================================
         Solute pdb file: $(basename(system.solute_pdbfile))
         Solvent pdb file: $(basename(system.solvent_pdbfile))
-        Density of pure solvent: $(system.density) g/mL
-        Molarity of pure solvent: $(1000 * system.density / system.solvent_molar_mass) mol/L
-        Density units: $(system.density_units)
+        Density of pure solvent: $(system.density)
+        Molarity of pure solvent: $(uconvert(u"mol/L", system.density / system.solvent_molar_mass))
         Molar masses: 
-            solute: $(system.solute_molar_mass) g/mol
-            solvent: $(system.solvent_molar_mass) g/mol
+            solute: $(system.solute_molar_mass)
+            solvent: $(system.solvent_molar_mass)
     ==================================================================
     """))
 end
@@ -88,8 +73,8 @@ end
         input="box.inp",
         output="system.pdb",
         # box size
-        box_sides::AbstractVector{<:Real}, # or
-        margin::Real,
+        box_sides::AbstractVector{<:Number}, # or
+        margin::Number,
         cubic::Bool = false,
     )
 
@@ -107,8 +92,8 @@ function write_packmol_input(
     system::SolutionBoxUS;
     input="box.inp",
     output="system.pdb",
-    box_sides::Union{AbstractVector{<:Real},Nothing} = nothing,
-    margin::Union{Real,Nothing} = nothing, 
+    box_sides::Union{AbstractVector{<:Number},Nothing} = nothing,
+    margin::Union{<:Number,Nothing} = nothing, 
     cubic::Bool = false,
     # testing option
     debug = false,
@@ -121,11 +106,11 @@ function write_packmol_input(
     ) = system
 
     # molar masses (g/mol)
-    Mp = solute_molar_mass * 1u"g/mol"
-    Mw = solvent_molar_mass * 1u"g/mol"
+    Mp = solute_molar_mass
+    Mw = solvent_molar_mass
 
     # Density of pure solvent (g/mL)
-    ρs = system.density * 1u"g/mL"
+    ρs = system.density
     
     # Molarity of pure solvent (mol/L)
     ms = uconvert(u"mol/L", ρs / Mw)
@@ -142,9 +127,10 @@ function write_packmol_input(
     solute_atoms = read_pdb(system.solute_pdbfile)
     solute_extrema = 1.0u"Å" * round.(maxmin(solute_atoms).xlength; digits=3)
     if !isnothing(margin)
-        margin = margin * 1.0u"Å"
+        margin = _ensure_unit(margin, u"Å")
         box_sides = (solute_extrema .+ 2 .* margin)
     end
+    box_sides = _ensure_unit.(box_sides, u"Å")
 
     # Box volume (Å³)
     if !cubic
@@ -244,6 +230,7 @@ end # function write_packmol_input
 
 @testitem "SolutionBoxUS" begin
     using Packmol
+    using Unitful
     using ShowMethodTesting
 
     test_dir = Packmol.PackmolInputCreatorDirectory*"/test"
@@ -252,53 +239,43 @@ end # function write_packmol_input
     system = SolutionBoxUS(
         solute_pdbfile = "$test_dir/data/poly_h.pdb",
         solvent_pdbfile = "$test_dir/data/water.pdb",
-        density=55.5,
-        density_units="mol/L",
+        density=55.5u"mol/L",
     ) 
-    @test system.solvent_molar_mass ≈ 18.01 atol = 0.01
-    @test system.density ≈ 1.0 atol = 0.01
+    @test system.solvent_molar_mass ≈ 18.01u"g/mol" rtol = 0.01
+    @test system.density ≈ 1.0u"g/mL" rtol = 0.01
+    system = SolutionBoxUS(
+        solute_pdbfile = "$test_dir/data/poly_h.pdb",
+        solvent_pdbfile = "$test_dir/data/water.pdb",
+        density=1.0u"g/mL",
+    ) 
+    @test system.solvent_molar_mass ≈ 18.01u"g/mol" rtol = 0.01
+    @test system.density ≈ 1.0u"g/mL" rtol = 0.01
     system = SolutionBoxUS(
         solute_pdbfile = "$test_dir/data/poly_h.pdb",
         solvent_pdbfile = "$test_dir/data/water.pdb",
         density=1.0,
-        density_units="g/mL",
     ) 
-    @test system.solvent_molar_mass ≈ 18.01 atol = 0.01
-    @test system.density ≈ 1.0 atol = 0.01
-    system = SolutionBoxUS(
-        solute_pdbfile = "$test_dir/data/poly_h.pdb",
-        solvent_pdbfile = "$test_dir/data/water.pdb",
-        density=1.0,
-    ) 
-    @test system.solvent_molar_mass ≈ 18.01 atol = 0.01
-    @test system.density ≈ 1.0 atol = 0.01
+    @test system.solvent_molar_mass ≈ 18.01u"g/mol" rtol = 0.01
+    @test system.density ≈ 1.0u"g/mL" rtol = 0.01
     @test_throws ArgumentError SolutionBoxUS(
         solute_pdbfile = "$test_dir/data/poly_h.pdb",
         solvent_pdbfile = "$test_dir/data/water.pdb",
         density=0.0,
     ) 
-    @test_throws ArgumentError SolutionBoxUS(
-        solute_pdbfile = "$test_dir/data/poly_h.pdb",
-        solvent_pdbfile = "$test_dir/data/water.pdb",
-        density=1000.0,
-        density_units="g/L"
-    ) 
     system = SolutionBoxUS(
         solute_pdbfile = "$test_dir/data/poly_h.pdb",
         solvent_pdbfile = "$test_dir/data/water.pdb",
-        density=55.5,
-        density_units="mol/L",
+        density=55.5u"mol/L",
         solvent_molar_mass=18.01534,
         solute_molar_mass=5612.79194,
     ) 
-    @test system.density ≈ 1.0 atol = 0.01
+    @test system.density ≈ 1.0u"g/mL" rtol = 0.01
 
     # Test show methods
     system = SolutionBoxUS(
         solute_pdbfile = "$test_dir/data/poly_h.pdb",
         solvent_pdbfile = "$test_dir/data/water.pdb",
         density=1.0,
-        density_units="g/mL",
     ) 
     @test parse_show(system) ≈ """
     ==================================================================
@@ -306,12 +283,11 @@ end # function write_packmol_input
     ==================================================================
         Solute pdb file: poly_h.pdb
         Solvent pdb file: water.pdb
-        Density of pure solvent: 1.0 g/mL
-        Molarity of pure solvent: 55.508250191225926 mol/L
-        Density units: g/mL
+        Density of pure solvent: 1.0 g mL^-1
+        Molarity of pure solvent: 55.508250191225926 mol L^-1
         Molar masses: 
-            solute: 5612.791939999981 g/mol
-            solvent: 18.01534 g/mol
+            solute: 5612.791939999981 g mol^-1
+            solvent: 18.01534 g mol^-1
     ==================================================================
     """
 
@@ -320,7 +296,6 @@ end # function write_packmol_input
         solute_pdbfile = "$test_dir/data/poly_h.pdb",
         solvent_pdbfile = "$test_dir/data/water.pdb",
         density=1.0,
-        density_units="g/mL",
     ) 
     tmp_input_file = tempname()*".inp"
     rm(tmp_input_file, force=true)
@@ -330,6 +305,11 @@ end # function write_packmol_input
     @test isfile(tmp_input_file)
     rm(tmp_input_file, force=true)
     r1 = write_packmol_input(system; margin = 20.0, input = tmp_input_file, debug = true, cubic = true)
+    @test r1[1] == 55750
+    @test r1[2] ≈ [118.81, 118.81, 118.81]u"Å"
+    @test isfile(tmp_input_file)
+    rm(tmp_input_file, force=true)
+    r1 = write_packmol_input(system; margin = 2.0u"nm", input = tmp_input_file, debug = true, cubic = true)
     @test r1[1] == 55750
     @test r1[2] ≈ [118.81, 118.81, 118.81]u"Å"
     @test isfile(tmp_input_file)
