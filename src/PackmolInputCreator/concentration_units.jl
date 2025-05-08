@@ -94,7 +94,7 @@ end
 # --- Molarity Conversions ---
 function cconvert(
     C_val, ::Type{Molarity}, ::Type{Molality};
-    M_solute, rho_solution
+    M_solute, rho_solution, kwargs...
 )
     C = _ensure_unit(C_val, DEFAULT_MOLARITY_UNIT)
     Ms = _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
@@ -115,7 +115,7 @@ end
 
 function cconvert(
     C_val, ::Type{Molarity}, ::Type{MoleFraction};
-    M_solute, M_solvent, rho_solution
+    M_solute, M_solvent, rho_solution, kwargs...
 )
     C = _ensure_unit(C_val, DEFAULT_MOLARITY_UNIT)
     Ms = _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
@@ -139,7 +139,7 @@ end
 
 function cconvert(
     C_val, ::Type{Molarity}, ::Type{MassFraction};
-    M_solute, rho_solution
+    M_solute, rho_solution, kwargs...
 )
     C = _ensure_unit(C_val, DEFAULT_MOLARITY_UNIT)
     Ms = _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
@@ -160,7 +160,7 @@ end
 
 function cconvert(
     C_val, ::Type{Molarity}, ::Type{VolumeFraction};
-    M_solute, rho_solute
+    M_solute, rho_solute, kwargs...
 )
     # This conversion assumes the definition V_solute / V_solution
     # V_solution is the basis (e.g. 1L). V_solute depends on density of PURE solute.
@@ -179,7 +179,7 @@ function cconvert(
     return ustrip(NoUnits, vf)
 end
 
-function cconvert(C_val, ::Type{Molarity}, ::Type{NumberDensity})
+function cconvert(C_val, ::Type{Molarity}, ::Type{NumberDensity}; kwargs...)
     C = _ensure_unit(C_val, DEFAULT_MOLARITY_UNIT)
     num_dens = C * AVOGADRO # mol/L * N/mol = N/L
     return uconvert(DEFAULT_NUMBERDENSITY_UNIT, num_dens)
@@ -189,7 +189,7 @@ end
 # --- Molality Conversions ---
 function cconvert(
     m_val, ::Type{Molality}, ::Type{Molarity};
-    M_solute, rho_solution
+    M_solute, rho_solution, kwargs...
 )
     m = _ensure_unit(m_val, DEFAULT_MOLALITY_UNIT)
     Ms = _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
@@ -210,7 +210,7 @@ end
 
 function cconvert(
     m_val, ::Type{Molality}, ::Type{MoleFraction};
-    M_solvent
+    M_solvent, kwargs...
 )
     m = _ensure_unit(m_val, DEFAULT_MOLALITY_UNIT)
     Msv = _ensure_unit(M_solvent, DEFAULT_MASS_UNIT)
@@ -225,7 +225,7 @@ end
 
 function cconvert(
     m_val, ::Type{Molality}, ::Type{MassFraction};
-    M_solute
+    M_solute, kwargs...
 )
     m = _ensure_unit(m_val, DEFAULT_MOLALITY_UNIT)
     Ms = _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
@@ -244,27 +244,27 @@ end
 # Molality -> VolumeFraction and Molality -> NumberDensity require rho_solution
 function cconvert(
     m_val, ::Type{Molality}, ::Type{VolumeFraction};
-    M_solute, rho_solute, rho_solution
+    M_solute, rho_solute, rho_solution, kwargs...
 )
     # Need to find V_solute and V_solution for the same amount of substance.
     # Go via Molarity first?
-    C = cconvert(m_val, Molality, Molarity; M_solute=M_solute, rho_solution=rho_solution)
-    return cconvert(C, Molarity, VolumeFraction; M_solute=M_solute, rho_solute=rho_solute)
+    C = cconvert(m_val, Molality, Molarity; M_solute, rho_solution)
+    return cconvert(C, Molarity, VolumeFraction; M_solute, rho_solute)
 end
 
 function cconvert(
     m_val, ::Type{Molality}, ::Type{NumberDensity};
-    M_solute, rho_solution
+    M_solute, rho_solution, kwargs...
 )
     # Go via Molarity first
-    C = cconvert(m_val, Molality, Molarity; M_solute=M_solute, rho_solution=rho_solution)
+    C = cconvert(m_val, Molality, Molarity; M_solute, rho_solution)
     return cconvert(C, Molarity, NumberDensity)
 end
 
 # --- Mole Fraction Conversions ---
 function cconvert(
     chi_val::Real, ::Type{MoleFraction}, ::Type{Molarity};
-    M_solute, M_solvent, rho_solution
+    M_solute, M_solvent, rho_solution, kwargs...
 )
     if !(0 <= chi_val <= 1) throw(ArgumentError("Mole fraction must be 0-1")) end
     chi = chi_val * NoUnits
@@ -291,7 +291,7 @@ end
 
 function cconvert(
     chi_val::Real, ::Type{MoleFraction}, ::Type{Molality};
-    M_solvent
+    M_solvent, kwargs...
 )
     if !(0 <= chi_val < 1) throw(ArgumentError("Mole fraction must be 0 <= χ < 1 for Molality")) end
     chi = chi_val * NoUnits
@@ -310,7 +310,7 @@ end
 
 function cconvert(
     chi_val::Real, ::Type{MoleFraction}, ::Type{MassFraction};
-    M_solute, M_solvent
+    M_solute, M_solvent, kwargs...
 )
     if !(0 <= chi_val <= 1) throw(ArgumentError("Mole fraction must be 0-1")) end
     chi = chi_val * NoUnits
@@ -334,26 +334,26 @@ end
 # MoleFraction -> VolumeFraction/NumberDensity require rho_solution
 function cconvert(
     chi_val::Real, ::Type{MoleFraction}, ::Type{VolumeFraction};
-    M_solute, M_solvent, rho_solute, rho_solution
+    M_solute, M_solvent, rho_solute, rho_solution, kwargs...
 )
     # Go via Molarity
-    C = cconvert(chi_val, MoleFraction, Molarity; M_solute=M_solute, M_solvent=M_solvent, rho_solution=rho_solution)
-    return cconvert(C, Molarity, VolumeFraction; M_solute=M_solute, rho_solute=rho_solute)
+    C = cconvert(chi_val, MoleFraction, Molarity; M_solute, M_solvent, rho_solution)
+    return cconvert(C, Molarity, VolumeFraction; M_solute, rho_solute)
 end
 
 function cconvert(
     chi_val::Real, ::Type{MoleFraction}, ::Type{NumberDensity};
-    M_solute, M_solvent, rho_solution
+    M_solute, M_solvent, rho_solution, kwargs...
 )
     # Go via Molarity
-    C = cconvert(chi_val, MoleFraction, Molarity; M_solute=M_solute, M_solvent=M_solvent, rho_solution=rho_solution)
+    C = cconvert(chi_val, MoleFraction, Molarity; M_solute, M_solvent, rho_solution)
     return cconvert(C, Molarity, NumberDensity)
 end
 
 # --- Mass Fraction Conversions ---
 function cconvert(
     mf_val::Real, ::Type{MassFraction}, ::Type{Molarity};
-    M_solute, rho_solution
+    M_solute, rho_solution, kwargs...
 )
     if !(0 <= mf_val <= 1) throw(ArgumentError("Mass fraction must be 0-1")) end
     mf = mf_val * NoUnits
@@ -373,7 +373,7 @@ end
 
 function cconvert(
     mf_val::Real, ::Type{MassFraction}, ::Type{Molality};
-    M_solute
+    M_solute, kwargs...
 )
     if !(0 <= mf_val < 1) throw(ArgumentError("Mass fraction must be 0 <= mf < 1 for Molality")) end
     mf = mf_val * NoUnits
@@ -392,7 +392,7 @@ end
 
 function cconvert(
     mf_val::Real, ::Type{MassFraction}, ::Type{MoleFraction};
-    M_solute, M_solvent
+    M_solute, M_solvent, kwargs...
 )
     if !(0 <= mf_val <= 1) throw(ArgumentError("Mass fraction must be 0-1")) end
     mf = mf_val * NoUnits
@@ -413,7 +413,7 @@ end
 
 function cconvert(
     mf_val::Real, ::Type{MassFraction}, ::Type{VolumeFraction};
-    rho_solute, rho_solution
+    rho_solute, rho_solution, kwargs...
 )
     # Note: This uses rho_solution, relating V_solute to V_solution via masses
     if !(0 <= mf_val <= 1) throw(ArgumentError("Mass fraction must be 0-1")) end
@@ -434,17 +434,17 @@ end
 
 function cconvert(
     mf_val::Real, ::Type{MassFraction}, ::Type{NumberDensity};
-    M_solute, rho_solution
+    M_solute, rho_solution, kwargs...
 )
     # Go via Molarity
-    C = cconvert(mf_val, MassFraction, Molarity; M_solute=M_solute, rho_solution=rho_solution)
+    C = cconvert(mf_val, MassFraction, Molarity; M_solute, rho_solution)
     return cconvert(C, Molarity, NumberDensity)
 end
 
 # --- Volume Fraction Conversions ---
 function cconvert(
     vf_val::Real, ::Type{VolumeFraction}, ::Type{Molarity};
-    M_solute, rho_solute
+    M_solute, rho_solute, kwargs...
 )
     # Inverse of Molarity -> VolumeFraction
     # Assumes vf = V_solute / V_solution
@@ -464,7 +464,7 @@ end
 
 function cconvert(
     vf_val::Real, ::Type{VolumeFraction}, ::Type{MassFraction};
-    rho_solute, rho_solution
+    rho_solute, rho_solution, kwargs...
 )
     # Inverse of MassFraction -> VolumeFraction
      if !(0 <= vf_val <= 1) throw(ArgumentError("Volume fraction must be 0-1")) end
@@ -486,35 +486,35 @@ end
 # VolumeFraction -> Molality/MoleFraction/NumberDensity require more info or intermediate steps
 function cconvert(
     vf_val::Real, ::Type{VolumeFraction}, ::Type{Molality};
-    M_solute, rho_solute, rho_solution
+    M_solute, rho_solute, rho_solution, kwargs...
 )
     # Go via Molarity
-    C = cconvert(vf_val, VolumeFraction, Molarity; M_solute=M_solute, rho_solute=rho_solute)
+    C = cconvert(vf_val, VolumeFraction, Molarity; M_solute, rho_solute)
     # Need M_solute and rho_solution for Molarity -> Molality step (already required)
-    return cconvert(C, Molarity, Molality; M_solute=M_solute, rho_solution=rho_solution)
+    return cconvert(C, Molarity, Molality; M_solute, rho_solution)
 end
 
 function cconvert(
     vf_val::Real, ::Type{VolumeFraction}, ::Type{MoleFraction};
-    M_solute, M_solvent, rho_solute, rho_solution
+    M_solute, M_solvent, rho_solute, rho_solution, kwargs...
 )
     # Go via Molarity
-    C = cconvert(vf_val, VolumeFraction, Molarity; M_solute=M_solute, rho_solute=rho_solute)
+    C = cconvert(vf_val, VolumeFraction, Molarity; M_solute, rho_solute)
     # Need M_solute, M_solvent, rho_solution for Molarity -> MoleFraction step (already required)
-    return cconvert(C, Molarity, MoleFraction; M_solute=M_solute, M_solvent=M_solvent, rho_solution=rho_solution)
+    return cconvert(C, Molarity, MoleFraction; M_solute, M_solvent, rho_solution)
 end
 
 function cconvert(
     vf_val::Real, ::Type{VolumeFraction}, ::Type{NumberDensity};
-    M_solute, rho_solute
+    M_solute, rho_solute, kwargs...
 )
      # Go via Molarity
-    C = cconvert(vf_val, VolumeFraction, Molarity; M_solute=M_solute, rho_solute=rho_solute)
+    C = cconvert(vf_val, VolumeFraction, Molarity; M_solute, rho_solute)
     return cconvert(C, Molarity, NumberDensity)
 end
 
 # --- Number Density Conversions ---
-function cconvert(N_val, ::Type{NumberDensity}, ::Type{Molarity})
+function cconvert(N_val, ::Type{NumberDensity}, ::Type{Molarity}; kwargs...)
     N = _ensure_unit(N_val, DEFAULT_NUMBERDENSITY_UNIT)
     molarity = N / AVOGADRO
     return uconvert(DEFAULT_MOLARITY_UNIT, molarity)
@@ -523,34 +523,34 @@ end
 # Other NumberDensity conversions go via Molarity
 function cconvert(
     N_val, ::Type{NumberDensity}, ::Type{Molality};
-    M_solute, rho_solution 
+    M_solute, rho_solution, kwargs...
 )
     C = cconvert(N_val, NumberDensity, Molarity)
-    return cconvert(C, Molarity, Molality; M_solute=M_solute, rho_solution=rho_solution)
+    return cconvert(C, Molarity, Molality; M_solute, rho_solution)
 end
 
 function cconvert(
     N_val, ::Type{NumberDensity}, ::Type{MoleFraction};
-    M_solute, M_solvent, rho_solution
+    M_solute, M_solvent, rho_solution, kwargs...
 )
     C = cconvert(N_val, NumberDensity, Molarity)
-    return cconvert(C, Molarity, MoleFraction; M_solute=M_solute, M_solvent=M_solvent, rho_solution=rho_solution)
+    return cconvert(C, Molarity, MoleFraction; M_solute, M_solvent, rho_solution)
 end
 
 function cconvert(
     N_val, ::Type{NumberDensity}, ::Type{MassFraction};
-    M_solute, rho_solution
+    M_solute, rho_solution, kwargs...
 )
     C = cconvert(N_val, NumberDensity, Molarity)
-    return cconvert(C, Molarity, MassFraction; M_solute=M_solute, rho_solution=rho_solution)
+    return cconvert(C, Molarity, MassFraction; M_solute, rho_solution)
 end
 
 function cconvert(
     N_val, ::Type{NumberDensity}, ::Type{VolumeFraction};
-    M_solute, rho_solute
+    M_solute, rho_solute, kwargs...
 )
     C = cconvert(N_val, NumberDensity, Molarity)
-    return cconvert(C, Molarity, VolumeFraction; M_solute=M_solute, rho_solute=rho_solute)
+    return cconvert(C, Molarity, VolumeFraction; M_solute, rho_solute)
 end
 
 # ==============================================================================
