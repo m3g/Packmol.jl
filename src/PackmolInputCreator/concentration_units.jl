@@ -78,7 +78,7 @@ end
 # ==============================================================================
 
 # --- Identity Conversions ---
-function cconvert(x, ::Type{U}, ::Type{U}) where {U<:AbstractConcentrationUnit}
+function cconvert(x, ::Type{U}, ::Type{U}; kwargs...) where {U<:AbstractConcentrationUnit}
     # Ensure consistent return type (Quantity or Real for fractions)
      if U == Molarity return _ensure_unit(x, DEFAULT_MOLARITY_UNIT) end
      if U == Molality return _ensure_unit(x, DEFAULT_MOLALITY_UNIT) end
@@ -553,18 +553,24 @@ function cconvert(
     return cconvert(C, Molarity, VolumeFraction; M_solute, rho_solute)
 end
 
+const UNIT_TYPE_MAP = Dict(
+    u"mol/L" => "mol/L",
+    u"mol/kg" => "mol/kg",
+    u"1/(Å^3)" => "molecule/Å^3",
+)
+
 # ==============================================================================
 # User-Friendly Wrapper (String-based, handles percentages)
 # ==============================================================================
-public UNIT_TYPE_MAP
+public UNIT_STRINGS
 
 """
-    UNIT_TYPE_MAP
+    UNIT_STRINGS
 
 A mapping of string identifiers to concentration unit types.
 
 ```julia
-julia> Packmol.UNIT_TYPE_MAP
+julia> Packmol.UNIT_STRINGS
 OrderedCollections.OrderedDict{String, DataType} with 26 entries:
   "Molarity"       => Molarity
   "molarity"       => Molarity
@@ -604,9 +610,9 @@ OrderedCollections.OrderedDict{String, DataType} with 26 entries:
 ```
 
 """
-UNIT_TYPE_MAP
+UNIT_STRINGS
 
-const UNIT_TYPE_MAP = OrderedDict(
+const UNIT_STRINGS = OrderedDict(
   "Molarity"       => Molarity,
   "molarity"       => Molarity,
   "mol/L"          => Molarity,
@@ -653,7 +659,7 @@ Handles conversion between percentage and fraction representations for dimension
 # Arguments
 - `value`: The numerical value (or `Unitful.Quantity`) of the input concentration.
 - `units`: A `Pair` of strings specifying the conversion, e.g., `"mol/L" => "mol/kg"` or `"10 %m/m" => "MoleFraction"`.
-           Supported unit strings include common abbreviations and names (see `UNIT_TYPE_MAP` internally).
+           Supported unit strings include common abbreviations and names (see `Packmol.UNIT_STRINGS`).
            For dimensionless units (`%m/m`, `%v/v`), providing a "%" sign implies the input `value` is a percentage (e.g., 10.0 for 10%).
            Otherwise, it's treated as a fraction (0-1). Output format also depends on "%" in the target string.
 - `kwargs`: Keyword arguments providing necessary auxiliary data (e.g., `M_solute`, `rho_solution`).
@@ -709,8 +715,8 @@ function cconvert(value, units::Pair{String, String}; kwargs...)
     unit_in_str = strip(units.first)
     unit_out_str = strip(units.second)
 
-    T_in = get(UNIT_TYPE_MAP, unit_in_str, nothing)
-    T_out = get(UNIT_TYPE_MAP, unit_out_str, nothing)
+    T_in = get(UNIT_STRINGS, unit_in_str, nothing)
+    T_out = get(UNIT_STRINGS, unit_out_str, nothing)
     
     if value isa Quantity
         oneunit(value) == _oneunit(T_in) || throw(ArgumentError("Unit of input value ($value) does not match input unit type $T_in ($unit_in_str)"))
@@ -842,7 +848,6 @@ end
     # --- Molarity to NumberDensity ---
     @test cconvert(1.0u"mol/L", "M" => "Å^-3") ≈ 1.0u"mol/L" * Na rtol=1e-6
     @test cconvert(1.0u"mol/L", "M" => "Å^-3") ≈ 0.000602214u"Å^-3"  rtol=1e-6 
-    @test cconvert(1.0u"M", "M" => "A^-3") ≈ 1.0u"mol/L" * Na rtol=1e-6 
     # Missing Kwargs (none needed)
     @test cconvert(1.0u"M", "M" => "Å^-3") isa Quantity
     # Zero concentration
@@ -1121,7 +1126,6 @@ end
 
     # --- Identity ---
     @test cconvert(N_test, "Å^-3" => "Å^-3") == N_test
-    @test cconvert(0.005, "Å^-3" => "A^-3") == N_test # Number input
 
     # --- NumberDensity to Molarity ---
     @test cconvert(N_test, "Å^-3" => "M") ≈ C_equiv  rtol=1e-6

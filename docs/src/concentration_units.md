@@ -56,10 +56,10 @@ To each type a series of aliases is available, which are used as the `String` un
 * `VolumeFraction`: Represents volume of solute per total volume of solution (dimensionless fraction, 0-1). Assumes volume of pure solute. Often expressed as %v/v. 
 * `NumberDensity`: Represents number of solute particles per volume of solution (e.g., particles/Å³ or particles/m³). 
 
-The complete list aliases that can be associated to each concentration type is defined in the `Packmol.UNIT_TYPE_MAP`:
+The complete list aliases that can be associated to each concentration type is defined in the `Packmol.UNIT_STRINGS`:
 
 ```@docs
-Packmol.UNIT_TYPE_MAP
+Packmol.UNIT_STRINGS
 ```
 
 ## API
