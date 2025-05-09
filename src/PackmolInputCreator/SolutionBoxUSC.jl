@@ -269,8 +269,8 @@ function write_packmol_input(
     # as if it had the same mass density of the solution
     vs = vbox - uconvert(u"Å^3", Mu / ρs / Unitful.Na)
 
-    # number of cossolvent molecules: cossolvent concentration × volume of the solution
-    nc = round(Int, Unitful.Na * concentration * vs)
+    # number of cossoUnitful.Na * concentration * vslvent molecules: cossolvent concentration × volume of the solution
+    nc = round(Int, Unitful.Na * cc_mol * vs)
 
     # Number of solvent molecules
     if nc != 0
@@ -377,7 +377,7 @@ function write_packmol_input(
         """))
     
     if debug 
-        return nw, nc, 2*l
+        return ns, nc, 2*l
     else
         return nothing
     end
@@ -402,17 +402,6 @@ end # function write_packmol_input
     @test system.cossolvent_molar_mass ≈ 18.01u"g/mol" rtol = 0.01
     @test density_pure_solvent(system) ≈ 1.0u"g/mL"
 
-    # In this test, if we (incorrectly) provide the concentration in mol/L,
-    # the conversion of the density table will not change the values
-    system = SolutionBoxUSC(
-        solute_pdbfile = "$test_dir/data/poly_h.pdb",
-        solvent_pdbfile = "$test_dir/data/ethanol.pdb",
-        cossolvent_pdbfile = "$test_dir/data/water.pdb",
-        density_table = dw,
-        concentration_units = "mol/L",
-    )
-    @test first(system.density_table.concentration) ≈ 0.0u"mol/L" atol=0.01u"mol/L"
-    @test last(system.density_table.concentration) ≈ 1.0u"mol/L" rtol=0.01
 
     # System of water in water, easy to test
     system = SolutionBoxUSC(
@@ -499,5 +488,32 @@ end # function write_packmol_input
     @test Packmol.interpolate_density(system, 0.0, "x") ≈ 0.791u"g/mL" atol=0.01u"g/mL"
     @test Packmol.interpolate_density(system, 1.0, "x") ≈ 0.9981u"g/mL" atol=0.01u"g/mL"
     @test Packmol.interpolate_density(system, 0.5, "x") ≈ 0.863u"g/mL" atol=0.01u"g/mL"
+
+    tmp_input_file = tempname() * ".inp"
+    rm(tmp_input_file, force=true)
+    r1 = write_packmol_input(system; concentration = 0.5, margin = 20.0, input = tmp_input_file, debug = true, cubic = true)
+    @test isfile(tmp_input_file)
+    @test r1[1] == 13527
+    @test r1[2] == 13527
+    @test r1[3] ≈ [118.81, 118.81, 118.81]u"Å"
+
+    rm(tmp_input_file, force=true)
+    r1 = write_packmol_input(system; concentration = 0.5, margin = 20.0, input = tmp_input_file, debug = true)
+    @test isfile(tmp_input_file)
+    @test r1[1] == 10075
+    @test r1[2] == 10075
+    @test r1[3] ≈ [117.37, 89.79, 118.81]u"Å"
+
+    # In this test, if we (incorrectly) provide the concentration in mol/L,
+    # the conversion of the density table will not change the values
+    system = SolutionBoxUSC(
+        solute_pdbfile = "$test_dir/data/poly_h.pdb",
+        solvent_pdbfile = "$test_dir/data/ethanol.pdb",
+        cossolvent_pdbfile = "$test_dir/data/water.pdb",
+        density_table = dw,
+        concentration_units = "mol/L",
+    )
+    @test first(system.density_table.concentration) ≈ 0.0u"mol/L" atol=0.01u"mol/L"
+    @test last(system.density_table.concentration) ≈ 1.0u"mol/L" rtol=0.01
 
 end
