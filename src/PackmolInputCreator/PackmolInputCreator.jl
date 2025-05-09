@@ -9,12 +9,11 @@ export SolutionBoxUSC
 export SolutionBoxUS
 export SolutionBoxUWI
 
-abstract type SolutionBox end
-density_pure_solvent(system::SolutionBox) = system.density_table[begin, 2]
-# Will be the pure cosolvent if the density table is complete
-density_highest_cosolvent_concentration(system::SolutionBox) = system.density_table[end, 2] 
-
 const PackmolInputCreatorDirectory = @__DIR__
+
+abstract type SolutionBox end
+
+include("./DensityTable.jl")
 
 #include("concentration.jl")
 include("./concentration_units.jl")
@@ -23,9 +22,4 @@ include("./concentration_units.jl")
 # System types
 include("./SolutionBoxUS.jl")
 include("./SolutionBoxUSC.jl")
-#include("./SolutionBoxUWI.jl")
-
-# Tests
-#include("./test/runtests.jl")
-
-
+include("./SolutionBoxUWI.jl")
