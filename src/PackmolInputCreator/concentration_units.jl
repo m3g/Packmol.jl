@@ -77,6 +77,10 @@ end
 # Core Conversion Logic using Multiple Dispatch
 # ==============================================================================
 
+# Round for error checking, to avoid floating point issues
+_round(x::Real) = round(x; digits=3)
+_round(x::T) where {T<:Quantity} = round(T, x; digits=3)
+
 # --- Identity Conversions ---
 function cconvert(x, ::Type{U}, ::Type{U}; kwargs...) where {U<:AbstractConcentrationUnit}
     # Ensure consistent return type (Quantity or Real for fractions)
@@ -105,9 +109,9 @@ function cconvert(
     m_solution = uconvert(DEFAULT_MASS_QUANTITY_UNIT, rho_s * V0)
     m_solute = uconvert(DEFAULT_MASS_QUANTITY_UNIT, n_solute * Ms)
 
-    if m_solute >= m_solution throw(ArgumentError("Solute mass ($m_solute) >= solution mass ($m_solution)")) end
+    _round(m_solute) >= _round(m_solution) && throw(ArgumentError("Solute mass ($m_solute) >= solution mass ($m_solution)"))
     m_solvent = m_solution - m_solute
-    if m_solvent <= 0 * unit(m_solvent) throw(ArgumentError("Non-positive solvent mass ($m_solvent)")) end
+    _round(m_solvent) < 0 * unit(m_solvent) && throw(ArgumentError("Non-positive solvent mass ($m_solvent)"))
 
     molality = n_solute / m_solvent
     return uconvert(DEFAULT_MOLALITY_UNIT, molality)
@@ -127,9 +131,9 @@ function cconvert(
     m_solution = uconvert(DEFAULT_MASS_QUANTITY_UNIT, rho_s * V0)
     m_solute = uconvert(DEFAULT_MASS_QUANTITY_UNIT, n_solute * Ms)
 
-    if m_solute >= m_solution throw(ArgumentError("Solute mass ($m_solute) >= solution mass ($m_solution)")) end
+    _round(m_solute) > _round(m_solution) && throw(ArgumentError("Solute mass ($m_solute) >= solution mass ($m_solution)"))
     m_solvent = m_solution - m_solute
-    if m_solvent <= 0 * unit(m_solvent) throw(ArgumentError("Non-positive solvent mass ($m_solvent)")) end
+    _round(m_solvent) < 0 * unit(m_solvent) && throw(ArgumentError("Non-positive solvent mass ($m_solvent)"))
 
     n_solvent = uconvert(u"mol", m_solvent / Msv)
     n_total = n_solute + n_solvent
@@ -150,9 +154,8 @@ function cconvert(
     m_solution = uconvert(DEFAULT_MASS_QUANTITY_UNIT, rho_s * V0)
     m_solute = uconvert(DEFAULT_MASS_QUANTITY_UNIT, n_solute * Ms)
 
-    if m_solution <= 0 * unit(m_solution) throw(ArgumentError("Non-positive solution mass ($m_solution)")) end
-    # Allow m_solute == m_solution for pure solute case if C is very high? No, rho_s would be rho_solute.
-    if m_solute > m_solution throw(ArgumentError("Solute mass ($m_solute) > solution mass ($m_solution)")) end
+    _round(m_solution) < 0 * unit(m_solution) && throw(ArgumentError("Non-positive solution mass ($m_solution)"))
+    _round(m_solute) > _round(m_solution) && throw(ArgumentError("Solute mass ($m_solute) > solution mass ($m_solution)"))
 
     mf = m_solute / m_solution # Should be dimensionless
     return ustrip(NoUnits, mf)
@@ -200,9 +203,9 @@ function cconvert(
     m_solute = uconvert(DEFAULT_MASS_QUANTITY_UNIT, n_solute * Ms)
     m_solution = m_solvent_basis + m_solute
 
-    if m_solution <= 0 * unit(m_solution) throw(ArgumentError("Non-positive solution mass ($m_solution)")) end
+    _round(m_solution) < 0 * unit(m_solution) && throw(ArgumentError("Non-positive solution mass ($m_solution)"))
     V_solution = uconvert(DEFAULT_VOLUME_UNIT, m_solution / rho_s)
-    if V_solution <= 0 * unit(V_solution) throw(ArgumentError("Non-positive solution volume ($V_solution)")) end
+    _round(V_solution) < 0 * unit(V_solution) && throw(ArgumentError("Non-positive solution volume ($V_solution)"))
 
     molarity = n_solute / V_solution
     return uconvert(DEFAULT_MOLARITY_UNIT, molarity)
@@ -235,7 +238,7 @@ function cconvert(
     m_solute = uconvert(DEFAULT_MASS_QUANTITY_UNIT, n_solute * Ms)
     m_solution = m_solvent_basis + m_solute
 
-    if m_solution <= 0 * unit(m_solution) throw(ArgumentError("Non-positive solution mass ($m_solution)")) end
+    _round(m_solution) < 0 * unit(m_solution) && throw(ArgumentError("Non-positive solution mass ($m_solution)"))
 
     mf = m_solute / m_solution
     return ustrip(NoUnits, mf)
@@ -266,7 +269,7 @@ function cconvert(
     chi_val::Real, ::Type{MoleFraction}, ::Type{Molarity};
     M_solute, M_solvent, rho_solution, kwargs...
 )
-    if !(0 <= chi_val <= 1) throw(ArgumentError("Mole fraction must be 0-1")) end
+    !(0 <= _round(chi_val) <= 1) && throw(ArgumentError("Mole fraction must be 0-1"))
     chi = chi_val * NoUnits
 
     Ms = _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
@@ -281,9 +284,9 @@ function cconvert(
     m_solvent = uconvert(DEFAULT_MASS_QUANTITY_UNIT, n_solvent * Msv)
     m_solution = m_solute + m_solvent
 
-    if m_solution <= 0 * unit(m_solution) throw(ArgumentError("Non-positive solution mass ($m_solution)")) end
+    _round(m_solution) < 0 * unit(m_solution) && throw(ArgumentError("Non-positive solution mass ($m_solution)"))
     V_solution = uconvert(DEFAULT_VOLUME_UNIT, m_solution / rho_s)
-    if V_solution <= 0 * unit(V_solution) throw(ArgumentError("Non-positive solution volume ($V_solution)")) end
+    _round(V_solution) < 0 * unit(V_solution) && throw(ArgumentError("Non-positive solution volume ($V_solution)"))
 
     molarity = n_solute / V_solution
     return uconvert(DEFAULT_MOLARITY_UNIT, molarity)
@@ -293,7 +296,7 @@ function cconvert(
     chi_val::Real, ::Type{MoleFraction}, ::Type{Molality};
     M_solvent, kwargs...
 )
-    if !(0 <= chi_val < 1) throw(ArgumentError("Mole fraction must be 0 <= χ < 1 for Molality")) end
+    !(0 <= _round(chi_val) < 1) &&  throw(ArgumentError("Mole fraction must be 0 <= χ < 1 for Molality"))
     chi = chi_val * NoUnits
     Msv = _ensure_unit(M_solvent, DEFAULT_MASS_UNIT)
 
@@ -302,7 +305,7 @@ function cconvert(
     n_solvent = (1*NoUnits - chi) * n_total_basis
 
     m_solvent = uconvert(DEFAULT_MASS_QUANTITY_UNIT, n_solvent * Msv)
-    if m_solvent <= 0 * unit(m_solvent) throw(ArgumentError("Non-positive solvent mass ($m_solvent), χ=1?")) end
+    _round(m_solvent) <= 0 * unit(m_solvent) && throw(ArgumentError("Non-positive solvent mass ($m_solvent), χ=1?"))
 
     molality = n_solute / m_solvent
     return uconvert(DEFAULT_MOLALITY_UNIT, molality)
@@ -312,7 +315,7 @@ function cconvert(
     chi_val::Real, ::Type{MoleFraction}, ::Type{MassFraction};
     M_solute, M_solvent, kwargs...
 )
-    if !(0 <= chi_val <= 1) throw(ArgumentError("Mole fraction must be 0-1")) end
+    !(0 <= _round(chi_val) <= 1) && throw(ArgumentError("Mole fraction must be 0-1"))
     chi = chi_val * NoUnits
     Ms = _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
     Msv = _ensure_unit(M_solvent, DEFAULT_MASS_UNIT)
@@ -325,7 +328,7 @@ function cconvert(
     m_solvent = uconvert(DEFAULT_MASS_QUANTITY_UNIT, n_solvent * Msv)
     m_solution = m_solute + m_solvent
 
-    if m_solution <= 0 * unit(m_solution) throw(ArgumentError("Non-positive solution mass ($m_solution)")) end
+    _round(m_solution) <= 0 * unit(m_solution) && throw(ArgumentError("Non-positive solution mass ($m_solution)"))
 
     mf = m_solute / m_solution
     return ustrip(NoUnits, mf)
@@ -355,7 +358,7 @@ function cconvert(
     mf_val::Real, ::Type{MassFraction}, ::Type{Molarity};
     M_solute, rho_solution, kwargs...
 )
-    if !(0 <= mf_val <= 1) throw(ArgumentError("Mass fraction must be 0-1")) end
+    !(0 <= _round(mf_val) <= 1) && throw(ArgumentError("Mass fraction must be 0-1"))
     mf = mf_val * NoUnits
     Ms = _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
     rho_s = _ensure_unit(rho_solution, DEFAULT_DENSITY_UNIT)
@@ -365,7 +368,7 @@ function cconvert(
     n_solute = uconvert(u"mol", m_solute / Ms)
 
     V_solution = uconvert(DEFAULT_VOLUME_UNIT, m_solution_basis / rho_s)
-    if V_solution <= 0 * unit(V_solution) throw(ArgumentError("Non-positive solution volume ($V_solution)")) end
+    _round(V_solution) < 0 * unit(V_solution) && throw(ArgumentError("Non-positive solution volume ($V_solution)"))
 
     molarity = n_solute / V_solution
     return uconvert(DEFAULT_MOLARITY_UNIT, molarity)
@@ -375,7 +378,7 @@ function cconvert(
     mf_val::Real, ::Type{MassFraction}, ::Type{Molality};
     M_solute, kwargs...
 )
-    if !(0 <= mf_val < 1) throw(ArgumentError("Mass fraction must be 0 <= mf < 1 for Molality")) end
+    !(0 <= _round(mf_val) < 1) && throw(ArgumentError("Mass fraction must be 0 <= mf < 1 for Molality"))
     mf = mf_val * NoUnits
     Ms = _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
 
@@ -383,7 +386,7 @@ function cconvert(
     m_solute = mf * m_solution_basis
     m_solvent = (1*NoUnits - mf) * m_solution_basis
 
-    if m_solvent <= 0 * unit(m_solvent) throw(ArgumentError("Non-positive solvent mass ($m_solvent), mf=1?")) end
+    _round(m_solvent) < 0 * unit(m_solvent) && throw(ArgumentError("Non-positive solvent mass ($m_solvent), mf=1?"))
     n_solute = uconvert(u"mol", m_solute / Ms)
 
     molality = n_solute / m_solvent
@@ -394,7 +397,7 @@ function cconvert(
     mf_val::Real, ::Type{MassFraction}, ::Type{MoleFraction};
     M_solute, M_solvent, kwargs...
 )
-    if !(0 <= mf_val <= 1) throw(ArgumentError("Mass fraction must be 0-1")) end
+    !(0 <= _round(mf_val) <= 1) && throw(ArgumentError("Mass fraction must be 0-1"))
     mf = mf_val * NoUnits
     Ms = _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
     Msv = _ensure_unit(M_solvent, DEFAULT_MASS_UNIT)
@@ -416,7 +419,7 @@ function cconvert(
     rho_solute, rho_solution, kwargs...
 )
     # Note: This uses rho_solution, relating V_solute to V_solution via masses
-    if !(0 <= mf_val <= 1) throw(ArgumentError("Mass fraction must be 0-1")) end
+    !(0 <= _round(mf_val) <= 1) && throw(ArgumentError("Mass fraction must be 0-1"))
     mf = mf_val * NoUnits
     rho_pure_s = _ensure_unit(rho_solute, DEFAULT_DENSITY_UNIT)
     rho_s = _ensure_unit(rho_solution, DEFAULT_DENSITY_UNIT)
@@ -426,7 +429,7 @@ function cconvert(
 
     V_solute = uconvert(DEFAULT_VOLUME_UNIT, m_solute / rho_pure_s)
     V_solution = uconvert(DEFAULT_VOLUME_UNIT, m_solution_basis / rho_s)
-    if V_solution <= 0 * unit(V_solution) throw(ArgumentError("Non-positive solution volume ($V_solution)")) end
+    _round(V_solution) < 0 * unit(V_solution) && throw(ArgumentError("Non-positive solution volume ($V_solution)"))
 
     vf = V_solute / V_solution
     return ustrip(NoUnits, vf)
@@ -448,7 +451,7 @@ function cconvert(
 )
     # Inverse of Molarity -> VolumeFraction
     # Assumes vf = V_solute / V_solution
-    if !(0 <= vf_val <= 1) throw(ArgumentError("Volume fraction must be 0-1")) end
+    !(0 <= _round(vf_val) <= 1) && throw(ArgumentError("Volume fraction must be 0-1"))
     vf = vf_val * NoUnits
     Ms = _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
     rho_pure_s = _ensure_unit(rho_solute, DEFAULT_DENSITY_UNIT)
@@ -467,7 +470,7 @@ function cconvert(
     rho_solute, rho_solution, kwargs...
 )
     # Inverse of MassFraction -> VolumeFraction
-     if !(0 <= vf_val <= 1) throw(ArgumentError("Volume fraction must be 0-1")) end
+     !(0 <= _round(vf_val) <= 1) && throw(ArgumentError("Volume fraction must be 0-1"))
      vf = vf_val * NoUnits
      rho_pure_s = _ensure_unit(rho_solute, DEFAULT_DENSITY_UNIT)
      rho_s = _ensure_unit(rho_solution, DEFAULT_DENSITY_UNIT)
@@ -477,7 +480,7 @@ function cconvert(
 
      m_solute = uconvert(DEFAULT_MASS_QUANTITY_UNIT, V_solute * rho_pure_s)
      m_solution = uconvert(DEFAULT_MASS_QUANTITY_UNIT, V_solution_basis * rho_s)
-     if m_solution <= 0 * unit(m_solution) throw(ArgumentError("Non-positive solution mass ($m_solution)")) end
+     _round(m_solution) <= 0 * unit(m_solution) && throw(ArgumentError("Non-positive solution mass ($m_solution)"))
 
      mf = m_solute / m_solution
      return ustrip(NoUnits, mf)
