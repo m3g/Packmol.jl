@@ -6,6 +6,7 @@ using StaticArrays
 import CellListMap
 using CellListMap
 using SPGBox
+using Printf: @printf
 import LinearAlgebra: norm
 import Statistics: mean
 
