@@ -1,5 +1,4 @@
 mutable struct SolutionBoxUWI <: SolutionBox
-    density_units::String
     solute_pdbfile::String
     solute_charge::Int
     water_pdbfile::String
@@ -7,39 +6,11 @@ mutable struct SolutionBoxUWI <: SolutionBox
     anion_pdbfile::String
     cation_charge::Int
     anion_charge::Int
-    density::Float64
-    solute_molar_mass::Float64
-    cation_molar_mass::Float64
-    anion_molar_mass::Float64
+    solute_molar_mass::typeof(1.0u"g/mol")
+    cation_molar_mass::typeof(1.0u"g/mol")
+    anion_molar_mass::typeof(1.0u"g/mol")
+    density_table::DensityTable
 end
-
-# Density of NaCl(aq) (concentrations in mol/kg, densities in g/mL), at 25°C
-# From: https://advancedthermo.com/electrolytes/density_NaCl_Jun2021.html
-const density_NaCl_aq = [ 
-   0.1 	   1.00116 
-   0.2 	   1.00520 
-   0.3 	   1.00921 
-   0.4 	   1.01317 
-   0.5 	   1.01709 
-   0.6 	   1.02098 
-   0.7 	   1.02483 
-   0.8 	   1.02866 
-   0.9 	   1.03245 
-   1.0 	   1.03621 
-   1.2 	   1.04366 
-   1.4 	   1.05096 
-   1.6 	   1.05817 
-   1.8 	   1.06527 
-   2.0 	   1.07227 
-   2.5 	   1.08932 
-   3.0 	   1.10579 
-   3.5 	   1.12170 
-   4.0 	   1.13709 
-   4.5 	   1.15199 
-   5.0 	   1.16644 
-   5.5 	   1.18048 
-   6.0 	   1.19412 
-]
 
 """
     SolutionBoxUWI(; 
@@ -50,8 +21,6 @@ const density_NaCl_aq = [
         anion_pdbfile::String, # optional - CLA by default
         cation_charge::Integer, # optional - 1 by default
         anion_charge::Integer, # optional - -1 by default
-        density::Real=1.00, # optional - 1.00 g/mL by default
-        density_units::String = "g/mL", # optional
         solute_molar_mass = nothing, # optional
         cation_molar_mass = nothing, # optional
         anion_molar_mass = nothing, # optional
@@ -68,11 +37,9 @@ function SolutionBoxUWI(;
     anion_pdbfile::Union{Nothing,String}=nothing,
     cation_charge::Union{Nothing,Integer}=nothing,
     anion_charge::Union{Nothing,Integer}=nothing,
-    density::Real=1.00520,
-    density_units::Union{Nothing,String}="g/mL",
-    solute_molar_mass::Union{Nothing,Real}=nothing,
-    cation_molar_mass::Union{Nothing,Real}=nothing,
-    anion_molar_mass::Union{Nothing,Real}=nothing,
+    solute_molar_mass::Union{Nothing,Number}=nothing,
+    cation_molar_mass::Union{Nothing,Number}=nothing,
+    anion_molar_mass::Union{Nothing,Number}=nothing,
 )
     scratch_dir = tempname()
     mkdir(scratch_dir)
@@ -89,7 +56,7 @@ function SolutionBoxUWI(;
     if isnothing(cation_pdbfile)
         cation = [ Atom(index=1, name="SOD", resname="SOD", resnum=1, x=0.0f0, y=0.0f0, z=0.0f0) ]
         cation_pdbfile = scratch_dir * "/SOD.pdb" 
-        cation_charge = 1
+        isnothing(cation_charge) && (cation_charge = 1)
         write_pdb(cation_pdbfile, cation)
     else
         cation = read_pdb(cation_pdbfile)
@@ -104,11 +71,12 @@ function SolutionBoxUWI(;
     if isnothing(cation_molar_mass)
         cation_molar_mass = mass(cation)
     end
+    cation_molar_mass = cation_molar_mass * 1u"g/mol"
 
     if isnothing(anion_pdbfile)
         anion = [ Atom(index=1, name="CLA", resname="CLA", resnum=1, x=0.0f0, y=0.0f0, z=0.0f0) ]
         anion_pdbfile = scratch_dir * "/CLA.pdb"
-        anion_charge = -1
+        isnothing(anion_charge) && (anion_charge = -1)
         write_pdb(anion_pdbfile, anion)
     else
         anion = read_pdb(anion_pdbfile)
@@ -123,32 +91,17 @@ function SolutionBoxUWI(;
     if isnothing(anion_molar_mass)
         anion_molar_mass = mass(anion)
     end
+    anion_molar_mass = anion_molar_mass * 1u"g/mol"
 
     solute = read_pdb(solute_pdbfile)
     if isnothing(solute_molar_mass)
-        solute_molar_mass = mass(solute)
+        solute_molar_mass = mass(solute) * 1u"g/mol"
     end
     if isnothing(solute_charge)
         solute_charge = sum(charge, eachresidue(solute)) 
     end
 
-    if isnothing(density_units)
-        density_units = "g/mL"
-        @warn "Density units not provided, assuming g/mL." _file=nothing _line=nothing
-    end
-    if density <= 0.0
-        throw(ArgumentError("Density must be positive."))
-    end
-    if !(density_units in ("g/mL", "mol/L"))
-        throw(ArgumentError("Density units must be g/mL or mol/L."))
-    end
-    # Convert density in mol/L to g/mL
-    if density_units == "mol/L"
-        density = density * solvent_molar_mass / 1000
-    end
-
     return SolutionBoxUWI(
-        density_units,
         solute_pdbfile,
         solute_charge,
         water_pdbfile,
@@ -156,7 +109,6 @@ function SolutionBoxUWI(;
         anion_pdbfile,
         cation_charge,
         anion_charge,
-        density,
         solute_molar_mass,
         cation_molar_mass,
         anion_molar_mass,
@@ -173,26 +125,56 @@ function Base.show(io::IO, ::MIME"text/plain", system::SolutionBoxUWI)
         Water pdb file: $(basename(system.water_pdbfile))
         Cation pdb file and charge: $(basename(system.cation_pdbfile)) +$(system.cation_charge)
         Anion pdb file: $(basename(system.anion_pdbfile)) $(system.anion_charge)
-        Density: $(system.density) g/mL
-        Solute molar mass:  $(system.solute_molar_mass) g/mol
-        Cation molar mass: $(system.cation_molar_mass) g/mol
-        Anion molar mass: $(system.anion_molar_mass) g/mol
+        Solute molar mass:  $(system.solute_molar_mass)
+        Cation molar mass: $(system.cation_molar_mass)
+        Anion molar mass: $(system.anion_molar_mass)
     ==================================================================
     """))
 end
 
-
+# Density of NaCl(aq) (concentrations in mol/kg, densities in g/mL), at 25°C
+# From: https://advancedthermo.com/electrolytes/density_NaCl_Jun2021.html
+const density_NaCl_aq = [ 
+   0.1u"mol/kg" 	   1.00116u"g/mL" 
+   0.2u"mol/kg" 	   1.00520u"g/mL" 
+   0.3u"mol/kg" 	   1.00921u"g/mL" 
+   0.4u"mol/kg" 	   1.01317u"g/mL" 
+   0.5u"mol/kg" 	   1.01709u"g/mL" 
+   0.6u"mol/kg" 	   1.02098u"g/mL" 
+   0.7u"mol/kg" 	   1.02483u"g/mL" 
+   0.8u"mol/kg" 	   1.02866u"g/mL" 
+   0.9u"mol/kg" 	   1.03245u"g/mL" 
+   1.0u"mol/kg" 	   1.03621u"g/mL" 
+   1.2u"mol/kg" 	   1.04366u"g/mL" 
+   1.4u"mol/kg" 	   1.05096u"g/mL" 
+   1.6u"mol/kg" 	   1.05817u"g/mL" 
+   1.8u"mol/kg" 	   1.06527u"g/mL" 
+   2.0u"mol/kg" 	   1.07227u"g/mL" 
+   2.5u"mol/kg" 	   1.08932u"g/mL" 
+   3.0u"mol/kg" 	   1.10579u"g/mL" 
+   3.5u"mol/kg" 	   1.12170u"g/mL" 
+   4.0u"mol/kg" 	   1.13709u"g/mL" 
+   4.5u"mol/kg" 	   1.15199u"g/mL" 
+   5.0u"mol/kg" 	   1.16644u"g/mL" 
+   5.5u"mol/kg" 	   1.18048u"g/mL" 
+   6.0u"mol/kg" 	   1.19412u"g/mL" 
+]
 
 """
     write_packmol_input(
-        system::SolutionBoxUSC;
-        ionic_concentration::Real=0.16, # mol/L
+        system::SolutionBoxUWI;
+        ionic_concentration::Real=0.16u"mol/L",
+        # Set density or provide a density table
+        density::Union{Nothing,Number}=nothing, # g/mL
+        density_table::Union{Nothing,AbstractMatrix{<:Number}}=density_NaCl_aq,
+        # Optional set names
         input="box.inp",
         output="system.pdb",
-        # box size
-        box_sides::AbstractVector{<:Real}, # or
-        margin::Real,
-        cubic::Bool = false,
+        # box size or margin: default is a 20u"Å" margin
+        box_sides::AbstractVector{<:Number}, # or
+        margin::Number=20u"Å",
+        # Optional: defaults to cubic box
+        cubic::Bool=true,
     )
 
 """
