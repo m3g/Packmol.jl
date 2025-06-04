@@ -1,7 +1,7 @@
 name = "Packmol"
 uuid = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
 authors = ["Leandro Martinez <lmartine@unicamp.br> and contributors"]
-version = "0.1.14-DEV"
+version = "0.1.13-DEV"
 
 [deps]
 CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
@@ -26,7 +26,7 @@ ForwardDiff = "0.10"
 LinearAlgebra = "1.9"
 NativeFileDialog = "0.2.1"
 OrderedCollections = "1.8.0"
-PDBTools = "2.9.0"
+PDBTools = "2.9.0, 3"
 Packmol_jll = "21.0.1"
 Parameters = "0.12"
 Printf = "1.9"
