@@ -48,7 +48,7 @@ jobs:
           $juliabin = julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'
           Write-Host "julia binary path: ${juliabin}"
           cd .\test\run_packmol
-          & "$juliabinpackmol" -i water_box.inp
+          & "$juliabin\packmol" -i water_box.inp
           julia -e 'using Test; @test isfile("water_box.pdb")'
           Write-Host "Testing packmol APP ... ok"
   docs:
