@@ -33,7 +33,7 @@ jobs:
         if: runner.os != 'Windows' && matrix.version == 'pre' 
         shell: bash
         run: |
-          julia -e 'import Pkg; Pkg.Apps.develop("Packmol")'
+          julia -e 'import Pkg; dir=joinpath(Pkg.depots()[1], "dev", "Packmol"); Pkg.Apps.develop(path=dir)'
           packmol_dir=`julia -e 'import Pkg; print(joinpath(Pkg.depots()[1], "dev", "Packmol"))'`
           cd $packmol_dir/test
           "$HOME/.julia/bin/packmol" < water_box.inp
@@ -41,8 +41,8 @@ jobs:
         if: runner.os == 'Windows' && matrix.version == 'pre'
         shell: pwsh
         run: |
+          julia -e 'import Pkg; dir=joinpath(Pkg.depots()[1], "dev", "Packmol"); Pkg.Apps.develop(path=dir)'
           julia -e 'import Pkg; Pkg.Apps.develop("Packmol")'
-          packmol_dir=`julia -e 'import Pkg; print(joinpath(Pkg.depots()[1], "dev", "Packmol"))'`
           cd $packmol_dir\test
           & "$env:USERPROFILE\.julia\bin\packmol.exe" < water_box.inp
   docs:
