@@ -35,5 +35,6 @@ include("./mono_atomic.jl")
 
 # Runner for the legacy packmol 
 include("./packmol_runner.jl")
+include("./CLI.jl")
 
 end

@@ -15,20 +15,36 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.9'
-          - 'nightly'
+          - '1.10'
+          - 'release'
         os:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-      - uses: julia-actions/cache@v1
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@latest
+      - uses: julia-actions/julia-runtest@latest
+      - name: install and run packmol app (unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          julia -e 'import Pkg; Pkg.develop(PackageSpec(path=pwd()))'
+          julia -e 'import Pkg; Pkg.Apps.develop("Packmol")'
+          cd .julia/dev/Packmol/test
+          "$HOME/.julia/bin/packmol" < water_box.inp
+      - name: install and run packmol app (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          julia -e 'import Pkg; Pkg.develop(PackageSpec(path=pwd()))'
+          julia -e 'import Pkg; Pkg.Apps.develop("Packmol")'
+          Set-Location .julia\dev\Packmol\test
+          & "$env:USERPROFILE\.julia\bin\packmol.exe" < water_boxl.inp
   docs:
     name: Documentation
     runs-on: ubuntu-latest
