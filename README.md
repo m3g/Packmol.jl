@@ -9,7 +9,7 @@ independent package with a faster and improved version of the Packmol package.
 
 ## Installation
 
-Install Julia in your system, with [juliaup](https://github.com/JuliaLang/juliaup#juliaup---julia-version-manager)
+Install the latest Julia version in your system, with [juliaup](https://github.com/JuliaLang/juliaup#juliaup---julia-version-manager)
 
 ### Interactive use
 
@@ -43,7 +43,7 @@ Install the `packmol` app with:
 julia -e 'import Pkg; Pkg.Apps.add("Packmol")'
 ```
 
-Add the `.julia/bin` to your path, and use packmol with:
+Add the directory of julia binaries (`$HOME/.julia/bin`) to your path, and use packmol with:
 ```
 packmol -i input.inp
 ```
@@ -52,11 +52,11 @@ as a standalone application.
 ### Updating
 
 To keep Packmol up-to-date, use:
-```julia-repl
-julia> import Pkg; Pkg.activate("Packmol"; shared=true); Pkg.update()
+```
+julia> import Pkg; Pkg.update()
 ```
 
-(or type `] activate @Packmol` and then `] up`, at the `julia>` prompt). 
+(or type `] up`, at the `julia>` prompt). 
 
 Additionally, it is possible to disable the loading of the file-dialog machinery
 by setting the system environment variable `PACKMOL_GUI="false"`. This might be
