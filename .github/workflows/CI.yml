@@ -36,7 +36,7 @@ jobs:
           echo "Testing packmol APP ... "
           julia -e 'import Pkg; dir=joinpath(Pkg.depots()[1], "dev", "Packmol"); Pkg.Apps.develop(path=dir)'
           packmol_dir=`julia -e 'import Pkg; print(joinpath(Pkg.depots()[1], "dev", "Packmol"))'`
-          cd $packmol_dir/test/run_packmol
+          cd ./test/run_packmol
           "$HOME/.julia/bin/packmol" < water_box.inp
           julia -e 'using Test; @test isfile("water_box.pdb")'
       - name: install and run packmol app (windows)
@@ -46,8 +46,8 @@ jobs:
           echo "Testing packmol APP ... "
           julia -e 'import Pkg; dir=joinpath(Pkg.depots()[1], "dev", "Packmol"); Pkg.Apps.develop(path=dir)'
           julia -e 'import Pkg; Pkg.Apps.develop("Packmol")'
-          cd $packmol_dir\test\run_packmol
-          & "$env:USERPROFILE\.julia\bin\packmol.exe" < water_box.inp
+          cd .\test\run_packmol
+          "$env:USERPROFILE\.julia\bin\packmol.exe" < water_box.inp
           julia -e 'using Test; @test isfile("water_box.pdb")'
   docs:
     name: Documentation
