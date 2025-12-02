@@ -9,17 +9,15 @@ independent package with a faster and improved version of the Packmol package.
 
 ## Installation
 
-1. Install Julia in your system, with [juliaup](https://github.com/JuliaLang/juliaup#juliaup---julia-version-manager)
+Install the latest Julia version in your system, with [juliaup](https://github.com/JuliaLang/juliaup#juliaup---julia-version-manager)
 
-2. Launch julia and install this package:
+### Interactive use
+
+Install the Packmol package within Julia:
 
 ```julia-repl
 julia> import Pkg; Pkg.add("Packmol")
 ```
-
-## Usage
-
-### Interactive use
 
 Run packmol in your input file with:
 
@@ -32,51 +30,33 @@ julia> run_packmol()
 This will open a file browser, from which you can choose the input file for `packmol`. 
 Packmol will run immediately once the file is open.
 
-Alternativelly, you can provide the path to the file explicitly, with:
+Alternatively, you can provide the path to the file explicitly, with:
 
 ```julia-repl
 julia> run_packmol(raw"C:\users\my_user\my_files\my_input_file.inp")
 ```
 
-### Scripting
+### Command line interface
 
-For command-line usage, we suggest the following procedure:
-
-Start Julia and create an environment where packmol is installed:
-
-```julia-repl
-julia> import Pkg
-
-julia> Pkg.activate("Packmol", shared=true)
-
-julia> Pkg.add("Packmol")
-
-julia> exit()
+Install the `packmol` app with:
+```
+julia -e 'import Pkg; Pkg.Apps.add("Packmol")'
 ```
 
-Next, copy this into a `packmol.jl` file:
-
-```julia
-import Pkg; Pkg.activate("Packmol", shared=true) # Activate Packmol environment
-using Packmol
-for input_file in ARGS
-    run_packmol(input_file)
-end
+Add the directory of julia binaries (`$HOME/.julia/bin`) to your path, and use packmol with:
 ```
-
-This script can be executed from the command line with
+packmol -i input.inp
 ```
-julia packmol.jl packmol_input1.inp packmol_input2.inp
-```
+as a standalone application.
 
-to run `packmol` for one or more input files.
+### Updating
 
 To keep Packmol up-to-date, use:
-```julia-repl
-julia> import Pkg; Pkg.activate("Packmol"; shared=true); Pkg.update()
+```
+julia> import Pkg; Pkg.update()
 ```
 
-(or type `] activate @Packmol` and then `] up`, at the `julia>` prompt). 
+(or type `] up`, at the `julia>` prompt). 
 
 Additionally, it is possible to disable the loading of the file-dialog machinery
 by setting the system environment variable `PACKMOL_GUI="false"`. This might be
