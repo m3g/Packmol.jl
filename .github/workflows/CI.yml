@@ -45,7 +45,7 @@ jobs:
         run: |
           Write-Host "Testing packmol APP ... "
           julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
-          juliabin = julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'
+          $juliabin = julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'
           Write-Host "julia binary path: $juliabin"
           cd .\test\run_packmol
           & "$juliabin\packmol.exe" -i water_box.inp
