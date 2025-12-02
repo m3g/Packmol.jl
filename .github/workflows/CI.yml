@@ -36,19 +36,21 @@ jobs:
           juliabin=`julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'`
           echo "julia binary path: $juliabin"
           cd ./test/run_packmol
-          $juliabin/packmol < water_box.inp
+          $juliabin/packmol -i water_box.inp
           julia -e 'using Test; @test isfile("water_box.pdb")'
+          echo "Testing packmol APP ... ok"
       - name: install and run packmol app (windows)
         if: runner.os == 'Windows' && matrix.version == 'pre'
         shell: pwsh
         run: |
-          echo "Testing packmol APP ... "
+          Write-Host "Testing packmol APP ... "
           julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
-          juliabin=`julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'`
-          echo "julia binary path: $juliabin"
+          juliabin = julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'
+          Write-Host "julia binary path: $juliabin"
           cd .\test\run_packmol
-          $juliabin\packmol.exe < water_box.inp
+          & "$juliabin\packmol.exe" -i water_box.inp
           julia -e 'using Test; @test isfile("water_box.pdb")'
+          Write-Host "Testing packmol APP ... ok"
   docs:
     name: Documentation
     runs-on: ubuntu-latest
