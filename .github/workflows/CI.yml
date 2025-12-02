@@ -33,7 +33,7 @@ jobs:
         run: |
           echo "Testing packmol APP ... "
           julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
-          juliabin=`julia -e 'import Pkg; print(joinpath(Pkg.depots[1],"bin"))'`
+          juliabin=`julia -e 'Base.DEPOT_PATH[1],"bin"))'`
           echo "julia binary path: $juliabin"
           cd ./test/run_packmol
           $juliabin/packmol < water_box.inp
@@ -44,7 +44,7 @@ jobs:
         run: |
           echo "Testing packmol APP ... "
           julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
-          juliabin=`julia -e 'import Pkg; print(joinpath(Pkg.depots[1],"bin"))'`
+          juliabin=`julia -e 'Base.DEPOT_PATH[1],"bin"))'`
           echo "julia binary path: $juliabin"
           cd .\test\run_packmol
           $juliabin\packmol.exe < water_box.inp
