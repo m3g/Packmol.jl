@@ -30,7 +30,7 @@ jobs:
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
       - name: install and run packmol app (unix)
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && matrix.version == 'pre' 
         shell: bash
         run: |
           julia -e 'import Pkg; Pkg.Apps.develop("Packmol")'
@@ -38,7 +38,7 @@ jobs:
           cd $packmol_dir/test
           "$HOME/.julia/bin/packmol" < water_box.inp
       - name: install and run packmol app (windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.version == 'pre'
         shell: pwsh
         run: |
           julia -e 'import Pkg; Pkg.Apps.develop("Packmol")'
