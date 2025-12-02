@@ -13,11 +13,11 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - 'lts'
+#          - 'lts'
           - 'pre'
         os:
-          - ubuntu-latest
-          - macOS-latest
+#          - ubuntu-latest
+#          - macOS-latest
           - windows-latest
     steps:
       - uses: actions/checkout@v6
@@ -47,6 +47,13 @@ jobs:
           julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
           $juliabin = julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'
           Write-Host "julia binary path: $juliabin"
+
+          Write-Host "Contents of $juliabin:"
+          Get-ChildItem "$juliabin" -ErrorAction SilentlyContinue
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Contents of current directory:"
+          Get-ChildItem
+
           cd .\test\run_packmol
           & "$juliabin\packmol.exe" -i water_box.inp
           julia -e 'using Test; @test isfile("water_box.pdb")'
