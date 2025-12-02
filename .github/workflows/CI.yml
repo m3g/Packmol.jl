@@ -32,18 +32,22 @@ jobs:
         shell: bash
         run: |
           echo "Testing packmol APP ... "
-          julia -e 'import Pkg; Pkg.Apps.develop(".")'
+          julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
+          juliabin=`julia -e 'import Pkg; print(joinpath(Pkg.depots[1],"bin"))'
+          echo "julia binary path: $juliabin"
           cd ./test/run_packmol
-          "$HOME/.julia/bin/packmol" < water_box.inp
+          $juliabin/packmol < water_box.inp
           julia -e 'using Test; @test isfile("water_box.pdb")'
       - name: install and run packmol app (windows)
         if: runner.os == 'Windows' && matrix.version == 'pre'
         shell: pwsh
         run: |
           echo "Testing packmol APP ... "
-          julia -e 'import Pkg; Pkg.Apps.develop(".")'
+          julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
+          juliabin=`julia -e 'import Pkg; print(joinpath(Pkg.depots[1],"bin"))'
+          echo "julia binary path: $juliabin"
           cd .\test\run_packmol
-          "$env:USERPROFILE\.julia\bin\packmol.exe" < water_box.inp
+          $juliabin\packmol.exe < water_box.inp
           julia -e 'using Test; @test isfile("water_box.pdb")'
   docs:
     name: Documentation
