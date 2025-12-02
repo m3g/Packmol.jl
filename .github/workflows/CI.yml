@@ -33,18 +33,18 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          julia -e 'import Pkg; Pkg.develop(PackageSpec(path=pwd()))'
           julia -e 'import Pkg; Pkg.Apps.develop("Packmol")'
-          cd .julia/dev/Packmol/test
+          packmol_dir=`julia -e 'import Pkg; print(joinpath(Pkg.depots()[1], "dev", "Packmol"))'`
+          cd $packmol_dir/test
           "$HOME/.julia/bin/packmol" < water_box.inp
       - name: install and run packmol app (windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          julia -e 'import Pkg; Pkg.develop(PackageSpec(path=pwd()))'
           julia -e 'import Pkg; Pkg.Apps.develop("Packmol")'
-          Set-Location .julia\dev\Packmol\test
-          & "$env:USERPROFILE\.julia\bin\packmol.exe" < water_boxl.inp
+          packmol_dir=`julia -e 'import Pkg; print(joinpath(Pkg.depots()[1], "dev", "Packmol"))'`
+          cd $packmol_dir\test
+          & "$env:USERPROFILE\.julia\bin\packmol.exe" < water_box.inp
   docs:
     name: Documentation
     runs-on: ubuntu-latest
