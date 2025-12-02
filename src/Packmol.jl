@@ -39,5 +39,8 @@ include("./interatomic_distance_fg.jl")
 
 # Runner for the legacy packmol 
 include("./packmol_runner.jl")
+@static if VERSION >= v"1.12" 
+    include("./CLI.jl")
+end
 
 end

@@ -1,7 +1,6 @@
 import Packmol_jll
 
-packmol_runner = Packmol_jll.packmol()
-
+const packmol_runner = Packmol_jll.packmol()
 export run_packmol
 
 """
@@ -28,7 +27,7 @@ function run_packmol(input_file::String)
     println("Current directory: $current_dir")
     input_file_dir = dirname(abspath(input_file))
     println("Input file directory: $input_file_dir")
-    ouput_file_name = normpath(joinpath(input_file_dir,
+    output_file_name = normpath(joinpath(input_file_dir,
         open(input_file) do io
             for line in eachline(io)
                 if occursin("output", line)
@@ -38,12 +37,12 @@ function run_packmol(input_file::String)
             end
         end
     ))
-    println("Output file: $ouput_file_name")
+    println("Output file: $output_file_name")
     # Run packmol  
     try 
         cd(input_file_dir)
         run(pipeline(`$packmol_runner`, stdin=input_file))
-        println("Wrote output to: ", ouput_file_name)
+        println("Wrote output to: ", output_file_name)
         cd(current_dir)
     catch 
         cd(current_dir)

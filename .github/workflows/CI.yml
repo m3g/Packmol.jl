@@ -3,10 +3,8 @@ on:
   - push
   - pull_request
 concurrency:
-  # Skip intermediate builds: always.
-  # Cancel intermediate builds: only if it is a pull request build.
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
@@ -15,20 +13,44 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.9'
+          - 'lts'
           - 'pre'
         os:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-      - uses: julia-actions/cache@v1
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@latest
+      - uses: julia-actions/julia-runtest@latest
+      - name: install and run packmol app (unix)
+        if: runner.os != 'Windows' && matrix.version == 'pre' 
+        shell: bash
+        run: |
+          echo "Testing packmol APP ... "
+          julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
+          juliabin=`julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'`
+          echo "julia binary path: $juliabin"
+          cd ./test/run_packmol
+          $juliabin/packmol -i water_box.inp
+          julia -e 'using Test; @test isfile("water_box.pdb")'
+          echo "Testing packmol APP ... ok"
+      - name: install and run packmol app (windows)
+        if: runner.os == 'Windows' && matrix.version == 'pre'
+        shell: pwsh
+        run: |
+          Write-Host "Testing packmol APP ... "
+          julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
+          $juliabin = julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'
+          Write-Host "julia binary path: ${juliabin}"
+          cd .\test\run_packmol
+          & "$juliabin\packmol" -i water_box.inp
+          julia -e 'using Test; @test isfile("water_box.pdb")'
+          Write-Host "Testing packmol APP ... ok"
   docs:
     name: Documentation
     runs-on: ubuntu-latest
