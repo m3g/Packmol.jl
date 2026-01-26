@@ -8,6 +8,14 @@ using Base: @kwdef
 using Base.Threads: @spawn
 using PDBTools: Atom, readPDB, coor 
 import CellListMap
+<<<<<<< HEAD
+=======
+using CellListMap
+using SPGBox
+using Printf: @printf
+import LinearAlgebra: norm
+import Statistics: mean
+>>>>>>> origin/system_setup_v0.1.13
 
 const src_dir = @__DIR__
 
@@ -42,5 +50,8 @@ include("./packmol_runner.jl")
 @static if VERSION >= v"1.12" 
     include("./CLI.jl")
 end
+
+# Packmol input file creator
+include("./PackmolInputCreator/PackmolInputCreator.jl")
 
 end
