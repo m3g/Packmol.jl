@@ -19,7 +19,7 @@ function chain_rule!(fg, packmol_system::PackmolSystem{D,T}) where {D,T}
             ilmol = iat + structure_type.natoms
             gmol = partial_derivatives(
                 fg.g[imol],
-                packmol_system.molecule_positon[imol].angles,
+                packmol_system.molecule_positions[imol].angles,
                 structure_type.reference_coordinates, 
                 @view(fg.gxcar[ifmol:ilmol]),
             )
@@ -27,7 +27,7 @@ function chain_rule!(fg, packmol_system::PackmolSystem{D,T}) where {D,T}
             iat += structure_type.natoms
         end
     end
-    return system
+    return packmol_system
 end
 
 #=
@@ -45,45 +45,77 @@ function partial_derivatives(
     gmol::MoleculePosition{D,T}, 
     angles::SVector{D,T},
     reference_coordinates::Vector{SVector{D,T}},
-    gxcar::SVector{D,T},
+    gxcar::AbstractVector{SVector{D,T}},
 ) where {D,T}
+    # Compute rotation derivative matrices
+    ∂v_matrices = rotation_derivative_matrices(angles)
+    
+    # Initialize gradients with current values
     gcm = gmol.cm
     grot = gmol.angles
-    (sb, cb), (sg, cg), (st, ct) = sincos.(angles)
-    #!format: off
-    ∂v∂β = sum(SMatrix[
-        -cb*sg*ct-sb*cg  -cb*cg*ct+sb*sg     cb*st
-        -sb*sg*ct+cb*cg  -sb*cg*ct-cb*sg     sb*st
-                zero(T)          zero(T)   zero(T)
-    ]; dims=1)
-    ∂v∂γ = sum(@SMatrix[
-        -sb*cg*ct-cb*sg   sb*sg*ct-cb*cg  zero(T)
-         cb*cg*ct-sb*sg  -sg*cb*ct-cg*sb  zero(T)
-                  cg*st           -sg*st  zero(T)
-    ]; dims=1)
-    ∂v∂θ = sum(@SMatrix[
-       -sb*sg*st  -sb*cg*st   -sb*ct
-        cb*sg*st   cb*cg*st    cb*ct
-           sg*ct      cg*ct      -st
-    ]; dims=1)
-    ∂rot = vcat(∂v∂β, ∂v∂γ, ∂v∂θ)
-    #!format: on
+    
+    # Loop over all atoms in the molecule
     for i in eachindex(reference_coordinates, gxcar)
         x = reference_coordinates[i]
         gx = gxcar[i]
+        # Gradient contribution from center of mass translation
         gcm += gx
-        grot += x' * ∂rot * gx
+        # Gradient contribution from rotations (chain rule)
+        # For each angle, compute: sum_k (dx/dangle)_k * gx_k
+        # where (dx/dangle)_k = sum_j x_j * (dv_j/dangle)_k
+        grot += SVector(ntuple(d -> dot(x, ∂v_matrices[d] * gx), D))
     end
     return MoleculePosition{D,T}(gcm, grot)
 end
 
 #=
 
-2D case
+Compute the derivative matrices of the rotation matrix with respect to each angle.
+Returns a tuple of D matrices, where D is the dimension (2 or 3).
+
+For 2D: Returns (∂R/∂θ,) where θ is the single rotation angle
+For 3D: Returns (∂R/∂β, ∂R/∂γ, ∂R/∂θ) for the three Euler angles
 
 =#
-function partial_derivatives!(g, x::SVector{2}, system::PackmolSystem{2})
-    error("not implemented.")
+function rotation_derivative_matrices(angles::SVector{3,T}) where {T}
+    # 3D case: Euler angles (β, γ, θ)
+    (sb, cb), (sg, cg), (st, ct) = sincos.(angles)
+    #!format: off
+    # Partial derivatives of the rotation matrix columns with respect to each Euler angle
+    # These are 3x3 matrices where each column is dv_i/dangle
+    ∂v∂β = @SMatrix[
+        -cb*sg*ct-sb*cg  -sb*sg*ct+cb*cg  cb*st
+        -cb*cg*ct+sb*sg  -sb*cg*ct-cb*sg  sb*st
+                zero(T)          zero(T)  zero(T)
+    ]
+    ∂v∂γ = @SMatrix[
+        -sb*cg*ct-cb*sg   cb*cg*ct-sb*sg  zero(T)
+         sb*sg*ct-cb*cg  -sg*cb*ct-cg*sb  zero(T)
+                  cg*st           -sg*st  zero(T)
+    ]
+    ∂v∂θ = @SMatrix[
+        sb*sg*st   cb*sg*st   sg*ct
+        sb*cg*st   cb*cg*st   cg*ct
+       -sb*ct     -cb*ct     -st
+    ]
+    #!format: on
+    return (∂v∂β, ∂v∂γ, ∂v∂θ)
+end
+
+function rotation_derivative_matrices(angles::SVector{2,T}) where {T}
+    # 2D case: Single rotation angle θ
+    θ = angles[1]
+    sθ, cθ = sincos(θ)
+    #!format: off
+    # Derivative of 2D rotation matrix with respect to θ
+    # R(θ) = [cos(θ) -sin(θ)]    =>    dR/dθ = [-sin(θ) -cos(θ)]
+    #        [sin(θ)  cos(θ)]                   [ cos(θ) -sin(θ)]
+    ∂v∂θ = @SMatrix[
+        -sθ  cθ
+        -cθ -sθ
+    ]
+    #!format: on
+    return (∂v∂θ,)
 end
 
 @testitem "gradient chain rule 3D" begin
