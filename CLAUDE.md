@@ -86,7 +86,7 @@ These are the building blocks everything else depends on.
 - [x] Molecule move/rotate (`move!`, `rotate!`)
 - [x] Random molecule placement (`random_move!`)
 - [x] Reference coordinate alignment via inertia tensor (`set_reference_coordinates!`)
-- [~] Gradient chain rule (Cartesian -> rigid-body DOFs) - implemented, recently fixed, **needs tests**
+- [x] Gradient chain rule (Cartesian -> rigid-body DOFs) - implemented and tested
 - [ ] 2D rigid body chain rule tests
 
 #### Input Parser
@@ -118,8 +118,8 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 
 
 #### Periodic boundary conditions
-- [ ] Orthorhombic boxes
-- [ ] Triclinic systems
+- [x] Orthorhombic boxes (`pbc` keyword)
+- [x] Triclinic systems (`unitcell` keyword with CRYST1-style a b c α β γ)
 - [ ] New feature: Recipes for octahedric/icosaedric boxes.
 
 ---
@@ -129,11 +129,11 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 #### Distance Computation
 - [x] Pairwise distance function & gradient (`cartesian_fg!`)
 - [x] CellListMap integration for efficient neighbor search
-- [~] Full `fg!` function combining distance + constraint penalties - **needs thorough testing**
-- [ ] Constraint penalty integration into objective function (per-atom constraint evaluation)
+- [x] Full `fg!` function combining distance + constraint penalties - tested with numerical gradient check
+- [x] Constraint penalty integration into objective function (per-atom constraint evaluation)
 
 #### Optimization Loop
-- [~] Basic SPGBox-based optimization (`packmol()` function exists in `interatomic_distance_fg.jl`)
+- [x] SPGBox-based optimization (`packmol()` function)
 - [ ] Multi-start strategy: initial placement + iterative repositioning of bad molecules
 - [ ] `movebadrandom` heuristic: randomly reposition molecules with worst overlaps
 - [ ] `movefrac` control: fraction of bad molecules moved per iteration
@@ -150,7 +150,7 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 ### Phase 4: Output Generation
 
 #### PDB Output
-- [ ] Write packed coordinates to PDB file
+- [x] Write packed coordinates to PDB file
 - [ ] Residue numbering schemes (`resnumbers` 0/1/2/3)
 - [ ] Chain identifier control (`changechains`, `chain`)
 - [ ] AMBER TER records (`add_amber_ter`, `amber_ter_preserve`)
@@ -177,12 +177,13 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 ### Phase 6: End-to-End Integration & Testing
 
 #### First Running Example
-- [ ] Pack water molecules in a box (simplest realistic test case)
+- [x] Pack water molecules in a box (simplest realistic test case)
 - [ ] Compare output with Fortran Packmol results: not needed. The Fortran code has already a test suite based on CellListMap and Julia. We should use something similar. 
-- [ ] Verify minimum distances satisfy tolerance - and the constraints. 
+- [x] Verify minimum distances satisfy tolerance - and the constraints.
 
 #### Integration Tests
-- [ ] Full pipeline: parse input -> setup system -> optimize -> write output
+- [x] Full pipeline: parse input -> setup system -> optimize -> write output
+- [x] PBC packing: periodic boundary conditions with atom wrapping
 - [ ] Multi-structure systems (e.g., protein + water + ions)
 - [ ] Fixed molecule + mobile molecules
 - [ ] Multiple constraint types in one system
@@ -212,7 +213,7 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 
 ### Phase 8: Polish & Release
 
-- [ ] Resolve Project.toml merge conflict (from v0.1.13 merge)
+- [x] Resolve Project.toml merge conflict
 - [ ] Documentation (Documenter.jl, hosted on GitHub Pages)
 - [ ] CI/CD pipeline for tests
 - [ ] Package registration
@@ -220,15 +221,19 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 
 ---
 
-## Current Priority: Getting a First Running Example
+## Current Priority
 
-The most impactful next step is achieving a complete end-to-end run. This requires:
+The first end-to-end example is working (water box, both with constraints and PBC).
+Key bugs fixed along the way:
+- **Rotation derivative matrices** in `chain_rule.jl` were from a different parameterization than `eulermat()` — rewritten to match.
+- **Inside box constraint** gradient had wrong sign for the left wall (`xc < -side/2` case) in `boxes.jl`.
+- **Project.toml** merge conflicts resolved.
 
-1. **Verify chain rule gradients** (tests are empty in `chain_rule.jl`)
-2. **Complete the `fg!` function** to properly combine distance + constraint penalties
-3. **Implement PDB output writer** for packed coordinates
-4. **Wire up the full pipeline**: `read_packmol_input` -> initialize positions -> optimize -> write output
-5. **Test with a simple water box** (test data already exists in `test/data/water.pdb`)
+Next priorities:
+1. Multi-start strategy for better initial convergence
+2. Multi-structure systems (protein + water + ions)
+3. Additional constraint types (Cylinder, Ellipsoid, Plane)
+4. Output options (residue numbering, chain IDs, CRYST1 record)
 
 ---
 
