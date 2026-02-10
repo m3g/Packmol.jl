@@ -1,7 +1,7 @@
 
 
 @kwdef mutable struct PackmolSystem{D,T}
-    filetype::String
+    filetype::String = "pdb"
     input_file::String
     output_file::String
     tolerance::T = 2.0
@@ -31,11 +31,11 @@
 end
 
 function _indent(s::AbstractString; n=4)
-    idented_str = IOBuffer()
+    indented_str = IOBuffer()
     for line in eachline(IOBuffer(s))
-        println(idented_str, repeat(" ", n) * line)
+        println(indented_str, repeat(" ", n) * line)
     end
-    return String(take!(idented_str))
+    return String(take!(indented_str))
 end
 
 function Base.show(io::IO, ::MIME"text/plain", sys::PackmolSystem{D,T}) where {D,T}
@@ -81,6 +81,19 @@ function _parse_value(T::DataType, keyword::String, input_value; _val_check=x ->
     _val_check(value)
     return value
 end
+
+function _parse_options(T, name::String, val, options::Tuple)
+    for pair in options
+        if first(pair) == val
+            return last(pair)
+        end
+    end
+    throw(ArgumentError("""\n
+        Value "$val" is not valid for option: $name.
+
+    """))
+end
+
 
 _check_movefrac(x) = 0.0 <= x <= 1.0 ? x : throw(ArgumentError("movefrac must be between 0 and 1"))
 
