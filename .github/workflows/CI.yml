@@ -34,7 +34,7 @@ jobs:
           julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
           juliabin=`julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'`
           echo "julia binary path: $juliabin"
-          cd ./test/run_packmol
+          cd ./test/input_files
           $juliabin/packmol -i water_box.inp
           julia -e 'using Test; @test isfile("water_box.pdb")'
           echo "Testing packmol APP ... ok"

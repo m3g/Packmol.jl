@@ -9,18 +9,18 @@ add_box_sides 1.0
 filetype pdb
 seed -1
 
-structure /home/leandro/.julia/dev/MolSimToolkit/src/PackmolInputCreator/test/data/poly_h.pdb
+structure /home/leandro/.julia/dev/MolSimToolkit/src/PackmolInputCreator/test/structure_files/poly_h.pdb
   number 1
   center
   fixed 0. 0. 0. 0. 0. 0.
 end structure
 
-structure /home/leandro/.julia/dev/MolSimToolkit/src/PackmolInputCreator/test/data/water.pdb
+structure /home/leandro/.julia/dev/MolSimToolkit/src/PackmolInputCreator/test/structure_files/water.pdb
   number 10079
   inside box -58.685 -44.895 -59.405, 58.685 44.895 59.405  
 end structure
 
-structure /home/leandro/.julia/dev/MolSimToolkit/src/PackmolInputCreator/test/data/ethanol.pdb
+structure /home/leandro/.julia/dev/MolSimToolkit/src/PackmolInputCreator/test/structure_files/ethanol.pdb
   number 10080
   inside box -58.685 -44.895 -59.405, 58.685 44.895 59.405  
 end structure

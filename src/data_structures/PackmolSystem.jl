@@ -302,7 +302,7 @@ end
 
 @testitem "read_packmol_input" begin
     using Packmol: read_packmol_input
-    file = Packmol.src_dir * "/../test/run_packmol/water_box.inp"
+    file = Packmol.src_dir * "/../test/input_files/water_box.inp"
     sys = read_packmol_input(file)
     @test sys.filetype == "pdb"
     @test sys.output_file == "water_box.pdb"

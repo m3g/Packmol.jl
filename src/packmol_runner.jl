@@ -53,7 +53,7 @@ end
 
 @testitem "run_packmol" begin
     using Packmol
-    test_dir = Packmol.src_dir*"/../test/run_packmol"
+    test_dir = Packmol.src_dir*"/../test/input_files"
     run_packmol("$test_dir/water_box.inp")
     @test isfile("$test_dir/water_box.pdb")
     run_packmol("$test_dir/ieee_signaling.inp")

@@ -1,13 +1,9 @@
 /Manifest.toml
-/test/run_packmol/water_box.pdb
-/test/run_packmol/ieee_signaling_box.pdb
+/test/input_files/water_box.pdb
+/test/input_files/ieee_signaling_box.pdb
 .vscode/settings.json
 docs/build
 docs/Manifest.toml
-src/PackmolInputCreator/test/data/CHLORIDE.pdb
-src/PackmolInputCreator/test/data/packmol_input.inp
-src/PackmolInputCreator/test/data/SODIUM.pdb
-src/PackmolInputCreator/test/data/WATER.pdb
 box.inp
 src/_old_src
 water_box.pdb

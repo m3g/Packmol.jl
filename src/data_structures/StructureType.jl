@@ -158,7 +158,7 @@ end
     using Packmol
     using PDBTools
 
-    file = Packmol.src_dir*"/../test/data/water.pdb"
+    file = Packmol.src_dir*"/../test/structure_files/water.pdb"
     tolerance = 2.0
 
     input_file_block = """
@@ -220,7 +220,7 @@ end
 
 @testitem "fixed molecules" setup=[RigidBody] begin
     using Packmol, PDBTools
-    file = Packmol.src_dir*"/../test/data/diatomic.pdb"
+    file = Packmol.src_dir*"/../test/structure_files/diatomic.pdb"
     tolerance = 2.0
 
     # Fixed molecule: do not move

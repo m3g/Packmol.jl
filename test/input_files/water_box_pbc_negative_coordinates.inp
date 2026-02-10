@@ -1,0 +1,16 @@
+#
+# A box with water with periodic boundary condition (pbc)
+#
+
+tolerance 2.0
+filetype pdb
+output output.pdb
+pbc -20. -20. -20. 20. 20. 20.
+
+structure ./structure_files/water.pdb
+  number 1000
+  outside sphere 0. 0. 0. 10.
+end structure
+
+#check
+#chkgrad
