@@ -2,7 +2,7 @@
 
 julia_version = "1.12.4"
 manifest_format = "2.0"
-project_hash = "510d7014b720e704b21dcb7dde78c9807dec2d98"
+project_hash = "b79d244352cfab55a4cd201c5293fd3219559fed"
 
 [[deps.ATK_jll]]
 deps = ["Artifacts", "Glib_jll", "JLLWrappers", "Libdl"]
@@ -74,6 +74,12 @@ version = "1.6.0"
     IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
     LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
     StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[[deps.DSSP_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Zlib_jll"]
+git-tree-sha1 = "48a249fcd3cc9032191d08216e1acc2d5ca5a321"
+uuid = "74334e00-59ce-546d-b517-81f3b7e1d491"
+version = "4.4.0+1"
 
 [[deps.Dates]]
 deps = ["Printf"]
@@ -379,10 +385,10 @@ uuid = "efcefdf7-47ab-520b-bdef-62a2eaa19f15"
 version = "10.44.0+1"
 
 [[deps.PDBTools]]
-deps = ["Dates", "Downloads", "Format", "InlineStrings", "InteractiveUtils", "LinearAlgebra", "MolSimToolkitShared", "OrderedCollections", "PrecompileTools", "Printf", "StaticArrays", "TestItems"]
-git-tree-sha1 = "b48ce72fa982a211f0408b13e3820210b46278fe"
+deps = ["CellListMap", "ChunkSplitters", "Compat", "Dates", "Downloads", "Format", "InlineStrings", "InteractiveUtils", "LinearAlgebra", "MolSimToolkitShared", "OrderedCollections", "PrecompileTools", "Printf", "ProteinSecondaryStructures", "SIMD", "SparseArrays", "StaticArrays", "TestItems"]
+path = "/home/leandro/.julia/dev/PDBTools"
 uuid = "e29189f1-7114-4dbd-93d0-c5673a921a58"
-version = "3.4.0"
+version = "3.20.1-DEV"
 
     [deps.PDBTools.extensions]
     Plotting = "Plots"
@@ -391,7 +397,7 @@ version = "3.4.0"
     Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 
 [[deps.Packmol]]
-deps = ["CellListMap", "LinearAlgebra", "NativeFileDialog", "OrderedCollections", "Packmol_jll", "Parameters", "Printf", "Random", "SPGBox", "StableRNGs", "StaticArrays", "Statistics", "TestItems", "Unitful"]
+deps = ["CellListMap", "LinearAlgebra", "NativeFileDialog", "OrderedCollections", "PDBTools", "Packmol_jll", "Parameters", "Printf", "Random", "SPGBox", "StableRNGs", "StaticArrays", "Statistics", "TestItems", "Unitful"]
 path = "."
 uuid = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
 version = "0.2.0-DEV"
@@ -454,6 +460,12 @@ git-tree-sha1 = "fbb92c6c56b34e1a2c4c36058f68f332bec840e7"
 uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
 version = "1.11.0"
 
+[[deps.ProteinSecondaryStructures]]
+deps = ["DSSP_jll", "STRIDE_jll", "TestItems"]
+git-tree-sha1 = "da7a6710aff45dfab7c4b7da921ef49aa1605364"
+uuid = "c298f58b-271f-48cb-96ac-5442ca7c67d9"
+version = "2.0.3"
+
 [[deps.Random]]
 deps = ["SHA"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -463,11 +475,23 @@ version = "1.11.0"
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 version = "0.7.0"
 
+[[deps.SIMD]]
+deps = ["PrecompileTools"]
+git-tree-sha1 = "e24dc23107d426a096d3eae6c165b921e74c18e4"
+uuid = "fdea26ae-647d-5447-a871-4b548cad5224"
+version = "3.7.2"
+
 [[deps.SPGBox]]
 deps = ["Compat", "TestItems"]
 git-tree-sha1 = "ddd26d661a38668a4a3fa4a4a565328e59fcb2c4"
 uuid = "bf97046b-3e66-4aa0-9aed-26efb7fac769"
 version = "0.7.2"
+
+[[deps.STRIDE_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "d5f4a36ba095f235070ad651434e74d4de3d63fe"
+uuid = "850473c1-9ef0-5df9-a957-757f4cde8b8b"
+version = "1.0.0+0"
 
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
@@ -482,6 +506,11 @@ version = "1.1.2"
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 version = "1.11.0"
+
+[[deps.SparseArrays]]
+deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
+uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+version = "1.12.0"
 
 [[deps.StableRNGs]]
 deps = ["Random"]
@@ -513,16 +542,19 @@ deps = ["LinearAlgebra"]
 git-tree-sha1 = "ae3bb1eb3bba077cd276bc5cfc337cc65c3075c0"
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 version = "1.11.1"
+weakdeps = ["SparseArrays"]
 
     [deps.Statistics.extensions]
     SparseArraysExt = ["SparseArrays"]
 
-    [deps.Statistics.weakdeps]
-    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-
 [[deps.StyledStrings]]
 uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
 version = "1.11.0"
+
+[[deps.SuiteSparse_jll]]
+deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
+uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
+version = "7.8.3+2"
 
 [[deps.TOML]]
 deps = ["Dates"]

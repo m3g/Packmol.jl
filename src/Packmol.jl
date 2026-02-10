@@ -6,6 +6,7 @@ using LinearAlgebra: norm, eigen, dot, det, Diagonal
 using Statistics: mean
 using Base: @kwdef
 using Base.Threads: @spawn
+using ChunkSplitters: chunks
 using PDBTools: Atom, readPDB, writePDB, coor, center_of_mass
 import CellListMap
 using SPGBox
