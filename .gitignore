@@ -10,3 +10,4 @@ src/PackmolInputCreator/test/data/SODIUM.pdb
 src/PackmolInputCreator/test/data/WATER.pdb
 box.inp
 src/_old_src
+water_box.pdb

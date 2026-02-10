@@ -2,25 +2,21 @@ module Packmol
 
 using TestItems: @testitem, @testsnippet
 using StaticArrays: SVector, SMatrix, @SMatrix, MMatrix
-using LinearAlgebra: norm, eigen
+using LinearAlgebra: norm, eigen, dot, det, Diagonal
 using Statistics: mean
 using Base: @kwdef
 using Base.Threads: @spawn
-using PDBTools: Atom, readPDB, coor 
+using PDBTools: Atom, readPDB, writePDB, coor
 import CellListMap
-<<<<<<< HEAD
-=======
-using CellListMap
 using SPGBox
-using Printf: @printf
-import LinearAlgebra: norm
-import Statistics: mean
->>>>>>> origin/system_setup_v0.1.13
+using Printf: @printf, @sprintf
 
 const src_dir = @__DIR__
 
 # API: exported functions
-export pack_monoatomic!
+export read_packmol_input
+export write_output
+export packmol!
 
 # Constraints
 include("./constraints/constraints_base.jl")
@@ -32,10 +28,10 @@ include("./data_structures/atoms_and_molecules.jl")
 include("./data_structures/StructureType.jl")
 include("./data_structures/PackmolSystem.jl")
 
-# Read input files
+# Random number generation
+include("./random.jl")
 
-
-# Rigid body transformations 
+# Rigid body transformations
 include("./rigid_body/rigid_body.jl")
 include("./rigid_body/chain_rule.jl")
 

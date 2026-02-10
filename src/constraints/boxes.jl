@@ -12,10 +12,13 @@ weight_default[:box] = 5.0
 #
 function orthogonal_wall(::Type{Inside}, center, side, weight, x)
     xc = x - center
-    if -side / 2 < xc < side / 2
-        return zero(x)
+    half = side / 2
+    if xc > half
+        return weight * (xc - half)^2
+    elseif xc < -half
+        return weight * (xc + half)^2
     else
-        return weight * (xc - side / 2)^2
+        return zero(x)
     end
 end
 
@@ -30,10 +33,11 @@ end
 
 function orthogonal_wall_derivative(::Type{Inside}, center, side, weight, x)
     xc = x - center
-    if xc > side / 2
-        dcdx = 2 * weight * (xc - side / 2)
-    elseif xc < -side / 2
-        dcdx = 2 * weight * (side / 2 - xc)
+    half = side / 2
+    if xc > half
+        dcdx = 2 * weight * (xc - half)
+    elseif xc < -half
+        dcdx = 2 * weight * (xc + half)
     else
         dcdx = zero(x)
     end

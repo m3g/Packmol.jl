@@ -66,6 +66,7 @@ Individual test items are defined inline with `@testitem` in the source files.
 - [x] Implemented and tested
 - [~] Partially implemented or untested
 - [ ] Not yet implemented
+- [N] Not required/won´t be ported. 
 
 ---
 
@@ -95,10 +96,8 @@ These are the building blocks everything else depends on.
 - [x] Structure blocks: `structure/end structure`, `number`, `fixed`, `center`, `radius`
 - [x] Constraint parsing: `inside/outside box`, `inside/outside cube`, `inside/outside sphere`
 - [x] Per-atom blocks (`atoms ... end atoms`) with custom constraints
-- [ ] Missing keyword parsing: `discale`, `movefrac`, `movebadrandom`, `sidemax`,
-      `precision`, `fbins`, `fscale`, `use_short_tol`, `short_tol_dist`, `short_tol_scale`,
-      `short_radius`, `short_radius_scale`, `resnumbers`, `changechains`, `chain`,
-      `restart_from`, `restart_to`, `constrain_rotation`, `nloop`
+- [ ] Missing keyword parsing: `discale`, `movefrac`, `movebadrandom`, `sidemax` (won't be supported),
+      `precision`, `fbins` (won´t be supported), `fscale`, `use_short_tol`, `short_tol_dist`, `short_tol_scale`, `short_radius`, `short_radius_scale`, `resnumbers`, `changechains`, `chain`, `restart_from`, `restart_to`, `constrain_rotation`, `nloop`
 
 ---
 
@@ -116,6 +115,12 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [ ] `Ellipsoid` (Inside / Outside) - center, semi-axes, orientation
 - [ ] `Plane` (Over / Below) - point + normal vector (`Over`/`Below` placement types are defined but unused)
 - [ ] Combined constraints per structure (already supported by architecture, needs testing)
+
+
+#### Periodic boundary conditions
+- [ ] Orthorhombic boxes
+- [ ] Triclinic systems
+- [ ] New feature: Recipes for octahedric/icosaedric boxes.
 
 ---
 
@@ -149,7 +154,7 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 - [ ] Residue numbering schemes (`resnumbers` 0/1/2/3)
 - [ ] Chain identifier control (`changechains`, `chain`)
 - [ ] AMBER TER records (`add_amber_ter`, `amber_ter_preserve`)
-- [ ] CONECT record preservation (`connect`)
+- [ ] CONECT record preservation (`connect`) - requires PDBTools.jl to support connectivity.
 - [ ] CRYST1 record with box dimensions (`add_box_sides`)
 
 #### Other Output Formats

@@ -20,6 +20,8 @@
     writebad::Bool = false
     optim_print_level::Int = 0
     chkgrad::Bool = false
+    # Unit cell for periodic boundary conditions (nothing = no PBC)
+    unitcell::Union{Nothing, Matrix{T}} = nothing
     # Internal data for the optimization
     nmols::Int = 0
     atoms::Vector{AtomData{T}} = AtomData{T}[]
@@ -109,6 +111,30 @@ packmol_input_keywords = Dict{String,Function}(
 )
 #! format: on
 
+#=
+    unitcell_matrix(a, b, c, α, β, γ)
+
+Convert CRYST1-style unit cell parameters (sides a, b, c and angles α, β, γ in degrees)
+to a 3×3 unit cell matrix (columns are the cell vectors). Uses the PDB convention:
+  a along x, b in the xy-plane.
+=#
+function unitcell_matrix(::Type{T}, a, b, c, α_deg, β_deg, γ_deg) where {T}
+    α = T(α_deg * π / 180)
+    β = T(β_deg * π / 180)
+    γ = T(γ_deg * π / 180)
+    ax = T(a)
+    bx = T(b) * cos(γ)
+    by = T(b) * sin(γ)
+    cx = T(c) * cos(β)
+    cy = T(c) * (cos(α) - cos(β) * cos(γ)) / sin(γ)
+    cz = sqrt(T(c)^2 - cx^2 - cy^2)
+    @SMatrix [
+        ax  bx  cx
+        zero(T)  by  cy
+        zero(T) zero(T) cz
+    ]
+end
+
 packmol_legacy_keywords = Dict{String,String}(
     "fscale" => "fscale legacy keyword was ignored.",
     "fbins" => "fbins legacy keyword was ignored.",
@@ -147,6 +173,24 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
                 @warn begin
                     packmol_legacy_keywords[keyword]
                 end _line = line _file = input_file
+                continue
+            end
+            # pbc: legacy orthorhombic PBC keyword (3 side lengths)
+            if keyword == "pbc"
+                if length(values) != D
+                    throw(ArgumentError("pbc keyword requires $D values (box side lengths), got $(length(values))"))
+                end
+                sides = [_parse_value(T, "pbc", v) for v in values]
+                input_data[:unitcell] = Matrix{T}(Diagonal(sides))
+                continue
+            end
+            # unitcell: general PBC keyword (6 values: a b c α β γ in CRYST1 convention)
+            if keyword == "unitcell"
+                if length(values) != 2 * D
+                    throw(ArgumentError("unitcell keyword requires $(2*D) values (a b c α β γ), got $(length(values))"))
+                end
+                params = [_parse_value(T, "unitcell", v) for v in values]
+                input_data[:unitcell] = Matrix{T}(unitcell_matrix(T, params...))
                 continue
             end
             if keyword == "structure"
