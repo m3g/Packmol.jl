@@ -1,4 +1,4 @@
-using CellListMap: ParticleSystem, map_pairwise, map_pairwise!
+using CellListMap: ParticleSystem, NeighborPair, pairwise!
 using SPGBox: spgbox!
 
 #
@@ -53,7 +53,8 @@ end
 
 # Updates the function and gradient of the system given a pair of
 # particles within the cutoff.
-function cartesian_fg!(x::T, y::T, i, j, d2, fg::InteratomicDistanceFG, packmol_system) where {T}
+function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_system)
+    (; x, y, i, j, d2) = pair
     iatom = packmol_system.atoms[i]
     jatom = packmol_system.atoms[j]
     if iatom.molecule_index == jatom.molecule_index
@@ -163,8 +164,8 @@ function fg!(g, x,
     # Update CellListMap positions
     cl_system.xpositions .= atom_positions
     # Compute pairwise distance penalties and Cartesian gradients
-    map_pairwise!(
-        (x, y, i, j, d2, output) -> cartesian_fg!(x, y, i, j, d2, output, packmol_system),
+    pairwise!(
+        (pair, output) -> cartesian_fg!(pair, output, packmol_system),
         cl_system,
     )
     # Add constraint penalties and gradients
@@ -444,7 +445,7 @@ end # testitem gradient
     using StaticArrays
     using LinearAlgebra: norm
 
-    input_file = joinpath(Packmol.src_dir, "..", "test", "run_packmol", "water_box_small.inp")
+    input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "water_box_small.inp")
     sys = Packmol.read_packmol_input(input_file)
     @test sys.nmols == 100
     @test length(sys.atoms) == 300

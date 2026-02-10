@@ -1,4 +1,4 @@
-using CellListMap: ParticleSystem, map_pairwise, map_pairwise!
+using CellListMap: ParticleSystem, NeighborPair, pairwise!
 using SPGBox: spgbox!
 
 # Structure carrying the function and gradient of a monoatomic system,
@@ -27,8 +27,8 @@ end
 
 # Updates the function and gradient of the system given a pair of 
 # particles within the cutoff.
-function monoatomic_u_and_g!(x::T, y::T, i, j, d2, fg::MonoAtomicFG, tol) where {T}
-    d = sqrt(d2)
+function monoatomic_u_and_g!(pair::NeighborPair, fg::MonoAtomicFG, tol)
+    (; x, y, i, j, d) = pair
     fg.dmin = min(d, fg.dmin)
     if d < tol
         fg.f += (d - tol)^2
@@ -53,8 +53,8 @@ function fg!(g, x, system, tol)
     for i in eachindex(system.xpositions)
         system.xpositions[i] = eltype(system.xpositions)(@view(x[:, i]))
     end
-    map_pairwise!(
-        (x, y, i, j, d2, fg) -> monoatomic_u_and_g!(x, y, i, j, d2, fg, tol),
+    pairwise!(
+        (pair, fg) -> monoatomic_u_and_g!(pair, fg, tol),
         system,
     )
     # update gradient matrix from the gradient vector of vectors

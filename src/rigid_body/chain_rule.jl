@@ -157,7 +157,7 @@ end
     using CellListMap: ParticleSystem
     using Random
 
-    input_file = joinpath(Packmol.src_dir, "..", "test", "run_packmol", "water_box_small.inp")
+    input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "water_box_small.inp")
     ps = read_packmol_input(input_file; D=3, T=Float64)
 
     rng = Random.MersenneTwister(42)
