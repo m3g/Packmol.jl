@@ -7,3 +7,6 @@ docs/Manifest.toml
 box.inp
 src/_old_src
 water_box.pdb
+test/output.pdb
+output.pdb
+water_box_small.pdb

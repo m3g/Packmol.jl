@@ -151,13 +151,15 @@ function fg!(g, x,
     cl_system,
     packmol_system::PackmolSystem{D,T},
     atom_positions::Vector{SVector{D,T}},
+    free_mol_indices::Vector{Int},
 ) where {D,T}
-    # Interpret optimizer variables as molecule positions and
-    # update packmol_system so chain_rule! reads correct angles
-    mol_pos = reinterpret(MoleculePosition{D,T}, x)
-    packmol_system.molecule_positions .= mol_pos
-    # Compute Cartesian atomic coordinates from molecule DOFs
-    compute_atom_positions!(atom_positions, mol_pos, packmol_system)
+    # Unpack optimizer variables into free molecule slots
+    x_mol = reinterpret(MoleculePosition{D,T}, x)
+    for (k, imol) in enumerate(free_mol_indices)
+        packmol_system.molecule_positions[imol] = x_mol[k]
+    end
+    # Compute Cartesian atomic coordinates from ALL molecule DOFs
+    compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
     # Update CellListMap positions
     cl_system.xpositions .= atom_positions
     # Compute pairwise distance penalties and Cartesian gradients
@@ -167,10 +169,13 @@ function fg!(g, x,
     )
     # Add constraint penalties and gradients
     constraint_fg!(cl_system.fg, atom_positions, packmol_system)
-    # Chain rule: Cartesian → molecule DOF gradients
+    # Chain rule: Cartesian → molecule DOF gradients (for all molecules)
     chain_rule!(cl_system.fg, packmol_system)
-    # Copy to SPGBox gradient vector
-    g .= reinterpret(T, cl_system.fg.g)
+    # Pack only free molecule gradients into optimizer gradient vector
+    g_mol = reinterpret(MoleculePosition{D,T}, g)
+    for (k, imol) in enumerate(free_mol_indices)
+        g_mol[k] = cl_system.fg.g[imol]
+    end
     return cl_system.fg.f
 end
 
@@ -190,76 +195,13 @@ function packmol_callback(spgresult, cl_system, tol, iprint)
     return false
 end
 
-#
-# Bounding box computation from constraints
-#
-constraint_bounds(c::Box) = (c.center - c.sides / 2, c.center + c.sides / 2)
-constraint_bounds(c::Cube) = (c.center .- c.side / 2, c.center .+ c.side / 2)
-constraint_bounds(c::Sphere) = (c.center .- c.radius, c.center .+ c.radius)
 
-function compute_bounding_box(packmol_system::PackmolSystem{D,T}) where {D,T}
-    lo = SVector{D,T}(ntuple(_ -> typemax(T), D))
-    hi = SVector{D,T}(ntuple(_ -> typemin(T), D))
-    for st in packmol_system.structure_types
-        for c in st.constraints
-            clo, chi = constraint_bounds(c)
-            lo = min.(lo, clo)
-            hi = max.(hi, chi)
-        end
-    end
-    return lo, hi
-end
-
-#
-# Initialize molecule positions randomly within constraint bounding box
-# (or within the unit cell for PBC), and center reference coordinates
-# at the origin (required for chain rule).
-#
-function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D,T}
-    # Center reference coordinates at origin (required for chain rule)
-    for st in packmol_system.structure_types
-        if !st.fixed.fixed
-            cm = mean(st.reference_coordinates)
-            st.reference_coordinates .-= Ref(cm)
-        end
-    end
-    # Determine the placement region
-    has_pbc = !isnothing(packmol_system.unitcell)
-    if has_pbc
-        # For PBC, place randomly within the unit cell centered at unitcell_center
-        uc = packmol_system.unitcell
-        center = packmol_system.unitcell_center
-    else
-        # For non-PBC, place within the constraint bounding box
-        lo, hi = compute_bounding_box(packmol_system)
-    end
-    imol = 0
-    for st in packmol_system.structure_types
-        for _ in 1:st.number_of_molecules
-            imol += 1
-            if st.fixed.fixed
-                packmol_system.molecule_positions[imol] = st.fixed.position
-            else
-                if has_pbc
-                    # Random fractional coords in [-0.5, 0.5) → Cartesian, centered at unitcell_center
-                    frac = SVector{D,T}(ntuple(_ -> rand(RNG, T) - T(0.5), D))
-                    cm = SVector{D,T}(uc * frac) + center
-                else
-                    extent = hi - lo
-                    cm = lo + SVector{D,T}(ntuple(d -> rand(RNG, T) * extent[d], D))
-                end
-                angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(RNG, T), D))
-                packmol_system.molecule_positions[imol] = MoleculePosition(cm, angles)
-            end
-        end
-    end
-    return packmol_system
-end
 
 """
     packmol(packmol_system::PackmolSystem; kargs...)
 
 Run the packing optimization on a `PackmolSystem`.
+
 """
 function packmol(
     packmol_system::PackmolSystem{D,T};
@@ -273,6 +215,32 @@ function packmol(
     RNG = Random.Xoshiro(seed)
     println("Initializing molecule positions...")
     initialize_molecules!(packmol_system, RNG)
+
+    # Build index of free (non-fixed) molecules
+    free_mol_indices = Int[]
+    imol = 0
+    for st in packmol_system.structure_types
+        for _ in 1:st.number_of_molecules
+            imol += 1
+            if !st.fixed.fixed
+                push!(free_mol_indices, imol)
+            end
+        end
+    end
+    nfree = length(free_mol_indices)
+
+    # Pre-optimization: move molecules to satisfy geometric constraints
+    # before the main packing (no distance penalties)
+    adjust_constraints!(packmol_system, free_mol_indices, RNG)
+
+    # check mode: write the initial approximation and return
+    if packmol_system.check
+        println("Check mode: writing initial approximation to $(packmol_system.output_file)")
+        if !isempty(packmol_system.output_file)
+            write_output(packmol_system)
+        end
+        return packmol_system
+    end
 
     # Compute initial atom positions
     natoms = length(packmol_system.atoms)
@@ -301,7 +269,8 @@ function packmol(
         volume = prod(unitcell)
     end
     ncells = min(volume / packing_tol^D, natoms)
-    cutoff = max(packing_tol, (volume / ncells)^(one(T) / D))
+    #cutoff = max(packing_tol, (volume / ncells)^(one(T) / D))
+    cutoff = packing_tol
 
     # Set up CellListMap
     fg_output = InteratomicDistanceFG{D,T}(packmol_system)
@@ -315,14 +284,18 @@ function packmol(
         parallel=parallel,
     )
 
-    # Set up optimization variables (flat copy of molecule DOFs)
-    x = copy(reinterpret(T, packmol_system.molecule_positions))
+    # Set up optimization variables: only free molecule DOFs
+    x = Vector{T}(undef, nfree * 2 * D)
+    x_mol = reinterpret(MoleculePosition{D,T}, x)
+    for (k, imol) in enumerate(free_mol_indices)
+        x_mol[k] = packmol_system.molecule_positions[imol]
+    end
     auxvecs = SPGBox.VAux(x, zero(T))
 
     # Run optimization
-    println("Packing $(packmol_system.nmols) molecules...")
+    println("Packing $nfree free molecules ($(packmol_system.nmols) total)...")
     spgboxresult = spgbox!(
-        (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions),
+        (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices),
         x;
         callback=(spgresult) -> packmol_callback(spgresult, cl_system, tol, iprint),
         vaux=auxvecs,
@@ -330,8 +303,11 @@ function packmol(
         nfevalmax=nfevalmax,
     )
 
-    # Update molecule positions with optimized values
-    packmol_system.molecule_positions .= reinterpret(MoleculePosition{D,T}, x)
+    # Update free molecule positions with optimized values
+    x_mol = reinterpret(MoleculePosition{D,T}, x)
+    for (k, imol) in enumerate(free_mol_indices)
+        packmol_system.molecule_positions[imol] = x_mol[k]
+    end
 
     println(spgboxresult)
     println("Minimum distance obtained: ", min(cl_system.fg.dmin, cl_system.cutoff))

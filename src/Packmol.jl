@@ -6,7 +6,7 @@ using LinearAlgebra: norm, eigen, dot, det, Diagonal
 using Statistics: mean
 using Base: @kwdef
 using Base.Threads: @spawn
-using PDBTools: Atom, readPDB, writePDB, coor
+using PDBTools: Atom, readPDB, writePDB, coor, center_of_mass
 import CellListMap
 using SPGBox
 using Printf: @printf, @sprintf
@@ -16,7 +16,7 @@ const src_dir = @__DIR__
 # API: exported functions
 export read_packmol_input
 export write_output
-export packmol!
+export packmol
 
 # Constraints
 include("./constraints/constraints_base.jl")
@@ -40,6 +40,9 @@ include("./mono_atomic.jl")
 
 # Function and gradient of the distance between atoms
 include("./interatomic_distance_fg.jl")
+
+# Initial approximation: placement, constraint pre-optimization
+include("./initial_approximation.jl")
 
 # Runner for the legacy packmol 
 include("./packmol_runner.jl")

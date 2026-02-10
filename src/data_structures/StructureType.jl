@@ -65,7 +65,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
         :reference_coordinates => nothing,
         :constraints => Constraint[],
         :fixed => zero(FixedMoleculeData{D,T}),
-        :center => false,
+        :center => :none,  # :none, :geometric, or :mass
     )
     # Read basic structure data first
     seekstart(input_file_block)
@@ -86,15 +86,22 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
             structure_data[:filename] = filename
             structure_data[:natoms] = length(atoms)
             structure_data[:atoms] = atoms
-            structure_data[:reference_coordinates] = coor(atoms)
+            structure_data[:reference_coordinates] = [SVector{D,T}(c[1:D]...) for c in coor(atoms)]
             structure_data[:radii] = fill(T(tolerance/2), structure_data[:natoms])
             structure_data[:atom_constraints] = [Int[] for _ in 1:structure_data[:natoms]]
         elseif keyword == "number"
             structure_data[:number_of_molecules] = parse(Int, values[1]) 
         elseif keyword == "fixed"
-            structure_data[:fixed] = FixedMoleculeData(true, MoleculePosition{D,T}(parse.(T, values)...))
-        elseif keyword == "center" 
-            structure_data[:center] = true
+            vals = parse.(T, values)
+            cm = SVector{D,T}(vals[1:D]...)
+            angles = SVector{D,T}(vals[D+1:2*D]...)
+            structure_data[:fixed] = FixedMoleculeData(true, MoleculePosition(cm, angles))
+        elseif keyword == "center"
+            structure_data[:center] = :geometric
+        elseif keyword == "centerofmass"
+            structure_data[:center] = :mass
+        elseif keyword == "resnumbers"
+            structure_data[:residue_numbering] = parse(Int, values[1])
         elseif keyword in constraint_placements
             iconstraint += 1
             push!(structure_data[:constraints], parse_constraint["$keyword $(values[1])"](structure_data, values[2:end]; T=T))
@@ -109,7 +116,18 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
     end
     # If molecule is fixed, apply transformation to obtain the reference coordinates
     if structure_data[:fixed].fixed
-        if structure_data[:center]
+        if structure_data[:center] == :mass
+            # centerofmass: use mass-weighted center of mass from PDBTools
+            cm_vec = SVector{D,T}(center_of_mass(structure_data[:atoms])[1:D]...)
+            ref = structure_data[:reference_coordinates]
+            ref .= ref .- Ref(cm_vec)
+            pos = structure_data[:fixed].position
+            R = eulermat(pos.angles...)
+            for i in eachindex(ref)
+                ref[i] = R * ref[i]
+            end
+            ref .= ref .+ Ref(pos.cm)
+        elseif structure_data[:center] == :geometric
             move!(structure_data[:reference_coordinates], structure_data[:fixed].position)
         else
             cm = mean(structure_data[:reference_coordinates])
@@ -117,8 +135,8 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
             structure_data[:reference_coordinates] .+= Ref(cm)
         end
     else
-        if structure_data[:center]
-            throw(ArgumentError("option 'center' cannot be set without fixed position"))
+        if structure_data[:center] != :none
+            throw(ArgumentError("option 'center'/'centerofmass' cannot be set without fixed position"))
         end
     end
     pop!(structure_data, :center)

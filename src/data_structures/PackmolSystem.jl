@@ -20,6 +20,7 @@
     writebad::Bool = false
     optim_print_level::Int = 0
     chkgrad::Bool = false
+    check::Bool = false
     # Unit cell for periodic boundary conditions (nothing = no PBC)
     unitcell::Union{Nothing, Matrix{T}} = nothing
     # Reference center for PBC wrapping (constraints evaluated relative to this point)
@@ -180,6 +181,11 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
             line = strip(line)
             (startswith(line, "#") || isempty(line)) && continue
             keyword, values... = split(line)
+            # Handle no-value keywords first
+            if keyword == "check"
+                input_data[:check] = true
+                continue
+            end
             if haskey(packmol_input_keywords, keyword)
                 field_name, field_value = packmol_input_keywords[keyword](T, first(values))
                 input_data[field_name] = field_value
