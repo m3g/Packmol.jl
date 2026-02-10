@@ -106,15 +106,32 @@ function compute_atom_positions!(
 end
 
 #
+# Wrap position to the unit cell image centered at `center`.
+# CellListMap.wrap_to_first maps to the cell with one corner at the origin;
+# we shift so the cell is centered at `center` instead.
+#
+function wrap_to_center(x::SVector{D,T}, unitcell::AbstractMatrix, center::SVector{D,T}) where {D,T}
+    half = SVector{D,T}(ntuple(_ -> T(0.5), D))
+    offset = SVector{D,T}(unitcell * half)
+    return SVector{D,T}(CellListMap.wrap_to_first(x - center + offset, unitcell)) + center - offset
+end
+
+#
 # Add constraint penalties and gradients to the fg output structure.
+# When PBC is active, atom positions are wrapped to the unit cell centered
+# at unitcell_center before evaluating constraints.
 #
 function constraint_fg!(
     fg_output::InteratomicDistanceFG{D,T},
     atom_positions::Vector{SVector{D,T}},
     packmol_system::PackmolSystem{D,T},
 ) where {D,T}
+    has_pbc = !isnothing(packmol_system.unitcell)
     for (iat, atom) in enumerate(packmol_system.atoms)
         x = atom_positions[iat]
+        if has_pbc
+            x = wrap_to_center(x, packmol_system.unitcell, packmol_system.unitcell_center)
+        end
         st = packmol_system.structure_types[atom.structure_type_index]
         for ic in atom.constraints
             c = st.constraints[ic]
@@ -209,8 +226,9 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
     # Determine the placement region
     has_pbc = !isnothing(packmol_system.unitcell)
     if has_pbc
-        # For PBC, place randomly within the unit cell
+        # For PBC, place randomly within the unit cell centered at unitcell_center
         uc = packmol_system.unitcell
+        center = packmol_system.unitcell_center
     else
         # For non-PBC, place within the constraint bounding box
         lo, hi = compute_bounding_box(packmol_system)
@@ -223,9 +241,9 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
                 packmol_system.molecule_positions[imol] = st.fixed.position
             else
                 if has_pbc
-                    # Random fractional coordinates → Cartesian via unit cell matrix
-                    frac = SVector{D,T}(ntuple(_ -> rand(RNG, T), D))
-                    cm = SVector{D,T}(uc * frac)
+                    # Random fractional coords in [-0.5, 0.5) → Cartesian, centered at unitcell_center
+                    frac = SVector{D,T}(ntuple(_ -> rand(RNG, T) - T(0.5), D))
+                    cm = SVector{D,T}(uc * frac) + center
                 else
                     extent = hi - lo
                     cm = lo + SVector{D,T}(ntuple(d -> rand(RNG, T) * extent[d], D))
@@ -318,11 +336,12 @@ function packmol(
     println(spgboxresult)
     println("Minimum distance obtained: ", min(cl_system.fg.dmin, cl_system.cutoff))
 
-    # For PBC: wrap atom positions into the first unit cell image
+    # For PBC: wrap atom positions to the unit cell centered at unitcell_center
     if has_pbc
+        center = packmol_system.unitcell_center
         compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
         for i in eachindex(atom_positions)
-            atom_positions[i] = CellListMap.wrap_to_first(atom_positions[i], cl_system.unitcell)
+            atom_positions[i] = wrap_to_center(atom_positions[i], packmol_system.unitcell, center)
         end
         # Update molecule centers of mass to wrapped positions
         # (recompute CM from the wrapped atom positions for each molecule)

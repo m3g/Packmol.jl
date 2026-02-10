@@ -118,8 +118,9 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 
 
 #### Periodic boundary conditions
-- [x] Orthorhombic boxes (`pbc` keyword)
-- [x] Triclinic systems (`unitcell` keyword with CRYST1-style a b c α β γ)
+- [x] Orthorhombic boxes (`pbc` keyword: 3 values = side lengths centered at origin; 6 values = xmin/xmax with center at midpoint)
+- [x] Triclinic systems (`unitcell` keyword with CRYST1-style a b c α β γ, centered at origin)
+- [x] Reference center for PBC: constraints evaluated on atoms wrapped to cell centered at `unitcell_center`
 - [ ] New feature: Recipes for octahedric/icosaedric boxes.
 
 ---

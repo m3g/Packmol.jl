@@ -22,6 +22,8 @@
     chkgrad::Bool = false
     # Unit cell for periodic boundary conditions (nothing = no PBC)
     unitcell::Union{Nothing, Matrix{T}} = nothing
+    # Reference center for PBC wrapping (constraints evaluated relative to this point)
+    unitcell_center::Union{Nothing, SVector{D,T}} = nothing
     # Internal data for the optimization
     nmols::Int = 0
     atoms::Vector{AtomData{T}} = AtomData{T}[]
@@ -175,22 +177,36 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
                 end _line = line _file = input_file
                 continue
             end
-            # pbc: legacy orthorhombic PBC keyword (3 side lengths)
+            # pbc: orthorhombic PBC keyword
+            #   3 values (side lengths): center at origin
+            #   6 values (xmin ymin zmin xmax ymax zmax): center at midpoint
             if keyword == "pbc"
-                if length(values) != D
-                    throw(ArgumentError("pbc keyword requires $D values (box side lengths), got $(length(values))"))
+                vals = [_parse_value(T, "pbc", v) for v in values]
+                if length(vals) == D
+                    # 3 values: side lengths, center at origin
+                    input_data[:unitcell] = Matrix{T}(Diagonal(vals))
+                    input_data[:unitcell_center] = zero(SVector{D,T})
+                elseif length(vals) == 2 * D
+                    # 6 values: xmin ymin zmin xmax ymax zmax
+                    lo = SVector{D,T}(vals[1:D]...)
+                    hi = SVector{D,T}(vals[D+1:2*D]...)
+                    sides = hi - lo
+                    input_data[:unitcell] = Matrix{T}(Diagonal(Vector(sides)))
+                    input_data[:unitcell_center] = (lo + hi) / 2
+                else
+                    throw(ArgumentError("pbc keyword requires $D (side lengths) or $(2*D) (min/max coords) values, got $(length(vals))"))
                 end
-                sides = [_parse_value(T, "pbc", v) for v in values]
-                input_data[:unitcell] = Matrix{T}(Diagonal(sides))
                 continue
             end
             # unitcell: general PBC keyword (6 values: a b c α β γ in CRYST1 convention)
+            # Center at origin.
             if keyword == "unitcell"
                 if length(values) != 2 * D
-                    throw(ArgumentError("unitcell keyword requires $(2*D) values (a b c α β γ), got $(length(values))"))
+                    throw(ArgumentError("unitcell keyword requires $(2*D) values (a b [c] α β [γ]), got $(length(values))"))
                 end
                 params = [_parse_value(T, "unitcell", v) for v in values]
                 input_data[:unitcell] = Matrix{T}(unitcell_matrix(T, params...))
+                input_data[:unitcell_center] = zero(SVector{D,T})
                 continue
             end
             if keyword == "structure"
