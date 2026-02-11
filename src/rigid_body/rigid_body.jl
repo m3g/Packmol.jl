@@ -42,11 +42,14 @@ function eulermat(beta, gamma, theta)
     #! format: on
 end
 
+eulermat(angs::SVector{3}) = eulermat(angs[1], angs[2], angs[3])
+
 @testitem "eulermat" begin
     @test Packmol.eulermat(0.0, 0.0, 0.0) ≈ [1 0 0; 0 1 0; 0 0 1]
     @test Packmol.eulermat(π, 0.0, 0.0) ≈ [1 0 0; 0 -1 0; 0 0 -1]
     @test Packmol.eulermat(0.0, π, 0.0) ≈ [-1 0 0; 0 1 0; 0 0 -1]
     @test Packmol.eulermat(0.0, 0.0, π) ≈ [-1 0 0; 0 -1 0; 0 0 1]
+    @test Packmol.eulermat(SVector(0.0, 0.0, π)) ≈ [-1 0 0; 0 -1 0; 0 0 1]
 end
 
 #=
@@ -215,7 +218,7 @@ end
     Packmol.set_reference_coordinates!(x)
     @test x[1] ≈ SVector(0.0, 0.0, 0.5)
     @test x[2] ≈ SVector(0.0, 0.0, -0.5)
-    water = coor(readPDB(joinpath(Packmol.src_dir, "..", "test", "data", "water.pdb")))
+    water = coor(read_pdb(joinpath(Packmol.src_dir, "..", "test", "data", "water.pdb")))
     water_save = copy(water)
     a = @ballocated Packmol.set_reference_coordinates!($water) samples=1 evals=1
     @test a == 0

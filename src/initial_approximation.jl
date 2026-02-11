@@ -32,19 +32,24 @@ function overlaps_fixed(
     mp::MoleculePosition{D,T},
     ref_coords::Vector{SVector{D,T}},
     fixed_sys::CellListMap.ParticleSystem1,
-    mol_positions::Vector{SVector{D,T}},
+    mol_positions::Vector{SVector{D,T}};
+    itask
 ) where {D,T}
     R = eulermat(mp.angles...)
     for (j, r) in enumerate(ref_coords)
         mol_positions[j] = R * r + mp.cm
     end
     n = length(ref_coords)
+    fixed_sys.output[itask] = zero(eltype(fixed_sys.output))
     overlap = pairwise!(
-        (pair, output) -> output + one(output),
+        (pair, overlap) -> begin 
+            overlap[itask] += one(eltype(overlap))
+            return overlap
+        end,
         @view(mol_positions[1:n]), fixed_sys;
         update_lists=false,      # fixed cell lists don't change
     )
-    return overlap > 0
+    return overlap[itask] > 0
 end
 
 # Fallback when there are no fixed atoms (no ParticleSystem built)
@@ -52,7 +57,8 @@ function overlaps_fixed(
     mp::MoleculePosition{D,T},
     ref_coords::Vector{SVector{D,T}},
     ::Nothing,
-    mol_positions::Vector{SVector{D,T}},
+    mol_positions::Vector{SVector{D,T}};
+    itask
 ) where {D,T}
     return false
 end
@@ -92,15 +98,14 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
     # Compute molecule index offset for each structure type so threads
     # can determine the correct slot without a shared counter.
     imol_offset = 0
+    fixed_sys = _build_fixed_particle_system(fixed_atom_positions, tol, T; nthreads=Threads.nthreads())
     @sync for st in packmol_system.structure_types
         st_offset = imol_offset
-        for irange in chunks(1:st.number_of_molecules; n=Threads.nthreads())
+        for (itask, irange) in enumerate(chunks(1:st.number_of_molecules; n=Threads.nthreads()))
             task_seed = rand(RNG, UInt64)
             @spawn begin
                 task_rng = typeof(RNG)(task_seed)
                 mol_positions = Vector{SVector{D,T}}(undef, max_natoms)
-                # Per-task ParticleSystem to avoid pairwise! mutation races
-                task_fixed_sys = _build_fixed_particle_system(fixed_atom_positions, tol, T)
                 for i in irange
                     imol_local = st_offset + i
                     if st.fixed.fixed
@@ -117,7 +122,7 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
                             end
                             angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(task_rng, T), D))
                             mp = MoleculePosition(cm, angles)
-                            if !packmol_system.avoid_overlap || !overlaps_fixed(mp, st.reference_coordinates, task_fixed_sys, mol_positions)
+                            if !packmol_system.avoid_overlap || !overlaps_fixed(mp, st.reference_coordinates, fixed_sys, mol_positions; itask=itask)
                                 packmol_system.molecule_positions[imol_local] = mp
                                 break
                             end
@@ -160,12 +165,12 @@ end
 # Build a ParticleSystem1 from pre-collected fixed atom positions.
 # Returns `nothing` if positions are empty.
 #
-function _build_fixed_particle_system(fixed_atom_positions::Vector{SVector{D,T}}, tol::T, ::Type{T}) where {D,T}
+function _build_fixed_particle_system(fixed_atom_positions::Vector{SVector{D,T}}, tol::T, ::Type{T}; nthreads=Threads.nthreads()) where {D,T}
     isempty(fixed_atom_positions) && return nothing
     return ParticleSystem(
         xpositions=fixed_atom_positions,
         cutoff=tol,
-        output=zero(T),
+        output=zeros(T, nthreads),
         parallel=false,
     )
 end
@@ -190,43 +195,59 @@ function molecule_badness(
     atom_positions::Vector{SVector{D,T}},
     fixed_sys::Union{Nothing,CellListMap.ParticleSystem1},
     tol::T,
-    mol_positions::Vector{SVector{D,T}},
 ) where {D,T}
     has_pbc = !isnothing(packmol_system.unitcell)
     nmols = packmol_system.nmols
     badness = zeros(T, nmols)
 
+    ntasks = isnothing(fixed_sys) ? Threads.nthreads() : length(fixed_sys.output)
+    max_natoms = maximum(st.natoms for st in packmol_system.structure_types; init=0)
+
     # Compute constraint penalties and fixed-atom overlaps per molecule
-    iat = 0
-    imol = 0
-    for st in packmol_system.structure_types
-        for _ in 1:st.number_of_molecules
-            imol += 1
-            iat_first = iat + 1
-            for j in 1:st.natoms
-                iat += 1
-                x = atom_positions[iat]
-                if has_pbc
-                    x = wrap_to_center(x, packmol_system.unitcell, packmol_system.unitcell_center)
+    imol_offset = 0
+    atom_offset = 0
+    @sync for st in packmol_system.structure_types
+        st_mol_offset = imol_offset
+        st_atom_offset = atom_offset
+
+        for (itask, irange) in enumerate(chunks(1:st.number_of_molecules; n=ntasks))
+            @spawn begin
+                mol_positions = Vector{SVector{D,T}}(undef, max_natoms)
+                for i in irange
+                    imol = st_mol_offset + i
+                    iat_first = st_atom_offset + (i - 1) * st.natoms + 1
+                    for j in 1:st.natoms
+                        iat = iat_first + j - 1
+                        x = atom_positions[iat]
+                        if has_pbc
+                            x = wrap_to_center(x, packmol_system.unitcell, packmol_system.unitcell_center)
+                        end
+                        for ic in packmol_system.atoms[iat].constraints
+                            c = st.constraints[ic]
+                            badness[imol] += constraint_penalty(c, x)
+                        end
+                    end
+                    # Per-molecule overlap with fixed atoms via CellListMap cross-computation
+                    if !isnothing(fixed_sys) && !st.fixed.fixed
+                        for j in 1:st.natoms
+                            mol_positions[j] = atom_positions[iat_first + j - 1]
+                        end
+                        fixed_sys.output[itask] = zero(T)
+                        overlap = pairwise!(
+                            (pair, output) -> begin
+                                output[itask] += (pair.d - tol)^2
+                                return output
+                            end,
+                            @view(mol_positions[1:st.natoms]), fixed_sys;
+                            update_lists=false,
+                        )
+                        badness[imol] += overlap[itask]
+                    end
                 end
-                for ic in packmol_system.atoms[iat].constraints
-                    c = st.constraints[ic]
-                    badness[imol] += constraint_penalty(c, x)
-                end
-            end
-            # Per-molecule overlap with fixed atoms via CellListMap cross-computation
-            if !isnothing(fixed_sys) && !st.fixed.fixed
-                for j in 1:st.natoms
-                    mol_positions[j] = atom_positions[iat_first + j - 1]
-                end
-                overlap = pairwise!(
-                    (pair, output) -> output + (pair.d - tol)^2,
-                    @view(mol_positions[1:st.natoms]), fixed_sys;
-                    update_lists=false,
-                )
-                badness[imol] += overlap
             end
         end
+        imol_offset += st.number_of_molecules
+        atom_offset += st.number_of_molecules * st.natoms
     end
 
     return badness
@@ -310,7 +331,7 @@ function adjust_constraints!(
     movefrac::T=T(0.05),
     opt_nit::Int=20,
     precision::T=T(1e-10),
-    iprint::Int=10,
+    iprint::Int=10 
 ) where {D,T}
     nfree = length(free_mol_indices)
     nfree == 0 && return packmol_system
@@ -332,10 +353,6 @@ function adjust_constraints!(
     # Build CellListMap system for fixed atom positions (for overlap checks)
     fixed_sys = build_fixed_particle_system(packmol_system)
     tol = packmol_system.tolerance
-
-    # Preallocate buffer for per-molecule atom positions
-    max_natoms = maximum(st.natoms for st in packmol_system.structure_types if !st.fixed.fixed; init=0)
-    mol_positions = Vector{SVector{D,T}}(undef, max_natoms)
 
     # Determine placement region for randomization
     has_pbc = !isnothing(packmol_system.unitcell)
@@ -376,7 +393,7 @@ function adjust_constraints!(
         compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
 
         # Compute per-molecule badness (constraint violations + overlap with fixed atoms)
-        badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol, mol_positions)
+        badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol)
 
         # Check if all constraints are satisfied and no overlaps with fixed
         total_badness = sum(badness[imol] for imol in free_mol_indices)
@@ -418,7 +435,7 @@ function adjust_constraints!(
 
     # Final evaluation
     compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
-    badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol, mol_positions)
+    badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol)
     total_badness = sum(badness[imol] for imol in free_mol_indices)
     @printf("  WARNING: constraint adjustment did not fully converge after %d loops (f = %.2e)\n", nloop, total_badness)
     return packmol_system

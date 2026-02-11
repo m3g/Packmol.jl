@@ -7,7 +7,7 @@ using Statistics: mean
 using Base: @kwdef
 using Base.Threads: @spawn
 using ChunkSplitters: chunks
-using PDBTools: Atom, readPDB, writePDB, coor, center_of_mass
+using PDBTools: Atom, read_pdb, write_pdb, coor, center_of_mass
 import CellListMap
 using SPGBox
 using Printf: @printf, @sprintf
@@ -44,6 +44,12 @@ include("./interatomic_distance_fg.jl")
 
 # Initial approximation: placement, constraint pre-optimization
 include("./initial_approximation.jl")
+
+# Output
+include("./write_output.jl")
+
+# Packing functions
+include("./packmol_main.jl")
 
 # Runner for the legacy packmol 
 include("./packmol_runner.jl")

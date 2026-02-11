@@ -82,7 +82,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
         end
         if keyword == "structure"
             filename = joinpath(path, string(values[1]))
-            atoms = readPDB(filename)
+            atoms = read_pdb(filename)
             structure_data[:filename] = filename
             structure_data[:natoms] = length(atoms)
             structure_data[:atoms] = atoms
@@ -122,7 +122,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
             ref = structure_data[:reference_coordinates]
             ref .= ref .- Ref(cm_vec)
             pos = structure_data[:fixed].position
-            R = eulermat(pos.angles...)
+            R = eulermat(pos.angles)
             for i in eachindex(ref)
                 ref[i] = R * ref[i]
             end
