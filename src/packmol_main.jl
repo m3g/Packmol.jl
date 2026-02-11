@@ -24,13 +24,18 @@ function packmol(
     maxit::Int=20,
     movefrac::T=T(0.05),
     seed::Int=packmol_system.seed,
+    restart::Bool=false,
 ) where {D,T}
     # Initialize RNG and molecule positions
     RNG = Random.Xoshiro(seed)
 
     tstart = time()    
-    println("Initializing molecule positions...")
-    initialize_molecules!(packmol_system, RNG)
+    if restart
+        println("Restarting optimization from current positions...")
+    else
+        println("Initializing molecule positions...")
+        initialize_molecules!(packmol_system, RNG)
+    end
 
     # Build index of free (non-fixed) molecules
     free_mol_indices = Int[]
@@ -47,7 +52,9 @@ function packmol(
 
     # Pre-optimization: move molecules to satisfy geometric constraints
     # before the main packing (no distance penalties)
-    adjust_constraints!(packmol_system, free_mol_indices, RNG)
+    if !restart
+        adjust_constraints!(packmol_system, free_mol_indices, RNG)
+    end
 
     # check mode: write the initial approximation and return
     if packmol_system.check

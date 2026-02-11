@@ -13,6 +13,7 @@ using SPGBox: spgbox!
     # Auxiliary array for gradient: carries the gradient relative to the cartesian coordinates of each atom
     gxcar::Vector{SVector{D,T}}
 end
+
 function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
     natoms = length(packmol_system.atoms)
     InteratomicDistanceFG(

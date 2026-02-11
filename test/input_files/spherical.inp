@@ -4,7 +4,7 @@
 
 tolerance 2.0 
 
-structure ./structure_files/palmitoil.pdb 
+structure ../structure_files/palmitoil.pdb 
   resnumbers 2
   number 20
   atoms 37
@@ -15,7 +15,7 @@ structure ./structure_files/palmitoil.pdb
   end atoms
 end structure 
 
-structure ./structure_files/palmitoil.pdb 
+structure ../structure_files/palmitoil.pdb 
   resnumbers 2
   number 30
   atoms 5
@@ -26,15 +26,15 @@ structure ./structure_files/palmitoil.pdb
   end atoms
 end structure 
  
-structure ./structure_files/water.pdb
+structure ../structure_files/water.pdb
    resnumbers 2
    number 50
    inside sphere 0. 0. 0. 13.
 end structure
 
-structure ./structure_files/water.pdb
+structure ../structure_files/water.pdb
    resnumbers 2
-   number 100
+   number 1000
    inside box -47.5 -47.5 -47.5 47.5 47.5 47.5
    outside sphere 0. 0. 0. 43.
 end structure

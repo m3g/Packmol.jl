@@ -125,20 +125,24 @@ end
 # Input parsing functions: must be appended to the "parse_constraint" dictionary:
 #
 parse_constraint["inside box"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
-    center, sides = try
+    lo, hi = try
         parse.(T, data[1:3]), parse.(T, data[4:6])
     catch
         error("Error parsing 'inside box' constraint data for $(structure_data[:filename]).")
     end
+    center = (lo .+ hi) ./ 2
+    sides = hi .- lo
     return Box{Inside,T}(;center, sides)
 end
 
 parse_constraint["outside box"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
-    center, sides = try
+    lo, hi = try
         parse.(T, data[1:3]), parse.(T, data[4:6])
     catch
         error("Error parsing 'outside box' constraint data for $(structure_data[:filename]).")
     end
+    center = (lo .+ hi) ./ 2
+    sides = hi .- lo
     return Box{Outside,T}(;center, sides)
 end
 
