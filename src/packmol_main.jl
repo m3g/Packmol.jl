@@ -3,7 +3,7 @@
 
 Read a Packmol input file, run the packing optimization, and write the output.
 """
-function packmol(input_file::String; D::Int=2, T::DataType=Float64, kargs...)
+function packmol(input_file::String; D::Int=3, T::DataType=Float64, kargs...)
     packmol_system = read_packmol_input(input_file; D, T)
     packmol(packmol_system; kargs...)
     return packmol_system
@@ -27,6 +27,8 @@ function packmol(
 ) where {D,T}
     # Initialize RNG and molecule positions
     RNG = Random.Xoshiro(seed)
+
+    tstart = time()    
     println("Initializing molecule positions...")
     initialize_molecules!(packmol_system, RNG)
 
@@ -119,20 +121,9 @@ function packmol(
     # contributions, and randomly re-places the worst molecules.
     println("Packing $nfree free molecules ($(packmol_system.nmols) total)...")
     bestf = typemax(T)
+    flast = typemax(T)
     converged = false
     for loop in 0:nloop
-        # Move bad molecules (skip on first iteration)
-        if loop > 0
-            nmoved = movebad!(
-                packmol_system, cl_system.fg.fmol, free_mol_indices, RNG;
-                movefrac, precision, lo=lo_mb, hi=hi_mb, has_pbc,
-            )
-            # Re-pack optimizer variables from (possibly moved) molecule positions
-            x_mol = reinterpret(MoleculePosition{D,T}, x)
-            for (k, imol) in enumerate(free_mol_indices)
-                x_mol[k] = packmol_system.molecule_positions[imol]
-            end
-        end
 
         @printf("\n --- Starting packing loop: %d\n\n", loop)
 
@@ -152,22 +143,29 @@ function packmol(
             packmol_system.molecule_positions[imol] = x_mol[k]
         end
 
-        # Statistics
+        # Statistics: compute improvement of this loop relative to flast
         fx = spgresult.f
         dmin = min(cl_system.fg.dmin, cl_system.cutoff)
+        fimp_last = flast > zero(T) ? clamp(-100 * (fx - flast) / flast, T(-99.99), T(99.99)) : T(100)
+        fimprov = bestf < typemax(T) ? clamp(-100 * (fx - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
         if fx < bestf
             bestf = fx
         end
-        fimprov = bestf > zero(T) ? clamp(-100 * (fx - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
+        flast = fx
 
-        @printf(
-            "\n  Loop %4d: f = %10.4e  best f = %10.4e  improvement: %6.2f%%  min dist: %12.6f\n",
-            loop, fx, bestf, fimprov, dmin,
-        )
+        @printf("\n  Loop %4d: f = %10.4e  best f = %10.4e", loop, fx, bestf)
+        if loop > 0
+            @printf("  improvement from best: %6.2f%%  from last: %6.2f%%", fimprov, fimp_last)
+        end
+        @printf("  min dist: %12.6f\n", dmin)
 
         # Check convergence: minimum distance exceeds tolerance
-        if dmin > tol
-            @printf("  Solution found at loop %d! Minimum distance: %.6f > tolerance: %.6f\n", loop, dmin, tol)
+        if (tol - dmin < packmol_system.tolerance_precision) && bestf < packmol_system.constraint_precision
+            print("""  
+                Solution found at loop $(@sprintf("%d", loop))! 
+                Minimum distance: $(@sprintf("%.6f", dmin))
+
+            """)
             converged = true
             break
         end
@@ -176,6 +174,22 @@ function packmol(
         if packmol_system.writebad && !isempty(packmol_system.output_file)
             write_output(packmol_system)
             println("  Current (possibly bad) structure written to file: ", packmol_system.output_file)
+        end
+
+        # Move bad molecules if this loop did not improve f by at least 10%
+        if fimp_last < T(10)
+            nmoved = movebad!(
+                packmol_system, cl_system.fg.fmol, free_mol_indices, RNG;
+                movefrac, precision, lo=lo_mb, hi=hi_mb, has_pbc,
+            )
+            if nmoved > 0
+                println("  Moved $nmoved bad molecules randomly to new positions.")
+            end
+        end
+        # Re-pack optimizer variables from (possibly moved) molecule positions
+        x_mol = reinterpret(MoleculePosition{D,T}, x)
+        for (k, imol) in enumerate(free_mol_indices)
+            x_mol[k] = packmol_system.molecule_positions[imol]
         end
     end
 
@@ -217,7 +231,10 @@ function packmol(
         write_output(packmol_system)
     end
 
-    return packmol_system
+    tend = time()
+    println("Packmol finished in ", (tend - tstart)," seconds." )
+
+    return nothing
 end
 
 #
@@ -226,7 +243,7 @@ end
 function packmol_callback(spgresult, cl_system, tol, iprint)
     if spgresult.nit % iprint == 0
         @printf(
-            " Iteration: %6d  Minimum distance: %12.6f  Function value: %12.6e\n",
+            "  - Iteration: %6d  Minimum distance: %12.6f  Function value: %12.6e\n",
             spgresult.nit, min(cl_system.fg.dmin, cl_system.cutoff), spgresult.f
         )
     end

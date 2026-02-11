@@ -276,7 +276,7 @@ function movebad!(
     nbad = 0
     fmol_max = zero(T)
     for imol in free_mol_indices
-        if fmol[imol] > precision
+        if fmol[imol] > precision / packmol_system.nmols
             nbad += 1
             fmol_max = max(fmol_max, fmol[imol])
         end
@@ -290,7 +290,7 @@ function movebad!(
     nmoved = 0
     for imol in free_mol_indices
         nmoved >= nmove && break
-        if fmol[imol] > precision
+        if fmol[imol] > precision / packmol_system.nmols
             # Probability increases with fmol value: always move the worst,
             # linearly decreasing probability for better molecules
             prob = fmol[imol] / fmol_max

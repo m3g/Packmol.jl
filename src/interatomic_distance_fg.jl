@@ -136,7 +136,9 @@ function constraint_fg!(
         st = packmol_system.structure_types[atom.structure_type_index]
         for ic in atom.constraints
             c = st.constraints[ic]
-            fg_output.f += constraint_penalty(c, x)
+            penalty = constraint_penalty(c, x)
+            fg_output.f += penalty
+            fg_output.fmol[atom.molecule_index] += penalty
             fg_output.gxcar[iat] += constraint_gradient(c, x)
         end
     end
