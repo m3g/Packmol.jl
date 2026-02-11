@@ -21,7 +21,7 @@ function packmol(
     parallel::Bool=true,
     iprint::Int=10,
     nloop::Int=200,
-    maxit::Int=20,
+    maxit::Int=100,
     movefrac::T=T(0.05),
     seed::Int=packmol_system.seed,
     restart::Bool=false,
@@ -53,6 +53,13 @@ function packmol(
     # Pre-optimization: move molecules to satisfy geometric constraints
     # before the main packing (no distance penalties)
     if !restart
+        adjust_constraints!(packmol_system, free_mol_indices, RNG)
+        # Re-initialize: best-of-N random placement within CM bounds
+        # determined from the constraint-fitted positions
+        reinitialize_with_bounds!(packmol_system, free_mol_indices, RNG;
+            precision=packmol_system.constraint_precision,
+        )
+        # Final constraint adjustment after re-initialization
         adjust_constraints!(packmol_system, free_mol_indices, RNG)
     end
 
@@ -116,11 +123,7 @@ function packmol(
     auxvecs = SPGBox.VAux(x, zero(T))
 
     # Placement region for movebad! randomization
-    if has_pbc
-        lo_mb = hi_mb = zero(SVector{D,T}) # unused with PBC
-    else
-        lo_mb, hi_mb = lo, hi
-    end
+    mol_structure_type = _build_mol_structure_type(packmol_system)
     precision = packmol_system.tolerance_precision
 
     # Outer packing loop (following Fortran Packmol gencanloop):
@@ -130,6 +133,7 @@ function packmol(
     bestf = typemax(T)
     flast = typemax(T)
     converged = false
+    best_positions = copy(packmol_system.molecule_positions)
     for loop in 0:nloop
 
         @printf("\n --- Starting packing loop: %d\n\n", loop)
@@ -155,8 +159,10 @@ function packmol(
         dmin = min(cl_system.fg.dmin, cl_system.cutoff)
         fimp_last = flast > zero(T) ? clamp(-100 * (fx - flast) / flast, T(-99.99), T(99.99)) : T(100)
         fimprov = bestf < typemax(T) ? clamp(-100 * (fx - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
-        if fx < bestf
+        improved = fx < bestf
+        if improved
             bestf = fx
+            copyto!(best_positions, packmol_system.molecule_positions)
         end
         flast = fx
 
@@ -177,17 +183,20 @@ function packmol(
             break
         end
 
-        # Write intermediate output periodically
-        if packmol_system.writebad && !isempty(packmol_system.output_file)
+        # Write best solution so far to output file
+        if improved && !isempty(packmol_system.output_file)
+            saved_positions = packmol_system.molecule_positions
+            packmol_system.molecule_positions = best_positions
             write_output(packmol_system)
-            println("  Current (possibly bad) structure written to file: ", packmol_system.output_file)
+            packmol_system.molecule_positions = saved_positions
+            println("  Best solution written to file: ", packmol_system.output_file)
         end
 
         # Move bad molecules if this loop did not improve f by at least 10%
         if fimp_last < T(10)
             nmoved = movebad!(
-                packmol_system, cl_system.fg.fmol, free_mol_indices, RNG;
-                movefrac, precision, lo=lo_mb, hi=hi_mb, has_pbc,
+                packmol_system, cl_system.fg.fmol, free_mol_indices, mol_structure_type, RNG;
+                movefrac, precision,
             )
             if nmoved > 0
                 println("  Moved $nmoved bad molecules randomly to new positions.")
@@ -203,6 +212,9 @@ function packmol(
     if !converged
         @printf("  WARNING: packing did not converge after %d loops (best f = %.4e)\n", nloop, bestf)
     end
+
+    # Restore best molecule positions
+    copyto!(packmol_system.molecule_positions, best_positions)
 
     println("Minimum distance obtained: ", min(cl_system.fg.dmin, cl_system.cutoff))
 

@@ -22,6 +22,18 @@ function compute_bounding_box(packmol_system::PackmolSystem{D,T}) where {D,T}
     return lo, hi
 end
 
+# Per-structure-type bounding box: uses only the constraints of a single structure type
+function compute_structure_bounding_box(st::StructureType{D,T}) where {D,T}
+    lo = SVector{D,T}(ntuple(_ -> typemax(T), D))
+    hi = SVector{D,T}(ntuple(_ -> typemin(T), D))
+    for c in st.constraints
+        clo, chi = constraint_bounds(c)
+        lo = min.(lo, clo)
+        hi = max.(hi, chi)
+    end
+    return lo, hi
+end
+
 #
 # Check if a molecule placed at position `mp` overlaps with any fixed atom.
 # Returns true if any atom of the molecule is within `tol` of any fixed atom.
@@ -64,9 +76,82 @@ function overlaps_fixed(
 end
 
 #
+# Check if a molecule placement satisfies all constraints of its structure type.
+# Returns true if all atom positions have zero constraint penalty.
+#
+function satisfies_constraints(
+    mp::MoleculePosition{D,T},
+    st::StructureType{D,T},
+    mol_positions::Vector{SVector{D,T}},
+) where {D,T}
+    isempty(st.constraints) && return true
+    R = eulermat(mp.angles...)
+    for (j, r) in enumerate(st.reference_coordinates)
+        x = R * r + mp.cm
+        mol_positions[j] = x
+        for ic in st.atom_constraints[j]
+            c = st.constraints[ic]
+            if constraint_penalty(c, x) > zero(T)
+                return false
+            end
+        end
+    end
+    return true
+end
+
+#
+# Total constraint penalty for a molecule placement.
+# Returns the sum of constraint penalties for all atoms of the molecule.
+#
+function constraint_penalty_sum(
+    mp::MoleculePosition{D,T},
+    st::StructureType{D,T},
+) where {D,T}
+    isempty(st.constraints) && return zero(T)
+    R = eulermat(mp.angles...)
+    fpen = zero(T)
+    for (j, r) in enumerate(st.reference_coordinates)
+        x = R * r + mp.cm
+        for ic in st.atom_constraints[j]
+            c = st.constraints[ic]
+            fpen += constraint_penalty(c, x)
+        end
+    end
+    return fpen
+end
+
+#
+# Compute per-structure-type center-of-mass bounds from current molecule positions.
+# Returns (cm_min, cm_max) vectors indexed by structure type.
+# Used after constraint fitting to determine where molecules should be placed.
+#
+function compute_cm_bounds(packmol_system::PackmolSystem{D,T}) where {D,T}
+    ntypes = length(packmol_system.structure_types)
+    cm_min = [SVector{D,T}(ntuple(_ -> typemax(T), D)) for _ in 1:ntypes]
+    cm_max = [SVector{D,T}(ntuple(_ -> typemin(T), D)) for _ in 1:ntypes]
+    imol = 0
+    for (ist, st) in enumerate(packmol_system.structure_types)
+        for _ in 1:st.number_of_molecules
+            imol += 1
+            if !st.fixed.fixed
+                cm = packmol_system.molecule_positions[imol].cm
+                cm_min[ist] = min.(cm_min[ist], cm)
+                cm_max[ist] = max.(cm_max[ist], cm)
+            end
+        end
+    end
+    return cm_min, cm_max
+end
+
+#
 # Initialize molecule positions randomly within constraint bounding box
 # (or within the unit cell for PBC), and center reference coordinates
 # at the origin (required for chain rule).
+#
+# This is just the first rough placement — no constraint checking is done here.
+# The subsequent adjust_constraints! call will optimize positions to satisfy
+# geometric constraints, and reinitialize_with_bounds! will refine placement
+# using the resulting CM bounds.
 #
 function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D,T}
     # Center reference coordinates at origin (required for chain rule)
@@ -77,60 +162,40 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
         end
     end
 
-    # Collect fixed atom positions for overlap checks
-    fixed_atom_positions = _collect_fixed_positions(packmol_system)
-
-    # Preallocate buffer for molecule atom positions (used by overlaps_fixed)
-    max_natoms = maximum(st.natoms for st in packmol_system.structure_types if !st.fixed.fixed; init=0)
-
     # Determine the placement region
     has_pbc = !isnothing(packmol_system.unitcell)
     if has_pbc
-        # For PBC, place randomly within the unit cell centered at unitcell_center
         uc = packmol_system.unitcell
         center = packmol_system.unitcell_center
-    else
-        # For non-PBC, place within the constraint bounding box
-        lo, hi = compute_bounding_box(packmol_system)
     end
-    max_attempts = 1000
-    tol = packmol_system.tolerance
+
     # Compute molecule index offset for each structure type so threads
     # can determine the correct slot without a shared counter.
     imol_offset = 0
-    fixed_sys = _build_fixed_particle_system(fixed_atom_positions, tol, T; nthreads=Threads.nthreads())
     @sync for st in packmol_system.structure_types
         st_offset = imol_offset
-        for (itask, irange) in enumerate(chunks(1:st.number_of_molecules; n=Threads.nthreads()))
+        # Per-structure-type bounding box for initial placement
+        if !has_pbc && !st.fixed.fixed
+            st_lo, st_hi = compute_structure_bounding_box(st)
+        end
+        for (_, irange) in enumerate(chunks(1:st.number_of_molecules; n=Threads.nthreads()))
             task_seed = rand(RNG, UInt64)
             @spawn begin
                 task_rng = typeof(RNG)(task_seed)
-                mol_positions = Vector{SVector{D,T}}(undef, max_natoms)
                 for i in irange
                     imol_local = st_offset + i
                     if st.fixed.fixed
                         packmol_system.molecule_positions[imol_local] = st.fixed.position
                     else
-                        for attempt in 1:max_attempts
-                            if has_pbc
-                                # Random fractional coords in [-0.5, 0.5) → Cartesian, centered at unitcell_center
-                                frac = SVector{D,T}(ntuple(_ -> rand(task_rng, T) - T(0.5), D))
-                                cm = SVector{D,T}(uc * frac) + center
-                            else
-                                extent = hi - lo
-                                cm = lo + SVector{D,T}(ntuple(d -> rand(task_rng, T) * extent[d], D))
-                            end
-                            angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(task_rng, T), D))
-                            mp = MoleculePosition(cm, angles)
-                            if !packmol_system.avoid_overlap || !overlaps_fixed(mp, st.reference_coordinates, fixed_sys, mol_positions; itask=itask)
-                                packmol_system.molecule_positions[imol_local] = mp
-                                break
-                            end
-                            if attempt == max_attempts
-                                @warn "Could not place molecule $imol_local without overlap after $max_attempts attempts"
-                                packmol_system.molecule_positions[imol_local] = mp
-                            end
+                        if has_pbc
+                            frac = SVector{D,T}(ntuple(_ -> rand(task_rng, T) - T(0.5), D))
+                            cm = SVector{D,T}(uc * frac) + center
+                        else
+                            extent = st_hi - st_lo
+                            cm = st_lo + SVector{D,T}(ntuple(d -> rand(task_rng, T) * extent[d], D))
                         end
+                        angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(task_rng, T), D))
+                        packmol_system.molecule_positions[imol_local] = MoleculePosition(cm, angles)
                     end
                 end
             end
@@ -159,6 +224,21 @@ function _collect_fixed_positions(packmol_system::PackmolSystem{D,T}) where {D,T
         end
     end
     return fixed_atom_positions
+end
+
+#
+# Build a mapping from molecule index to structure type index.
+#
+function _build_mol_structure_type(packmol_system::PackmolSystem)
+    mol_structure_type = Vector{Int}(undef, packmol_system.nmols)
+    imol = 0
+    for (ist, st) in enumerate(packmol_system.structure_types)
+        for _ in 1:st.number_of_molecules
+            imol += 1
+            mol_structure_type[imol] = ist
+        end
+    end
+    return mol_structure_type
 end
 
 #
@@ -264,12 +344,10 @@ function movebad!(
     packmol_system::PackmolSystem{D,T},
     fmol::Vector{T},
     free_mol_indices::Vector{Int},
+    mol_structure_type::Vector{Int},
     RNG;
     movefrac::T=T(0.05),
     precision::T=T(1e-2),
-    lo::SVector{D,T}=zero(SVector{D,T}),
-    hi::SVector{D,T}=zero(SVector{D,T}),
-    has_pbc::Bool=!isnothing(packmol_system.unitcell),
 ) where {D,T}
     nfree = length(free_mol_indices)
     # Count bad molecules and find fmol range among them
@@ -295,7 +373,8 @@ function movebad!(
             # linearly decreasing probability for better molecules
             prob = fmol[imol] / fmol_max
             if rand(RNG, T) < prob
-                randomize_molecule!(packmol_system, imol, RNG, lo, hi, has_pbc)
+                st = packmol_system.structure_types[mol_structure_type[imol]]
+                randomize_molecule!(packmol_system, imol, st, RNG)
                 nmoved += 1
             end
         end
@@ -305,27 +384,136 @@ end
 
 #
 # Randomly re-place a molecule within the placement region.
+# Uses per-structure-type bounding box for non-PBC placement.
 #
 function randomize_molecule!(
     packmol_system::PackmolSystem{D,T},
     imol::Int,
+    st::StructureType{D,T},
     RNG,
-    lo::SVector{D,T},
-    hi::SVector{D,T},
-    has_pbc::Bool,
 ) where {D,T}
+    has_pbc = !isnothing(packmol_system.unitcell)
     if has_pbc
         uc = packmol_system.unitcell
         center = packmol_system.unitcell_center
         frac = SVector{D,T}(ntuple(_ -> rand(RNG, T) - T(0.5), D))
         cm = SVector{D,T}(uc * frac) + center
     else
+        lo, hi = compute_structure_bounding_box(st)
         extent = hi - lo
         cm = lo + SVector{D,T}(ntuple(d -> rand(RNG, T) * extent[d], D))
     end
     angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(RNG, T), D))
     packmol_system.molecule_positions[imol] = MoleculePosition(cm, angles)
     return nothing
+end
+
+#
+# Re-initialize molecule positions using best-of-N random placement within
+# per-type CM bounds (following Fortran Packmol initial.f90).
+#
+# After constraint fitting (adjust_constraints!), the molecule CMs define
+# per-type bounding regions. This function generates `max_guess_try` random
+# placements for each molecule within those bounds, evaluates the constraint
+# penalty for each, and keeps the best placement.
+#
+function reinitialize_with_bounds!(
+    packmol_system::PackmolSystem{D,T},
+    free_mol_indices::Vector{Int},
+    RNG;
+    max_guess_try::Int=20,
+    precision::T=T(1e-2),
+) where {D,T}
+    nfree = length(free_mol_indices)
+    nfree == 0 && return packmol_system
+
+    # Compute CM bounds per type from current (constraint-fitted) positions
+    cm_min, cm_max = compute_cm_bounds(packmol_system)
+
+    # Build fixed particle system for overlap checks
+    fixed_sys = build_fixed_particle_system(packmol_system)
+    tol = packmol_system.tolerance
+
+    max_natoms = maximum(st.natoms for st in packmol_system.structure_types if !st.fixed.fixed; init=0)
+
+    has_pbc = !isnothing(packmol_system.unitcell)
+
+    println("  Setting initial trial coordinates (best of $max_guess_try per molecule)...")
+
+    imol_offset = 0
+    @sync for (ist, st) in enumerate(packmol_system.structure_types)
+        st_offset = imol_offset
+        if st.fixed.fixed
+            imol_offset += st.number_of_molecules
+            continue
+        end
+
+        # Per-type CM bounds from constraint fitting
+        lo = cm_min[ist]
+        hi = cm_max[ist]
+        extent = hi - lo
+
+        # Fallback: if bounds are degenerate (single molecule or all at same CM),
+        # use the constraint bounding box
+        if any(extent .≤ zero(T))
+            if has_pbc
+                uc = packmol_system.unitcell
+                center = packmol_system.unitcell_center
+            else
+                lo, hi = compute_structure_bounding_box(st)
+                extent = hi - lo
+            end
+        end
+
+        for (itask, irange) in enumerate(chunks(1:st.number_of_molecules; n=Threads.nthreads()))
+            task_seed = rand(RNG, UInt64)
+            @spawn begin
+                task_rng = typeof(RNG)(task_seed)
+                mol_positions = Vector{SVector{D,T}}(undef, max_natoms)
+                for i in irange
+                    imol = st_offset + i
+                    # Start with current position as baseline
+                    best_mp = packmol_system.molecule_positions[imol]
+                    best_fx = constraint_penalty_sum(best_mp, st)
+
+                    for itry in 1:max_guess_try
+                        # Random CM within per-type bounds
+                        if has_pbc && any(extent .≤ zero(T))
+                            # PBC fallback: random within unit cell
+                            frac = SVector{D,T}(ntuple(_ -> rand(task_rng, T) - T(0.5), D))
+                            cm = SVector{D,T}(uc * frac) + center
+                        else
+                            cm = lo + SVector{D,T}(ntuple(d -> rand(task_rng, T) * extent[d], D))
+                        end
+                        angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(task_rng, T), D))
+                        mp = MoleculePosition(cm, angles)
+
+                        # Check overlap with fixed atoms first (skip if overlapping)
+                        if packmol_system.avoid_overlap &&
+                           overlaps_fixed(mp, st.reference_coordinates, fixed_sys, mol_positions; itask)
+                            continue
+                        end
+
+                        # Evaluate constraint penalty
+                        fx = constraint_penalty_sum(mp, st)
+                        if fx < best_fx
+                            best_fx = fx
+                            best_mp = mp
+                        end
+
+                        # Stop early if constraints satisfied
+                        if best_fx < precision
+                            break
+                        end
+                    end
+                    packmol_system.molecule_positions[imol] = best_mp
+                end
+            end
+        end
+        imol_offset += st.number_of_molecules
+    end
+
+    return packmol_system
 end
 
 #
@@ -404,13 +592,8 @@ function adjust_constraints!(
     fixed_sys = build_fixed_particle_system(packmol_system)
     tol = packmol_system.tolerance
 
-    # Determine placement region for randomization
-    has_pbc = !isnothing(packmol_system.unitcell)
-    if has_pbc
-        lo = hi = zero(SVector{D,T}) # unused with PBC
-    else
-        lo, hi = compute_bounding_box(packmol_system)
-    end
+    # Build molecule → structure type mapping
+    mol_structure_type = _build_mol_structure_type(packmol_system)
 
     println("  Adjusting initial point to fit the constraints")
 
@@ -479,7 +662,8 @@ function adjust_constraints!(
                 iloop, spgresult.f, nbad, nfree, nmove)
         end
         for i in 1:nmove
-            randomize_molecule!(packmol_system, bad_mols[i], RNG, lo, hi, has_pbc)
+            st = packmol_system.structure_types[mol_structure_type[bad_mols[i]]]
+            randomize_molecule!(packmol_system, bad_mols[i], st, RNG)
         end
     end
 
