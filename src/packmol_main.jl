@@ -20,8 +20,9 @@ function packmol(
     packmol_system::PackmolSystem{D,T};
     parallel::Bool=true,
     iprint::Int=10,
-    nitmax::Int=1000,
-    nfevalmax::Int=100*nitmax,
+    nloop::Int=200,
+    maxit::Int=20,
+    movefrac::T=T(0.05),
     seed::Int=packmol_system.seed,
 ) where {D,T}
     # Initialize RNG and molecule positions
@@ -105,24 +106,83 @@ function packmol(
     end
     auxvecs = SPGBox.VAux(x, zero(T))
 
-    # Run optimization
-    println("Packing $nfree free molecules ($(packmol_system.nmols) total)...")
-    spgboxresult = spgbox!(
-        (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices),
-        x;
-        callback=(spgresult) -> packmol_callback(spgresult, cl_system, tol, iprint),
-        vaux=auxvecs,
-        nitmax=nitmax,
-        nfevalmax=nfevalmax,
-    )
+    # Placement region for movebad! randomization
+    if has_pbc
+        lo_mb = hi_mb = zero(SVector{D,T}) # unused with PBC
+    else
+        lo_mb, hi_mb = lo, hi
+    end
+    precision = packmol_system.tolerance_precision
 
-    # Update free molecule positions with optimized values
-    x_mol = reinterpret(MoleculePosition{D,T}, x)
-    for (k, imol) in enumerate(free_mol_indices)
-        packmol_system.molecule_positions[imol] = x_mol[k]
+    # Outer packing loop (following Fortran Packmol gencanloop):
+    # Each iteration runs a short optimization, evaluates per-molecule
+    # contributions, and randomly re-places the worst molecules.
+    println("Packing $nfree free molecules ($(packmol_system.nmols) total)...")
+    bestf = typemax(T)
+    converged = false
+    for loop in 0:nloop
+        # Move bad molecules (skip on first iteration)
+        if loop > 0
+            nmoved = movebad!(
+                packmol_system, cl_system.fg.fmol, free_mol_indices, RNG;
+                movefrac, precision, lo=lo_mb, hi=hi_mb, has_pbc,
+            )
+            # Re-pack optimizer variables from (possibly moved) molecule positions
+            x_mol = reinterpret(MoleculePosition{D,T}, x)
+            for (k, imol) in enumerate(free_mol_indices)
+                x_mol[k] = packmol_system.molecule_positions[imol]
+            end
+        end
+
+        @printf("\n --- Starting packing loop: %d\n\n", loop)
+
+        # Run a short optimization (maxit iterations per loop)
+        spgresult = spgbox!(
+            (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices),
+            x;
+            callback=(result) -> packmol_callback(result, cl_system, tol, iprint),
+            vaux=auxvecs,
+            nitmax=maxit,
+            nfevalmax=10 * maxit,
+        )
+
+        # Update molecule positions with optimized values
+        x_mol = reinterpret(MoleculePosition{D,T}, x)
+        for (k, imol) in enumerate(free_mol_indices)
+            packmol_system.molecule_positions[imol] = x_mol[k]
+        end
+
+        # Statistics
+        fx = spgresult.f
+        dmin = min(cl_system.fg.dmin, cl_system.cutoff)
+        if fx < bestf
+            bestf = fx
+        end
+        fimprov = bestf > zero(T) ? clamp(-100 * (fx - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
+
+        @printf(
+            "\n  Loop %4d: f = %10.4e  best f = %10.4e  improvement: %6.2f%%  min dist: %12.6f\n",
+            loop, fx, bestf, fimprov, dmin,
+        )
+
+        # Check convergence: minimum distance exceeds tolerance
+        if dmin > tol
+            @printf("  Solution found at loop %d! Minimum distance: %.6f > tolerance: %.6f\n", loop, dmin, tol)
+            converged = true
+            break
+        end
+
+        # Write intermediate output periodically
+        if packmol_system.writebad && !isempty(packmol_system.output_file)
+            write_output(packmol_system)
+            println("  Current (possibly bad) structure written to file: ", packmol_system.output_file)
+        end
     end
 
-    println(spgboxresult)
+    if !converged
+        @printf("  WARNING: packing did not converge after %d loops (best f = %.4e)\n", nloop, bestf)
+    end
+
     println("Minimum distance obtained: ", min(cl_system.fg.dmin, cl_system.cutoff))
 
     # For PBC: wrap atom positions to the unit cell centered at unitcell_center
@@ -188,7 +248,7 @@ end
     @test length(sys.atoms) == 300
     @test sys.tolerance == 2.0
 
-    Packmol.packmol(sys; nitmax=2000, iprint=50)
+    Packmol.packmol(sys; nloop=200, maxit=20, iprint=10)
 
     # Compute final atom positions
     atom_positions = Vector{SVector{3,Float64}}(undef, length(sys.atoms))
