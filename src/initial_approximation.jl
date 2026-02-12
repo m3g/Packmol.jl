@@ -32,7 +32,7 @@ function overlaps_fixed(
     mol_positions::Vector{SVector{D,T}};
     itask
 ) where {D,T}
-    R = eulermat(mp.angles...)
+    R = eulermat(mp.angles)
     for (j, r) in enumerate(ref_coords)
         mol_positions[j] = R * r + mp.cm
     end
@@ -70,7 +70,7 @@ function satisfies_constraints(
     mol_positions::Vector{SVector{D,T}},
 ) where {D,T}
     isempty(st.constraints) && return true
-    R = eulermat(mp.angles...)
+    R = eulermat(mp.angles)
     for (j, r) in enumerate(st.reference_coordinates)
         x = R * r + mp.cm
         mol_positions[j] = x
@@ -93,7 +93,7 @@ function constraint_penalty_sum(
     st::StructureType{D,T},
 ) where {D,T}
     isempty(st.constraints) && return zero(T)
-    R = eulermat(mp.angles...)
+    R = eulermat(mp.angles)
     fpen = zero(T)
     for (j, r) in enumerate(st.reference_coordinates)
         x = R * r + mp.cm

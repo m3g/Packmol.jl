@@ -8,7 +8,7 @@ using Base: @kwdef
 using Base.Threads: @spawn
 using ChunkSplitters: chunks, index_chunks
 using PDBTools: Atom, read_pdb, write_pdb, coor, center_of_mass
-using ProgressMeter: Progress, next!
+using ProgressMeter: Progress, next!, finish!
 using SPGBox
 using Printf: @printf, @sprintf
 import CellListMap

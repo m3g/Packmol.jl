@@ -201,7 +201,8 @@ function packmol(
         flast = fx
         max_const = cl_system.fg.max_constraint_penalty
 
-        @printf("\n\n  Function value from last loop: f = %10.5e\n", fx)
+        finish!(progress_meter)
+        @printf("\n  Function value from last loop: f = %10.5e\n", fx)
         @printf("  Best function value before: f = %10.5e\n", bestf)
         @printf("  Improvement from best function value: %8.2f %%\n", fimprov)
         @printf("  Improvement from last loop: %8.2f %%\n", fimp_last)

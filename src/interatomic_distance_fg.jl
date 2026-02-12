@@ -107,7 +107,7 @@ function compute_atom_positions!(
         for _ in 1:st.number_of_molecules
             imol += 1
             mp = molecule_positions[imol]
-            R = eulermat(mp.angles...)
+            R = eulermat(mp.angles)
             cm = mp.cm
             for j in 1:st.natoms
                 iat += 1
@@ -151,7 +151,7 @@ function compute_positions_and_constraints!(
                     imol = st_imol_offset + i
                     iat_first = st_iat_offset + (i - 1) * natoms_st
                     mp = molecule_positions[imol]
-                    R = eulermat(mp.angles...)
+                    R = eulermat(mp.angles)
                     cm = mp.cm
                     for j in 1:natoms_st
                         iat = iat_first + j
@@ -163,11 +163,11 @@ function compute_positions_and_constraints!(
                             atom_penalty = zero(T)
                             for ic in atom.constraints
                                 c = st.constraints[ic]
-                                penalty = constraint_penalty(c, x)
+                                penalty::T = constraint_penalty(c, x)::T
                                 f_local += penalty
                                 fmol_local[imol] += penalty
                                 atom_penalty += penalty
-                                fg_output.gxcar[iat] += constraint_gradient(c, x)
+                                fg_output.gxcar[iat]::SVector{D,T} += constraint_gradient(c, x)::SVector{D,T}
                             end
                             max_penalty_local = max(max_penalty_local, atom_penalty)
                         end
@@ -225,11 +225,11 @@ function constraint_fg!(
                 atom_penalty = zero(T)
                 for ic in atom.constraints
                     c = st.constraints[ic]
-                    penalty = constraint_penalty(c, x)
+                    penalty::T = constraint_penalty(c, x)::T
                     fg_local += penalty
                     fmol_local[atom.molecule_index] += penalty
                     atom_penalty += penalty
-                    fg_output.gxcar[iat] += constraint_gradient(c, x)
+                    fg_output.gxcar[iat]::SVector{D,T} += constraint_gradient(c, x)::SVector{D,T}
                 end
                 max_penalty_local = max(max_penalty_local, atom_penalty)
             end

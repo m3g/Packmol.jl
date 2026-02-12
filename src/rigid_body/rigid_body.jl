@@ -69,8 +69,10 @@ function move!(x::AbstractVector{T}, newcm::T, beta, gamma, theta) where {T<:SVe
     x .= x .+ Ref(newcm)
     return x
 end
+move!(x::AbstractVector{<:SVector{3,T}}, newcm::T, angles::SVector{3,T}) where {T} = 
+    move!(x, newcm, angles[1], angles[2], angles[3])
 move!(x::AbstractVector{<:SVector{D,T}}, pos::MoleculePosition{D,T}) where {D,T} =
-    move!(x, pos.cm, pos.angles...)
+    move!(x, pos.cm, pos.angles)
 
 function rotate!(x::AbstractVector{T}, beta, gamma, theta) where {T<:SVector}
     A = eulermat(beta, gamma, theta)
@@ -80,7 +82,9 @@ function rotate!(x::AbstractVector{T}, beta, gamma, theta) where {T<:SVector}
     return x
 end
 rotate!(x::AbstractVector{<:SVector{D,T}}, pos::MoleculePosition{D,T}) where {D,T} =
-    rotate!(x, pos.angles...)
+    rotate!(x, pos.angles)
+rotate!(x::AbstractVector{<:SVector{3,T}}, angles::SVector{3,T}) where {T} =
+    rotate!(x, angles[1], angles[2], angles[3])
 
 @testitem "move!" setup=[RigidBody] begin
     x = [SVector(1.0, 0.0, 0.0), SVector(0.0, 0.0, 0.0)]
