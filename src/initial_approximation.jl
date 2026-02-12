@@ -39,7 +39,7 @@ function overlaps_fixed(
     n = length(ref_coords)
     fixed_sys.output[itask] = zero(eltype(fixed_sys.output))
     overlap = pairwise!(
-        (pair, overlap) -> begin 
+        (pair, overlap) -> begin
             overlap[itask] += one(eltype(overlap))
             return overlap
         end,
@@ -129,14 +129,63 @@ function compute_cm_bounds(packmol_system::PackmolSystem{D,T}) where {D,T}
 end
 
 #
+# Estimate per-structure-type CM bounds by evaluating constraint penalty + overlap
+# with fixed atoms at the current (random) molecule positions and keeping
+# the best fraction of molecules per type.
+#
+# Returns (cm_min, cm_max) vectors indexed by structure type, computed from
+# the CMs of the `best_fraction` molecules with lowest badness per type.
+#
+function estimate_cm_bounds(
+    packmol_system::PackmolSystem{D,T};
+    best_fraction::T=T(0.1),
+) where {D,T}
+    # Compute atom positions and per-molecule badness
+    natoms = length(packmol_system.atoms)
+    atom_positions = Vector{SVector{D,T}}(undef, natoms)
+    compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
+    fixed_sys = build_fixed_particle_system(packmol_system)
+    tol = packmol_system.tolerance
+    badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol)
+
+    ntypes = length(packmol_system.structure_types)
+    cm_min = [SVector{D,T}(ntuple(_ -> typemax(T), D)) for _ in 1:ntypes]
+    cm_max = [SVector{D,T}(ntuple(_ -> typemin(T), D)) for _ in 1:ntypes]
+
+    imol = 0
+    for (ist, st) in enumerate(packmol_system.structure_types)
+        if st.fixed.fixed
+            imol += st.number_of_molecules
+            continue
+        end
+        # Collect (molecule_index, badness) for this type
+        mol_indices = Vector{Int}(undef, st.number_of_molecules)
+        mol_badness = Vector{T}(undef, st.number_of_molecules)
+        for i in 1:st.number_of_molecules
+            imol += 1
+            mol_indices[i] = imol
+            mol_badness[i] = badness[imol]
+        end
+        # Sort by badness (ascending) and take best fraction
+        perm = sortperm(mol_badness)
+        nbest = max(1, round(Int, best_fraction * st.number_of_molecules))
+        for k in 1:nbest
+            cm = packmol_system.molecule_positions[mol_indices[perm[k]]].cm
+            cm_min[ist] = min.(cm_min[ist], cm)
+            cm_max[ist] = max.(cm_max[ist], cm)
+        end
+    end
+    return cm_min, cm_max
+end
+
+#
 # Initialize molecule positions randomly within constraint bounding box
 # (or within the unit cell for PBC), and center reference coordinates
 # at the origin (required for chain rule).
 #
 # This is just the first rough placement — no constraint checking is done here.
-# The subsequent adjust_constraints! call will optimize positions to satisfy
-# geometric constraints, and reinitialize_with_bounds! will refine placement
-# using the resulting CM bounds.
+# The subsequent steps will estimate bounds from the best molecules and
+# re-initialize within those bounds.
 #
 function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D,T}
     # Center reference coordinates at origin (required for chain rule)
@@ -202,7 +251,7 @@ function _collect_fixed_positions(packmol_system::PackmolSystem{D,T}) where {D,T
     for st in packmol_system.structure_types
         if st.fixed.fixed
             mp = st.fixed.position
-            R = eulermat(mp.angles...)
+            R = eulermat(mp.angles)
             for r in st.reference_coordinates
                 push!(fixed_atom_positions, R * r + mp.cm)
             end
@@ -295,7 +344,7 @@ function molecule_badness(
                     # Per-molecule overlap with fixed atoms via CellListMap cross-computation
                     if !isnothing(fixed_sys) && !st.fixed.fixed
                         for j in 1:st.natoms
-                            mol_positions[j] = atom_positions[iat_first + j - 1]
+                            mol_positions[j] = atom_positions[iat_first+j-1]
                         end
                         fixed_sys.output[itask] = zero(T)
                         overlap = pairwise!(
@@ -333,6 +382,8 @@ function movebad!(
     RNG;
     movefrac::T=T(0.05),
     precision::T=T(1e-2),
+    cm_lo_type::Union{Nothing,Vector{SVector{D,T}}} = nothing,
+    cm_hi_type::Union{Nothing,Vector{SVector{D,T}}} = nothing,
 ) where {D,T}
     nfree = length(free_mol_indices)
     # Count bad molecules and find fmol range among them
@@ -358,8 +409,19 @@ function movebad!(
             # linearly decreasing probability for better molecules
             prob = fmol[imol] / fmol_max
             if rand(RNG, T) < prob
-                st = packmol_system.structure_types[mol_structure_type[imol]]
-                randomize_molecule!(packmol_system, imol, st, RNG)
+                ist = mol_structure_type[imol]
+                st = packmol_system.structure_types[ist]
+                if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
+                    lo = cm_lo_type[ist]
+                    hi = cm_hi_type[ist]
+                    has_valid_bounds = all(lo .< hi)
+                    randomize_molecule!(packmol_system, imol, st, RNG;
+                        cm_lo = has_valid_bounds ? lo : nothing,
+                        cm_hi = has_valid_bounds ? hi : nothing,
+                    )
+                else
+                    randomize_molecule!(packmol_system, imol, st, RNG)
+                end
                 nmoved += 1
             end
         end
@@ -375,7 +437,9 @@ function randomize_molecule!(
     packmol_system::PackmolSystem{D,T},
     imol::Int,
     st::StructureType{D,T},
-    RNG,
+    RNG;
+    cm_lo::Union{Nothing,SVector{D,T}} = nothing,
+    cm_hi::Union{Nothing,SVector{D,T}} = nothing,
 ) where {D,T}
     has_pbc = !isnothing(packmol_system.unitcell)
     if has_pbc
@@ -383,6 +447,9 @@ function randomize_molecule!(
         center = packmol_system.unitcell_center
         frac = SVector{D,T}(ntuple(_ -> rand(RNG, T) - T(0.5), D))
         cm = SVector{D,T}(uc * frac) + center
+    elseif !isnothing(cm_lo) && !isnothing(cm_hi)
+        extent = cm_hi - cm_lo
+        cm = cm_lo + SVector{D,T}(ntuple(d -> rand(RNG, T) * extent[d], D))
     else
         sidemax = T(DEFAULT_SIDEMAX)
         cm = SVector{D,T}(ntuple(_ -> sidemax * (T(2) * rand(RNG, T) - one(T)), D))
@@ -407,12 +474,16 @@ function reinitialize_with_bounds!(
     RNG;
     max_guess_try::Int=20,
     precision::T=T(1e-2),
+    cm_min::Union{Nothing,Vector{SVector{D,T}}} = nothing,
+    cm_max::Union{Nothing,Vector{SVector{D,T}}} = nothing,
 ) where {D,T}
     nfree = length(free_mol_indices)
     nfree == 0 && return packmol_system
 
-    # Compute CM bounds per type from current (constraint-fitted) positions
-    cm_min, cm_max = compute_cm_bounds(packmol_system)
+    # Use provided CM bounds, or compute from current molecule positions
+    if isnothing(cm_min) || isnothing(cm_max)
+        cm_min, cm_max = compute_cm_bounds(packmol_system)
+    end
 
     # Build fixed particle system for overlap checks
     fixed_sys = build_fixed_particle_system(packmol_system)
@@ -547,6 +618,7 @@ end
 # 2. Identify "bad" molecules: those with non-zero constraint penalty or 
 #    overlapping with fixed atoms
 # 3. Randomly re-place a fraction (`movefrac`) of the bad molecules
+#    within the per-type CM bounds (if provided)
 # 4. Repeat up to `nloop` times until all constraints are satisfied.
 #
 function adjust_constraints!(
@@ -557,7 +629,9 @@ function adjust_constraints!(
     movefrac::T=T(0.05),
     opt_nit::Int=20,
     precision::T=T(1e-10),
-    iprint::Int=10 
+    iprint::Int=10,
+    cm_lo_type::Union{Nothing,Vector{SVector{D,T}}} = nothing,
+    cm_hi_type::Union{Nothing,Vector{SVector{D,T}}} = nothing,
 ) where {D,T}
     nfree = length(free_mol_indices)
     nfree == 0 && return packmol_system
@@ -650,8 +724,19 @@ function adjust_constraints!(
                 iloop, spgresult.f, nbad, nfree, nmove)
         end
         for i in 1:nmove
-            st = packmol_system.structure_types[mol_structure_type[bad_mols[i]]]
-            randomize_molecule!(packmol_system, bad_mols[i], st, RNG)
+            ist = mol_structure_type[bad_mols[i]]
+            st = packmol_system.structure_types[ist]
+            if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
+                lo = cm_lo_type[ist]
+                hi = cm_hi_type[ist]
+                has_valid_bounds = all(lo .< hi)
+                randomize_molecule!(packmol_system, bad_mols[i], st, RNG;
+                    cm_lo = has_valid_bounds ? lo : nothing,
+                    cm_hi = has_valid_bounds ? hi : nothing,
+                )
+            else
+                randomize_molecule!(packmol_system, bad_mols[i], st, RNG)
+            end
         end
     end
 

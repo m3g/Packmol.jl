@@ -53,14 +53,21 @@ function packmol(
     # Pre-optimization: move molecules to satisfy geometric constraints
     # before the main packing (no distance penalties)
     if !restart
-        adjust_constraints!(packmol_system, free_mol_indices, RNG)
-        # Re-initialize: best-of-N random placement within CM bounds
-        # determined from the constraint-fitted positions
+        # Step 1: Random positions in large sidemax box (done by initialize_molecules!)
+        # Step 2: Estimate per-type CM bounds from the best 10% of the
+        # random placements (considering constraint penalty + fixed overlap)
+        cm_min, cm_max = estimate_cm_bounds(packmol_system)
+        # Step 3: Re-initialize molecules within the estimated bounds
+        # (best-of-N tries per molecule, checking constraints + fixed overlap)
         reinitialize_with_bounds!(packmol_system, free_mol_indices, RNG;
             precision=packmol_system.constraint_precision,
+            cm_min=cm_min, cm_max=cm_max,
         )
-        # Final constraint adjustment after re-initialization
-        adjust_constraints!(packmol_system, free_mol_indices, RNG)
+        # Step 4: Full constraint adjustment with the solver and movebad,
+        # randomizing bad molecules within the CM bounds from step 2
+        adjust_constraints!(packmol_system, free_mol_indices, RNG;
+            cm_lo_type=cm_min, cm_hi_type=cm_max,
+        )
     end
 
     # check mode: write the initial approximation and return
@@ -194,9 +201,11 @@ function packmol(
 
         # Move bad molecules if this loop did not improve f by at least 10%
         if fimp_last < T(10)
+            cm_min, cm_max = compute_cm_bounds(packmol_system)
             nmoved = movebad!(
                 packmol_system, cl_system.fg.fmol, free_mol_indices, mol_structure_type, RNG;
                 movefrac, precision,
+                cm_lo_type=cm_min, cm_hi_type=cm_max,
             )
             if nmoved > 0
                 println("  Moved $nmoved bad molecules randomly to new positions.")
