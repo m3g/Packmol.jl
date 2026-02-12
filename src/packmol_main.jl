@@ -171,7 +171,7 @@ function packmol(
         println()
 
         # Run a short optimization (maxit iterations per loop)
-        progress_meter = Progress(100; desc=" Iterations: ", barlen=47, color=:black)
+        progress_meter = Progress(100; desc=" Iterations: ", barlen=47)
         spgresult = spgbox!(
             (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices),
             x;
