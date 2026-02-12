@@ -129,18 +129,30 @@ function constraint_fg!(
     packmol_system::PackmolSystem{D,T},
 ) where {D,T}
     has_pbc = !isnothing(packmol_system.unitcell)
-    for (iat, atom) in enumerate(packmol_system.atoms)
-        x = atom_positions[iat]
-        if has_pbc
-            x = wrap_to_center(x, packmol_system.unitcell, packmol_system.unitcell_center)
-        end
-        st = packmol_system.structure_types[atom.structure_type_index]
-        for ic in atom.constraints
-            c = st.constraints[ic]
-            penalty = constraint_penalty(c, x)
-            fg_output.f += penalty
-            fg_output.fmol[atom.molecule_index] += penalty
-            fg_output.gxcar[iat] += constraint_gradient(c, x)
+    lk_fg = ReentrantLock()
+    @sync for iat_range in index_chunks(packmol_system.atoms; n=Threads.nthreads())
+        @spawn begin
+            fg_local = zero(fg_output.f)
+            fmol_local = zeros(T, length(fg_output.fmol))
+            for iat in iat_range
+                atom = packmol_system.atoms[iat]
+                x = atom_positions[iat]
+                if has_pbc
+                    x = wrap_to_center(x, packmol_system.unitcell, packmol_system.unitcell_center)
+                end
+                st = packmol_system.structure_types[atom.structure_type_index]
+                for ic in atom.constraints
+                    c = st.constraints[ic]
+                    penalty = constraint_penalty(c, x)
+                    fg_local += penalty
+                    fmol_local[atom.molecule_index] += penalty
+                    fg_output.gxcar[iat] += constraint_gradient(c, x)
+                end
+            end
+            @lock lk_fg begin
+                fg_output.f += fg_local
+                fg_output.fmol .+= fmol_local
+            end
         end
     end
     return fg_output

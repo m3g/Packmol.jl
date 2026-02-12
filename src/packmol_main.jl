@@ -139,7 +139,8 @@ function packmol(
     println("Packing $nfree free molecules ($(packmol_system.nmols) total)...")
     # Evaluate and print initial function value
     g0 = similar(x)
-    return g0, x, cl_system, packmol_system, atom_positions, free_mol_indices
+# voltar
+#    return g0, x, cl_system, packmol_system, atom_positions, free_mol_indices
     f0 = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices)
     @printf("Initial function value: %20.10e\n", f0)
     bestf = typemax(T)
