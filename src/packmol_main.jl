@@ -51,9 +51,10 @@ function packmol(
     else
         # Step 1: Random positions in large sidemax box (done by initialize_molecules!)
         initialize_molecules!(packmol_system, RNG)
-        # Step 2: Estimate per-type CM bounds from the best 10% of the
-        # random placements (considering constraint penalty + fixed overlap)
-        cm_min, cm_max = estimate_cm_bounds(packmol_system)
+        adjust_constraints!(packmol_system, free_mol_indices, RNG)
+        # Step 2: Compute per-type CM bounds from all molecules
+        # (after adjust_constraints!, most/all should satisfy constraints)
+        cm_min, cm_max = compute_cm_bounds(packmol_system)
         # Step 3: Re-initialize molecules within the estimated bounds
         # (best-of-N tries per molecule, checking constraints + fixed overlap)
         reinitialize_with_bounds!(packmol_system, free_mol_indices, RNG;
@@ -136,6 +137,10 @@ function packmol(
     # Each iteration runs a short optimization, evaluates per-molecule
     # contributions, and randomly re-places the worst molecules.
     println("Packing $nfree free molecules ($(packmol_system.nmols) total)...")
+    # Evaluate and print initial function value
+    g0 = similar(x)
+    f0 = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices)
+    @printf("Initial function value: %20.10e\n", f0)
     bestf = typemax(T)
     flast = typemax(T)
     converged = false
