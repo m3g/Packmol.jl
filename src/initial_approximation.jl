@@ -593,10 +593,10 @@ function constraint_only_fg!(
     for (k, imol) in enumerate(free_mol_indices)
         packmol_system.molecule_positions[imol] = x_mol[k]
     end
-    # Compute Cartesian atomic coordinates from ALL molecule DOFs
-    compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
     # Reset fg output (no CellListMap to do it for us)
     CellListMap.reset_output!(fg_output)
+    # Compute Cartesian atomic coordinates from ALL molecule DOFs
+    compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
     # Add constraint penalties and gradients
     constraint_fg!(fg_output, atom_positions, packmol_system)
     # Chain rule: Cartesian → molecule DOF gradients (for all molecules)

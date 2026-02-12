@@ -10,22 +10,29 @@ This was implemented originally in the Fortran code of Packmol, by J. M. Martín
 
 =#
 function chain_rule!(fg, packmol_system::PackmolSystem{D,T}) where {D,T}
-    imol = 0
-    iat = 0
+    imol_offset = 0
+    iat_offset = 0
     for structure_type in packmol_system.structure_types
-        for _ in 1:structure_type.number_of_molecules
-            imol += 1
-            ifmol = iat + 1
-            ilmol = iat + structure_type.natoms
-            gmol = partial_derivatives(
-                fg.g[imol],
-                packmol_system.molecule_positions[imol].angles,
-                structure_type.reference_coordinates, 
-                @view(fg.gxcar[ifmol:ilmol]),
-            )
-            fg.g[imol] = gmol
-            iat += structure_type.natoms
+        natoms_st = structure_type.natoms
+        nmols_st = structure_type.number_of_molecules
+        st_imol_offset = imol_offset
+        st_iat_offset = iat_offset
+        @sync for irange in chunks(1:nmols_st; n=Threads.nthreads())
+            @spawn for i in irange
+                imol = st_imol_offset + i
+                ifmol = st_iat_offset + (i - 1) * natoms_st + 1
+                ilmol = ifmol + natoms_st - 1
+                gmol = partial_derivatives(
+                    fg.g[imol],
+                    packmol_system.molecule_positions[imol].angles,
+                    structure_type.reference_coordinates,
+                    @view(fg.gxcar[ifmol:ilmol]),
+                )
+                fg.g[imol] = gmol
+            end
         end
+        imol_offset += nmols_st
+        iat_offset += nmols_st * natoms_st
     end
     return packmol_system
 end
