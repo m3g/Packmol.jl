@@ -595,10 +595,8 @@ function constraint_only_fg!(
     end
     # Reset fg output (no CellListMap to do it for us)
     CellListMap.reset_output!(fg_output)
-    # Compute Cartesian atomic coordinates from ALL molecule DOFs
-    compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
-    # Add constraint penalties and gradients
-    constraint_fg!(fg_output, atom_positions, packmol_system)
+    # Single pass: compute atom positions AND constraint penalties/gradients
+    compute_positions_and_constraints!(atom_positions, fg_output, packmol_system.molecule_positions, packmol_system)
     # Chain rule: Cartesian → molecule DOF gradients (for all molecules)
     chain_rule!(fg_output, packmol_system)
     # Pack only free molecule gradients into optimizer gradient vector

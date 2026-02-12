@@ -25,11 +25,14 @@ function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
     )
 end
 
-# Custom copy, reset and reducer functions for CellListMap
-function CellListMap.copy_output(x::InteratomicDistanceFG)
+# Custom copy, reset and reducer functions for CellListMap.
+# Note: `g` (molecule-level gradients) is excluded from copy/reduce — it is
+# only written by chain_rule! after pairwise computation, so copying it per
+# thread is wasted work (nmols × sizeof(MoleculePosition) per thread per call).
+function CellListMap.copy_output(x::InteratomicDistanceFG{D,T}) where {D,T}
     InteratomicDistanceFG(
         x.f,
-        copy(x.g),
+        MoleculePosition{D,T}[],  # empty — not used during pairwise
         x.dmin,
         copy(x.fmol),
         copy(x.gxcar),
@@ -45,7 +48,6 @@ function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,
 end
 function CellListMap.reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
     x.f += y.f
-    x.g .+= y.g
     x.dmin = min(x.dmin, y.dmin)
     x.fmol .+= y.fmol
     x.gxcar .+= y.gxcar
@@ -101,6 +103,50 @@ function compute_atom_positions!(
             for j in 1:st.natoms
                 iat += 1
                 atom_positions[iat] = R * ref[j] + cm
+            end
+        end
+    end
+    return atom_positions
+end
+
+#
+# Combined single-pass: compute Cartesian atom positions AND evaluate
+# constraint penalties/gradients. This avoids iterating over all atoms
+# twice (once for positions, once for constraints).
+# Used by constraint_only_fg! where there is no CellListMap reset in between.
+#
+function compute_positions_and_constraints!(
+    atom_positions::Vector{SVector{D,T}},
+    fg_output::InteratomicDistanceFG{D,T},
+    molecule_positions,
+    packmol_system::PackmolSystem{D,T},
+) where {D,T}
+    has_pbc = !isnothing(packmol_system.unitcell)
+    iat = 0
+    imol = 0
+    for st in packmol_system.structure_types
+        ref = st.reference_coordinates
+        has_constraints = !isempty(st.constraints)
+        for _ in 1:st.number_of_molecules
+            imol += 1
+            mp = molecule_positions[imol]
+            R = eulermat(mp.angles...)
+            cm = mp.cm
+            for j in 1:st.natoms
+                iat += 1
+                pos = R * ref[j] + cm
+                atom_positions[iat] = pos
+                if has_constraints
+                    x = has_pbc ? wrap_to_center(pos, packmol_system.unitcell, packmol_system.unitcell_center) : pos
+                    atom = packmol_system.atoms[iat]
+                    for ic in atom.constraints
+                        c = st.constraints[ic]
+                        penalty = constraint_penalty(c, x)
+                        fg_output.f += penalty
+                        fg_output.fmol[imol] += penalty
+                        fg_output.gxcar[iat] += constraint_gradient(c, x)
+                    end
+                end
             end
         end
     end
@@ -182,6 +228,8 @@ function fg!(g, x,
     pairwise!((pair, output) -> cartesian_fg!(pair, output, packmol_system), cl_system,)
     # Add constraint penalties and gradients
     constraint_fg!(cl_system.fg, atom_positions, packmol_system)
+    # Zero molecule-level gradients (excluded from CellListMap reset/reduce)
+    fill!(cl_system.fg.g, zero(MoleculePosition{D,T}))
     # Chain rule: Cartesian → molecule DOF gradients (for all molecules)
     chain_rule!(cl_system.fg, packmol_system)
     # Pack only free molecule gradients into optimizer gradient vector
