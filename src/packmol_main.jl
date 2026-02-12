@@ -155,7 +155,8 @@ function packmol(
         spgresult = spgbox!(
             (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices),
             x;
-            callback=(result) -> packmol_callback(result, cl_system, tol, iprint),
+            callback=(result) -> packmol_callback(result, cl_system, tol, iprint,
+                packmol_system.tolerance_precision, packmol_system.constraint_precision),
             vaux=auxvecs,
             nitmax=maxit,
             nfevalmax=10 * maxit,
@@ -179,17 +180,21 @@ function packmol(
         end
         flast = fx
 
+        max_const = cl_system.fg.max_constraint_penalty
         @printf("\n  Loop %4d: f = %10.4e  best f = %10.4e", loop, fx, bestf)
         if loop > 0
             @printf("  improvement from best: %6.2f%%  from last: %6.2f%%", fimprov, fimp_last)
         end
-        @printf("  min dist: %12.6f\n", dmin)
+        @printf("  min dist: %12.6f  max constraint penalty: %12.6e\n", dmin, max_const)
 
-        # Check convergence: minimum distance exceeds tolerance
-        if (tol - dmin < packmol_system.tolerance_precision) && bestf < packmol_system.constraint_precision
+        # Check convergence: both tolerance and constraint precisions must be satisfied
+        tol_ok = tol - dmin < packmol_system.tolerance_precision
+        const_ok = max_const < packmol_system.constraint_precision
+        if tol_ok && const_ok
             print("""  
                 Solution found at loop $(@sprintf("%d", loop))! 
                 Minimum distance: $(@sprintf("%.6f", dmin))
+                Maximum constraint penalty: $(@sprintf("%.6e", max_const))
 
             """)
             converged = true
@@ -274,14 +279,17 @@ end
 #
 # SPGBox callback: print progress and check convergence
 #
-function packmol_callback(spgresult, cl_system, tol, iprint)
+function packmol_callback(spgresult, cl_system, tol, iprint, tolerance_precision, constraint_precision)
     if spgresult.nit % iprint == 0
         @printf(
             "  - Iteration: %6d  Minimum distance: %12.6f  Function value: %12.6e\n",
             spgresult.nit, min(cl_system.fg.dmin, cl_system.cutoff), spgresult.f
         )
     end
-    if cl_system.fg.dmin > tol
+    dmin = min(cl_system.fg.dmin, cl_system.cutoff)
+    tol_ok = tol - dmin < tolerance_precision
+    const_ok = cl_system.fg.max_constraint_penalty < constraint_precision
+    if tol_ok && const_ok
         return true
     end
     return false

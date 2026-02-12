@@ -14,6 +14,8 @@ using SPGBox: spgbox!
     gxcar::Vector{SVector{D,T}}
     # Pre-allocated per-thread buffers for fmol accumulation (avoids allocation in @spawn)
     fmol_threaded::Vector{Vector{T}}
+    # Maximum constraint penalty over all atoms (for convergence checking)
+    max_constraint_penalty::T = zero(T)
 end
 
 function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
@@ -25,6 +27,7 @@ function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
         fmol = zeros(T, packmol_system.nmols),
         gxcar = fill(zero(SVector{D,T}), natoms),
         fmol_threaded = [zeros(T, packmol_system.nmols) for _ in 1:Threads.nthreads()],
+        max_constraint_penalty = zero(T),
     )
 end
 
@@ -40,6 +43,7 @@ function CellListMap.copy_output(x::InteratomicDistanceFG{D,T}) where {D,T}
         copy(x.fmol),
         copy(x.gxcar),
         Vector{T}[],  # fmol_threaded — not used by CellListMap threads
+        zero(T),  # max_constraint_penalty — not used by CellListMap threads
     )
 end
 function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,T}
@@ -48,6 +52,7 @@ function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,
     output.dmin = typemax(T)
     fill!(output.fmol, zero(T))
     fill!(output.gxcar, zero(SVector{D,T}))
+    output.max_constraint_penalty = zero(T)
     return output
 end
 function CellListMap.reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
@@ -139,6 +144,7 @@ function compute_positions_and_constraints!(
         @sync for (ichunk, mol_range) in enumerate(chunks(1:nmols_st; n=Threads.nthreads()))
             @spawn begin
                 f_local = zero(T)
+                max_penalty_local = zero(T)
                 fmol_local = fg_output.fmol_threaded[ichunk]
                 fill!(fmol_local, zero(T))
                 for i in mol_range
@@ -154,19 +160,23 @@ function compute_positions_and_constraints!(
                         if has_constraints
                             x = has_pbc ? wrap_to_center(pos, packmol_system.unitcell, packmol_system.unitcell_center) : pos
                             atom = packmol_system.atoms[iat]
+                            atom_penalty = zero(T)
                             for ic in atom.constraints
                                 c = st.constraints[ic]
                                 penalty = constraint_penalty(c, x)
                                 f_local += penalty
                                 fmol_local[imol] += penalty
+                                atom_penalty += penalty
                                 fg_output.gxcar[iat] += constraint_gradient(c, x)
                             end
+                            max_penalty_local = max(max_penalty_local, atom_penalty)
                         end
                     end
                 end
                 @lock lk begin
                     fg_output.f += f_local
                     fg_output.fmol .+= fmol_local
+                    fg_output.max_constraint_penalty = max(fg_output.max_constraint_penalty, max_penalty_local)
                 end
             end
         end
@@ -202,6 +212,7 @@ function constraint_fg!(
     @sync for (ichunk, iat_range) in enumerate(index_chunks(packmol_system.atoms; n=Threads.nthreads()))
         @spawn begin
             fg_local = zero(fg_output.f)
+            max_penalty_local = zero(T)
             fmol_local = fg_output.fmol_threaded[ichunk]
             fill!(fmol_local, zero(T))
             for iat in iat_range
@@ -211,17 +222,21 @@ function constraint_fg!(
                     x = wrap_to_center(x, packmol_system.unitcell, packmol_system.unitcell_center)
                 end
                 st = packmol_system.structure_types[atom.structure_type_index]
+                atom_penalty = zero(T)
                 for ic in atom.constraints
                     c = st.constraints[ic]
                     penalty = constraint_penalty(c, x)
                     fg_local += penalty
                     fmol_local[atom.molecule_index] += penalty
+                    atom_penalty += penalty
                     fg_output.gxcar[iat] += constraint_gradient(c, x)
                 end
+                max_penalty_local = max(max_penalty_local, atom_penalty)
             end
             @lock lk_fg begin
                 fg_output.f += fg_local
                 fg_output.fmol .+= fmol_local
+                fg_output.max_constraint_penalty = max(fg_output.max_constraint_penalty, max_penalty_local)
             end
         end
     end
