@@ -630,6 +630,7 @@ function adjust_constraints!(
     opt_nit::Int=20,
     precision::T=T(1e-10),
     iprint::Int=10,
+    domovebad::Bool=true,
     cm_lo_type::Union{Nothing,Vector{SVector{D,T}}} = nothing,
     cm_hi_type::Union{Nothing,Vector{SVector{D,T}}} = nothing,
 ) where {D,T}
@@ -718,7 +719,7 @@ function adjust_constraints!(
         bad_mols = bad_mols[perm]
 
         # Move a fraction of the bad molecules to new random positions
-        nmove = max(1, min(nbad, round(Int, movefrac * nfree)))
+        nmove = domovebad ? max(1, min(nbad, round(Int, movefrac * nfree))) : 0
         if iloop % iprint == 0 || iloop == 1
             @printf("  Loop %4d: f = %10.4e  bad molecules: %d/%d  moving: %d\n",
                 iloop, spgresult.f, nbad, nfree, nmove)

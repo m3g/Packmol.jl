@@ -4,7 +4,7 @@
 export Sphere, InsideSphere, OutsideSphere
 
 # Default weights
-weight_default[:sphere] = 5.0
+weight_default[:sphere] = 1e-2
 
 #
 # Spheres

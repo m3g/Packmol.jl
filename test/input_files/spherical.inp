@@ -39,4 +39,6 @@ structure ../structure_files/water.pdb
    outside sphere 0. 0. 0. 43.
 end structure
  
+check
+packall
 output output.pdb
