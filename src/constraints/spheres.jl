@@ -19,9 +19,9 @@ OutsideSphere(args...; kargs...) = Sphere{Outside}(args...; kargs...)
 
 function constraint_penalty(c::Sphere{Inside}, x)
     (; center, radius, weight) = c
-    d = norm(x - center)
-    if d > radius
-        return weight * (d^2 - radius^2)
+    w = sum(abs2, x - center) - radius^2
+    if w > 0
+        return weight * w^2
     else
         return zero(eltype(x))
     end
@@ -29,9 +29,9 @@ end
 
 function constraint_penalty(c::Sphere{Outside}, x)
     (; center, radius, weight) = c
-    d = norm(x - center)
-    if d < radius
-        return weight * (radius^2 - d^2)
+    w = sum(abs2, x - center) - radius^2
+    if w < 0
+        return weight * w^2
     else
         return zero(eltype(x))
     end
@@ -40,9 +40,9 @@ end
 function constraint_gradient(c::Sphere{Inside}, x)
     (; center, radius, weight) = c
     dx = x - center
-    d = norm(dx)
-    if d > radius
-        return 2 * weight * dx
+    w = sum(abs2, dx) - radius^2
+    if w > 0
+        return 4 * weight * w * dx
     else
         return zero(x)
     end
@@ -51,9 +51,9 @@ end
 function constraint_gradient(c::Sphere{Outside}, x)
     (; center, radius, weight) = c
     dx = x - center
-    d = norm(dx)
-    if d < radius
-        return -2 * weight * dx
+    w = sum(abs2, dx) - radius^2
+    if w < 0
+        return 4 * weight * w * dx
     else
         return zero(x)
     end

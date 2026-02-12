@@ -9,6 +9,8 @@
     tolerance_precision::T = 1e-2
     constraint_precision::T = 1e-2
     max_iter::Int = 1000
+    max_random_init::Int=20
+    adjust_constraints_on_init::Bool=true
     add_amber_ter::Bool = false
     amber_ter_preserve::Bool = false
     add_box_sides::Bool = false
@@ -106,6 +108,8 @@ packmol_input_keywords = Dict{String,Function}(
     "tolerance_precision"      => (T, val) -> (:tolerance_precision, _parse_value(T, "tolerance_precision", val)),
     "constraint_precision"     => (T, val) -> (:constraint_precision, _parse_value(T, "constraint_precision", val)),
     "maxit"                    => (T, val) -> (:maxit, _parse_value(Int, "max_iter", val)),
+    "max_random_init"          => (T, val) -> (:max_random_init, _parse_value(Int, "max_random_init", val)),
+    "adjust_constraints_on_init" => (T, val) -> (:adjust_constraints_on_init, _parse_options(String, "adjust_constraints_on_init", val, ("yes" => true, "no" => false))),
     "add_amber_ter"            => (T, val) -> (:add_amber_ter, _parse_value(Bool, "add_amber_ter", val)),
     "amber_ter_preserve"       => (T, val) -> (:amber_ter_preserve, true),
     "add_box_sides"            => (T, val) -> (:add_box_sides, true),

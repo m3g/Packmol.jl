@@ -6,7 +6,7 @@ Read a Packmol input file, run the packing optimization, and write the output.
 function packmol(input_file::String; D::Int=3, T::DataType=Float64, kargs...)
     packmol_system = read_packmol_input(input_file; D, T)
     packmol(packmol_system; kargs...)
-    return packmol_system
+    return nothing
 end
 
 
@@ -30,12 +30,6 @@ function packmol(
     RNG = Random.Xoshiro(seed)
 
     tstart = time()    
-    if restart
-        println("Restarting optimization from current positions...")
-    else
-        println("Initializing molecule positions...")
-        initialize_molecules!(packmol_system, RNG)
-    end
 
     # Build index of free (non-fixed) molecules
     free_mol_indices = Int[]
@@ -52,8 +46,11 @@ function packmol(
 
     # Pre-optimization: move molecules to satisfy geometric constraints
     # before the main packing (no distance penalties)
-    if !restart
+    if restart
+        initialize_molecules!(packmol_system, RNG)
+    else
         # Step 1: Random positions in large sidemax box (done by initialize_molecules!)
+        initialize_molecules!(packmol_system, RNG)
         # Step 2: Estimate per-type CM bounds from the best 10% of the
         # random placements (considering constraint penalty + fixed overlap)
         cm_min, cm_max = estimate_cm_bounds(packmol_system)
@@ -65,9 +62,11 @@ function packmol(
         )
         # Step 4: Full constraint adjustment with the solver and movebad,
         # randomizing bad molecules within the CM bounds from step 2
-        adjust_constraints!(packmol_system, free_mol_indices, RNG;
-            cm_lo_type=cm_min, cm_hi_type=cm_max,
-        )
+        if packmol_system.adjust_constraints_on_init
+            adjust_constraints!(packmol_system, free_mol_indices, RNG;
+                cm_lo_type=cm_min, cm_hi_type=cm_max,
+            )
+        end
     end
 
     # check mode: write the initial approximation and return
@@ -76,7 +75,7 @@ function packmol(
         if !isempty(packmol_system.output_file)
             write_output(packmol_system)
         end
-        return packmol_system
+        return nothing
     end
 
     # Compute initial atom positions
