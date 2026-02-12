@@ -84,7 +84,7 @@ function packmol(
         unitcell = packmol_system.unitcell
     else
         # Non-PBC mode: inflate bounding box so CellListMap treats it as a large box
-        lo, hi = compute_bounding_box(packmol_system)
+        lo, hi = compute_bounding_box(atom_positions)
         box_size = hi - lo
         unitcell = T(3) * box_size
     end

@@ -3,36 +3,21 @@
 #
 
 #
-# Bounding box computation from constraints
+# Bounding box computed from actual atom positions.
+# Used after molecule placement to determine the region for CellListMap.
 #
-constraint_bounds(c::Box) = (c.center - c.sides / 2, c.center + c.sides / 2)
-constraint_bounds(c::Cube) = (c.center .- c.side / 2, c.center .+ c.side / 2)
-constraint_bounds(c::Sphere) = (c.center .- c.radius, c.center .+ c.radius)
-
-function compute_bounding_box(packmol_system::PackmolSystem{D,T}) where {D,T}
+function compute_bounding_box(atom_positions::Vector{SVector{D,T}}) where {D,T}
     lo = SVector{D,T}(ntuple(_ -> typemax(T), D))
     hi = SVector{D,T}(ntuple(_ -> typemin(T), D))
-    for st in packmol_system.structure_types
-        for c in st.constraints
-            clo, chi = constraint_bounds(c)
-            lo = min.(lo, clo)
-            hi = max.(hi, chi)
-        end
+    for x in atom_positions
+        lo = min.(lo, x)
+        hi = max.(hi, x)
     end
     return lo, hi
 end
 
-# Per-structure-type bounding box: uses only the constraints of a single structure type
-function compute_structure_bounding_box(st::StructureType{D,T}) where {D,T}
-    lo = SVector{D,T}(ntuple(_ -> typemax(T), D))
-    hi = SVector{D,T}(ntuple(_ -> typemin(T), D))
-    for c in st.constraints
-        clo, chi = constraint_bounds(c)
-        lo = min.(lo, clo)
-        hi = max.(hi, chi)
-    end
-    return lo, hi
-end
+# Default sidemax: half-width of the large box for initial placement.
+const DEFAULT_SIDEMAX = 1000.0
 
 #
 # Check if a molecule placed at position `mp` overlaps with any fixed atom.
@@ -169,15 +154,16 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
         center = packmol_system.unitcell_center
     end
 
+    # Initial placement: use a large box centered at origin (following Fortran
+    # Packmol's sidemax approach). The constraint-only optimization that follows
+    # will move molecules to feasible positions regardless of constraint type.
+    sidemax = T(DEFAULT_SIDEMAX)
+
     # Compute molecule index offset for each structure type so threads
     # can determine the correct slot without a shared counter.
     imol_offset = 0
     @sync for st in packmol_system.structure_types
         st_offset = imol_offset
-        # Per-structure-type bounding box for initial placement
-        if !has_pbc && !st.fixed.fixed
-            st_lo, st_hi = compute_structure_bounding_box(st)
-        end
         for (_, irange) in enumerate(chunks(1:st.number_of_molecules; n=Threads.nthreads()))
             task_seed = rand(RNG, UInt64)
             @spawn begin
@@ -191,8 +177,7 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
                             frac = SVector{D,T}(ntuple(_ -> rand(task_rng, T) - T(0.5), D))
                             cm = SVector{D,T}(uc * frac) + center
                         else
-                            extent = st_hi - st_lo
-                            cm = st_lo + SVector{D,T}(ntuple(d -> rand(task_rng, T) * extent[d], D))
+                            cm = SVector{D,T}(ntuple(_ -> sidemax * (T(2) * rand(task_rng, T) - one(T)), D))
                         end
                         angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(task_rng, T), D))
                         packmol_system.molecule_positions[imol_local] = MoleculePosition(cm, angles)
@@ -399,9 +384,8 @@ function randomize_molecule!(
         frac = SVector{D,T}(ntuple(_ -> rand(RNG, T) - T(0.5), D))
         cm = SVector{D,T}(uc * frac) + center
     else
-        lo, hi = compute_structure_bounding_box(st)
-        extent = hi - lo
-        cm = lo + SVector{D,T}(ntuple(d -> rand(RNG, T) * extent[d], D))
+        sidemax = T(DEFAULT_SIDEMAX)
+        cm = SVector{D,T}(ntuple(_ -> sidemax * (T(2) * rand(RNG, T) - one(T)), D))
     end
     angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(RNG, T), D))
     packmol_system.molecule_positions[imol] = MoleculePosition(cm, angles)
@@ -454,13 +438,15 @@ function reinitialize_with_bounds!(
         extent = hi - lo
 
         # Fallback: if bounds are degenerate (single molecule or all at same CM),
-        # use the constraint bounding box
+        # use PBC unit cell or sidemax box
         if any(extent .≤ zero(T))
             if has_pbc
                 uc = packmol_system.unitcell
                 center = packmol_system.unitcell_center
             else
-                lo, hi = compute_structure_bounding_box(st)
+                sidemax = T(DEFAULT_SIDEMAX)
+                lo = SVector{D,T}(ntuple(_ -> -sidemax, D))
+                hi = SVector{D,T}(ntuple(_ -> sidemax, D))
                 extent = hi - lo
             end
         end
@@ -472,9 +458,11 @@ function reinitialize_with_bounds!(
                 mol_positions = Vector{SVector{D,T}}(undef, max_natoms)
                 for i in irange
                     imol = st_offset + i
-                    # Start with current position as baseline
+                    # Start fresh: the goal is to replace the current position
+                    # (which may be edge-clustered from constraint optimization)
+                    # with a uniformly distributed random placement.
                     best_mp = packmol_system.molecule_positions[imol]
-                    best_fx = constraint_penalty_sum(best_mp, st)
+                    best_fx = typemax(T)
 
                     for itry in 1:max_guess_try
                         # Random CM within per-type bounds

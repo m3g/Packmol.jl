@@ -36,7 +36,7 @@ version = "1.18.5+0"
 
 [[deps.CellListMap]]
 deps = ["ChunkSplitters", "Compat", "DocStringExtensions", "LinearAlgebra", "PrecompileTools", "ProgressMeter", "Random", "Setfield", "StaticArrays", "TestItems"]
-path = "/home/leandro/.julia/dev/CellListMap"
+path = "/Users/leandro/.julia/dev/CellListMap"
 uuid = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
 version = "0.10.0-DEV"
 
@@ -386,7 +386,7 @@ version = "10.44.0+1"
 
 [[deps.PDBTools]]
 deps = ["CellListMap", "ChunkSplitters", "Compat", "Dates", "Downloads", "Format", "InlineStrings", "InteractiveUtils", "LinearAlgebra", "MolSimToolkitShared", "OrderedCollections", "PrecompileTools", "Printf", "ProteinSecondaryStructures", "SIMD", "SparseArrays", "StaticArrays", "TestItems"]
-path = "/home/leandro/.julia/dev/PDBTools"
+path = "/Users/leandro/.julia/dev/PDBTools"
 uuid = "e29189f1-7114-4dbd-93d0-c5673a921a58"
 version = "3.20.1-DEV"
 
@@ -397,7 +397,7 @@ version = "3.20.1-DEV"
     Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 
 [[deps.Packmol]]
-deps = ["CellListMap", "LinearAlgebra", "NativeFileDialog", "OrderedCollections", "PDBTools", "Packmol_jll", "Parameters", "Printf", "Random", "SPGBox", "StableRNGs", "StaticArrays", "Statistics", "TestItems", "Unitful"]
+deps = ["CellListMap", "ChunkSplitters", "LinearAlgebra", "NativeFileDialog", "OrderedCollections", "PDBTools", "Packmol_jll", "Parameters", "Printf", "Random", "SPGBox", "StableRNGs", "StaticArrays", "Statistics", "TestItems", "Unitful"]
 path = "."
 uuid = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
 version = "0.2.0-DEV"

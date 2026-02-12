@@ -150,7 +150,7 @@ end
 @testitem "gradient chain rule 3D" begin
     using Packmol
     using Packmol: InteratomicDistanceFG, compute_bounding_box, compute_atom_positions!,
-        initialize_molecules!, fg!, read_packmol_input, MoleculePosition
+        initialize_molecules!, fg!, read_packmol_input, MoleculePosition, adjust_constraints!
     using StaticArrays
     using LinearAlgebra: norm
     import CellListMap
@@ -169,7 +169,7 @@ end
     atom_positions = Vector{SVector{D,T}}(undef, natoms)
     compute_atom_positions!(atom_positions, ps.molecule_positions, ps)
 
-    lo, hi = compute_bounding_box(ps)
+    lo, hi = compute_bounding_box(atom_positions)
     box_size = hi - lo
     unitcell = T(3) * box_size
     tol = ps.tolerance

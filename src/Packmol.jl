@@ -23,6 +23,7 @@ export packmol
 include("./constraints/constraints_base.jl")
 include("./constraints/boxes.jl")
 include("./constraints/spheres.jl")
+include("./constraints/planes.jl")
 
 # Data structures
 include("./data_structures/atoms_and_molecules.jl")

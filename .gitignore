@@ -1,4 +1,5 @@
 /Manifest.toml
+/test/examples/*
 /test/input_files/water_box.pdb
 /test/input_files/ieee_signaling_box.pdb
 .vscode/settings.json
