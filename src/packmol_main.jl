@@ -111,7 +111,9 @@ function packmol(
 
     # Set up CellListMap
     fg_output = InteratomicDistanceFG{D,T}(packmol_system)
-    println("Setting up cell lists ($natoms atoms, cutoff = $(@sprintf("%.2f", cutoff)))...")
+    println(" Total number of atoms: ", natoms)
+    println(" Number of free molecules: ", nfree)
+    println(" Number of variables: ", nfree * 2 * D)
     cl_system = ParticleSystem(
         xpositions=atom_positions,
         unitcell=unitcell,
@@ -136,27 +138,34 @@ function packmol(
     # Outer packing loop (following Fortran Packmol gencanloop):
     # Each iteration runs a short optimization, evaluates per-molecule
     # contributions, and randomly re-places the worst molecules.
-    println("Packing $nfree free molecules ($(packmol_system.nmols) total)...")
+    println()
+    println(dash_line)
+    println(" Packing $nfree free molecules ($(packmol_system.nmols) total)...")
+    println(dash_line)
     # Evaluate and print initial function value
     g0 = similar(x)
 # voltar
 #    return g0, x, cl_system, packmol_system, atom_positions, free_mol_indices
     f0 = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices)
-    @printf("Initial function value: %20.10e\n", f0)
+    @printf(" Objective function at initial point: %10.5e\n", f0)
     bestf = typemax(T)
     flast = typemax(T)
     converged = false
     best_positions = copy(packmol_system.molecule_positions)
     for loop in 0:nloop
 
-        @printf("\n --- Starting packing loop: %d\n\n", loop)
+        println()
+        println(dash_line)
+        @printf(" Starting packing loop: %8d\n", loop)
+        println()
 
         # Run a short optimization (maxit iterations per loop)
+        progress_meter = Progress(100; desc=" Iteration:", barlen=48)
         spgresult = spgbox!(
             (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices),
             x;
             callback=(result) -> packmol_callback(result, cl_system, tol, iprint,
-                packmol_system.tolerance_precision, packmol_system.constraint_precision),
+                packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter),
             vaux=auxvecs,
             nitmax=maxit,
             nfevalmax=10 * maxit,
@@ -179,27 +188,43 @@ function packmol(
             copyto!(best_positions, packmol_system.molecule_positions)
         end
         flast = fx
-
         max_const = cl_system.fg.max_constraint_penalty
-        @printf("\n  Loop %4d: f = %10.4e  best f = %10.4e", loop, fx, bestf)
-        if loop > 0
-            @printf("  improvement from best: %6.2f%%  from last: %6.2f%%", fimprov, fimp_last)
-        end
-        @printf("  min dist: %12.6f  max constraint penalty: %12.6e\n", dmin, max_const)
+
+        @printf("\n\n  Function value from last loop: f = %10.5e\n", fx)
+        @printf("  Best function value before: f = %10.5e\n", bestf)
+        @printf("  Improvement from best function value: %8.2f %%\n", fimprov)
+        @printf("  Improvement from last loop: %8.2f %%\n", fimp_last)
+        @printf("  Maximum violation of target distance: %12.6f\n", tol - dmin)
+        @printf("  Maximum violation of the constraints: %10.5e\n", max_const)
 
         # Check convergence: both tolerance and constraint precisions must be satisfied
         tol_ok = tol - dmin < packmol_system.tolerance_precision
         const_ok = max_const < packmol_system.constraint_precision
         if tol_ok && const_ok
-            print("""  
-                Solution found at loop $(@sprintf("%d", loop))! 
-                Minimum distance: $(@sprintf("%.6f", dmin))
-                Maximum constraint penalty: $(@sprintf("%.6e", max_const))
-
-            """)
+            println()
+            println(hash_line)
+            @printf("\n%s Success! \n", " "^32)
+            @printf("%s Final objective function value: %10.5e\n", " "^13, fx)
+            @printf("%s Maximum violation of target distance: %10.6f\n", " "^13, tol - dmin)
+            @printf("%s Maximum violation of the constraints: %10.5e\n", " "^13, max_const)
+            println()
+            println(dash_line)
+            println()
+            println("$(repeat(" ", 13)) Please cite this work if Packmol was useful: ")
+            println()
+            println("$(repeat(" ", 10))  L. Martinez, R. Andrade, E. G. Birgin, J. M. Martinez, ")
+            println("$(repeat(" ", 8))  PACKMOL: A package for building initial configurations for")
+            println("$(repeat(" ", 18)) molecular dynamics simulations. ")
+            println("$(repeat(" ", 7))  Journal of Computational Chemistry, 30(13) pp. 2157-2164, 2009.")
+            println("$(repeat(" ", 17)) https://doi.org/10.1002/jcc.21224")
+            println()
+            println(hash_line)
             converged = true
             break
         end
+
+        println()
+        println(dash_line)
 
         # Write best solution so far to output file
         if improved && !isempty(packmol_system.output_file)
@@ -207,7 +232,8 @@ function packmol(
             packmol_system.molecule_positions = best_positions
             write_output(packmol_system)
             packmol_system.molecule_positions = saved_positions
-            println("  Best solution written to file: ", packmol_system.output_file)
+            println()
+            println(" Current solution written to file: ", packmol_system.output_file)
         end
 
         # Move bad molecules if this loop did not improve f by at least 10%
@@ -219,7 +245,7 @@ function packmol(
                 cm_lo_type=cm_min, cm_hi_type=cm_max,
             )
             if nmoved > 0
-                println("  Moved $nmoved bad molecules randomly to new positions.")
+                println(" Moved $nmoved bad molecules randomly to new positions.")
             end
         end
         # Re-pack optimizer variables from (possibly moved) molecule positions
@@ -230,13 +256,14 @@ function packmol(
     end
 
     if !converged
-        @printf("  WARNING: packing did not converge after %d loops (best f = %.4e)\n", nloop, bestf)
+        println()
+        println(hash_line)
+        @printf(" WARNING: packing did not converge after %d loops (best f = %.4e)\n", nloop, bestf)
+        println(hash_line)
     end
 
     # Restore best molecule positions
     copyto!(packmol_system.molecule_positions, best_positions)
-
-    println("Minimum distance obtained: ", min(cl_system.fg.dmin, cl_system.cutoff))
 
     # For PBC: wrap atom positions to the unit cell centered at unitcell_center
     if has_pbc
@@ -268,24 +295,42 @@ function packmol(
     # Write output file if specified
     if !isempty(packmol_system.output_file)
         write_output(packmol_system)
+        println()
+        println(" Solution written to file: ", packmol_system.output_file)
     end
 
+    println()
+    println(dash_line)
     tend = time()
-    println("Packmol finished in ", (tend - tstart)," seconds." )
+    @printf("  Running time: %12.4f seconds.\n", tend - tstart)
+    println(dash_line)
+    println()
 
     return nothing
 end
 
 #
+# Aesthetic line constants (matching Fortran Packmol)
+#
+const dash_line = repeat('-', 80)
+const hash_line = repeat('#', 80)
+
+#
 # SPGBox callback: print progress and check convergence
 #
-function packmol_callback(spgresult, cl_system, tol, iprint, tolerance_precision, constraint_precision)
-    if spgresult.nit % iprint == 0
-        @printf(
-            "  - Iteration: %6d  Minimum distance: %12.6f  Function value: %12.6e\n",
-            spgresult.nit, min(cl_system.fg.dmin, cl_system.cutoff), spgresult.f
-        )
-    end
+function packmol_callback(spgresult, cl_system, tol, iprint, tolerance_precision, constraint_precision, progress_meter)
+    next!(progress_meter)
+#    next!(progress_meter; show_values = [
+#        (" Iteration: ", spgresult.nit),
+#        (" Minimum distance: ", min(cl_system.fg.dmin, cl_system.cutoff)),
+#        (" Function value: ", spgresult.f),
+#    ])
+    #if spgresult.nit % iprint == 0
+    #    @printf(
+    #        "  Iteration: %6d  f = %12.6e  min. dist. = %12.6f\n",
+    #        spgresult.nit, spgresult.f, min(cl_system.fg.dmin, cl_system.cutoff)
+    #    )
+    #end
     dmin = min(cl_system.fg.dmin, cl_system.cutoff)
     tol_ok = tol - dmin < tolerance_precision
     const_ok = cl_system.fg.max_constraint_penalty < constraint_precision

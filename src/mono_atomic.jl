@@ -64,14 +64,12 @@ function fg!(g, x, system, tol)
     return system.fg.f
 end
 
-function pack_monoatomic_callback(spgresult, system, tol, iprint)
-    if spgresult.nit % iprint == 0
-        println(
-            " Iteration: ", spgresult.nit,
-            " Minimum distance: ", min(system.fg.dmin, system.cutoff),
-            " Function value: ", spgresult.f
-        )
-    end
+function pack_monoatomic_callback(spgresult, system, tol, iprint, progress_meter)
+    next!(progress_meter; show_values = [
+        (" Iteration: ", spgresult.nit),
+        (" Minimum distance: ", min(system.fg.dmin, system.cutoff)),
+        (" Function value: ", spgresult.f),
+    ])
     if system.fg.dmin > tol
         return true
     end
