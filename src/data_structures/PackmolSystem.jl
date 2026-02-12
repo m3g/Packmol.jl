@@ -162,6 +162,7 @@ packmol_legacy_keywords = Dict{String,String}(
     "iprint2" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
     "iprint3" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
     "precision" => "precision legacy keyword was ignored, instead use: tolerance_precision and/or constraint_precision",
+    "packall" => "packall is ignored and the only option",
 )
 
 #=
