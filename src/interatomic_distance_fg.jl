@@ -12,6 +12,8 @@ using SPGBox: spgbox!
     fmol::Vector{T} # contribution of each molecule to the function value
     # Auxiliary array for gradient: carries the gradient relative to the cartesian coordinates of each atom
     gxcar::Vector{SVector{D,T}}
+    # Pre-allocated per-thread buffers for fmol accumulation (avoids allocation in @spawn)
+    fmol_threaded::Vector{Vector{T}}
 end
 
 function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
@@ -22,6 +24,7 @@ function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
         dmin = typemax(T),
         fmol = zeros(T, packmol_system.nmols),
         gxcar = fill(zero(SVector{D,T}), natoms),
+        fmol_threaded = [zeros(T, packmol_system.nmols) for _ in 1:Threads.nthreads()],
     )
 end
 
@@ -36,6 +39,7 @@ function CellListMap.copy_output(x::InteratomicDistanceFG{D,T}) where {D,T}
         x.dmin,
         copy(x.fmol),
         copy(x.gxcar),
+        Vector{T}[],  # fmol_threaded — not used by CellListMap threads
     )
 end
 function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,T}
@@ -122,33 +126,52 @@ function compute_positions_and_constraints!(
     packmol_system::PackmolSystem{D,T},
 ) where {D,T}
     has_pbc = !isnothing(packmol_system.unitcell)
-    iat = 0
-    imol = 0
+    imol_offset = 0
+    iat_offset = 0
+    lk = ReentrantLock()
     for st in packmol_system.structure_types
         ref = st.reference_coordinates
+        natoms_st = st.natoms
+        nmols_st = st.number_of_molecules
         has_constraints = !isempty(st.constraints)
-        for _ in 1:st.number_of_molecules
-            imol += 1
-            mp = molecule_positions[imol]
-            R = eulermat(mp.angles...)
-            cm = mp.cm
-            for j in 1:st.natoms
-                iat += 1
-                pos = R * ref[j] + cm
-                atom_positions[iat] = pos
-                if has_constraints
-                    x = has_pbc ? wrap_to_center(pos, packmol_system.unitcell, packmol_system.unitcell_center) : pos
-                    atom = packmol_system.atoms[iat]
-                    for ic in atom.constraints
-                        c = st.constraints[ic]
-                        penalty = constraint_penalty(c, x)
-                        fg_output.f += penalty
-                        fg_output.fmol[imol] += penalty
-                        fg_output.gxcar[iat] += constraint_gradient(c, x)
+        st_imol_offset = imol_offset
+        st_iat_offset = iat_offset
+        @sync for (ichunk, mol_range) in enumerate(chunks(1:nmols_st; n=Threads.nthreads()))
+            @spawn begin
+                f_local = zero(T)
+                fmol_local = fg_output.fmol_threaded[ichunk]
+                fill!(fmol_local, zero(T))
+                for i in mol_range
+                    imol = st_imol_offset + i
+                    iat_first = st_iat_offset + (i - 1) * natoms_st
+                    mp = molecule_positions[imol]
+                    R = eulermat(mp.angles...)
+                    cm = mp.cm
+                    for j in 1:natoms_st
+                        iat = iat_first + j
+                        pos = R * ref[j] + cm
+                        atom_positions[iat] = pos
+                        if has_constraints
+                            x = has_pbc ? wrap_to_center(pos, packmol_system.unitcell, packmol_system.unitcell_center) : pos
+                            atom = packmol_system.atoms[iat]
+                            for ic in atom.constraints
+                                c = st.constraints[ic]
+                                penalty = constraint_penalty(c, x)
+                                f_local += penalty
+                                fmol_local[imol] += penalty
+                                fg_output.gxcar[iat] += constraint_gradient(c, x)
+                            end
+                        end
                     end
+                end
+                @lock lk begin
+                    fg_output.f += f_local
+                    fg_output.fmol .+= fmol_local
                 end
             end
         end
+        imol_offset += nmols_st
+        iat_offset += nmols_st * natoms_st
     end
     return atom_positions
 end
@@ -176,10 +199,11 @@ function constraint_fg!(
 ) where {D,T}
     has_pbc = !isnothing(packmol_system.unitcell)
     lk_fg = ReentrantLock()
-    @sync for iat_range in index_chunks(packmol_system.atoms; n=Threads.nthreads())
+    @sync for (ichunk, iat_range) in enumerate(index_chunks(packmol_system.atoms; n=Threads.nthreads()))
         @spawn begin
             fg_local = zero(fg_output.f)
-            fmol_local = zeros(T, length(fg_output.fmol))
+            fmol_local = fg_output.fmol_threaded[ichunk]
+            fill!(fmol_local, zero(T))
             for iat in iat_range
                 atom = packmol_system.atoms[iat]
                 x = atom_positions[iat]
