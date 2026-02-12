@@ -79,6 +79,10 @@ function packmol(
                 cm_lo_type=cm_min, cm_hi_type=cm_max,
             )
         end
+        # Step 5: Clamp any molecules whose CMs are still far outside the
+        # constraint bounds (can happen when adjustment doesn't converge).
+        # This prevents a huge bounding box that would blow up CellListMap memory.
+        _clamp_molecules_to_bounds!(packmol_system, free_mol_indices, cm_min, cm_max, RNG)
     end
 
     # check mode: write the initial approximation and return
@@ -101,9 +105,30 @@ function packmol(
         # PBC mode: use the actual unit cell
         unitcell = packmol_system.unitcell
     else
-        # Non-PBC mode: inflate bounding box so CellListMap treats it as a large box
-        lo, hi = compute_bounding_box(atom_positions)
+        # Non-PBC mode: inflate bounding box so CellListMap treats it as a large box.
+        # Use constraint-derived CM bounds when available, to avoid a huge unitcell
+        # when initial constraint adjustment didn't fully converge (some molecules
+        # may still be at sidemax coordinates).
+        cm_lo, cm_hi = compute_cm_bounds(packmol_system)
+        # Overall bounds across all structure types
+        all_lo = reduce((a,b) -> min.(a,b), cm_lo)
+        all_hi = reduce((a,b) -> max.(a,b), cm_hi)
+        # Add margin for molecule extent (max radius of reference coordinates)
+        max_extent = zero(T)
+        for st in packmol_system.structure_types
+            for r in st.reference_coordinates
+                max_extent = max(max_extent, norm(r))
+            end
+        end
+        margin = max_extent + packmol_system.tolerance
+        lo = all_lo .- margin
+        hi = all_hi .+ margin
         box_size = hi - lo
+        # Guard: if bounds are degenerate, fall back to bounding box of atom positions
+        if any(box_size .≤ zero(T))
+            lo, hi = compute_bounding_box(atom_positions)
+            box_size = hi - lo
+        end
         unitcell = T(3) * box_size
     end
 
