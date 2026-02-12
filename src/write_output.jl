@@ -33,7 +33,6 @@ function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_sy
     end
 
     write_pdb(output_file, output_atoms)
-    println(" Output written to: $output_file")
     return nothing
 end
 

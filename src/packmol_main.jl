@@ -21,7 +21,7 @@ function packmol(
     parallel::Bool=true,
     iprint::Int=10,
     nloop::Int=200,
-    maxit::Int=100,
+    maxit::Int=200,
     movefrac::T=T(0.05),
     seed::Int=packmol_system.seed,
     restart::Bool=false,
@@ -30,6 +30,17 @@ function packmol(
     RNG = Random.Xoshiro(seed)
 
     tstart = time()    
+
+    # Print title
+    _version = pkgversion(Packmol)
+    println()
+    println(hash_line)
+    println(" PACKMOL - Packing optimization for the automated generation of")
+    println(" starting configurations for molecular dynamics simulations.")
+    println(" ")
+    @printf("%62s\n", "Version $_version ")
+    println(hash_line)
+    println()
 
     # Build index of free (non-fixed) molecules
     free_mol_indices = Int[]
@@ -160,7 +171,7 @@ function packmol(
         println()
 
         # Run a short optimization (maxit iterations per loop)
-        progress_meter = Progress(100; desc=" Iteration:", barlen=48)
+        progress_meter = Progress(100; desc=" Iterations: ", barlen=47, color=:black)
         spgresult = spgbox!(
             (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices),
             x;
@@ -302,7 +313,7 @@ function packmol(
     println()
     println(dash_line)
     tend = time()
-    @printf("  Running time: %12.4f seconds.\n", tend - tstart)
+    @printf(" Running time: %12.4f seconds.\n", tend - tstart)
     println(dash_line)
     println()
 
@@ -319,18 +330,10 @@ const hash_line = repeat('#', 80)
 # SPGBox callback: print progress and check convergence
 #
 function packmol_callback(spgresult, cl_system, tol, iprint, tolerance_precision, constraint_precision, progress_meter)
-    next!(progress_meter)
-#    next!(progress_meter; show_values = [
-#        (" Iteration: ", spgresult.nit),
-#        (" Minimum distance: ", min(cl_system.fg.dmin, cl_system.cutoff)),
-#        (" Function value: ", spgresult.f),
-#    ])
-    #if spgresult.nit % iprint == 0
-    #    @printf(
-    #        "  Iteration: %6d  f = %12.6e  min. dist. = %12.6f\n",
-    #        spgresult.nit, spgresult.f, min(cl_system.fg.dmin, cl_system.cutoff)
-    #    )
-    #end
+    next!(progress_meter; showvalues = [
+        (" Minimum distance: ", min(cl_system.fg.dmin, cl_system.cutoff)),
+        (" Maximum constraint violation: ", cl_system.fg.max_constraint_penalty),
+    ])
     dmin = min(cl_system.fg.dmin, cl_system.cutoff)
     tol_ok = tol - dmin < tolerance_precision
     const_ok = cl_system.fg.max_constraint_penalty < constraint_precision
