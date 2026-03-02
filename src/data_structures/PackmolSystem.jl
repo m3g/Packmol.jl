@@ -157,6 +157,7 @@ end
 
 packmol_legacy_keywords = Dict{String,String}(
     "fscale" => "fscale legacy keyword was ignored.",
+    "discale" => "discale legacy keyword was ignored.",
     "fbins" => "fbins legacy keyword was ignored.",
     "iprint1" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
     "iprint2" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
