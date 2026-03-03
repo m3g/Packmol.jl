@@ -330,47 +330,6 @@ function _build_mol_structure_type(packmol_system::PackmolSystem)
 end
 
 #
-# Build a ParticleSystem2 from pre-collected fixed atom positions.
-# ypositions = fixed atoms (cell list built once and never rebuilt).
-# xpositions = placeholder (first fixed atom); overwritten before each pairwise! call.
-# Returns `nothing` if positions are empty.
-#
-# The output is a compound object which will contain different types of output
-# data, that might or might not be updated on each call.
-mutable struct FixedParticleSystemOutput{T}
-    molecule_badness::Vector{T} # output for molecule badness
-end
-CellListMap.copy_output(x::FixedParticleSystemOutput) = FixedParticleSystemOutput(copy(x.molecule_badness))
-function CellListMap.reset_output!(x::FixedParticleSystemOutput{T}) where {T}
-    fill!(x.molecule_badness, zero(T))
-    return x
-end 
-function CellListMap.reducer(x::F, y::F) where {F<:FixedParticleSystemOutput}
-    x.molecule_badness .+= y.molecule_badness
-    return x
-end
-
-function _build_fixed_particle_system(fixed_atom_positions::Vector{SVector{D,T}}, tol::T, ::Type{T}, nmols::Int; nthreads=Threads.nthreads()) where {D,T}
-    isempty(fixed_atom_positions) && return nothing
-    return ParticleSystem(
-        xpositions=fixed_atom_positions[1:1],  # placeholder; overwritten before each pairwise! call
-        ypositions=fixed_atom_positions,
-        cutoff=tol,
-        output=FixedParticleSystemOutput(zeros(T, nmols)),
-        parallel=nthreads > 1,
-    )
-end
-
-#
-# Build a ParticleSystem2 from fixed atom positions for efficient overlap checks.
-# Returns `nothing` if there are no fixed atoms or avoid_overlap is false.
-#
-function build_fixed_particle_system(packmol_system::PackmolSystem{D,T}) where {D,T}
-    fixed_atom_positions = _collect_fixed_positions(packmol_system)
-    return _build_fixed_particle_system(fixed_atom_positions, packmol_system.tolerance, T, packmol_system.nmols)
-end
-
-#
 # Pre-allocated scratch buffers for the initial-approximation loop.
 # Created once (in `packmol`) and reused across all hot-path calls to avoid
 # per-iteration heap allocation.
