@@ -55,6 +55,9 @@ function packmol(
     end
     nfree = length(free_mol_indices)
 
+    # Pre-allocate scratch buffers once; reused across all hot-path calls.
+    buffers = MemoryBuffers(packmol_system)
+
     # Pre-optimization: move molecules to satisfy geometric constraints
     # before the main packing (no distance penalties)
     if restart
@@ -64,8 +67,11 @@ function packmol(
         initialize_molecules!(packmol_system, RNG)
         # Step 2: Constraint-only optimization (no movebad) to push molecules
         # toward feasible regions, then compute CM bounds from the result
-        adjust_constraints!(packmol_system, free_mol_indices, RNG; domovebad=false)
-        cm_min, cm_max = compute_cm_bounds(packmol_system)
+        adjust_constraints!(packmol_system, free_mol_indices, RNG; domovebad=false, buffers)
+        # Use only constraint-satisfying molecules for bounds: outliers still at
+        # sidemax (±1000 Å) would otherwise produce a huge bounding box, causing
+        # CellListMap to allocate a ~10⁹-cell grid in subsequent steps.
+        cm_min, cm_max = compute_cm_bounds(packmol_system; precision=packmol_system.constraint_precision)
         # Step 3: Re-initialize molecules within the estimated bounds
         # (best-of-N tries per molecule, checking constraints + fixed overlap)
         reinitialize_with_bounds!(packmol_system, free_mol_indices, RNG;
@@ -76,7 +82,7 @@ function packmol(
         # randomizing bad molecules within the CM bounds from step 2
         if packmol_system.adjust_constraints_on_init
             adjust_constraints!(packmol_system, free_mol_indices, RNG;
-                cm_lo_type=cm_min, cm_hi_type=cm_max,
+                cm_lo_type=cm_min, cm_hi_type=cm_max, buffers,
             )
         end
         # Step 5: Clamp any molecules whose CMs are still far outside the
@@ -94,9 +100,9 @@ function packmol(
         return nothing
     end
 
-    # Compute initial atom positions
+    # Compute initial atom positions (reuse pre-allocated buffer)
     natoms = length(packmol_system.atoms)
-    atom_positions = Vector{SVector{D,T}}(undef, natoms)
+    atom_positions = buffers.atom_positions
     compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
 
     # Determine unit cell for CellListMap
@@ -159,13 +165,13 @@ function packmol(
         parallel=parallel,
     )
 
-    # Set up optimization variables: only free molecule DOFs
-    x = Vector{T}(undef, nfree * 2 * D)
+    # Set up optimization variables: only free molecule DOFs (reuse pre-allocated buffer)
+    x = buffers.x
     x_mol = reinterpret(MoleculePosition{D,T}, x)
     for (k, imol) in enumerate(free_mol_indices)
         x_mol[k] = packmol_system.molecule_positions[imol]
     end
-    auxvecs = SPGBox.VAux(x, zero(T))
+    auxvecs = buffers.vaux
 
     # Placement region for movebad! randomization
     mol_structure_type = _build_mol_structure_type(packmol_system)

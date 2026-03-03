@@ -68,17 +68,23 @@ const DEFAULT_SIDEMAX = 1000.0
 function overlaps_fixed(
     mp::MoleculePosition{D,T},
     ref_coords::Vector{SVector{D,T}},
-    fixed_sys::CellListMap.AbstractParticleSystem,
+    fixed_sys::S,
     mol_positions::Vector{SVector{D,T}},
-) where {D,T}
+) where {D,T,S}
     R = eulermat(mp.angles)
     n = length(ref_coords)
     for (j, r) in enumerate(ref_coords)
         mol_positions[j] = R * r + mp.cm
     end
     CellListMap.update!(fixed_sys; xpositions=@view(mol_positions[1:n]))
-    n_overlaps = pairwise!((pair, count) -> count + one(count), fixed_sys)
-    return n_overlaps > 0
+    pairwise!(
+        (pair, out) -> begin
+            out.molecule_badness[1] += one(T)
+            out
+        end,
+        fixed_sys,
+    )
+    return fixed_sys.output.molecule_badness[1] > zero(T)
 end
 
 # Fallback when there are no fixed atoms (no ParticleSystem built)
@@ -141,19 +147,36 @@ end
 # Returns (cm_min, cm_max) vectors indexed by structure type.
 # Used after constraint fitting to determine where molecules should be placed.
 #
-function compute_cm_bounds(packmol_system::PackmolSystem{D,T}) where {D,T}
+function compute_cm_bounds(packmol_system::PackmolSystem{D,T}; precision::T=typemax(T)) where {D,T}
     ntypes = length(packmol_system.structure_types)
     cm_min = [SVector{D,T}(ntuple(_ -> typemax(T), D)) for _ in 1:ntypes]
     cm_max = [SVector{D,T}(ntuple(_ -> typemin(T), D)) for _ in 1:ntypes]
+    # Track per-type fallback bounds (all molecules), used when no molecule
+    # satisfies the constraint precision for a given structure type.
+    fb_min = [SVector{D,T}(ntuple(_ -> typemax(T), D)) for _ in 1:ntypes]
+    fb_max = [SVector{D,T}(ntuple(_ -> typemin(T), D)) for _ in 1:ntypes]
     imol = 0
     for (ist, st) in enumerate(packmol_system.structure_types)
         for _ in 1:st.number_of_molecules
             imol += 1
             if !st.fixed.fixed
-                cm = packmol_system.molecule_positions[imol].cm
-                cm_min[ist] = min.(cm_min[ist], cm)
-                cm_max[ist] = max.(cm_max[ist], cm)
+                mp = packmol_system.molecule_positions[imol]
+                cm = mp.cm
+                fb_min[ist] = min.(fb_min[ist], cm)
+                fb_max[ist] = max.(fb_max[ist], cm)
+                if precision == typemax(T) || constraint_penalty_sum(mp, st) ≤ precision
+                    cm_min[ist] = min.(cm_min[ist], cm)
+                    cm_max[ist] = max.(cm_max[ist], cm)
+                end
             end
+        end
+    end
+    # Fallback: for any type where no molecule satisfied the precision filter,
+    # use the unconstrained bounds (all molecules).
+    for ist in 1:ntypes
+        if any(cm_min[ist] .== typemax(T))
+            cm_min[ist] = fb_min[ist]
+            cm_max[ist] = fb_max[ist]
         end
     end
     return cm_min, cm_max
@@ -312,13 +335,28 @@ end
 # xpositions = placeholder (first fixed atom); overwritten before each pairwise! call.
 # Returns `nothing` if positions are empty.
 #
-function _build_fixed_particle_system(fixed_atom_positions::Vector{SVector{D,T}}, tol::T, ::Type{T}; nthreads=Threads.nthreads()) where {D,T}
+# The output is a compound object which will contain different types of output
+# data, that might or might not be updated on each call.
+mutable struct FixedParticleSystemOutput{T}
+    molecule_badness::Vector{T} # output for molecule badness
+end
+CellListMap.copy_output(x::FixedParticleSystemOutput) = FixedParticleSystemOutput(copy(x.molecule_badness))
+function CellListMap.reset_output!(x::FixedParticleSystemOutput{T}) where {T}
+    fill!(x.molecule_badness, zero(T))
+    return x
+end 
+function CellListMap.reducer(x::F, y::F) where {F<:FixedParticleSystemOutput}
+    x.molecule_badness .+= y.molecule_badness
+    return x
+end
+
+function _build_fixed_particle_system(fixed_atom_positions::Vector{SVector{D,T}}, tol::T, ::Type{T}, nmols::Int; nthreads=Threads.nthreads()) where {D,T}
     isempty(fixed_atom_positions) && return nothing
     return ParticleSystem(
         xpositions=fixed_atom_positions[1:1],  # placeholder; overwritten before each pairwise! call
         ypositions=fixed_atom_positions,
         cutoff=tol,
-        output=zero(T),
+        output=FixedParticleSystemOutput(zeros(T, nmols)),
         parallel=nthreads > 1,
     )
 end
@@ -329,7 +367,84 @@ end
 #
 function build_fixed_particle_system(packmol_system::PackmolSystem{D,T}) where {D,T}
     fixed_atom_positions = _collect_fixed_positions(packmol_system)
-    return _build_fixed_particle_system(fixed_atom_positions, packmol_system.tolerance, T)
+    return _build_fixed_particle_system(fixed_atom_positions, packmol_system.tolerance, T, packmol_system.nmols)
+end
+
+#
+# Pre-allocated scratch buffers for the initial-approximation loop.
+# Created once (in `packmol`) and reused across all hot-path calls to avoid
+# per-iteration heap allocation.
+#
+struct MemoryBuffers{D,T,V}
+    atom_positions::Vector{SVector{D,T}}  # all-atom positions       (size: natoms)
+    badness::Vector{T}                     # per-molecule badness     (size: nmols)
+    free_atoms::Vector{SVector{D,T}}       # free-atom positions      (size: n_free_atoms)
+    free_atom_mol::Vector{Int}             # free-atom → mol index    (size: n_free_atoms, stable)
+    x::Vector{T}                           # optimizer variable       (size: nfree × 2D)
+    vaux::V                                # SPGBox auxiliary storage (reused across loop iterations)
+end
+
+function MemoryBuffers(packmol_system::PackmolSystem{D,T}) where {D,T}
+    natoms = length(packmol_system.atoms)
+    nmols = packmol_system.nmols
+    nfree = 0
+    n_free_atoms = 0
+    for st in packmol_system.structure_types
+        if !st.fixed.fixed
+            nfree += st.number_of_molecules
+            n_free_atoms += st.number_of_molecules * st.natoms
+        end
+    end
+
+    # Build free_atom_mol (stable: depends only on system structure, never on positions)
+    free_atom_mol = Vector{Int}(undef, n_free_atoms)
+    ifree = 0
+    imol_offset = 0
+    for st in packmol_system.structure_types
+        if !st.fixed.fixed
+            for i in 1:st.number_of_molecules
+                imol = imol_offset + i
+                for _ in 1:st.natoms
+                    ifree += 1
+                    free_atom_mol[ifree] = imol
+                end
+            end
+        end
+        imol_offset += st.number_of_molecules
+    end
+
+    x_vec = Vector{T}(undef, nfree * 2 * D)
+    vaux = SPGBox.VAux(x_vec, zero(T))
+    return MemoryBuffers{D,T,typeof(vaux)}(
+        Vector{SVector{D,T}}(undef, natoms),
+        zeros(T, nmols),
+        Vector{SVector{D,T}}(undef, n_free_atoms),
+        free_atom_mol,
+        x_vec,
+        vaux,
+    )
+end
+
+# Copy current free-atom positions from the full atom-position array into the buffer.
+function _fill_free_atoms!(
+    free_atoms::Vector{SVector{D,T}},
+    atom_positions::Vector{SVector{D,T}},
+    packmol_system::PackmolSystem{D,T},
+) where {D,T}
+    ifree = 0
+    atom_offset = 0
+    for st in packmol_system.structure_types
+        if !st.fixed.fixed
+            for i in 1:st.number_of_molecules
+                iat_first = atom_offset + (i - 1) * st.natoms + 1
+                for j in 0:st.natoms-1
+                    ifree += 1
+                    free_atoms[ifree] = atom_positions[iat_first + j]
+                end
+            end
+        end
+        atom_offset += st.number_of_molecules * st.natoms
+    end
 end
 
 #
@@ -347,11 +462,17 @@ function molecule_badness(
     packmol_system::PackmolSystem{D,T},
     atom_positions::Vector{SVector{D,T}},
     fixed_sys::Union{Nothing,CellListMap.AbstractParticleSystem},
-    tol::T,
+    tol::T;
+    buffers::Union{Nothing,MemoryBuffers} = nothing,
 ) where {D,T}
     has_pbc = !isnothing(packmol_system.unitcell)
     nmols = packmol_system.nmols
-    badness = zeros(T, nmols)
+    if isnothing(buffers)
+        badness = zeros(T, nmols)
+    else
+        badness = buffers.badness
+        fill!(badness, zero(T))
+    end
     ntasks = Threads.nthreads()
 
     # Phase 1: constraint penalties (parallel over molecule ranges)
@@ -383,24 +504,49 @@ function molecule_badness(
         atom_offset += st.number_of_molecules * st.natoms
     end
 
-    # Phase 2: fixed-atom overlaps (sequential; pairwise! is internally parallel)
-    # Only xpositions (one molecule at a time) is updated before each call —
-    # the fixed-atom (ypositions) cell list is never rebuilt.
+    # Phase 2: fixed-atom overlaps — single pairwise! call over all free atoms.
+    # xpositions is updated once with all free-atom positions; the fixed-atom
+    # (ypositions) cell list is never rebuilt.
     if !isnothing(fixed_sys)
-        imol_offset = 0
-        atom_offset = 0
-        for st in packmol_system.structure_types
-            if !st.fixed.fixed
-                for i in 1:st.number_of_molecules
-                    imol = imol_offset + i
-                    iat_first = atom_offset + (i - 1) * st.natoms + 1
-                    CellListMap.update!(fixed_sys; xpositions=@view(atom_positions[iat_first:iat_first+st.natoms-1]))
-                    badness[imol] += pairwise!((pair, v) -> v + (pair.d - tol)^2, fixed_sys)
+        if isnothing(buffers)
+            n_free_atoms = sum(
+                st.fixed.fixed ? 0 : st.number_of_molecules * st.natoms
+                for st in packmol_system.structure_types
+            )
+            free_atoms = Vector{SVector{D,T}}(undef, n_free_atoms)
+            free_atom_mol = Vector{Int}(undef, n_free_atoms)
+            ifree = 0
+            imol_offset = 0
+            atom_offset = 0
+            for st in packmol_system.structure_types
+                if !st.fixed.fixed
+                    for i in 1:st.number_of_molecules
+                        imol = imol_offset + i
+                        iat_first = atom_offset + (i - 1) * st.natoms + 1
+                        for j in 0:st.natoms-1
+                            ifree += 1
+                            free_atoms[ifree] = atom_positions[iat_first + j]
+                            free_atom_mol[ifree] = imol
+                        end
+                    end
                 end
+                imol_offset += st.number_of_molecules
+                atom_offset += st.number_of_molecules * st.natoms
             end
-            imol_offset += st.number_of_molecules
-            atom_offset += st.number_of_molecules * st.natoms
+        else
+            free_atoms = buffers.free_atoms
+            free_atom_mol = buffers.free_atom_mol
+            _fill_free_atoms!(free_atoms, atom_positions, packmol_system)
         end
+        CellListMap.update!(fixed_sys; xpositions=free_atoms)
+        pairwise!(
+            (pair, out) -> begin
+                out.molecule_badness[free_atom_mol[pair.i]] += (pair.d - tol)^2
+                out
+            end,
+            fixed_sys,
+        )
+        badness .+= fixed_sys.output.molecule_badness
     end
 
     return badness
@@ -572,11 +718,15 @@ function reinitialize_with_bounds!(
                 mol_positions = Vector{SVector{D,T}}(undef, max_natoms)
                 for i in irange
                     imol = st_offset + i
-                    # Start fresh: the goal is to replace the current position
-                    # (which may be edge-clustered from constraint optimization)
-                    # with a uniformly distributed random placement.
                     best_mp = packmol_system.molecule_positions[imol]
-                    best_fx = typemax(T)
+                    # Use the actual step-2 penalty as baseline: only replace if
+                    # a random trial is strictly better. If the molecule already
+                    # satisfies its constraints, skip the trial loop entirely —
+                    # don't undo the constraint optimization's work.
+                    best_fx = constraint_penalty_sum(best_mp, st)
+                    if best_fx < precision
+                        continue
+                    end
 
                     for itry in 1:max_guess_try
                         # Random CM within per-type bounds
@@ -674,6 +824,7 @@ function adjust_constraints!(
     domovebad::Bool=true,
     cm_lo_type::Union{Nothing,Vector{SVector{D,T}}} = nothing,
     cm_hi_type::Union{Nothing,Vector{SVector{D,T}}} = nothing,
+    buffers::Union{Nothing,MemoryBuffers} = nothing,
 ) where {D,T}
     nfree = length(free_mol_indices)
     nfree == 0 && return packmol_system
@@ -689,11 +840,15 @@ function adjust_constraints!(
     has_constraints || return packmol_system
 
     natoms = length(packmol_system.atoms)
-    atom_positions = Vector{SVector{D,T}}(undef, natoms)
+    atom_positions = isnothing(buffers) ? Vector{SVector{D,T}}(undef, natoms) : buffers.atom_positions
     fg_output = InteratomicDistanceFG{D,T}(packmol_system)
 
-    # Build CellListMap system for fixed atom positions (for overlap checks)
-    fixed_sys = build_fixed_particle_system(packmol_system)
+    # Build CellListMap system for fixed atom positions (for overlap checks).
+    # Only when domovebad=true: at that point molecules are already within their
+    # constraint regions. When domovebad=false (initial pass), molecules are still
+    # at sidemax (±1000 Å) coordinates; updating fixed_sys with those positions
+    # would force CellListMap to build a ~10⁹-cell grid (gigabytes of memory).
+    fixed_sys = domovebad ? build_fixed_particle_system(packmol_system) : nothing
     tol = packmol_system.tolerance
 
     # Build molecule → structure type mapping
@@ -703,12 +858,12 @@ function adjust_constraints!(
 
     for iloop in 1:nloop
         # Set up optimizer variables from current molecule positions
-        x = Vector{T}(undef, nfree * 2 * D)
+        x = isnothing(buffers) ? Vector{T}(undef, nfree * 2 * D) : buffers.x
         x_mol = reinterpret(MoleculePosition{D,T}, x)
         for (k, imol) in enumerate(free_mol_indices)
             x_mol[k] = packmol_system.molecule_positions[imol]
         end
-        auxvecs = SPGBox.VAux(x, zero(T))
+        auxvecs = isnothing(buffers) ? SPGBox.VAux(x, zero(T)) : buffers.vaux
 
         # Run a short constraint-only optimization
         spgresult = spgbox!(
@@ -730,7 +885,7 @@ function adjust_constraints!(
         compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
 
         # Compute per-molecule badness (constraint violations + overlap with fixed atoms)
-        badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol)
+        badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol; buffers)
 
         # Check if all constraints are satisfied and no overlaps with fixed
         total_badness = sum(badness[imol] for imol in free_mol_indices)
@@ -784,7 +939,7 @@ function adjust_constraints!(
 
     # Final evaluation
     compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
-    badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol)
+    badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol; buffers)
     total_badness = sum(badness[imol] for imol in free_mol_indices)
     @printf("  WARNING: constraint adjustment did not fully converge after %d loops (f = %.2e)\n", nloop, total_badness)
     return packmol_system
