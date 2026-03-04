@@ -30,25 +30,26 @@ include("./constraints/planes.jl")
 include("./data_structures/atoms_and_molecules.jl")
 include("./data_structures/StructureType.jl")
 include("./data_structures/PackmolSystem.jl")
+include("./data_structures/FixedParticleSystem.jl")
 
 # Random number generation
-include("./random.jl")
+include("./initial_approximation/random.jl")
 
 # Rigid body transformations
 include("./rigid_body/rigid_body.jl")
 include("./rigid_body/chain_rule.jl")
 
 # Monatomic packing
-include("./mono_atomic.jl")
+include("./function_and_gradient/mono_atomic.jl")
 
 # Function and gradient of the distance between atoms
-include("./interatomic_distance_fg.jl")
+include("./function_and_gradient/interatomic_distance_fg.jl")
 
 # Initial approximation: placement, constraint pre-optimization
-include("./initial_approximation.jl")
+include("./initial_approximation/initial_approximation.jl")
 
 # Output
-include("./write_output.jl")
+include("./io/write_output.jl")
 
 # Packing functions
 include("./packmol_main.jl")
