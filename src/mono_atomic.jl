@@ -28,7 +28,8 @@ end
 
 # Updates the function and gradient of the system given a pair of 
 # particles within the cutoff.
-function monoatomic_u_and_g!(x::T, y::T, i, j, d2, fg::MonoAtomicFG, tol) where {T}
+function monoatomic_u_and_g!(pair, fg::MonoAtomicFG, tol)
+    (; x, y, i, j, d2) = pair
     d = sqrt(d2)
     fg.dmin = min(d, fg.dmin)
     if d < tol
@@ -37,7 +38,7 @@ function monoatomic_u_and_g!(x::T, y::T, i, j, d2, fg::MonoAtomicFG, tol) where 
         if d > 0
             dvdd = 2 * (d - tol) * dv / d
         else
-            vrand = rand(T)
+            vrand = rand(typeof(d))
             vrand = (0.1 * tol) * vrand / norm(vrand)
             dvdd = 2 * (d - tol) * vrand
         end
@@ -54,8 +55,8 @@ function fg!(g, x, system, tol)
     for i in eachindex(system.xpositions)
         system.xpositions[i] = eltype(system.xpositions)(@view(x[:, i]))
     end
-    map_pairwise!(
-        (x, y, i, j, d2, fg) -> monoatomic_u_and_g!(x, y, i, j, d2, fg, tol),
+    pairwise!(
+        (pair, fg) -> monoatomic_u_and_g!(pair, fg, tol),
         system,
     )
     # update gradient matrix from the gradient vector of vectors

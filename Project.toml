@@ -1,6 +1,6 @@
 name = "Packmol"
 uuid = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
-version = "0.1.13"
+version = "0.1.14"
 authors = ["Leandro Martinez <lmartine@unicamp.br> and contributors"]
 
 [deps]
@@ -18,7 +18,7 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
 Aqua = "0.6, 0.7, 0.8"
-CellListMap = "0.9"
+CellListMap = "0.10.2"
 FiniteDifferences = "0.12.30"
 ForwardDiff = "0.10"
 LinearAlgebra = "1.9"
