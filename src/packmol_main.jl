@@ -105,7 +105,7 @@ function packmol(
             lo, hi = compute_bounding_box(atom_positions)
             box_size = hi - lo
         end
-        unitcell = T(3) * box_size
+        unitcell = T(1.2) * box_size
     end
 
     # CellListMap cutoff: at least the packing tolerance,
