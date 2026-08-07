@@ -19,12 +19,12 @@ function overlaps_fixed(
     CellListMap.update!(fixed_sys; xpositions=@view(mol_positions[1:n]))
     pairwise!(
         (pair, out) -> begin
-            out.molecule_badness[1] += one(T)
+            out.molecule_badness.value[1] += one(T)
             out
         end,
         fixed_sys,
     )
-    return fixed_sys.output.molecule_badness[1] > zero(T)
+    return fixed_sys.output.molecule_badness.value[1] > zero(T)
 end
 
 # Fallback when there are no fixed atoms (no ParticleSystem built)

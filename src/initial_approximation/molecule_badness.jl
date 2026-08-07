@@ -92,12 +92,12 @@ function molecule_badness(
         CellListMap.update!(fixed_sys; xpositions=free_atoms)
         pairwise!(
             (pair, out) -> begin
-                out.molecule_badness[free_atom_mol[pair.i]] += (pair.d - tol)^2
+                out.molecule_badness.value[free_atom_mol[pair.i]] += (pair.d - tol)^2
                 out
             end,
             fixed_sys,
         )
-        badness .+= fixed_sys.output.molecule_badness
+        badness .+= fixed_sys.output.molecule_badness.value
     end
 
     return badness

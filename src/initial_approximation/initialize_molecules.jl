@@ -46,6 +46,35 @@ function _direct_cm_bounds(st::StructureType{D,T}, max_extent::T) where {D,T}
     return all(lo_shrunk .<= hi_shrunk) ? (lo_shrunk, hi_shrunk) : (lo, hi)
 end
 
+#
+# Analogous direct-sampling shortcut for a whole-molecule Inside sphere
+# constraint: sample the CM uniformly within the ball (shrunk by the
+# molecule's max reference-coordinate extent), instead of falling back to
+# the sidemax bootstrap box. For a sphere, the constraint-only gradient
+# fitting used by the bootstrap path pulls every molecule straight to the
+# nearest feasible point and stops as soon as it crosses the boundary
+# (the penalty and its gradient vanish once inside) — so molecules starting
+# outside the sphere all pile up just inside its surface instead of
+# spreading through the volume.
+#
+function _direct_cm_sphere(st::StructureType{D,T}, max_extent::T) where {D,T}
+    (length(st.constraints) == 1 && all(==([1]), st.atom_constraints)) || return nothing
+    c = st.constraints[1]
+    c isa Sphere{Inside} || return nothing
+    radius_shrunk = c.radius - max_extent
+    radius = radius_shrunk > 0 ? radius_shrunk : c.radius
+    return c.center, radius
+end
+
+# Uniformly sample a point within the D-dimensional ball of given center/radius.
+function _random_point_in_ball(rng, center::SVector{D,T}, radius::T) where {D,T}
+    dir = SVector{D,T}(ntuple(_ -> randn(rng, T), D))
+    n = norm(dir)
+    dir = n > 0 ? dir / n : SVector{D,T}(ntuple(d -> d == 1 ? one(T) : zero(T), D))
+    r = radius * rand(rng, T)^(one(T) / D)
+    return center + r * dir
+end
+
 function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D,T}
     # Center reference coordinates at origin (required for chain rule)
     for st in packmol_system.structure_types
@@ -74,11 +103,12 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
     imol_offset = 0
     @sync for st in packmol_system.structure_types
         st_offset = imol_offset
-        direct_bounds = if !has_pbc && !st.fixed.fixed
+        direct_bounds, direct_sphere = if !has_pbc && !st.fixed.fixed
             max_extent = isempty(st.reference_coordinates) ? zero(T) : maximum(norm, st.reference_coordinates)
-            _direct_cm_bounds(st, max_extent)
+            bounds = _direct_cm_bounds(st, max_extent)
+            bounds, bounds === nothing ? _direct_cm_sphere(st, max_extent) : nothing
         else
-            nothing
+            nothing, nothing
         end
         for (_, irange) in enumerate(chunks(1:st.number_of_molecules; n=Threads.nthreads()))
             task_seed = rand(RNG, UInt64)
@@ -95,6 +125,9 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
                         elseif direct_bounds !== nothing
                             lo, hi = direct_bounds
                             cm = SVector{D,T}(ntuple(d -> lo[d] + rand(task_rng, T) * (hi[d] - lo[d]), D))
+                        elseif direct_sphere !== nothing
+                            sphere_center, sphere_radius = direct_sphere
+                            cm = _random_point_in_ball(task_rng, sphere_center, sphere_radius)
                         else
                             cm = SVector{D,T}(ntuple(_ -> sidemax * (T(2) * rand(task_rng, T) - one(T)), D))
                         end

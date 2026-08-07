@@ -60,13 +60,16 @@ function CellListMap.reducer!(x::F, y::F) where {F<:FixedParticleSystemOutput}
     return x
 end
 
-function _build_fixed_particle_system(fixed_atom_positions::Vector{SVector{D,T}}, tol::T; nthreads=Threads.nthreads()) where {D,T}
+function _build_fixed_particle_system(fixed_atom_positions::Vector{SVector{D,T}}, tol::T, nmols::Int; nthreads=Threads.nthreads()) where {D,T}
     isempty(fixed_atom_positions) && return nothing
+    output = FixedParticleSystemOutput{T}()
+    output.molecule_badness.value = zeros(T, nmols)
+    compute_property!(output, :molecule_badness)
     return ParticleSystem(
         xpositions=fixed_atom_positions[1:1],  # placeholder; overwritten before each pairwise! call
         ypositions=fixed_atom_positions,
         cutoff=tol,
-        output=FixedParticleSystemOutput{T}(),
+        output=output,
         parallel=nthreads > 1,
     )
 end
@@ -77,7 +80,7 @@ end
 #
 function build_fixed_particle_system(packmol_system::PackmolSystem{D,T}) where {D,T}
     fixed_atom_positions = _collect_fixed_positions(packmol_system)
-    return _build_fixed_particle_system(fixed_atom_positions, packmol_system.tolerance)
+    return _build_fixed_particle_system(fixed_atom_positions, packmol_system.tolerance, packmol_system.nmols)
 end
 
 @testitem "FixedParticleSystem" begin
