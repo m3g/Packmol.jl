@@ -89,10 +89,14 @@ function molecule_badness(
             free_atom_mol = buffers.free_atom_mol
             _fill_free_atoms!(free_atoms, atom_positions, packmol_system)
         end
+        # CellListMap's own cutoff may be larger than `tol` (grown to cap the
+        # cell count for large/sparse boxes — see adjust_constraints.jl), so
+        # pairs it finds aren't necessarily real violations; filter explicitly
+        # rather than assuming every found pair has pair.d < tol.
         CellListMap.update!(fixed_sys; xpositions=free_atoms)
         pairwise!(
             (pair, out) -> begin
-                out.molecule_badness.value[free_atom_mol[pair.i]] += (pair.d - tol)^2
+                pair.d < tol && (out.molecule_badness.value[free_atom_mol[pair.i]] += (pair.d - tol)^2)
                 out
             end,
             fixed_sys,

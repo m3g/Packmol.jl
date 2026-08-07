@@ -24,18 +24,64 @@ function reinitialize_with_bounds!(
         cm_min, cm_max = compute_cm_bounds(packmol_system)
     end
 
-    # Build fixed particle system for overlap checks
-    fixed_sys = build_fixed_particle_system(packmol_system)
     tol = packmol_system.tolerance
-
-    max_natoms = maximum(st.natoms for st in packmol_system.structure_types if !st.fixed.fixed; init=0)
-
     has_pbc = !isnothing(packmol_system.unitcell)
+    max_natoms = maximum(st.natoms for st in packmol_system.structure_types if !st.fixed.fixed; init=0)
+    ntasks = Threads.nthreads()
+
+    max_extent = zero(T)
+    for st in packmol_system.structure_types
+        st.fixed.fixed && continue
+        for r in st.reference_coordinates
+            max_extent = max(max_extent, norm(r))
+        end
+    end
+
+    # Build the fixed-atom overlap-check system once, and deep-copy it once per
+    # thread — not once per structure type, and not once per trial molecule.
+    #
+    # Two things used to make this step slow and memory-hungry on systems
+    # with a large fixed structure (e.g. a membrane/capsid) and a free-molecule
+    # placement region much bigger than that structure's own footprint:
+    #
+    # 1. With no explicit unitcell, CellListMap treats the system as
+    #    non-periodic: every update!/pairwise! call — one per trial molecule,
+    #    up to `nfree * max_guess_try` times — recomputes
+    #    `limits(xpositions, ypositions)`, an O(n_fixed) scan over *all* fixed
+    #    atoms, and rebuilds the box (and the fixed-atom cell list with it)
+    #    whenever a trial point falls outside it. Giving the system an
+    #    explicit box up front makes CellListMap treat it as periodic instead
+    #    and skip all of that.
+    # 2. That box must not simply be inflated to cover the whole free-molecule
+    #    placement region: cell count scales with box volume / cutoff^D, and
+    #    the placement region can be far larger than the fixed structure
+    #    itself, which would blow up the cell list even though most of that
+    #    volume has no fixed atoms in it at all. Instead the box is sized to
+    #    just the fixed atoms' own extent (+ margin), and overlaps_fixed
+    #    rejects trial molecules whose bounding box can't possibly reach the
+    #    fixed atoms *before* calling into CellListMap at all — see there.
+    fixed_atom_positions = _collect_fixed_positions(packmol_system)
+    fixed_sys, fixed_lo, fixed_hi = if isempty(fixed_atom_positions)
+        nothing, zero(SVector{D,T}), zero(SVector{D,T})
+    else
+        lo, hi = compute_bounding_box(fixed_atom_positions)
+        margin = max_extent + tol
+        fixed_unitcell = T(1.2) * ((hi .+ margin) - (lo .- margin))
+        volume = prod(fixed_unitcell)
+        cutoff = _capped_cutoff(volume, tol, length(fixed_atom_positions), D)
+        sys = build_fixed_particle_system(packmol_system; nmols=1, parallel=false, unitcell=fixed_unitcell, cutoff)
+        sys, lo, hi
+    end
+    task_fixed_syss = isnothing(fixed_sys) ? nothing : [deepcopy(fixed_sys) for _ in 1:ntasks]
 
     println("  Setting initial trial coordinates (best of $max_guess_try per molecule)...")
 
+    # Structure types are processed sequentially, each under its own @sync, so
+    # that reusing task_fixed_syss[ichunk] across structure types is race-free:
+    # all of type A's tasks finish before type B's tasks — which touch the
+    # same objects — are spawned.
     imol_offset = 0
-    @sync for (ist, st) in enumerate(packmol_system.structure_types)
+    for (ist, st) in enumerate(packmol_system.structure_types)
         st_offset = imol_offset
         if st.fixed.fixed
             imol_offset += st.number_of_molecules
@@ -61,12 +107,9 @@ function reinitialize_with_bounds!(
             end
         end
 
-        for (_, irange) in enumerate(chunks(1:st.number_of_molecules; n=Threads.nthreads()))
+        @sync for (ichunk, irange) in enumerate(chunks(1:st.number_of_molecules; n=ntasks))
             task_seed = rand(RNG, UInt64)
-            # Each task gets its own copy of the fixed system so that concurrent
-            # update!/pairwise! calls don't race. The fixed-atom (y) cell list is
-            # already built inside fixed_sys and is deep-copied once per task.
-            task_fixed_sys = isnothing(fixed_sys) ? nothing : deepcopy(fixed_sys)
+            task_fixed_sys = isnothing(task_fixed_syss) ? nothing : task_fixed_syss[ichunk]
             @spawn begin
                 task_rng = typeof(RNG)(task_seed)
                 mol_positions = Vector{SVector{D,T}}(undef, max_natoms)
@@ -96,7 +139,7 @@ function reinitialize_with_bounds!(
 
                         # Check overlap with fixed atoms first (skip if overlapping)
                         if packmol_system.avoid_overlap &&
-                           overlaps_fixed(mp, st.reference_coordinates, task_fixed_sys, mol_positions)
+                           overlaps_fixed(mp, st.reference_coordinates, task_fixed_sys, mol_positions, fixed_lo, fixed_hi, tol)
                             continue
                         end
 

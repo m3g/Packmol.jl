@@ -1,4 +1,21 @@
 #
+# Cell count for a CellListMap box scales as volume / cutoff^D: for a large,
+# sparse box (extent set by where particles *could* be, not by how many there
+# are) a naively small cutoff can imply a cell count many orders of magnitude
+# larger than the particle count, which is what actually blows up memory —
+# the cell array itself has to be allocated at that size before any particles
+# are even placed, regardless of parallel/serial construction. This grows
+# `min_cutoff` (fewer, bigger cells) just enough to keep the cell count at or
+# below `max_particles`, and never shrinks it below `min_cutoff`. Growing the
+# cutoff only ever finds more candidate pairs, never fewer, so this is safe
+# for correctness as long as callers still filter pairs by the true tolerance
+# themselves (as InteratomicDistanceFG and overlaps_fixed do).
+function _capped_cutoff(volume::T, min_cutoff::T, max_particles::Real, D::Int) where {T}
+    ncells = min(volume / min_cutoff^D, T(max_particles))
+    return max(min_cutoff, (volume / ncells)^(one(T) / D))
+end
+
+#
 # Build a ParticleSystem2 from pre-collected fixed atom positions.
 # ypositions = fixed atoms (cell list built once and never rebuilt).
 # xpositions = placeholder (first fixed atom); overwritten before each pairwise! call.
@@ -60,7 +77,11 @@ function CellListMap.reducer!(x::F, y::F) where {F<:FixedParticleSystemOutput}
     return x
 end
 
-function _build_fixed_particle_system(fixed_atom_positions::Vector{SVector{D,T}}, tol::T, nmols::Int; nthreads=Threads.nthreads()) where {D,T}
+function _build_fixed_particle_system(
+    fixed_atom_positions::Vector{SVector{D,T}}, tol::T, nmols::Int;
+    nthreads=Threads.nthreads(), parallel::Bool=nthreads > 1,
+    unitcell::Union{Nothing,AbstractVecOrMat}=nothing,
+) where {D,T}
     isempty(fixed_atom_positions) && return nothing
     output = FixedParticleSystemOutput{T}()
     output.molecule_badness.value = zeros(T, nmols)
@@ -70,7 +91,8 @@ function _build_fixed_particle_system(fixed_atom_positions::Vector{SVector{D,T}}
         ypositions=fixed_atom_positions,
         cutoff=tol,
         output=output,
-        parallel=nthreads > 1,
+        parallel=parallel,
+        unitcell=unitcell,
     )
 end
 
@@ -78,9 +100,35 @@ end
 # Build a ParticleSystem2 from fixed atom positions for efficient overlap checks.
 # Returns `nothing` if there are no fixed atoms or avoid_overlap is false.
 #
-function build_fixed_particle_system(packmol_system::PackmolSystem{D,T}) where {D,T}
+# `nmols` sizes the per-molecule `molecule_badness` output buffer: callers that
+# index a whole system's worth of molecules (e.g. molecule_badness.jl, which
+# uses a single shared instance) need `packmol_system.nmols`; callers that
+# deep-copy one instance per thread/task to check a single trial molecule at a
+# time (overlaps_fixed.jl) only ever touch index 1, so pass `nmols=1` there —
+# CellListMap replicates the output buffer once per internal batch, and again
+# for every deep copy, so an oversized buffer here is multiplied by both
+# factors and can blow up memory on large systems.
+# `parallel` similarly should be `false` for per-task deep copies (they already
+# run inside a caller-managed thread), to avoid CellListMap allocating its own
+# internal per-batch output copies on top of that.
+#
+# `unitcell`, if given, is passed straight through to `ParticleSystem`. Without
+# it, CellListMap treats the system as non-periodic and auto-fits a box to
+# `limits(xpositions, ypositions)` on every `update!`/`pairwise!` call whose
+# trial point falls outside the current box — an O(nmols_fixed) scan, and
+# potentially a full cell-list rebuild, repeated on every single trial for
+# callers like overlaps_fixed.jl. Passing an explicit box comfortably covering
+# every point that will ever be queried makes CellListMap treat it as
+# periodic instead, skipping that re-fit entirely.
+#
+function build_fixed_particle_system(
+    packmol_system::PackmolSystem{D,T};
+    nmols::Int=packmol_system.nmols, parallel::Bool=Threads.nthreads() > 1,
+    unitcell::Union{Nothing,AbstractVecOrMat}=nothing,
+    cutoff::T=packmol_system.tolerance,
+) where {D,T}
     fixed_atom_positions = _collect_fixed_positions(packmol_system)
-    return _build_fixed_particle_system(fixed_atom_positions, packmol_system.tolerance, packmol_system.nmols)
+    return _build_fixed_particle_system(fixed_atom_positions, cutoff, nmols; parallel, unitcell)
 end
 
 @testitem "FixedParticleSystem" begin

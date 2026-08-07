@@ -69,7 +69,7 @@ function move!(x::AbstractVector{T}, newcm::T, beta, gamma, theta) where {T<:SVe
     x .= x .+ Ref(newcm)
     return x
 end
-move!(x::AbstractVector{<:SVector{3,T}}, newcm::T, angles::SVector{3,T}) where {T} = 
+move!(x::AbstractVector{<:SVector{3,T}}, newcm::SVector{3,T}, angles::SVector{3,T}) where {T} =
     move!(x, newcm, angles[1], angles[2], angles[3])
 move!(x::AbstractVector{<:SVector{D,T}}, pos::MoleculePosition{D,T}) where {D,T} =
     move!(x, pos.cm, pos.angles)

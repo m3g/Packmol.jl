@@ -127,9 +127,7 @@ function packmol(
     else
         volume = prod(unitcell)
     end
-    ncells = min(volume / packing_tol^D, natoms)
-    #cutoff = max(packing_tol, (volume / ncells)^(one(T) / D))
-    cutoff = packing_tol
+    cutoff = _capped_cutoff(volume, packing_tol, natoms, D)
 
     # Set up CellListMap
     fg_output = InteratomicDistanceFG{D,T}(packmol_system)

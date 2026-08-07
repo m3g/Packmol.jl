@@ -46,7 +46,68 @@ function adjust_constraints!(
     # constraint regions. When domovebad=false (initial pass), molecules are still
     # at sidemax (±1000 Å) coordinates; updating fixed_sys with those positions
     # would force CellListMap to build a ~10⁹-cell grid (gigabytes of memory).
-    fixed_sys = domovebad ? build_fixed_particle_system(packmol_system) : nothing
+    #
+    # Unlike reinitialize_with_bounds.jl (which queries one trial molecule at a
+    # time and can cheaply reject far-away ones before touching CellListMap at
+    # all), molecule_badness.jl below does a single pairwise! call over *every*
+    # free atom at once — so this system's box genuinely needs to cover the
+    # whole free-molecule placement region, not just the fixed atoms. Without
+    # an explicit unitcell, CellListMap treats it as non-periodic and, on the
+    # very first update! (all free-atom positions at once), has to grow the
+    # box from "just the fixed atoms" (its construction-time extent) out to
+    # "fixed atoms ∪ every free atom" in one shot — an expensive rebuild of a
+    # cell list sized however large that turns out to be. Sizing the box up
+    # front from the known CM bounds avoids that surprise growth/rebuild.
+    fixed_sys = if domovebad
+        fixed_unitcell = if !isnothing(packmol_system.unitcell)
+            packmol_system.unitcell
+        else
+            lo, hi = if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
+                cm_lo_type, cm_hi_type
+            else
+                compute_cm_bounds(packmol_system)
+            end
+            region_lo = reduce((a, b) -> min.(a, b), lo)
+            region_hi = reduce((a, b) -> max.(a, b), hi)
+            fixed_atom_positions = _collect_fixed_positions(packmol_system)
+            if !isempty(fixed_atom_positions)
+                flo, fhi = compute_bounding_box(fixed_atom_positions)
+                region_lo = min.(region_lo, flo)
+                region_hi = max.(region_hi, fhi)
+            end
+            max_extent = zero(T)
+            for st in packmol_system.structure_types
+                st.fixed.fixed && continue
+                for r in st.reference_coordinates
+                    max_extent = max(max_extent, norm(r))
+                end
+            end
+            margin = max_extent + packmol_system.tolerance
+            T(1.2) * ((region_hi .+ margin) - (region_lo .- margin))
+        end
+        # Cell count scales as box volume / cutoff^D. This box's volume is set
+        # by where free molecules *could* be (the whole placement region),
+        # which for a large, sparse system (fixed structure much smaller than
+        # the region free molecules are packed into) can imply a cell count
+        # many orders of magnitude above the actual atom count — the cell
+        # array itself is allocated at that size regardless of parallel vs
+        # serial construction, which is what actually blows up memory here.
+        # Cap it at (fixed + free) atom count, matching packmol_main.jl's own
+        # cl_system cutoff cap.
+        volume = fixed_unitcell isa AbstractMatrix ? abs(det(fixed_unitcell)) : prod(fixed_unitcell)
+        max_particles = natoms
+        cutoff = _capped_cutoff(volume, packmol_system.tolerance, max_particles, D)
+        # parallel=false: CellListMap's *parallel* cell-list construction (not
+        # the pairwise! computation itself) allocates per-batch auxiliary
+        # arrays proportional to nthreads * ncells, which dominates memory at
+        # the cell counts this box implies (millions, for a large system) —
+        # confirmed 8x more memory than parallel=false for an equivalent
+        # standalone system, with no speed benefit at the loop-count adjust_constraints!
+        # actually runs (it typically converges in a handful of iterations).
+        build_fixed_particle_system(packmol_system; unitcell=fixed_unitcell, parallel=false, cutoff)
+    else
+        nothing
+    end
     tol = packmol_system.tolerance
 
     # Build molecule → structure type mapping
