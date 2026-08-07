@@ -98,8 +98,6 @@ function _parse_options(T, name::String, val, options::Tuple)
 end
 
 
-_check_movefrac(x) = 0.0 <= x <= 1.0 ? x : throw(ArgumentError("movefrac must be between 0 and 1"))
-
 #! format: off
 packmol_input_keywords = Dict{String,Function}(
     "filetype"                 => (T, val) -> (:filetype, _parse_value(String, "filetype", val)),
@@ -114,20 +112,13 @@ packmol_input_keywords = Dict{String,Function}(
     "amber_ter_preserve"       => (T, val) -> (:amber_ter_preserve, true),
     "add_box_sides"            => (T, val) -> (:add_box_sides, true),
     "connect"                  => (T, val) -> (:connect, _parse_options(String, "connect", val, ("yes" => true, "no" => false))),
-    "randominitialpoint"       => (T, val) -> (:randominitialpoint, true),
+    "randominitialpoint"       => (T, val) -> (:random_initial_point, true),
     "seed"                     => (T, val) -> (:seed, _parse_value(Int, "seed", val)),
     "avoid_overlap"            => (T, val) -> (:avoid_overlap, _parse_options(String, "avoid_overlap", val, ("yes" => true, "no" => false))),
     "writeout"                 => (T, val) -> (:writeout, _parse_value(Int, "writeout", val)),
     "writebad"                 => (T, val) -> (:writebad, true),
     "optimization_print_level" => (T, val) -> (:optimization_print_level, _parse_value(Int, "optim_print_level", val)),
-    "chkgrad"                  => (T, val) -> (:check_gradient, true),
-    "use_short_tol"            => (T, val) -> (:use_short_tol, true),
-    "short_tol_dist"           => (T, val) -> (:short_tol_dist, _parse_value(T, "short_tol_dist", val)),
-    "short_tol_scale"          => (T, val) -> (:short_tol_scale, _parse_value(T, "short_tol_scale", val)),
-    "short_radius"             => (T, val) -> (:short_radiues, _parse_value(T, "short_radius", val)),
-    "short_radius_scale"       => (T, val) -> (:short_radius_scale, _parse_value(T, "short_radius_scale", val)),
-    "movebadrandom"            => (T, val) -> (:movebadrandom, true),
-    "movefrac"                 => (T, val) -> (:movefrac, _parse_value(T, "movefrac", val; _val_check=_check_movefrac)),
+    "chkgrad"                  => (T, val) -> (:chkgrad, true),
 )
 #! format: on
 
@@ -166,6 +157,23 @@ packmol_legacy_keywords = Dict{String,String}(
     "packall" => "packall is ignored and the only option",
 )
 
+# Keywords recognized by Fortran Packmol but not yet wired into Packmol.jl
+# (see the Phase 1 "Missing keyword parsing" checklist in CLAUDE.md). Listed
+# here, rather than in packmol_input_keywords, so that using them produces a
+# clear warning instead of a crash while they remain unimplemented.
+packmol_unimplemented_keywords = Dict{String,String}(
+    "movefrac" => "movefrac keyword is not yet implemented in Packmol.jl and was ignored.",
+    "movebadrandom" => "movebadrandom keyword is not yet implemented in Packmol.jl and was ignored.",
+    "use_short_tol" => "use_short_tol keyword is not yet implemented in Packmol.jl and was ignored.",
+    "short_tol_dist" => "short_tol_dist keyword is not yet implemented in Packmol.jl and was ignored.",
+    "short_tol_scale" => "short_tol_scale keyword is not yet implemented in Packmol.jl and was ignored.",
+    "short_radius" => "short_radius keyword is not yet implemented in Packmol.jl and was ignored.",
+    "short_radius_scale" => "short_radius_scale keyword is not yet implemented in Packmol.jl and was ignored.",
+    "nloop" => "nloop keyword is not yet implemented in Packmol.jl and was ignored.",
+    "restart_from" => "restart_from keyword is not yet implemented in Packmol.jl and was ignored.",
+    "restart_to" => "restart_to keyword is not yet implemented in Packmol.jl and was ignored.",
+)
+
 #=
 
     read_packmol_input
@@ -193,12 +201,21 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
                 continue
             end
             if haskey(packmol_input_keywords, keyword)
-                field_name, field_value = packmol_input_keywords[keyword](T, first(values))
+                # Value-less flag keywords (e.g. `randominitialpoint`, `add_box_sides`)
+                # appear on their own line with nothing after them; their closures
+                # ignore `val`, so an empty string is passed through for those.
+                val = isempty(values) ? "" : first(values)
+                field_name, field_value = packmol_input_keywords[keyword](T, val)
                 input_data[field_name] = field_value
                 continue
             elseif haskey(packmol_legacy_keywords, keyword)
                 @warn begin
                     packmol_legacy_keywords[keyword]
+                end _line = line _file = input_file
+                continue
+            elseif haskey(packmol_unimplemented_keywords, keyword)
+                @warn begin
+                    packmol_unimplemented_keywords[keyword]
                 end _line = line _file = input_file
                 continue
             end
