@@ -21,11 +21,21 @@ function packmol(
     parallel::Bool=true,
     iprint::Int=10,
     nloop::Int=200,
-    maxit::Int=200,
+    maxit::Union{Nothing,Int}=nothing,
     movefrac::T=T(0.05),
     seed::Int=packmol_system.seed,
     restart::Bool=false,
+    optimizer::Symbol=:spgbox,
 ) where {D,T}
+    optimizer in (:spgbox, :gencan) ||
+        error("unknown optimizer :$optimizer (expected :spgbox or :gencan)")
+    if optimizer === :gencan && T !== Float64
+        error("optimizer=:gencan requires T === Float64 (GENCAN is hardcoded double precision), got T = $T")
+    end
+    # GENCAN's default per-chunk iteration budget matches the original
+    # Fortran Packmol default (getinp.f90: maxit = 20); SPGBox keeps its
+    # existing default of 200. Either can be overridden explicitly.
+    maxit = something(maxit, optimizer === :gencan ? 20 : 200)
     # Initialize RNG and molecule positions
     RNG = Random.Xoshiro(seed)
 
@@ -156,9 +166,17 @@ function packmol(
     println(dash_line)
     # Evaluate and print initial function value
     g0 = similar(x)
+    # Start packing with a looser-than-required tolerance (matches the
+    # original Fortran Packmol's `discale` heuristic, default 1.1): atom
+    # radii are effectively inflated by radscale in the optimization
+    # target, giving the optimizer an easier target while far from
+    # feasible. radscale decays toward 1.0 as improvement stalls (see the
+    # end of the loop body below); true convergence checks (tol_ok, dmin)
+    # are unaffected since they measure the real, unscaled distances.
+    radscale = T(1.1)
 # voltar
 #    return g0, x, cl_system, packmol_system, atom_positions, free_mol_indices
-    f0 = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices)
+    f0 = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, radscale)
     @printf(" Objective function at initial point: %10.5e\n", f0)
     bestf = typemax(T)
     flast = typemax(T)
@@ -169,19 +187,39 @@ function packmol(
         println()
         println(dash_line)
         @printf(" Starting packing loop: %8d\n", loop)
+        @printf(" Tolerance in this loop: %8.4f\n", radscale * tol)
         println()
 
         # Run a short optimization (maxit iterations per loop)
         progress_meter = Progress(100; desc=" Iterations: ", barlen=47)
-        spgresult = spgbox!(
-            (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices),
-            x;
-            callback=(result) -> packmol_callback(result, cl_system, tol, iprint,
-                packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter),
-            vaux=auxvecs,
-            nitmax=maxit,
-            nfevalmax=10 * maxit,
-        )
+        fg_closure = (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices, radscale)
+        optresult = if optimizer === :spgbox
+            spgbox!(
+                fg_closure,
+                x;
+                callback=(result) -> packmol_callback(result, cl_system, tol, iprint,
+                    packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter),
+                vaux=auxvecs,
+                nitmax=maxit,
+                nfevalmax=10 * maxit,
+            )
+        else # optimizer === :gencan
+            # GENCAN's callback (unlike SPGBox's) can't signal early-exit —
+            # it runs its full maxit-iteration budget (or until its own
+            # internal epsgpsn criterion triggers). This is fine: the outer
+            # loop below still re-checks Packmol's own tol_ok/const_ok
+            # convergence after every chunk regardless of which optimizer
+            # produced it. `packmol_callback`'s first argument (`spgresult`)
+            # is unused in its body, so it's safe to reuse here with a
+            # dummy value just for the progress-bar/showvalues side effect.
+            gencan!(
+                fg_closure, x;
+                callback=() -> packmol_callback(nothing, cl_system, tol, iprint,
+                    packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter),
+                nitmax=maxit,
+                nfevalmax=10 * maxit,
+            )
+        end
 
         # Update molecule positions with optimized values
         x_mol = reinterpret(MoleculePosition{D,T}, x)
@@ -190,7 +228,7 @@ function packmol(
         end
 
         # Statistics: compute improvement of this loop relative to flast
-        fx = spgresult.f
+        fx = optresult.f
         dmin = min(cl_system.fg.dmin, cl_system.cutoff)
         fimp_last = flast > zero(T) ? clamp(-100 * (fx - flast) / flast, T(-99.99), T(99.99)) : T(100)
         fimprov = bestf < typemax(T) ? clamp(-100 * (fx - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
@@ -249,8 +287,10 @@ function packmol(
             println(" Current solution written to file: ", packmol_system.output_file)
         end
 
-        # Move bad molecules if this loop did not improve f by at least 10%
-        if fimp_last < T(10)
+        # Move bad molecules once the tolerance has been fully tightened
+        # (radscale == 1, matching Fortran) and this loop did not improve
+        # f by at least 10%.
+        if radscale == one(T) && fimp_last < T(10)
             cm_min, cm_max = compute_cm_bounds(packmol_system)
             nmoved = movebad!(
                 packmol_system, cl_system.fg.fmol, free_mol_indices, mol_structure_type, RNG;
@@ -265,6 +305,16 @@ function packmol(
         x_mol = reinterpret(MoleculePosition{D,T}, x)
         for (k, imol) in enumerate(free_mol_indices)
             x_mol[k] = packmol_system.molecule_positions[imol]
+        end
+
+        # Loosen-tolerance heuristic decay: relax radscale toward 1.0 once
+        # improvement stalls (either already within tolerance precision and
+        # improving less than 10%, or improving less than 2% regardless).
+        # This sets the radscale movebad above will see next loop.
+        if radscale > one(T)
+            if (tol_ok && fimp_last < T(10)) || fimp_last < T(2)
+                radscale = max(T(0.9) * radscale, one(T))
+            end
         end
     end
 
@@ -372,16 +422,18 @@ end
 
     # Check minimum inter-molecular distance is close to tolerance
     natoms_per_mol = st.natoms
-    dmin = Inf
-    for i in 1:length(atom_positions)
-        mol_i = (i - 1) ÷ natoms_per_mol + 1
-        for j in i+1:length(atom_positions)
-            mol_j = (j - 1) ÷ natoms_per_mol + 1
-            if mol_i != mol_j
-                d = norm(atom_positions[i] - atom_positions[j])
-                dmin = min(dmin, d)
+    dmin = let dmin = Inf
+        for i in 1:length(atom_positions)
+            mol_i = (i - 1) ÷ natoms_per_mol + 1
+            for j in i+1:length(atom_positions)
+                mol_j = (j - 1) ÷ natoms_per_mol + 1
+                if mol_i != mol_j
+                    d = norm(atom_positions[i] - atom_positions[j])
+                    dmin = min(dmin, d)
+                end
             end
         end
+        dmin
     end
     @test dmin >= sys.tolerance - 0.1
 
@@ -391,4 +443,60 @@ end
     output_atoms = read_pdb(output_file)
     @test length(output_atoms) == 300
     rm(output_file; force=true)
+end
+
+@testitem "water box packing (gencan)" begin
+    using Packmol
+
+    if !Packmol.gencan_gfortran_available()
+        @warn "gfortran not available: skipping gencan integration test"
+        @test_skip false
+    else
+        using PDBTools: read_pdb
+        using StaticArrays
+        using LinearAlgebra: norm
+
+        input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "water_box_small.inp")
+        sys = Packmol.read_packmol_input(input_file)
+        @test sys.nmols == 100
+        @test length(sys.atoms) == 300
+        @test sys.tolerance == 2.0
+
+        Packmol.packmol(sys; nloop=200, maxit=20, iprint=10, optimizer=:gencan)
+
+        # Compute final atom positions
+        atom_positions = Vector{SVector{3,Float64}}(undef, length(sys.atoms))
+        Packmol.compute_atom_positions!(atom_positions, sys.molecule_positions, sys)
+
+        # Check that all atoms satisfy the box constraint (penalty ≈ 0)
+        st = sys.structure_types[1]
+        c = st.constraints[1]  # InsideBox
+        for pos in atom_positions
+            @test Packmol.constraint_penalty(c, pos) ≈ 0.0 atol = 0.1
+        end
+
+        # Check minimum inter-molecular distance is close to tolerance
+        natoms_per_mol = st.natoms
+        dmin = let dmin = Inf
+            for i in 1:length(atom_positions)
+                mol_i = (i - 1) ÷ natoms_per_mol + 1
+                for j in i+1:length(atom_positions)
+                    mol_j = (j - 1) ÷ natoms_per_mol + 1
+                    if mol_i != mol_j
+                        d = norm(atom_positions[i] - atom_positions[j])
+                        dmin = min(dmin, d)
+                    end
+                end
+            end
+            dmin
+        end
+        @test dmin >= sys.tolerance - 0.1
+
+        # Write output and verify
+        output_file = Packmol.write_output(sys)
+        @test isfile(output_file)
+        output_atoms = read_pdb(output_file)
+        @test length(output_atoms) == 300
+        rm(output_file; force=true)
+    end
 end

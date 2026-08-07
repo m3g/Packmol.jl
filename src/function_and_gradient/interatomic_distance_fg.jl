@@ -65,14 +65,23 @@ end
 
 # Updates the function and gradient of the system given a pair of
 # particles within the cutoff.
-function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_system)
+#
+# `radscale` implements the same "loose start" heuristic as the original
+# Fortran Packmol (getinp.f90's `discale`, default 1.1): early in packing,
+# atom radii (thus the target distance) are inflated by `radscale`, giving
+# GENCAN/SPGBox a looser, easier target while molecules are far from
+# feasible; `radscale` decays toward 1.0 as improvement stalls (see
+# packmol_main.jl). `fg.dmin` tracks the true (unscaled) minimum distance
+# regardless of radscale, so convergence checks against the real tolerance
+# are unaffected by this internal optimization-target adjustment.
+function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_system, radscale)
     (; x, y, i, j, d2) = pair
     iatom = packmol_system.atoms[i]
     jatom = packmol_system.atoms[j]
     if iatom.molecule_index == jatom.molecule_index
         return fg
     end
-    tol = iatom.radius + jatom.radius
+    tol = radscale * (iatom.radius + jatom.radius)
     d = sqrt(d2)
     fg.dmin = min(d, fg.dmin)
     if d < tol
@@ -253,6 +262,7 @@ function fg!(g, x,
     packmol_system::PackmolSystem{D,T},
     atom_positions::Vector{SVector{D,T}},
     free_mol_indices::Vector{Int},
+    radscale::T=one(T),
 ) where {D,T}
     # Unpack optimizer variables into free molecule slots
     x_mol = reinterpret(MoleculePosition{D,T}, x)
@@ -264,7 +274,7 @@ function fg!(g, x,
     # Update CellListMap positions
     cl_system.xpositions .= atom_positions
     # Compute pairwise distance penalties and Cartesian gradients
-    pairwise!((pair, output) -> cartesian_fg!(pair, output, packmol_system), cl_system,)
+    pairwise!((pair, output) -> cartesian_fg!(pair, output, packmol_system, radscale), cl_system,)
     # Add constraint penalties and gradients
     constraint_fg!(cl_system.fg, atom_positions, packmol_system)
     # Zero molecule-level gradients (excluded from CellListMap reset/reduce)

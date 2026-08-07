@@ -17,7 +17,7 @@ structure ../structure_files/water.pdb
 end structure
 
 structure ../structure_files/palmitoil.pdb 
-  number 10
+  number 15
   inside box 0. 0. 0. 40. 40. 14.
   atoms 31 32
     below plane 0. 0. 1. 2.
@@ -28,7 +28,7 @@ structure ../structure_files/palmitoil.pdb
 end structure 
 
 structure ../structure_files/palmitoil.pdb 
-  number 10
+  number 15
   inside box 0. 0. 14. 40. 40. 28.
   atoms 1 2
     below plane 0. 0. 1. 16.

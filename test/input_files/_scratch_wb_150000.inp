@@ -1,0 +1,8 @@
+tolerance 2.0
+filetype pdb
+output _scratch_wb_150000_out.pdb
+
+structure ../structure_files/water.pdb
+  number 150000
+  inside box 0. 0. 0. 165.411 165.411 165.411
+end structure
