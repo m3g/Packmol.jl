@@ -109,20 +109,30 @@ function compute_atom_positions!(
     molecule_positions,
     packmol_system::PackmolSystem{D,T},
 ) where {D,T}
-    iat = 0
-    imol = 0
+    imol_offset = 0
+    iat_offset = 0
     for st in packmol_system.structure_types
         ref = st.reference_coordinates
-        for _ in 1:st.number_of_molecules
-            imol += 1
-            mp = molecule_positions[imol]
-            R = eulermat(mp.angles)
-            cm = mp.cm
-            for j in 1:st.natoms
-                iat += 1
-                atom_positions[iat] = R * ref[j] + cm
+        natoms_st = st.natoms
+        nmols_st = st.number_of_molecules
+        st_imol_offset = imol_offset
+        st_iat_offset = iat_offset
+        @sync for (_, mol_range) in enumerate(chunks(1:nmols_st; n=Threads.nthreads()))
+            @spawn begin
+                for i in mol_range
+                    imol = st_imol_offset + i
+                    iat_first = st_iat_offset + (i - 1) * natoms_st
+                    mp = molecule_positions[imol]
+                    R = eulermat(mp.angles)
+                    cm = mp.cm
+                    for j in 1:natoms_st
+                        atom_positions[iat_first + j] = R * ref[j] + cm
+                    end
+                end
             end
         end
+        imol_offset += nmols_st
+        iat_offset += nmols_st * natoms_st
     end
     return atom_positions
 end
@@ -266,13 +276,19 @@ function fg!(g, x,
 ) where {D,T}
     # Unpack optimizer variables into free molecule slots
     x_mol = reinterpret(MoleculePosition{D,T}, x)
-    for (k, imol) in enumerate(free_mol_indices)
-        packmol_system.molecule_positions[imol] = x_mol[k]
+    @sync for (_, krange) in enumerate(chunks(1:length(free_mol_indices); n=Threads.nthreads()))
+        @spawn for k in krange
+            packmol_system.molecule_positions[free_mol_indices[k]] = x_mol[k]
+        end
     end
     # Compute Cartesian atomic coordinates from ALL molecule DOFs
     compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
     # Update CellListMap positions
-    cl_system.xpositions .= atom_positions
+    @sync for (_, iatrange) in enumerate(chunks(eachindex(atom_positions); n=Threads.nthreads()))
+        @spawn for iat in iatrange
+            cl_system.xpositions[iat] = atom_positions[iat]
+        end
+    end
     # Compute pairwise distance penalties and Cartesian gradients
     pairwise!((pair, output) -> cartesian_fg!(pair, output, packmol_system, radscale), cl_system,)
     # Add constraint penalties and gradients
@@ -283,8 +299,10 @@ function fg!(g, x,
     chain_rule!(cl_system.fg, packmol_system)
     # Pack only free molecule gradients into optimizer gradient vector
     g_mol = reinterpret(MoleculePosition{D,T}, g)
-    for (k, imol) in enumerate(free_mol_indices)
-        g_mol[k] = cl_system.fg.g[imol]
+    @sync for (_, krange) in enumerate(chunks(1:length(free_mol_indices); n=Threads.nthreads()))
+        @spawn for k in krange
+            g_mol[k] = cl_system.fg.g[free_mol_indices[k]]
+        end
     end
     return cl_system.fg.f
 end
