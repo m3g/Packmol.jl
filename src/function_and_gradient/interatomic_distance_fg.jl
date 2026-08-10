@@ -63,6 +63,53 @@ function CellListMap.reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
     return x
 end
 
+# CellListMap's default reduce_output! (used by `reducer` above) merges the
+# per-batch outputs with a plain serial `for ibatch in output_threaded`
+# loop — for InteratomicDistanceFG that means a full O(nmols + natoms) vector
+# add repeated once per batch, entirely on a single thread, on *every*
+# pairwise! call (i.e. every fg! evaluation). At large scale (millions of
+# atoms, tens of batches) this serial merge can itself take tens of
+# milliseconds — measured at ~58ms for a 2.76M-atom/533K-molecule/10-batch
+# system, i.e. a hard single-threaded tax paid on every optimizer iteration
+# regardless of how many threads are available. This override instead
+# parallelizes the merge by splitting the *index range* of fmol/gxcar across
+# threads (each thread sums all batches' contributions for its own slice),
+# which both uses all available threads and is more cache-friendly than the
+# original batch-outer/index-inner loop order.
+function CellListMap.reduce_output!(
+    output::InteratomicDistanceFG{D,T}, output_threaded::Vector{InteratomicDistanceFG{D,T}},
+) where {D,T}
+    output.f = zero(T)
+    output.dmin = typemax(T)
+    for ot in output_threaded
+        output.f += ot.f
+        output.dmin = min(output.dmin, ot.dmin)
+    end
+    nmols = length(output.fmol)
+    natoms = length(output.gxcar)
+    @sync begin
+        for (_, mrange) in enumerate(chunks(1:nmols; n=Threads.nthreads()))
+            @spawn for i in mrange
+                s = zero(T)
+                for ot in output_threaded
+                    s += ot.fmol[i]
+                end
+                output.fmol[i] = s
+            end
+        end
+        for (_, arange) in enumerate(chunks(1:natoms; n=Threads.nthreads()))
+            @spawn for i in arange
+                s = zero(SVector{D,T})
+                for ot in output_threaded
+                    s += ot.gxcar[i]
+                end
+                output.gxcar[i] = s
+            end
+        end
+    end
+    return output
+end
+
 # Updates the function and gradient of the system given a pair of
 # particles within the cutoff.
 #
