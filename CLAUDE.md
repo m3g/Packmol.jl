@@ -96,7 +96,8 @@ These are the building blocks everything else depends on.
 - [x] Structure blocks: `structure/end structure`, `number`, `fixed`, `center`, `radius`
 - [x] Constraint parsing: `inside/outside box`, `inside/outside cube`, `inside/outside sphere`
 - [x] Per-atom blocks (`atoms ... end atoms`) with custom constraints
-- [ ] Missing keyword parsing: `discale`, `movefrac`, `movebadrandom`, `sidemax` (won't be supported),
+- [x] `radscale` (with legacy `discale` mapped to it)
+- [ ] Missing keyword parsing: `movefrac`, `movebadrandom`, `sidemax` (won't be supported),
       `precision`, `fbins` (won´t be supported), `fscale`, `use_short_tol`, `short_tol_dist`, `short_tol_scale`, `short_radius`, `short_radius_scale`, `resnumbers`, `changechains`, `chain`, `restart_from`, `restart_to`, `constrain_rotation`, `nloop`
 
 ---

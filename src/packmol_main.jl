@@ -171,9 +171,7 @@ function packmol(
     # feasible. radscale decays toward 1.0 as improvement stalls (see the
     # end of the loop body below); true convergence checks (tol_ok, dmin)
     # are unaffected since they measure the real, unscaled distances.
-    radscale = T(1.1)
-# voltar
-#    return g0, x, cl_system, packmol_system, atom_positions, free_mol_indices
+    radscale = packmol_system.radscale
     f0 = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, radscale)
     @printf(" Objective function at initial point: %10.5e\n", f0)
     bestf = typemax(T)

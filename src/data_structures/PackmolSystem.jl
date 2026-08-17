@@ -5,6 +5,10 @@
     input_file::String
     output_file::String
     tolerance::T = 2.0
+    # Loose-start radius scale factor for the packing objective (Fortran Packmol's
+    # `discale`): atom radii are inflated by this factor early in packing, then
+    # decayed toward 1.0 as improvement stalls (see packmol_main.jl).
+    radscale::T = 1.2
     structure_types::Vector{StructureType{D,T}} = StructureType{D,T}[]
     tolerance_precision::T = 1e-2
     constraint_precision::T = 1e-2
@@ -103,6 +107,11 @@ packmol_input_keywords = Dict{String,Function}(
     "filetype"                 => (T, val) -> (:filetype, _parse_value(String, "filetype", val)),
     "output"                   => (T, val) -> (:output_file, _parse_value(String, "output", val)),
     "tolerance"                => (T, val) -> (:tolerance, _parse_value(T, "tolerance", val)),
+    "radscale"                 => (T, val) -> (:radscale, _parse_value(T, "radscale", val)),
+    "discale"                  => (T, val) -> begin
+        @warn "discale is a legacy keyword name; use radscale instead." maxlog=1
+        (:radscale, _parse_value(T, "discale", val))
+    end,
     "tolerance_precision"      => (T, val) -> (:tolerance_precision, _parse_value(T, "tolerance_precision", val)),
     "constraint_precision"     => (T, val) -> (:constraint_precision, _parse_value(T, "constraint_precision", val)),
     "maxit"                    => (T, val) -> (:maxit, _parse_value(Int, "max_iter", val)),
@@ -148,7 +157,6 @@ end
 
 packmol_legacy_keywords = Dict{String,String}(
     "fscale" => "fscale legacy keyword was ignored.",
-    "discale" => "discale legacy keyword was ignored.",
     "fbins" => "fbins legacy keyword was ignored.",
     "iprint1" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
     "iprint2" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
@@ -355,11 +363,33 @@ end
     @test all(at.molecule_index == 1000 for at in sys.atoms[2998:3000])
     @test all(at.radius ≈ 1.0 for at in sys.atoms)
     @test length(sys.molecule_positions) == 1000
+    @test sys.radscale == 1.1
 
     sys = read_packmol_input(file; T=Float32)
     @test typeof(sys.tolerance) == Float32
     @test eltype(sys.molecule_positions) == Packmol.MoleculePosition{3,Float32}
+    @test sys.radscale ≈ 1.1
 
     # 2D: Currently not supported
     # sys = read_packmol_input(file; D=2)
+end
+
+@testitem "radscale / discale keyword" begin
+    using Packmol: read_packmol_input
+    dir = dirname(Packmol.src_dir * "/../test/input_files/water_box.inp")
+    original = read(Packmol.src_dir * "/../test/input_files/water_box.inp", String)
+
+    mktempdir() do tmp
+        cp(joinpath(dir, "water.pdb"), joinpath(tmp, "water.pdb"))
+
+        radscale_file = joinpath(tmp, "radscale.inp")
+        write(radscale_file, original * "\nradscale 1.5\n")
+        sys = read_packmol_input(radscale_file)
+        @test sys.radscale == 1.5
+
+        discale_file = joinpath(tmp, "discale.inp")
+        write(discale_file, original * "\ndiscale 1.3\n")
+        sys = @test_logs (:warn, r"discale") read_packmol_input(discale_file)
+        @test sys.radscale == 1.3
+    end
 end
