@@ -69,6 +69,6 @@ run_packmol
 ```
 
 ```@docs
-pack_monoatomic!
+Packmol.pack_monoatomic!
 ```
 

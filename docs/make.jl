@@ -6,9 +6,16 @@ push!(LOAD_PATH, "../src/")
 makedocs(
     modules = [Packmol],
     sitename = "Packmol.jl",
+    format = Documenter.HTML(top_menu = true),
     pages = [
-        "Home" => "index.md",
-        "Concentration units" => "concentration_units.md",
+        "Stable" => [
+            "Home" => "index.md",
+        ],
+        "Experimental" => [
+            "Home" => "experimental/index.md",
+            "Concentration units" => "concentration_units.md",
+            "Reference" => "experimental/reference.md",
+        ],
     ],
 )
 deploydocs(
