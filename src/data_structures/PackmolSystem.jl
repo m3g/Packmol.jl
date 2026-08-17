@@ -1,14 +1,20 @@
 
 
 @kwdef mutable struct PackmolSystem{D,T}
-    filetype::String
+    filetype::String = "pdb"
     input_file::String
     output_file::String
     tolerance::T = 2.0
+    # Loose-start radius scale factor for the packing objective (Fortran Packmol's
+    # `discale`): atom radii are inflated by this factor early in packing, then
+    # decayed toward 1.0 as improvement stalls (see packmol_main.jl).
+    radscale::T = 1.2
     structure_types::Vector{StructureType{D,T}} = StructureType{D,T}[]
     tolerance_precision::T = 1e-2
     constraint_precision::T = 1e-2
     max_iter::Int = 1000
+    max_random_init::Int=20
+    adjust_constraints_on_init::Bool=true
     add_amber_ter::Bool = false
     amber_ter_preserve::Bool = false
     add_box_sides::Bool = false
@@ -20,6 +26,11 @@
     writebad::Bool = false
     optim_print_level::Int = 0
     chkgrad::Bool = false
+    check::Bool = false
+    # Unit cell for periodic boundary conditions (nothing = no PBC)
+    unitcell::Union{Nothing, Matrix{T}} = nothing
+    # Reference center for PBC wrapping (constraints evaluated relative to this point)
+    unitcell_center::Union{Nothing, SVector{D,T}} = nothing
     # Internal data for the optimization
     nmols::Int = 0
     atoms::Vector{AtomData{T}} = AtomData{T}[]
@@ -27,11 +38,11 @@
 end
 
 function _indent(s::AbstractString; n=4)
-    idented_str = IOBuffer()
+    indented_str = IOBuffer()
     for line in eachline(IOBuffer(s))
-        println(idented_str, repeat(" ", n) * line)
+        println(indented_str, repeat(" ", n) * line)
     end
-    return String(take!(idented_str))
+    return String(take!(indented_str))
 end
 
 function Base.show(io::IO, ::MIME"text/plain", sys::PackmolSystem{D,T}) where {D,T}
@@ -78,36 +89,71 @@ function _parse_value(T::DataType, keyword::String, input_value; _val_check=x ->
     return value
 end
 
-_check_movefrac(x) = 0.0 <= x <= 1.0 ? x : throw(ArgumentError("movefrac must be between 0 and 1"))
+function _parse_options(T, name::String, val, options::Tuple)
+    for pair in options
+        if first(pair) == val
+            return last(pair)
+        end
+    end
+    throw(ArgumentError("""\n
+        Value "$val" is not valid for option: $name.
+
+    """))
+end
+
 
 #! format: off
 packmol_input_keywords = Dict{String,Function}(
     "filetype"                 => (T, val) -> (:filetype, _parse_value(String, "filetype", val)),
     "output"                   => (T, val) -> (:output_file, _parse_value(String, "output", val)),
     "tolerance"                => (T, val) -> (:tolerance, _parse_value(T, "tolerance", val)),
+    "radscale"                 => (T, val) -> (:radscale, _parse_value(T, "radscale", val)),
+    "discale"                  => (T, val) -> begin
+        @warn "discale is a legacy keyword name; use radscale instead." maxlog=1
+        (:radscale, _parse_value(T, "discale", val))
+    end,
     "tolerance_precision"      => (T, val) -> (:tolerance_precision, _parse_value(T, "tolerance_precision", val)),
     "constraint_precision"     => (T, val) -> (:constraint_precision, _parse_value(T, "constraint_precision", val)),
     "maxit"                    => (T, val) -> (:maxit, _parse_value(Int, "max_iter", val)),
+    "max_random_init"          => (T, val) -> (:max_random_init, _parse_value(Int, "max_random_init", val)),
+    "adjust_constraints_on_init" => (T, val) -> (:adjust_constraints_on_init, _parse_options(String, "adjust_constraints_on_init", val, ("yes" => true, "no" => false))),
     "add_amber_ter"            => (T, val) -> (:add_amber_ter, _parse_value(Bool, "add_amber_ter", val)),
     "amber_ter_preserve"       => (T, val) -> (:amber_ter_preserve, true),
     "add_box_sides"            => (T, val) -> (:add_box_sides, true),
     "connect"                  => (T, val) -> (:connect, _parse_options(String, "connect", val, ("yes" => true, "no" => false))),
-    "randominitialpoint"       => (T, val) -> (:randominitialpoint, true),
+    "randominitialpoint"       => (T, val) -> (:random_initial_point, true),
     "seed"                     => (T, val) -> (:seed, _parse_value(Int, "seed", val)),
     "avoid_overlap"            => (T, val) -> (:avoid_overlap, _parse_options(String, "avoid_overlap", val, ("yes" => true, "no" => false))),
     "writeout"                 => (T, val) -> (:writeout, _parse_value(Int, "writeout", val)),
     "writebad"                 => (T, val) -> (:writebad, true),
     "optimization_print_level" => (T, val) -> (:optimization_print_level, _parse_value(Int, "optim_print_level", val)),
-    "chkgrad"                  => (T, val) -> (:check_gradient, true),
-    "use_short_tol"            => (T, val) -> (:use_short_tol, true),
-    "short_tol_dist"           => (T, val) -> (:short_tol_dist, _parse_value(T, "short_tol_dist", val)),
-    "short_tol_scale"          => (T, val) -> (:short_tol_scale, _parse_value(T, "short_tol_scale", val)),
-    "short_radius"             => (T, val) -> (:short_radiues, _parse_value(T, "short_radius", val)),
-    "short_radius_scale"       => (T, val) -> (:short_radius_scale, _parse_value(T, "short_radius_scale", val)),
-    "movebadrandom"            => (T, val) -> (:movebadrandom, true),
-    "movefrac"                 => (T, val) -> (:movefrac, _parse_value(T, "movefrac", val; _val_check=_check_movefrac)),
+    "chkgrad"                  => (T, val) -> (:chkgrad, true),
 )
 #! format: on
+
+#=
+    unitcell_matrix(a, b, c, α, β, γ)
+
+Convert CRYST1-style unit cell parameters (sides a, b, c and angles α, β, γ in degrees)
+to a 3×3 unit cell matrix (columns are the cell vectors). Uses the PDB convention:
+  a along x, b in the xy-plane.
+=#
+function unitcell_matrix(::Type{T}, a, b, c, α_deg, β_deg, γ_deg) where {T}
+    α = T(α_deg * π / 180)
+    β = T(β_deg * π / 180)
+    γ = T(γ_deg * π / 180)
+    ax = T(a)
+    bx = T(b) * cos(γ)
+    by = T(b) * sin(γ)
+    cx = T(c) * cos(β)
+    cy = T(c) * (cos(α) - cos(β) * cos(γ)) / sin(γ)
+    cz = sqrt(T(c)^2 - cx^2 - cy^2)
+    @SMatrix [
+        ax  bx  cx
+        zero(T)  by  cy
+        zero(T) zero(T) cz
+    ]
+end
 
 packmol_legacy_keywords = Dict{String,String}(
     "fscale" => "fscale legacy keyword was ignored.",
@@ -116,6 +162,24 @@ packmol_legacy_keywords = Dict{String,String}(
     "iprint2" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
     "iprint3" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
     "precision" => "precision legacy keyword was ignored, instead use: tolerance_precision and/or constraint_precision",
+    "packall" => "packall is ignored and the only option",
+)
+
+# Keywords recognized by Fortran Packmol but not yet wired into Packmol.jl
+# (see the Phase 1 "Missing keyword parsing" checklist in CLAUDE.md). Listed
+# here, rather than in packmol_input_keywords, so that using them produces a
+# clear warning instead of a crash while they remain unimplemented.
+packmol_unimplemented_keywords = Dict{String,String}(
+    "movefrac" => "movefrac keyword is not yet implemented in Packmol.jl and was ignored.",
+    "movebadrandom" => "movebadrandom keyword is not yet implemented in Packmol.jl and was ignored.",
+    "use_short_tol" => "use_short_tol keyword is not yet implemented in Packmol.jl and was ignored.",
+    "short_tol_dist" => "short_tol_dist keyword is not yet implemented in Packmol.jl and was ignored.",
+    "short_tol_scale" => "short_tol_scale keyword is not yet implemented in Packmol.jl and was ignored.",
+    "short_radius" => "short_radius keyword is not yet implemented in Packmol.jl and was ignored.",
+    "short_radius_scale" => "short_radius_scale keyword is not yet implemented in Packmol.jl and was ignored.",
+    "nloop" => "nloop keyword is not yet implemented in Packmol.jl and was ignored.",
+    "restart_from" => "restart_from keyword is not yet implemented in Packmol.jl and was ignored.",
+    "restart_to" => "restart_to keyword is not yet implemented in Packmol.jl and was ignored.",
 )
 
 #=
@@ -139,14 +203,60 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
             line = strip(line)
             (startswith(line, "#") || isempty(line)) && continue
             keyword, values... = split(line)
+            # Handle no-value keywords first
+            if keyword == "check"
+                input_data[:check] = true
+                continue
+            end
             if haskey(packmol_input_keywords, keyword)
-                field_name, field_value = packmol_input_keywords[keyword](T, first(values))
+                # Value-less flag keywords (e.g. `randominitialpoint`, `add_box_sides`)
+                # appear on their own line with nothing after them; their closures
+                # ignore `val`, so an empty string is passed through for those.
+                val = isempty(values) ? "" : first(values)
+                field_name, field_value = packmol_input_keywords[keyword](T, val)
                 input_data[field_name] = field_value
                 continue
             elseif haskey(packmol_legacy_keywords, keyword)
                 @warn begin
                     packmol_legacy_keywords[keyword]
                 end _line = line _file = input_file
+                continue
+            elseif haskey(packmol_unimplemented_keywords, keyword)
+                @warn begin
+                    packmol_unimplemented_keywords[keyword]
+                end _line = line _file = input_file
+                continue
+            end
+            # pbc: orthorhombic PBC keyword
+            #   3 values (side lengths): center at origin
+            #   6 values (xmin ymin zmin xmax ymax zmax): center at midpoint
+            if keyword == "pbc"
+                vals = [_parse_value(T, "pbc", v) for v in values]
+                if length(vals) == D
+                    # 3 values: side lengths, center at origin
+                    input_data[:unitcell] = Matrix{T}(Diagonal(vals))
+                    input_data[:unitcell_center] = zero(SVector{D,T})
+                elseif length(vals) == 2 * D
+                    # 6 values: xmin ymin zmin xmax ymax zmax
+                    lo = SVector{D,T}(vals[1:D]...)
+                    hi = SVector{D,T}(vals[D+1:2*D]...)
+                    sides = hi - lo
+                    input_data[:unitcell] = Matrix{T}(Diagonal(Vector(sides)))
+                    input_data[:unitcell_center] = (lo + hi) / 2
+                else
+                    throw(ArgumentError("pbc keyword requires $D (side lengths) or $(2*D) (min/max coords) values, got $(length(vals))"))
+                end
+                continue
+            end
+            # unitcell: general PBC keyword (6 values: a b c α β γ in CRYST1 convention)
+            # Center at origin.
+            if keyword == "unitcell"
+                if length(values) != 2 * D
+                    throw(ArgumentError("unitcell keyword requires $(2*D) values (a b [c] α β [γ]), got $(length(values))"))
+                end
+                params = [_parse_value(T, "unitcell", v) for v in values]
+                input_data[:unitcell] = Matrix{T}(unitcell_matrix(T, params...))
+                input_data[:unitcell_center] = zero(SVector{D,T})
                 continue
             end
             if keyword == "structure"
@@ -242,7 +352,7 @@ end
 
 @testitem "read_packmol_input" begin
     using Packmol: read_packmol_input
-    file = Packmol.src_dir * "/../test/run_packmol/water_box.inp"
+    file = Packmol.src_dir * "/../test/input_files/water_box.inp"
     sys = read_packmol_input(file)
     @test sys.filetype == "pdb"
     @test sys.output_file == "water_box.pdb"
@@ -253,11 +363,33 @@ end
     @test all(at.molecule_index == 1000 for at in sys.atoms[2998:3000])
     @test all(at.radius ≈ 1.0 for at in sys.atoms)
     @test length(sys.molecule_positions) == 1000
+    @test sys.radscale == 1.1
 
     sys = read_packmol_input(file; T=Float32)
     @test typeof(sys.tolerance) == Float32
     @test eltype(sys.molecule_positions) == Packmol.MoleculePosition{3,Float32}
+    @test sys.radscale ≈ 1.1
 
     # 2D: Currently not supported
     # sys = read_packmol_input(file; D=2)
+end
+
+@testitem "radscale / discale keyword" begin
+    using Packmol: read_packmol_input
+    dir = dirname(Packmol.src_dir * "/../test/input_files/water_box.inp")
+    original = read(Packmol.src_dir * "/../test/input_files/water_box.inp", String)
+
+    mktempdir() do tmp
+        cp(joinpath(dir, "water.pdb"), joinpath(tmp, "water.pdb"))
+
+        radscale_file = joinpath(tmp, "radscale.inp")
+        write(radscale_file, original * "\nradscale 1.5\n")
+        sys = read_packmol_input(radscale_file)
+        @test sys.radscale == 1.5
+
+        discale_file = joinpath(tmp, "discale.inp")
+        write(discale_file, original * "\ndiscale 1.3\n")
+        sys = @test_logs (:warn, r"discale") read_packmol_input(discale_file)
+        @test sys.radscale == 1.3
+    end
 end

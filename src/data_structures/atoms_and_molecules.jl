@@ -27,6 +27,7 @@ Base.copy(x::MoleculePosition) = MoleculePosition(x.cm, x.angles)
 import Base: + 
 +(x::MoleculePosition, y::MoleculePosition) = MoleculePosition(x.cm + y.cm, x.angles + y.angles)
 Base.zero(::Type{MoleculePosition{D,T}}) where {D,T} = MoleculePosition(zero(SVector{D,T}), zero(SVector{D,T}))
+Base.zero(::MoleculePosition{D,T}) where {D,T} = zero(MoleculePosition{D,T})
 MoleculePosition(x,y,z,β,γ,θ) = MoleculePosition(SVector(x,y,z), SVector(β,γ,θ))
 
 struct FixedMoleculeData{D,T}

@@ -42,11 +42,14 @@ function eulermat(beta, gamma, theta)
     #! format: on
 end
 
+eulermat(angs::SVector{3}) = eulermat(angs[1], angs[2], angs[3])
+
 @testitem "eulermat" begin
     @test Packmol.eulermat(0.0, 0.0, 0.0) ≈ [1 0 0; 0 1 0; 0 0 1]
     @test Packmol.eulermat(π, 0.0, 0.0) ≈ [1 0 0; 0 -1 0; 0 0 -1]
     @test Packmol.eulermat(0.0, π, 0.0) ≈ [-1 0 0; 0 1 0; 0 0 -1]
     @test Packmol.eulermat(0.0, 0.0, π) ≈ [-1 0 0; 0 -1 0; 0 0 1]
+    @test Packmol.eulermat(SVector(0.0, 0.0, π)) ≈ [-1 0 0; 0 -1 0; 0 0 1]
 end
 
 #=
@@ -66,8 +69,10 @@ function move!(x::AbstractVector{T}, newcm::T, beta, gamma, theta) where {T<:SVe
     x .= x .+ Ref(newcm)
     return x
 end
+move!(x::AbstractVector{<:SVector{3,T}}, newcm::SVector{3,T}, angles::SVector{3,T}) where {T} =
+    move!(x, newcm, angles[1], angles[2], angles[3])
 move!(x::AbstractVector{<:SVector{D,T}}, pos::MoleculePosition{D,T}) where {D,T} =
-    move!(x, pos.cm, pos.angles...)
+    move!(x, pos.cm, pos.angles)
 
 function rotate!(x::AbstractVector{T}, beta, gamma, theta) where {T<:SVector}
     A = eulermat(beta, gamma, theta)
@@ -77,7 +82,9 @@ function rotate!(x::AbstractVector{T}, beta, gamma, theta) where {T<:SVector}
     return x
 end
 rotate!(x::AbstractVector{<:SVector{D,T}}, pos::MoleculePosition{D,T}) where {D,T} =
-    rotate!(x, pos.angles...)
+    rotate!(x, pos.angles)
+rotate!(x::AbstractVector{<:SVector{3,T}}, angles::SVector{3,T}) where {T} =
+    rotate!(x, angles[1], angles[2], angles[3])
 
 @testitem "move!" setup=[RigidBody] begin
     x = [SVector(1.0, 0.0, 0.0), SVector(0.0, 0.0, 0.0)]
@@ -215,7 +222,7 @@ end
     Packmol.set_reference_coordinates!(x)
     @test x[1] ≈ SVector(0.0, 0.0, 0.5)
     @test x[2] ≈ SVector(0.0, 0.0, -0.5)
-    water = coor(readPDB(joinpath(Packmol.src_dir, "..", "test", "data", "water.pdb")))
+    water = coor(read_pdb(joinpath(Packmol.src_dir, "..", "test", "data", "water.pdb")))
     water_save = copy(water)
     a = @ballocated Packmol.set_reference_coordinates!($water) samples=1 evals=1
     @test a == 0
