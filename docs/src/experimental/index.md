@@ -21,14 +21,21 @@ input file, builds the packing problem, and solves it entirely in Julia.
 
 ## What's here today
 
-There is no usage guide for the native packing engine yet; its public
-functions are listed, undocumented beyond their docstrings, on the
-[Reference](reference.md) page.
+There are two ways to set up a system: a text input file, or Julia code
+calling the packing engine directly.
 
-The one part of the new implementation with a narrative guide so far is
-`PackmolInputCreator`, which helps generate Packmol input files for common
-solution setups (solute + solvent, cosolvent, ions):
+- [Input files](input_files.md): the global keywords and `structure ... end
+  structure` block syntax.
+- [Constraints](constraints.md): the geometric regions (`box`, `sphere`,
+  `plane`, `cylinder`, `ellipsoid`, ...) that structures can be packed into
+  — shared syntax between input files and the Julia API.
+- [Defining systems in Julia](julia_api.md): building and packing a system
+  with `structure_type`/`PackmolSystem`/`packmol`, without a text file.
+- [Concentration Unit Conversion](@ref): part of `PackmolInputCreator`,
+  which helps generate Packmol input files for common solution setups
+  (solute + solvent, cosolvent, ions).
 
-- [Concentration Unit Conversion](@ref)
-
-More pages will be added here as the native packing engine matures.
+Everything else about the native packing engine is listed, undocumented
+beyond docstrings, on the [Reference](reference.md) page. A proper usage
+guide for the optimization loop itself will be added here as the engine
+matures.

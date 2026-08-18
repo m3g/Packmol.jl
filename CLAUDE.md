@@ -29,6 +29,9 @@ src/
     constraints_base.jl               # Abstract Constraint type & interface
     boxes.jl                          # Cube, Box (Inside/Outside)
     spheres.jl                        # Sphere (Inside/Outside)
+    planes.jl                         # Plane (Above/Over/Below)
+    cylinders.jl                      # Cylinder (Inside/Outside)
+    ellipsoids.jl                     # Ellipsoid (Inside/Outside)
   rigid_body/
     rigid_body.jl                     # Euler angles, rotations, translations
     chain_rule.jl                     # Gradient chain rule for rigid bodies
@@ -93,9 +96,12 @@ These are the building blocks everything else depends on.
       `randominitialpoint`, `avoid_overlap`, `add_amber_ter`, `amber_ter_preserve`, `add_box_sides`,
       `connect`, `optimization_print_level`, `chkgrad`, `tolerance_precision`, `constraint_precision`
 - [x] Structure blocks: `structure/end structure`, `number`, `fixed`, `center`, `radius`
-- [x] Constraint parsing: `inside/outside box`, `inside/outside cube`, `inside/outside sphere`
+- [x] Constraint parsing: `inside/outside box`, `inside/outside cube`, `inside/outside sphere`,
+      `inside/outside cylinder`, `inside/outside ellipsoid`, `above/over/below plane`
 - [x] Per-atom blocks (`atoms ... end atoms`) with custom constraints
 - [x] `radscale` (with legacy `discale` mapped to it)
+- [x] Julia-native construction API (no input file needed): `structure_type(pdbfile; number, constraints, ...)`
+      + `PackmolSystem(structure_types; output, ...)`, documented in `docs/src/experimental/julia_api.md`
 - [ ] Missing keyword parsing: `movefrac`, `movebadrandom`, `sidemax` (won't be supported),
       `precision`, `fbins` (won´t be supported), `fscale`, `use_short_tol`, `short_tol_dist`, `short_tol_scale`, `short_radius`, `short_radius_scale`, `resnumbers`, `changechains`, `chain`, `restart_from`, `restart_to`, `constrain_rotation`, `nloop`
 
@@ -109,11 +115,11 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] `Box` (InsideBox / OutsideBox) - axis-aligned rectangular box
 - [x] `Cube` (InsideCube / OutsideCube) - axis-aligned cube
 - [x] `Sphere` (InsideSphere / OutsideSphere) - sphere
+- [x] `Plane` (AbovePlane / BelowPlane) - point + normal vector; input keywords `above`/`over` (synonyms) and `below`, matching Fortran Packmol
+- [x] `Cylinder` (InsideCylinder / OutsideCylinder) - finite capped cylinder: one end center, axis direction, radius, length
+- [x] `Ellipsoid` (InsideEllipsoid / OutsideEllipsoid) - axis-aligned, center + 3 semi-axes + uniform scale factor
 
 #### Missing Constraints
-- [ ] `Cylinder` (Inside / Outside) - center, axis direction, radius, length
-- [ ] `Ellipsoid` (Inside / Outside) - center, semi-axes, orientation
-- [ ] `Plane` (Over / Below) - point + normal vector (`Over`/`Below` placement types are defined but unused)
 - [ ] Combined constraints per structure (already supported by architecture, needs testing)
 
 
@@ -233,8 +239,7 @@ Key bugs fixed along the way:
 Next priorities:
 1. Multi-start strategy for better initial convergence
 2. Multi-structure systems (protein + water + ions)
-3. Additional constraint types (Cylinder, Ellipsoid, Plane)
-4. Output options (residue numbering, chain IDs, CRYST1 record)
+3. Output options (residue numbering, chain IDs, CRYST1 record)
 
 ---
 

@@ -21,12 +21,17 @@ const src_dir = @__DIR__
 export read_packmol_input
 export write_output
 export packmol
+export PackmolSystem
+export StructureType
+export structure_type
 
 # Constraints
 include("./constraints/constraints_base.jl")
 include("./constraints/boxes.jl")
 include("./constraints/spheres.jl")
 include("./constraints/planes.jl")
+include("./constraints/cylinders.jl")
+include("./constraints/ellipsoids.jl")
 
 # Data structures
 include("./data_structures/atoms_and_molecules.jl")

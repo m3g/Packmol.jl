@@ -37,6 +37,76 @@
     molecule_positions::Vector{MoleculePosition{D,T}} = MoleculePosition{D,T}[]
 end
 
+#
+# Build the per-atom (`AtomData`) and per-molecule (`MoleculePosition`) arrays
+# from a vector of `StructureType`s: one is a flat list of every atom across
+# every molecule of every structure type, tagging it with its molecule index,
+# structure type index, radius, and constraint indices; the other is a
+# placeholder (zeroed) position per molecule, later filled in by
+# `initialize_molecules!`. Shared by `read_packmol_input` and the
+# `PackmolSystem` outer constructor below.
+#
+function _atoms_and_molecule_positions(structure_types::Vector{StructureType{D,T}}) where {D,T}
+    mol_index = 0
+    atoms = AtomData{T}[]
+    molecule_positions = MoleculePosition{D,T}[]
+    for (itype, st) in enumerate(structure_types)
+        for _ in 1:st.number_of_molecules
+            mol_index += 1
+            push!(molecule_positions, MoleculePosition(zeros(SVector{D,T}), zeros(SVector{D,T})))
+            for iatom in 1:st.natoms
+                push!(atoms, AtomData(mol_index, itype, st.radii[iatom], st.atom_constraints[iatom]))
+            end
+        end
+    end
+    return atoms, molecule_positions, mol_index
+end
+
+"""
+    PackmolSystem(structure_types::Vector{<:StructureType}; output::String, kargs...)
+
+Build a `PackmolSystem` directly from a vector of `StructureType`s (see
+[`structure_type`](@ref)), without going through an input file. `output` sets
+the output file path; any other `PackmolSystem` field (`tolerance`, `seed`,
+`unitcell`, ...) can be given as a keyword argument.
+"""
+function PackmolSystem(
+    structure_types::Vector{StructureType{D,T}};
+    output::String,
+    input_file::String = "",
+    kargs...,
+) where {D,T}
+    atoms, molecule_positions, nmols = _atoms_and_molecule_positions(structure_types)
+    return PackmolSystem{D,T}(;
+        structure_types, atoms, molecule_positions, nmols,
+        input_file, output_file=output, kargs...,
+    )
+end
+
+@testitem "PackmolSystem from Julia code" begin
+    using PDBTools: read_pdb
+    file = Packmol.src_dir * "/../test/structure_files/water.pdb"
+
+    st = structure_type(file; number=100, constraints=[InsideBox([0.,0.,0.],[40.,40.,40.])])
+    sys = PackmolSystem([st]; output="julia_api_test.pdb", tolerance=2.0, seed=42)
+
+    @test sys.output_file == "julia_api_test.pdb"
+    @test sys.input_file == ""
+    @test sys.tolerance == 2.0
+    @test sys.seed == 42
+    @test sys.nmols == 100
+    @test length(sys.atoms) == 300
+    @test all(at.molecule_index == 1 for at in sys.atoms[1:3])
+    @test all(at.molecule_index == 100 for at in sys.atoms[298:300])
+    @test length(sys.molecule_positions) == 100
+
+    packmol(sys; nloop=200, maxit=20, iprint=200)
+    @test isfile("julia_api_test.pdb")
+    output_atoms = read_pdb("julia_api_test.pdb")
+    @test length(output_atoms) == 300
+    rm("julia_api_test.pdb"; force=true)
+end
+
 function _indent(s::AbstractString; n=4)
     indented_str = IOBuffer()
     for line in eachline(IOBuffer(s))
@@ -193,9 +263,6 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
     input_data = Dict{Symbol,Any}(
         :input_file => input_file,
         :structure_types => StructureType{D,T}[],
-        :atoms => AtomData{T}[],
-        :molecule_positions => MoleculePosition{D,T}[],
-        :nmols => 0,
     )
     structure_section = false
     open(input_file) do io
@@ -307,30 +374,10 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
     #
     # Initialize atom data and molecule position arrays
     #
-    mol_index = 0
-    atom_index = 0
-    atoms = input_data[:atoms]
-    molecule_positions = input_data[:molecule_positions]
-    for (itype, structure_type) in enumerate(input_data[:structure_types])
-        for _ in 1:structure_type.number_of_molecules
-            mol_index += 1 
-            push!(molecule_positions, 
-                MoleculePosition(zeros(SVector{D,T}), zeros(SVector{D,T}))
-            )
-            for iatom in 1:structure_type.natoms
-                atom_index += 1
-                push!(atoms, 
-                    AtomData(
-                        mol_index, 
-                        itype,
-                        structure_type.radii[iatom],
-                        structure_type.atom_constraints[iatom],
-                    )
-                )
-            end
-        end
-    end
-    input_data[:nmols] = mol_index
+    atoms, molecule_positions, nmols = _atoms_and_molecule_positions(input_data[:structure_types])
+    input_data[:atoms] = atoms
+    input_data[:molecule_positions] = molecule_positions
+    input_data[:nmols] = nmols
 
     return PackmolSystem{D,T}(; input_data...)
 end

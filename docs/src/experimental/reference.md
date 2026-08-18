@@ -12,6 +12,8 @@ CollapsedDocStrings = true
 
 ```@docs
 packmol
+structure_type
+PackmolSystem
 write_output
 ```
 
