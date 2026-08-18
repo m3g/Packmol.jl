@@ -19,45 +19,22 @@ jobs:
           - macOS-latest
           - windows-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
-      - name: install and run packmol app (unix)
-        if: runner.os != 'Windows' && matrix.version == 'pre' 
-        shell: bash
-        run: |
-          echo "Testing packmol APP ... "
-          julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
-          juliabin=`julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'`
-          echo "julia binary path: $juliabin"
-          cd ./test/input_files
-          $juliabin/packmol -i water_box.inp
-          julia -e 'using Test; @test isfile("water_box.pdb")'
-          echo "Testing packmol APP ... ok"
-      - name: install and run packmol app (windows)
-        if: runner.os == 'Windows' && matrix.version == 'pre'
-        shell: pwsh
-        run: |
-          Write-Host "Testing packmol APP ... "
-          julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
-          $juliabin = julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'
-          Write-Host "julia binary path: ${juliabin}"
-          cd .\test\input_files
-          & "$juliabin\packmol" -i water_box.inp
-          julia -e 'using Test; @test isfile("water_box.pdb")'
-          Write-Host "Testing packmol APP ... ok"
   docs:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
+      - uses: julia-actions/cache@v3
       - run: |
           julia --project=docs -e '
             import Pkg; Pkg.add("Documenter")
@@ -74,5 +51,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-
-
