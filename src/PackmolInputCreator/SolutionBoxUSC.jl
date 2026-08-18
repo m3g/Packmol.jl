@@ -351,11 +351,11 @@ end # function write_packmol_input
         Solute pdb file: poly_h.pdb
         Solvent pdb file: ethanol.pdb
         Cossolvent pdb file: water.pdb
-        Molar masses: 
-            solute: 5612.791939999981 g mol^-1
-            solvent: 46.06922 g mol^-1
-            cossolvent: 18.01534 g mol^-1
-        Cocentration range: 0.0 mol L^-1 - 55.402784515862606 mol L^-1
+        Molar masses:
+            solute: 5612.801f0 g mol^-1
+            solvent: 46.069218f0 g mol^-1
+            cossolvent: 18.01534f0 g mol^-1
+        Cocentration range: 0.0 mol L^-1 - 55.40278204007167 mol L^-1
         Density range: 0.7906 g mL^-1 - 0.9981 g mL^-1
     ==================================================================
     """

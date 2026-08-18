@@ -17,6 +17,18 @@ weight_default[:plane] = 5.0
     d::T
     weight::T = weight_default[:plane]
 end
+
+# Outer constructors that infer T from the given arguments, so that
+# `Plane{Placement}(...)` (a partially-applied UnionAll, as used by
+# AbovePlane/BelowPlane below) can be called without the type
+# parameter T needing to be given explicitly.
+function Plane{Placement}(normal, d, weight=weight_default[:plane]) where {Placement}
+    T = promote_type(eltype(normal), typeof(d), typeof(weight))
+    return Plane{Placement,T}(SVector{3,T}(normal), T(d), T(weight))
+end
+Plane{Placement}(; normal, d, weight=weight_default[:plane]) where {Placement} =
+    Plane{Placement}(normal, d, weight)
+
 AbovePlane(args...; kargs...) = Plane{Over}(args...; kargs...)
 BelowPlane(args...; kargs...) = Plane{Below}(args...; kargs...)
 

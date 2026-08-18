@@ -68,6 +68,18 @@ end
     side::T
     weight::T = weight_default[:box]
 end
+
+# Outer constructors that infer T from the given arguments, so that
+# `Cube{Placement}(...)` (a partially-applied UnionAll, as used by
+# InsideCube/OutsideCube below) can be called without the type
+# parameter T needing to be given explicitly.
+function Cube{Placement}(center, side, weight=weight_default[:box]) where {Placement}
+    T = promote_type(eltype(center), typeof(side), typeof(weight))
+    return Cube{Placement,T}(SVector{3,T}(center), T(side), T(weight))
+end
+Cube{Placement}(; center, side, weight=weight_default[:box]) where {Placement} =
+    Cube{Placement}(center, side, weight)
+
 InsideCube(args...; kargs...) = Cube{Inside}(args...; kargs...)
 OutsideCube(args...; kargs...) = Cube{Outside}(args...; kargs...)
 
@@ -84,6 +96,18 @@ constraint_gradient(c::Cube{Placement}, x) where {Placement} =
     sides::SVector{3,T}
     weight::T = weight_default[:box]
 end
+
+# Outer constructors that infer T from the given arguments, so that
+# `Box{Placement}(...)` (a partially-applied UnionAll, as used by
+# InsideBox/OutsideBox below) can be called without the type
+# parameter T needing to be given explicitly.
+function Box{Placement}(center, sides, weight=weight_default[:box]) where {Placement}
+    T = promote_type(eltype(center), eltype(sides), typeof(weight))
+    return Box{Placement,T}(SVector{3,T}(center), SVector{3,T}(sides), T(weight))
+end
+Box{Placement}(; center, sides, weight=weight_default[:box]) where {Placement} =
+    Box{Placement}(center, sides, weight)
+
 InsideBox(args...; kargs...) = Box{Inside}(args...; kargs...)
 OutsideBox(args...; kargs...) = Box{Outside}(args...; kargs...)
 
@@ -93,18 +117,18 @@ constraint_gradient(c::Box{Placement}, x) where {Placement} =
     orthogonal_wall_derivative.(Placement, c.center, c.sides, c.weight, x)
 
 @testitem "Box constructors" begin
-    @test InsideCube([0,0,0],1.) == Cube{Inside,3,Float64}([0.,0.,0.],1.,5.0)
-    @test InsideCube(center=[0,0,0],side=1.) == Cube{Inside,3,Float64}([0.,0.,0.],1.,5.0)
-    @test InsideCube(center=[0,0,0],side=1.,weight=2.0) == Cube{Inside,3,Float64}([0.,0.,0.],1.,2.0)
-    @test OutsideCube([0,0,0],1.) == Cube{Outside,3,Float64}([0.,0.,0.],1.,5.0)
-    @test OutsideCube(center=[0,0,0],side=1.) == Cube{Outside,3,Float64}([0.,0.,0.],1.,5.0)
-    @test OutsideCube(center=[0,0,0],side=1.,weight=2.0) == Cube{Outside,3,Float64}([0.,0.,0.],1.,2.0)
-    @test InsideBox([0,0,0],[1.,1.,1.]) == Box{Inside,3,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
-    @test InsideBox(center=[0,0,0],sides=[1.,1.,1.]) == Box{Inside,3,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
-    @test InsideBox(center=[0,0,0],sides=[1.,1.,1.],weight=2.0) == Box{Inside,3,Float64}([0.,0.,0.],[1.,1.,1.],2.0)
-    @test OutsideBox([0,0,0],[1.,1.,1.]) == Box{Outside,3,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
-    @test OutsideBox(center=[0,0,0],sides=[1.,1.,1.]) == Box{Outside,3,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
-    @test OutsideBox(center=[0,0,0],sides=[1.,1.,1.],weight=2.0) == Box{Outside,3,Float64}([0.,0.,0.],[1.,1.,1.],2.0)
+    @test InsideCube([0,0,0],1.) == Cube{Inside,Float64}([0.,0.,0.],1.,5.0)
+    @test InsideCube(center=[0,0,0],side=1.) == Cube{Inside,Float64}([0.,0.,0.],1.,5.0)
+    @test InsideCube(center=[0,0,0],side=1.,weight=2.0) == Cube{Inside,Float64}([0.,0.,0.],1.,2.0)
+    @test OutsideCube([0,0,0],1.) == Cube{Outside,Float64}([0.,0.,0.],1.,5.0)
+    @test OutsideCube(center=[0,0,0],side=1.) == Cube{Outside,Float64}([0.,0.,0.],1.,5.0)
+    @test OutsideCube(center=[0,0,0],side=1.,weight=2.0) == Cube{Outside,Float64}([0.,0.,0.],1.,2.0)
+    @test InsideBox([0,0,0],[1.,1.,1.]) == Box{Inside,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
+    @test InsideBox(center=[0,0,0],sides=[1.,1.,1.]) == Box{Inside,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
+    @test InsideBox(center=[0,0,0],sides=[1.,1.,1.],weight=2.0) == Box{Inside,Float64}([0.,0.,0.],[1.,1.,1.],2.0)
+    @test OutsideBox([0,0,0],[1.,1.,1.]) == Box{Outside,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
+    @test OutsideBox(center=[0,0,0],sides=[1.,1.,1.]) == Box{Outside,Float64}([0.,0.,0.],[1.,1.,1.],5.0)
+    @test OutsideBox(center=[0,0,0],sides=[1.,1.,1.],weight=2.0) == Box{Outside,Float64}([0.,0.,0.],[1.,1.,1.],2.0)
 end
 
 @testitem "Constraint gradients" begin

@@ -14,6 +14,18 @@ weight_default[:sphere] = 1e-2
     radius::T
     weight::T = weight_default[:sphere]
 end
+
+# Outer constructors that infer T from the given arguments, so that
+# `Sphere{Placement}(...)` (a partially-applied UnionAll, as used by
+# InsideSphere/OutsideSphere below) can be called without the type
+# parameter T needing to be given explicitly.
+function Sphere{Placement}(center, radius, weight=weight_default[:sphere]) where {Placement}
+    T = promote_type(eltype(center), typeof(radius), typeof(weight))
+    return Sphere{Placement,T}(SVector{3,T}(center), T(radius), T(weight))
+end
+Sphere{Placement}(; center, radius, weight=weight_default[:sphere]) where {Placement} =
+    Sphere{Placement}(center, radius, weight)
+
 InsideSphere(args...; kargs...) = Sphere{Inside}(args...; kargs...)
 OutsideSphere(args...; kargs...) = Sphere{Outside}(args...; kargs...)
 
@@ -60,12 +72,13 @@ function constraint_gradient(c::Sphere{Outside}, x)
 end
 
 @testitem "Sphere constructors" begin
-    @test InsideSphere([0,0,0],1.) == Sphere{Inside,3,Float64}([0.,0.,0.],1.,5.0)
-    @test InsideSphere(center=[0,0,0],radius=1.) == Sphere{Inside,3,Float64}([0.,0.,0.],1.,5.0)
-    @test InsideSphere(center=[0,0,0],radius=1.,weight=2.0) == Sphere{Inside,3,Float64}([0.,0.,0.],1.,2.0)
-    @test OutsideSphere([0,0,0],1.) == Sphere{Outside,3,Float64}([0.,0.,0.],1.,5.0)
-    @test OutsideSphere(center=[0,0,0],radius=1.) == Sphere{Outside,3,Float64}([0.,0.,0.],1.,5.0)
-    @test OutsideSphere(center=[0,0,0],radius=1.,weight=2.0) == Sphere{Outside,3,Float64}([0.,0.,0.],1.,2.0)
+    # Default weight is weight_default[:sphere] == 1e-2, not Box/Cube/Plane's 5.0.
+    @test InsideSphere([0,0,0],1.) == Sphere{Inside,Float64}([0.,0.,0.],1.,1e-2)
+    @test InsideSphere(center=[0,0,0],radius=1.) == Sphere{Inside,Float64}([0.,0.,0.],1.,1e-2)
+    @test InsideSphere(center=[0,0,0],radius=1.,weight=2.0) == Sphere{Inside,Float64}([0.,0.,0.],1.,2.0)
+    @test OutsideSphere([0,0,0],1.) == Sphere{Outside,Float64}([0.,0.,0.],1.,1e-2)
+    @test OutsideSphere(center=[0,0,0],radius=1.) == Sphere{Outside,Float64}([0.,0.,0.],1.,1e-2)
+    @test OutsideSphere(center=[0,0,0],radius=1.,weight=2.0) == Sphere{Outside,Float64}([0.,0.,0.],1.,2.0)
 end
 
 @testitem "Sphere gradients" begin
