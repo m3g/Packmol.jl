@@ -107,6 +107,8 @@ parse_constraint["above plane"] = (structure_data, data::Vector{<:AbstractString
     end
     return Plane{Over,T}(; normal, d)
 end
+# "over" is the original Fortran Packmol keyword; "above" is a Packmol.jl-only synonym.
+parse_constraint["over plane"] = parse_constraint["above plane"]
 
 parse_constraint["below plane"] = (structure_data, data::Vector{<:AbstractString}; T = Float64) -> begin
     normal, d = try

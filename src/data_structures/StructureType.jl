@@ -40,6 +40,128 @@ function Base.show(io::IO, ::MIME"text/plain", v::AbstractVector{<:StructureType
     """))
 end
 
+#
+# Apply the `fixed`/`center` transformation to `reference_coordinates` in place:
+# if `fixed.fixed`, center the molecule (per `center`: `:mass`, `:geometric`, or
+# neither) and then move/rotate it to `fixed.position`; otherwise, `center`
+# must be `:none`. Shared by `read_structure_data` and `structure_type`.
+#
+function _apply_fixed_center!(
+    reference_coordinates::Vector{SVector{D,T}}, atoms, fixed::FixedMoleculeData{D,T}, center::Symbol,
+) where {D,T}
+    if fixed.fixed
+        if center == :mass
+            # centerofmass: use mass-weighted center of mass from PDBTools
+            cm_vec = SVector{D,T}(center_of_mass(atoms)[1:D]...)
+            reference_coordinates .-= Ref(cm_vec)
+            R = eulermat(fixed.position.angles)
+            for i in eachindex(reference_coordinates)
+                reference_coordinates[i] = R * reference_coordinates[i]
+            end
+            reference_coordinates .+= Ref(fixed.position.cm)
+        elseif center == :geometric
+            move!(reference_coordinates, fixed.position)
+        else
+            cm = mean(reference_coordinates)
+            move!(reference_coordinates, fixed.position)
+            reference_coordinates .+= Ref(cm)
+        end
+    elseif center != :none
+        throw(ArgumentError("option `center`/`centerofmass` cannot be set without a fixed position"))
+    end
+    return reference_coordinates
+end
+
+"""
+    structure_type(filename; number, constraints=Constraint[], tolerance=2.0, radius=nothing,
+                    fixed=nothing, center=:none, residue_numbering=1, D=3, T=Float64)
+
+Build a `StructureType` for `number` copies of the molecule read from the PDB file
+`filename`, without going through an input file. Every constraint in `constraints`
+applies to the whole molecule (for per-atom constraints, build a `StructureType`
+directly with its keyword constructor).
+
+`radius` sets a uniform atom radius; if not given, it defaults to `tolerance/2` (so
+that two touching atoms' radii sum to `tolerance`, matching the input file default).
+
+`fixed`, if given, is a `(cm, angles)` pair of 3-vectors that fixes the molecule at
+that position/orientation instead of packing it; `center` (`:none`, `:geometric`, or
+`:mass`) then controls how the molecule is centered before that transformation is
+applied — equivalent to the input file's `fixed`/`center`/`centerofmass` keywords.
+
+# Example
+
+```julia-repl
+julia> using Packmol
+
+julia> st = structure_type("water.pdb"; number=1000, constraints=[InsideBox([0,0,0],[40,40,40])])
+```
+"""
+function structure_type(filename::String;
+    number::Int,
+    constraints::Vector{<:Constraint} = Constraint[],
+    tolerance::Real = 2.0,
+    radius::Union{Nothing,Real} = nothing,
+    fixed::Union{Nothing,Tuple} = nothing,
+    center::Symbol = :none,
+    residue_numbering::Int = 1,
+    D::Int = 3,
+    T::DataType = Float64,
+)
+    atoms = read_pdb(filename)
+    natoms = length(atoms)
+    reference_coordinates = [SVector{D,T}(c[1:D]...) for c in coor(atoms)]
+    radii = fill(T(something(radius, tolerance / 2)), natoms)
+    atom_constraints = [collect(1:length(constraints)) for _ in 1:natoms]
+
+    fixed_data = if isnothing(fixed)
+        zero(FixedMoleculeData{D,T})
+    else
+        cm = SVector{D,T}(fixed[1]...)
+        angles = SVector{D,T}(fixed[2]...)
+        FixedMoleculeData(true, MoleculePosition(cm, angles))
+    end
+    _apply_fixed_center!(reference_coordinates, atoms, fixed_data, center)
+
+    return StructureType{D,T}(;
+        filename, natoms, atoms, number_of_molecules=number,
+        fixed=fixed_data, reference_coordinates, radii,
+        residue_numbering, constraints, atom_constraints,
+    )
+end
+
+@testitem "structure_type" begin
+    using StaticArrays
+    file = Packmol.src_dir * "/../test/structure_files/water.pdb"
+    tolerance = 2.0
+
+    st = structure_type(file; number=1000, constraints=[InsideBox([0.,0.,0.],[40.,40.,40.])])
+    @test st.filename == file
+    @test st.natoms == 3
+    @test st.number_of_molecules == 1000
+    @test st.fixed.fixed == false
+    @test st.constraints == [Box{Inside,Float64}([0.,0.,0.],[40.,40.,40.],5.0)]
+    @test st.atom_constraints == [[1], [1], [1]]
+    @test st.radii == [1.0, 1.0, 1.0]  # defaults to tolerance/2
+
+    st2 = structure_type(file; number=1, radius=0.5)
+    @test st2.radii == [0.5, 0.5, 0.5]
+
+    # fixed + geometric center
+    st3 = structure_type(file; number=1, fixed=([1.0,2.0,3.0],[0.0,0.0,0.0]), center=:geometric)
+    @test st3.fixed.fixed == true
+    @test st3.fixed.position.cm == SVector(1.0,2.0,3.0)
+    @test sum(st3.reference_coordinates) / length(st3.reference_coordinates) ≈ SVector(1.0,2.0,3.0)
+
+    # center without fixed is an error
+    @test_throws ArgumentError structure_type(file; number=1, center=:geometric)
+
+    # T=Float32
+    st4 = structure_type(file; number=1, T=Float32)
+    @test eltype(st4.radii) == Float32
+    @test eltype(st4.reference_coordinates) == SVector{3,Float32}
+end
+
 #=
     read_structure_data(input_file_block::IOBuffer, tolerance; T=Float64, D=3)
     read_structure_data(input_file_block::AbstractString, args... kargs..)
@@ -115,30 +237,10 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
         end
     end
     # If molecule is fixed, apply transformation to obtain the reference coordinates
-    if structure_data[:fixed].fixed
-        if structure_data[:center] == :mass
-            # centerofmass: use mass-weighted center of mass from PDBTools
-            cm_vec = SVector{D,T}(center_of_mass(structure_data[:atoms])[1:D]...)
-            ref = structure_data[:reference_coordinates]
-            ref .= ref .- Ref(cm_vec)
-            pos = structure_data[:fixed].position
-            R = eulermat(pos.angles)
-            for i in eachindex(ref)
-                ref[i] = R * ref[i]
-            end
-            ref .= ref .+ Ref(pos.cm)
-        elseif structure_data[:center] == :geometric
-            move!(structure_data[:reference_coordinates], structure_data[:fixed].position)
-        else
-            cm = mean(structure_data[:reference_coordinates])
-            move!(structure_data[:reference_coordinates], structure_data[:fixed].position)
-            structure_data[:reference_coordinates] .+= Ref(cm)
-        end
-    else
-        if structure_data[:center] != :none
-            throw(ArgumentError("option 'center'/'centerofmass' cannot be set without fixed position"))
-        end
-    end
+    _apply_fixed_center!(
+        structure_data[:reference_coordinates], structure_data[:atoms],
+        structure_data[:fixed], structure_data[:center],
+    )
     pop!(structure_data, :center)
     #
     # Read custom atom radii and set constraints, according to atom blocks
