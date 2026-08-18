@@ -2,6 +2,7 @@
     write_output(packmol_system::PackmolSystem)
 
 Write packed coordinates to the output file specified in `packmol_system.output_file`.
+Returns the path of the file that was written.
 """
 function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_system.output_file) where {D,T}
     natoms = length(packmol_system.atoms)
@@ -33,7 +34,7 @@ function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_sy
     end
 
     write_pdb(output_file, output_atoms)
-    return nothing
+    return output_file
 end
 
 

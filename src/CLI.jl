@@ -1,9 +1,9 @@
 module CLI
 
-using ..Packmol_jll: packmol
+import Packmol_jll
 
 function (@main)(ARGS)
-    proc = run(`$(packmol()) $ARGS`)
+    proc = run(`$(Packmol_jll.packmol()) $ARGS`)
     proc.exitcode
 end
 

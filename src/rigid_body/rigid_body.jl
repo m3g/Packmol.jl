@@ -45,6 +45,7 @@ end
 eulermat(angs::SVector{3}) = eulermat(angs[1], angs[2], angs[3])
 
 @testitem "eulermat" begin
+    using StaticArrays
     @test Packmol.eulermat(0.0, 0.0, 0.0) ≈ [1 0 0; 0 1 0; 0 0 1]
     @test Packmol.eulermat(π, 0.0, 0.0) ≈ [1 0 0; 0 -1 0; 0 0 -1]
     @test Packmol.eulermat(0.0, π, 0.0) ≈ [-1 0 0; 0 1 0; 0 0 -1]
@@ -210,23 +211,30 @@ function set_reference_coordinates!(x::AbstractVector{<:SVector{3,T}}; fixed::Tu
     return x
 end
 
-@testitem "set_reference_coordinates!" setup=[rigid_molecules] begin
+@testitem "set_reference_coordinates!" setup=[RigidBody] begin
     using PDBTools
     using StaticArrays
     using BenchmarkTools
+    using Statistics: mean
+    # A molecule not `fixed` in the input file: `set_reference_coordinates!`
+    # still requires the keyword, but never reads past `first(fixed)` in that case.
+    not_fixed = (false, "", Float64[])
     x = [ SVector(0.0, 0.0, 0.0), SVector(√3/3, √3/3, √3/3) ]
-    Packmol.set_reference_coordinates!(x)
+    Packmol.set_reference_coordinates!(x; fixed=not_fixed)
     @test x[1] ≈ SVector(0., 0., -0.5)
     @test x[2] ≈ SVector(0., 0., 0.5)
     x = [ SVector(√3/3, √3/3, √3/3), SVector(0.0, 0.0, 0.0) ]
-    Packmol.set_reference_coordinates!(x)
+    Packmol.set_reference_coordinates!(x; fixed=not_fixed)
     @test x[1] ≈ SVector(0.0, 0.0, 0.5)
     @test x[2] ≈ SVector(0.0, 0.0, -0.5)
-    water = coor(read_pdb(joinpath(Packmol.src_dir, "..", "test", "data", "water.pdb")))
+    water = coor(read_pdb(joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")))
     water_save = copy(water)
-    a = @ballocated Packmol.set_reference_coordinates!($water) samples=1 evals=1
+    not_fixed_water = (false, "", zeros(eltype(eltype(water)), 0))
+    a = @ballocated Packmol.set_reference_coordinates!($water; fixed=$not_fixed_water) samples=1 evals=1
     @test a == 0
-    @test mean(water) ≈ SVector(0.0, 0.0, 0.0) atol = 1e-10
+    # water coordinates are Float32 (as read from the PDB file), so the
+    # residual from centering is limited by Float32 precision, not 1e-10.
+    @test mean(water) ≈ SVector(0.0, 0.0, 0.0) atol = 1e-6
     @test all(isapprox(v[1],0.0,atol=1e-10) for v in water)
     @test check_internal_distances(water, water_save)
 end

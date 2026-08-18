@@ -2,7 +2,6 @@
 using Unitful
 using PDBTools: read_pdb, write_pdb, Atom, mass, charge, maxmin, eachresidue
 
-export convert_concentration, convert_density_table!
 export density_pure_solvent, density_pure_cossolvent
 export write_packmol_input
 export SolutionBoxUSC

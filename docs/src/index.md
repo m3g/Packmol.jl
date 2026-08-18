@@ -68,7 +68,3 @@ important to run packmol through this interface in computers without a GUI.
 run_packmol
 ```
 
-```@docs
-pack_monoatomic!
-```
-

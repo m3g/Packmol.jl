@@ -20,7 +20,6 @@ src/
   packmol_runner.jl                   # Legacy Fortran binary runner
   CLI.jl                              # Command-line interface (Julia 1.12+)
   random.jl                           # Random number generation
-  mono_atomic.jl                      # Monoatomic packing (simplified case)
   interatomic_distance_fg.jl          # Distance function & gradient computation
   data_structures/
     atoms_and_molecules.jl            # AtomData, MoleculePosition, FixedMoleculeData

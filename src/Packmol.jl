@@ -41,9 +41,6 @@ include("./initial_approximation/random.jl")
 include("./rigid_body/rigid_body.jl")
 include("./rigid_body/chain_rule.jl")
 
-# Monatomic packing
-include("./function_and_gradient/mono_atomic.jl")
-
 # Function and gradient of the distance between atoms
 include("./function_and_gradient/interatomic_distance_fg.jl")
 

@@ -195,9 +195,11 @@ end
         parallel=false,
     )
 
+    free_mol_indices = collect(1:ps.nmols)
+
     x = copy(reinterpret(T, ps.molecule_positions))
     g = zeros(length(x))
-    f = fg!(g, x, cl_system, ps, atom_positions)
+    f = fg!(g, x, cl_system, ps, atom_positions, free_mol_indices)
     g_analytical = copy(g)
 
     # Numerical gradient via central finite differences
@@ -207,9 +209,9 @@ end
         x_save = x[i]
         x[i] = x_save + h
         g_tmp = zeros(length(x))
-        f_plus = fg!(g_tmp, x, cl_system, ps, atom_positions)
+        f_plus = fg!(g_tmp, x, cl_system, ps, atom_positions, free_mol_indices)
         x[i] = x_save - h
-        f_minus = fg!(g_tmp, x, cl_system, ps, atom_positions)
+        f_minus = fg!(g_tmp, x, cl_system, ps, atom_positions, free_mol_indices)
         x[i] = x_save
         g_num[i] = (f_plus - f_minus) / (2h)
     end

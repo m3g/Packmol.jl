@@ -191,13 +191,17 @@ end
     @test s.number_of_molecules == 1000
     @test length(s.reference_coordinates) == 3
     @test length(s.constraints) == 1
-    @test s.constraints[1] == Box{Inside, Float64}([0.0, 0.0, 0.0], [40.0, 40.0, 40.0], 5.0)
-    @test s.fixed == false 
+    # "inside box" stores (center, sides) computed from the given (lo, hi) corners:
+    # a box from (0,0,0) to (40,40,40) has center (20,20,20).
+    @test s.constraints[1] == Box{Inside, Float64}([20.0, 20.0, 20.0], [40.0, 40.0, 40.0], 5.0)
+    @test s.fixed.fixed == false
     @test s.atom_constraints == [[1], [1], [1]]
-    @test s.radii == [2.0, 2.0, 2.0]
+    # Default per-atom radius is tolerance/2, so that two touching atoms'
+    # radii sum to the requested tolerance (see cartesian_fg!).
+    @test s.radii == [1.0, 1.0, 1.0]
 
     input_file_block = """
-    structure $file        
+    structure $file
         number 1000
         inside box 0. 0. 0. 40. 40. 40.
         outside sphere 0. 0. 0. 10.
@@ -207,11 +211,12 @@ end
     s = Packmol.read_structure_data(input_file_block, tolerance)
     @test s.radii == [1.0, 1.0, 1.0]
     @test s.atom_constraints == [[1, 2], [1, 2], [1, 2]]
-    @test s.constraints[1] == Box{Inside, Float64}([0.0, 0.0, 0.0], [40.0, 40.0, 40.0], 5.0)
-    @test s.constraints[2] == Sphere{Outside, Float64}([0.0, 0.0, 0.0], 10.0, 5.0)
+    @test s.constraints[1] == Box{Inside, Float64}([20.0, 20.0, 20.0], [40.0, 40.0, 40.0], 5.0)
+    # Sphere's default constraint weight (1e-2) differs from Box's (5.0).
+    @test s.constraints[2] == Sphere{Outside, Float64}([0.0, 0.0, 0.0], 10.0, 1e-2)
 
     input_file_block = """
-    structure $file        
+    structure $file
         number 1000
         inside box 0. 0. 0. 40. 40. 40.
         atoms 1 3
@@ -223,15 +228,15 @@ end
     end structure
     """
     s = Packmol.read_structure_data(input_file_block, tolerance)
-    @test s.radii == [1.0, 1.0, 2.0]
+    @test s.radii == [1.0, 1.0, 1.0]
     @test s.atom_constraints == [[1, 2], [1], [1, 2]]
-    @test s.constraints[1] == Box{Inside, Float64}([0.0, 0.0, 0.0], [40.0, 40.0, 40.0], 5.0)
-    @test s.constraints[2] == Sphere{Outside, Float64}([0.0, 0.0, 0.0], 10.0, 5.0)
+    @test s.constraints[1] == Box{Inside, Float64}([20.0, 20.0, 20.0], [40.0, 40.0, 40.0], 5.0)
+    @test s.constraints[2] == Sphere{Outside, Float64}([0.0, 0.0, 0.0], 10.0, 1e-2)
 
     s = Packmol.read_structure_data(input_file_block, tolerance; T = Float32)
-    @test s.radii == Float32[1.0, 1.0, 2.0]
-    @test s.constraints[1] == Box{Inside, Float32}([0.0, 0.0, 0.0], [40.0, 40.0, 40.0], 5.0)
-    @test s.constraints[2] == Sphere{Outside, Float32}([0.0, 0.0, 0.0], 10.0, 5.0)
+    @test s.radii == Float32[1.0, 1.0, 1.0]
+    @test s.constraints[1] == Box{Inside, Float32}([20.0, 20.0, 20.0], [40.0, 40.0, 40.0], 5.0)
+    @test s.constraints[2] == Sphere{Outside, Float32}([0.0, 0.0, 0.0], 10.0, 1e-2)
 
 
 end
@@ -248,8 +253,8 @@ end
         fixed 0. 0. 0. 0. 0. 0.
     end structure
     """
-    s = Packmol.read_structure_data(input_file_block, tolerance) 
-    @test s.fixed == true
+    s = Packmol.read_structure_data(input_file_block, tolerance)
+    @test s.fixed.fixed == true
     @test coor(s.atoms) ≈ s.reference_coordinates
 
     # Fixed molecule without rotation: center of mass at origin
