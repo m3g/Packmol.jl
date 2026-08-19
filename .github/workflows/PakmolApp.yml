@@ -1,0 +1,53 @@
+name: packmol app
+on:
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  test-app:
+    # This exercises `Pkg.Apps`-installing and running the `packmol` command
+    # line app, which currently wraps the legacy Fortran packmol binary
+    # (see src/CLI.jl). Kept in its own workflow, separate from CI.yml, since
+    # it tests the legacy wrapper rather than the native Julia implementation
+    # that the rest of the test suite is increasingly focused on.
+    name: packmol app - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          # Pkg.Apps requires Julia 1.12+.
+          version: '1'
+      - uses: julia-actions/cache@v3
+      - name: install and run packmol app (unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          echo "Testing packmol APP ... "
+          julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
+          juliabin=`julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'`
+          echo "julia binary path: $juliabin"
+          cd ./test/input_files
+          $juliabin/packmol -i water_box.inp
+          julia -e 'using Test; @test isfile("water_box.pdb")'
+          echo "Testing packmol APP ... ok"
+      - name: install and run packmol app (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host "Testing packmol APP ... "
+          julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
+          $juliabin = julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'
+          Write-Host "julia binary path: ${juliabin}"
+          cd .\test\input_files
+          & "$juliabin\packmol" -i water_box.inp
+          julia -e 'using Test; @test isfile("water_box.pdb")'
+          Write-Host "Testing packmol APP ... ok"
