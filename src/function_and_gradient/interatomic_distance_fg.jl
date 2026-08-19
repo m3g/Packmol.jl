@@ -196,7 +196,30 @@ function compute_positions_and_constraints!(
     molecule_positions,
     packmol_system::PackmolSystem{D,T},
 ) where {D,T}
-    has_pbc = !isnothing(packmol_system.unitcell)
+    has_pbc, unitcell, unitcell_center = _typed_unitcell(packmol_system)
+    return _compute_positions_and_constraints!(
+        atom_positions, fg_output, molecule_positions, packmol_system, Val(has_pbc), unitcell, unitcell_center,
+    )
+end
+
+# `HASPBC` is a type parameter (via Val), not a runtime Bool: `if HASPBC` below is
+# resolved at compile time, so the non-PBC specialization never compiles the
+# wrap_to_center branch at all. This matters because merely *having* that branch
+# in the loop — even when never taken at runtime — makes the compiler infer `x`'s
+# type as the join of both branches; since wrap_to_center's return type isn't
+# perfectly inferred (it goes through a generic, allocating CellListMap path for
+# a plain Matrix unitcell), that instability otherwise poisons every downstream
+# constraint_penalty/constraint_gradient call in the loop (measured: ~650x more
+# allocation for a mid-size, non-PBC system).
+function _compute_positions_and_constraints!(
+    atom_positions::Vector{SVector{D,T}},
+    fg_output::InteratomicDistanceFG{D,T},
+    molecule_positions,
+    packmol_system::PackmolSystem{D,T},
+    ::Val{HASPBC},
+    unitcell::Matrix{T},
+    unitcell_center::SVector{D,T},
+) where {D,T,HASPBC}
     imol_offset = 0
     iat_offset = 0
     lk = ReentrantLock()
@@ -224,7 +247,7 @@ function compute_positions_and_constraints!(
                         pos = R * ref[j] + cm
                         atom_positions[iat] = pos
                         if has_constraints
-                            x = has_pbc ? wrap_to_center(pos, packmol_system.unitcell, packmol_system.unitcell_center) : pos
+                            x = HASPBC ? wrap_to_center(pos, unitcell, unitcell_center) : pos
                             atom = packmol_system.atoms[iat]
                             atom_penalty = zero(T)
                             for ic in atom.constraints
@@ -264,6 +287,23 @@ function wrap_to_center(x::SVector{D,T}, unitcell::AbstractMatrix, center::SVect
 end
 
 #
+# Narrow `packmol_system.unitcell`/`unitcell_center` (typed `Union{Nothing,...}`,
+# since PBC is optional) to concretely-typed local values *before* entering a
+# @spawn loop that conditionally calls `wrap_to_center`. Reading the Union-typed
+# field directly from inside a spawned closure — even guarded by an `if has_pbc`
+# check computed outside it — prevents the compiler from proving the wrapped
+# position stays a concrete SVector{D,T}, which cascades into heap-boxing every
+# constraint_penalty/constraint_gradient call in the loop (measured: ~650x more
+# allocation for a mid-size system). The dummy values are never read when
+# `has_pbc` is false.
+function _typed_unitcell(packmol_system::PackmolSystem{D,T}) where {D,T}
+    has_pbc = !isnothing(packmol_system.unitcell)
+    unitcell::Matrix{T} = has_pbc ? packmol_system.unitcell : zeros(T, D, D)
+    unitcell_center::SVector{D,T} = has_pbc ? packmol_system.unitcell_center : zero(SVector{D,T})
+    return has_pbc, unitcell, unitcell_center
+end
+
+#
 # Add constraint penalties and gradients to the fg output structure.
 # When PBC is active, atom positions are wrapped to the unit cell centered
 # at unitcell_center before evaluating constraints.
@@ -273,7 +313,21 @@ function constraint_fg!(
     atom_positions::Vector{SVector{D,T}},
     packmol_system::PackmolSystem{D,T},
 ) where {D,T}
-    has_pbc = !isnothing(packmol_system.unitcell)
+    has_pbc, unitcell, unitcell_center = _typed_unitcell(packmol_system)
+    return _constraint_fg!(fg_output, atom_positions, packmol_system, Val(has_pbc), unitcell, unitcell_center)
+end
+
+# See the comment on _compute_positions_and_constraints! above: HASPBC must be a
+# type parameter (via Val), not a runtime Bool, so the non-PBC specialization
+# never compiles the (allocating) wrap_to_center branch at all.
+function _constraint_fg!(
+    fg_output::InteratomicDistanceFG{D,T},
+    atom_positions::Vector{SVector{D,T}},
+    packmol_system::PackmolSystem{D,T},
+    ::Val{HASPBC},
+    unitcell::Matrix{T},
+    unitcell_center::SVector{D,T},
+) where {D,T,HASPBC}
     lk_fg = ReentrantLock()
     @sync for (ichunk, iat_range) in enumerate(index_chunks(packmol_system.atoms; n=Threads.nthreads()))
         @spawn begin
@@ -284,8 +338,8 @@ function constraint_fg!(
             for iat in iat_range
                 atom = packmol_system.atoms[iat]
                 x = atom_positions[iat]
-                if has_pbc
-                    x = wrap_to_center(x, packmol_system.unitcell, packmol_system.unitcell_center)
+                if HASPBC
+                    x = wrap_to_center(x, unitcell, unitcell_center)
                 end
                 st = packmol_system.structure_types[atom.structure_type_index]
                 atom_penalty = zero(T)

@@ -15,7 +15,10 @@ Structure that contains the input data for a structure block in the input file.
     radii::Vector{T} = T[]
     residue_numbering::Int = 1
     connect::Vector{Vector{Int}} = Vector{Int}[]
-    constraints::Vector{<:Constraint}
+    # AnyConstraint{T} (a closed Union of every concrete constraint type, not
+    # the abstract Constraint) so constraint dispatch in the hot packing loop
+    # is allocation-free — see constraints/constraint_types.jl.
+    constraints::Vector{AnyConstraint{T}}
     atom_constraints::Vector{Vector{Int}} = Vector{Int}[]
     move_bad_molecules::Symbol = :low_density_region
 end
