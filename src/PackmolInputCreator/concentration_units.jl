@@ -1,5 +1,6 @@
 using Unitful
 using OrderedCollections: OrderedDict
+using Compat: @compat
 
 export @u_str
 export cconvert # Export the user-friendly string-based function
@@ -565,7 +566,7 @@ const UNIT_TYPE_MAP = Dict(
 # ==============================================================================
 # User-Friendly Wrapper (String-based, handles percentages)
 # ==============================================================================
-public UNIT_STRINGS
+@compat public UNIT_STRINGS
 
 """
     UNIT_STRINGS
