@@ -66,14 +66,24 @@ function CellListMap.reset_output!(x::FixedParticleSystemOutput)
     return x
 end 
 
-_reducer!(::Val{:overlaps_fixed}, x, y) = 
+_reducer!(::Val{:overlaps_fixed}, x, y) =
     (x.overlaps_fixed.compute) && (x.overlaps_fixed.value = x.overlaps_fixed.value | y.overlaps_fixed.value)
-_reducer!(::Val{:molecule_badness}, x, y) = 
+_reducer!(::Val{:molecule_badness}, x, y) =
     (x.molecule_badness.compute) && (x.molecule_badness.value .+= y.molecule_badness.value)
 function CellListMap.reducer!(x::F, y::F) where {F<:FixedParticleSystemOutput}
     for name in propertynames(x)
         _reducer!(Val(name), x, y)
     end
+    return x
+end
+
+# Supports CellListMap.resize_output!(sys, n): molecule_badness.jl's active-set
+# path (molecule_badness_for_mols!) resizes the output to the current active
+# atom count (not packmol_system.nmols) before each pairwise! call, so that
+# the reset/accumulate cost CellListMap pays internally is O(active atoms),
+# not O(nmols). overlaps_fixed's value is a scalar Bool and needs no resizing.
+function Base.resize!(x::FixedParticleSystemOutput, n::Int)
+    resize!(x.molecule_badness.value, n)
     return x
 end
 

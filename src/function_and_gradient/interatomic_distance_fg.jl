@@ -186,19 +186,33 @@ end
 
 #
 # Combined single-pass: compute Cartesian atom positions AND evaluate
-# constraint penalties/gradients. This avoids iterating over all atoms
-# twice (once for positions, once for constraints).
-# Used by constraint_only_fg! where there is no CellListMap reset in between.
+# constraint penalties/gradients, for an explicit, possibly non-contiguous
+# list of molecules (`mol_list`). Used by adjust_constraints!'s active-set
+# loop: only molecules that are still in violation (or were just randomized)
+# need their positions/constraints recomputed on a given pass — molecules
+# already satisfying their constraints are untouched, since they are
+# geometrically independent of everything else in this constraint-only phase.
 #
-function compute_positions_and_constraints!(
+# This does not accumulate into fg_output.f/.fmol/.gxcar via a whole-array
+# reset + `+=`: since every atom in mol_list is written by exactly one task
+# (mol_list is chunked into disjoint ranges) and constraint penalties/
+# gradients depend only on that atom's own position, each entry is fully
+# determined within this call — so it is assigned directly rather than
+# accumulated, and no reset over molecules outside mol_list is needed. Only
+# the shared scalars (fg_output.f, .max_constraint_penalty) need a lock
+# across tasks.
+function compute_positions_and_constraints_for_mols!(
     atom_positions::Vector{SVector{D,T}},
     fg_output::InteratomicDistanceFG{D,T},
-    molecule_positions,
     packmol_system::PackmolSystem{D,T},
+    mol_list::Vector{Int},
+    mol_structure_type::Vector{Int},
+    mol_iat_first::Vector{Int},
 ) where {D,T}
     has_pbc, unitcell, unitcell_center = _typed_unitcell(packmol_system)
-    return _compute_positions_and_constraints!(
-        atom_positions, fg_output, molecule_positions, packmol_system, Val(has_pbc), unitcell, unitcell_center,
+    return _compute_positions_and_constraints_for_mols!(
+        atom_positions, fg_output, packmol_system, mol_list, mol_structure_type, mol_iat_first,
+        Val(has_pbc), unitcell, unitcell_center,
     )
 end
 
@@ -210,67 +224,64 @@ end
 # perfectly inferred (it goes through a generic, allocating CellListMap path for
 # a plain Matrix unitcell), that instability otherwise poisons every downstream
 # constraint_penalty/constraint_gradient call in the loop (measured: ~650x more
-# allocation for a mid-size, non-PBC system).
-function _compute_positions_and_constraints!(
+# allocation for a mid-size, non-PBC system, on the full-system analog of this
+# function — see _constraint_fg! below for the same effect measured directly).
+function _compute_positions_and_constraints_for_mols!(
     atom_positions::Vector{SVector{D,T}},
     fg_output::InteratomicDistanceFG{D,T},
-    molecule_positions,
     packmol_system::PackmolSystem{D,T},
+    mol_list::Vector{Int},
+    mol_structure_type::Vector{Int},
+    mol_iat_first::Vector{Int},
     ::Val{HASPBC},
     unitcell::Matrix{T},
     unitcell_center::SVector{D,T},
 ) where {D,T,HASPBC}
-    imol_offset = 0
-    iat_offset = 0
+    fg_output.f = zero(T)
+    fg_output.max_constraint_penalty = zero(T)
     lk = ReentrantLock()
-    for st in packmol_system.structure_types
-        ref = st.reference_coordinates
-        natoms_st = st.natoms
-        nmols_st = st.number_of_molecules
-        has_constraints = !isempty(st.constraints)
-        st_imol_offset = imol_offset
-        st_iat_offset = iat_offset
-        @sync for (ichunk, mol_range) in enumerate(chunks(1:nmols_st; n=Threads.nthreads()))
-            @spawn begin
-                f_local = zero(T)
-                max_penalty_local = zero(T)
-                fmol_local = fg_output.fmol_threaded[ichunk]
-                fill!(fmol_local, zero(T))
-                for i in mol_range
-                    imol = st_imol_offset + i
-                    iat_first = st_iat_offset + (i - 1) * natoms_st
-                    mp = molecule_positions[imol]
-                    R = eulermat(mp.angles)
-                    cm = mp.cm
-                    for j in 1:natoms_st
-                        iat = iat_first + j
-                        pos = R * ref[j] + cm
-                        atom_positions[iat] = pos
-                        if has_constraints
-                            x = HASPBC ? wrap_to_center(pos, unitcell, unitcell_center) : pos
-                            atom = packmol_system.atoms[iat]
-                            atom_penalty = zero(T)
-                            for ic in atom.constraints
-                                c = st.constraints[ic]
-                                penalty::T = constraint_penalty(c, x)::T
-                                f_local += penalty
-                                fmol_local[imol] += penalty
-                                atom_penalty += penalty
-                                fg_output.gxcar[iat]::SVector{D,T} += constraint_gradient(c, x)::SVector{D,T}
-                            end
-                            max_penalty_local = max(max_penalty_local, atom_penalty)
+    @sync for (_, mrange) in enumerate(chunks(1:length(mol_list); n=Threads.nthreads()))
+        @spawn begin
+            f_local = zero(T)
+            max_penalty_local = zero(T)
+            for k in mrange
+                imol = mol_list[k]
+                ist = mol_structure_type[imol]
+                st = packmol_system.structure_types[ist]
+                ref = st.reference_coordinates
+                natoms_st = st.natoms
+                iat_first = mol_iat_first[imol]
+                mp = packmol_system.molecule_positions[imol]
+                R = eulermat(mp.angles)
+                cm = mp.cm
+                has_constraints = !isempty(st.constraints)
+                fmol_local = zero(T)
+                for j in 1:natoms_st
+                    iat = iat_first + j - 1
+                    pos = R * ref[j] + cm
+                    atom_positions[iat] = pos
+                    gxc = zero(SVector{D,T})
+                    if has_constraints
+                        x = HASPBC ? wrap_to_center(pos, unitcell, unitcell_center) : pos
+                        atom = packmol_system.atoms[iat]
+                        for ic in atom.constraints
+                            c = st.constraints[ic]
+                            penalty::T = constraint_penalty(c, x)::T
+                            f_local += penalty
+                            fmol_local += penalty
+                            gxc += constraint_gradient(c, x)::SVector{D,T}
                         end
                     end
+                    fg_output.gxcar[iat] = gxc
                 end
-                @lock lk begin
-                    fg_output.f += f_local
-                    fg_output.fmol .+= fmol_local
-                    fg_output.max_constraint_penalty = max(fg_output.max_constraint_penalty, max_penalty_local)
-                end
+                fg_output.fmol[imol] = fmol_local
+                max_penalty_local = max(max_penalty_local, fmol_local)
+            end
+            @lock lk begin
+                fg_output.f += f_local
+                fg_output.max_constraint_penalty = max(fg_output.max_constraint_penalty, max_penalty_local)
             end
         end
-        imol_offset += nmols_st
-        iat_offset += nmols_st * natoms_st
     end
     return atom_positions
 end
@@ -317,9 +328,9 @@ function constraint_fg!(
     return _constraint_fg!(fg_output, atom_positions, packmol_system, Val(has_pbc), unitcell, unitcell_center)
 end
 
-# See the comment on _compute_positions_and_constraints! above: HASPBC must be a
-# type parameter (via Val), not a runtime Bool, so the non-PBC specialization
-# never compiles the (allocating) wrap_to_center branch at all.
+# See the comment on _compute_positions_and_constraints_for_mols! above: HASPBC
+# must be a type parameter (via Val), not a runtime Bool, so the non-PBC
+# specialization never compiles the (allocating) wrap_to_center branch at all.
 function _constraint_fg!(
     fg_output::InteratomicDistanceFG{D,T},
     atom_positions::Vector{SVector{D,T}},

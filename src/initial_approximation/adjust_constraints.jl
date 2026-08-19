@@ -110,23 +110,56 @@ function adjust_constraints!(
     end
     tol = packmol_system.tolerance
 
-    # Build molecule → structure type mapping
+    # Build molecule → structure type / first-atom-index mappings
     mol_structure_type = _build_mol_structure_type(packmol_system)
+    mol_iat_first = _build_mol_iat_first(packmol_system)
+
+    # Persistent, cumulative per-molecule badness cache. Molecules are
+    # geometrically independent in this constraint-only phase (they interact
+    # only through their own constraints and overlap with *fixed* atoms, never
+    # with each other), so once a molecule's badness is known it stays valid
+    # until that molecule itself is moved — no need to recompute it on every
+    # loop just because *other* molecules are still being adjusted.
+    badness = isnothing(buffers) ? zeros(T, packmol_system.nmols) : buffers.badness
+    fill!(badness, zero(T))
+
+    # Scratch buffers for the fixed-atom overlap check, sized to the largest
+    # possible active set (all free molecules, on loop 1) and reused (as a
+    # prefix) on every subsequent, smaller loop.
+    n_free_atoms_max = sum(
+        st.fixed.fixed ? 0 : st.number_of_molecules * st.natoms
+        for st in packmol_system.structure_types
+    )
+    active_free_atoms = Vector{SVector{D,T}}(undef, n_free_atoms_max)
+    active_free_atom_mol = Vector{Int}(undef, n_free_atoms_max)
 
     println("  Adjusting initial point to fit the constraints")
 
+    # The active set starts as every free molecule (all need their first
+    # evaluation); it only shrinks from here — a molecule leaves it as soon
+    # as it's satisfied, and only re-enters if explicitly randomized.
+    active_mols = copy(free_mol_indices)
+
     for iloop in 1:nloop
-        # Set up optimizer variables from current molecule positions
-        x = isnothing(buffers) ? Vector{T}(undef, nfree * 2 * D) : buffers.x
+        nactive = length(active_mols)
+
+        # Set up optimizer variables from current molecule positions. Reuse
+        # the pre-allocated buffer only when the active set is still at full
+        # size (loop 1, typically the one expensive pass); once it has
+        # shrunk, allocate a right-sized one instead — cheap, since by then
+        # nactive is small.
+        x = (!isnothing(buffers) && nactive == nfree) ? buffers.x : Vector{T}(undef, nactive * 2 * D)
         x_mol = reinterpret(MoleculePosition{D,T}, x)
-        for (k, imol) in enumerate(free_mol_indices)
+        for (k, imol) in enumerate(active_mols)
             x_mol[k] = packmol_system.molecule_positions[imol]
         end
-        auxvecs = isnothing(buffers) ? SPGBox.VAux(x, zero(T)) : buffers.vaux
+        auxvecs = (!isnothing(buffers) && nactive == nfree) ? buffers.vaux : SPGBox.VAux(x, zero(T))
 
-        # Run a short constraint-only optimization
+        # Run a short constraint-only optimization, touching only active_mols
         spgresult = spgbox!(
-            (g, x) -> constraint_only_fg!(g, x, fg_output, packmol_system, atom_positions, free_mol_indices),
+            (g, x) -> constraint_only_fg_for_mols!(
+                g, x, fg_output, packmol_system, atom_positions, active_mols, mol_structure_type, mol_iat_first,
+            ),
             x;
             vaux=auxvecs,
             nitmax=opt_nit,
@@ -136,15 +169,22 @@ function adjust_constraints!(
 
         # Update molecule positions from optimizer
         x_mol = reinterpret(MoleculePosition{D,T}, x)
-        for (k, imol) in enumerate(free_mol_indices)
+        for (k, imol) in enumerate(active_mols)
             packmol_system.molecule_positions[imol] = x_mol[k]
         end
 
-        # Compute atom positions for per-molecule evaluation
-        compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
+        # Compute atom positions for per-molecule evaluation, only for active_mols
+        compute_positions_and_constraints_for_mols!(
+            atom_positions, fg_output, packmol_system, active_mols, mol_structure_type, mol_iat_first,
+        )
 
-        # Compute per-molecule badness (constraint violations + overlap with fixed atoms)
-        badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol; buffers)
+        # Update the badness cache for active_mols only; entries for molecules
+        # outside active_mols are untouched — they haven't moved, so their
+        # last-computed badness is still correct.
+        molecule_badness_for_mols!(
+            badness, packmol_system, atom_positions, fixed_sys, tol,
+            active_mols, mol_structure_type, mol_iat_first, active_free_atoms, active_free_atom_mol,
+        )
 
         # Check if all constraints are satisfied and no overlaps with fixed
         total_badness = sum(badness[imol] for imol in free_mol_indices)
@@ -153,10 +193,11 @@ function adjust_constraints!(
             return packmol_system
         end
 
-        # Identify bad molecules among free molecules
+        # Identify bad molecules — only among active_mols: anything outside
+        # it is known-good and untouched this loop.
         bad_mols = Int[]
         bad_vals = T[]
-        for imol in free_mol_indices
+        for imol in active_mols
             if badness[imol] > precision
                 push!(bad_mols, imol)
                 push!(bad_vals, badness[imol])
@@ -194,9 +235,20 @@ function adjust_constraints!(
                 randomize_molecule!(packmol_system, bad_mols[i], st, RNG)
             end
         end
+
+        # Next loop's active set: every molecule still in violation (whether
+        # just randomized or left as-is because movefrac capped how many
+        # could move) — everything else is now known-good and stays excluded.
+        active_mols = bad_mols
     end
 
-    # Final evaluation
+    # Final evaluation (full system, for an accurate warning message). fixed_sys's
+    # output may have been shrunk by molecule_badness_for_mols!'s active-set
+    # resizing above; molecule_badness (unrestricted) indexes it by global
+    # molecule id, so it must be restored to its full nmols size first.
+    if !isnothing(fixed_sys)
+        CellListMap.resize_output!(fixed_sys, packmol_system.nmols)
+    end
     compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
     badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol; buffers)
     total_badness = sum(badness[imol] for imol in free_mol_indices)

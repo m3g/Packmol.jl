@@ -1,30 +1,35 @@
 #
 # Constraint-only objective function + gradient for pre-optimization.
-# Evaluates only constraint penalties (no atom-atom distance penalties),
-# so molecules can move freely to satisfy their geometric constraints
-# before the main packing optimization.
+# Evaluates only constraint penalties (no atom-atom distance penalties), for
+# an explicit, possibly non-contiguous list of molecules (`mol_list`), so
+# molecules can move freely to satisfy their geometric constraints before the
+# main packing optimization.
 #
-function constraint_only_fg!(
+# Used by adjust_constraints!'s active-set loop: molecules already satisfying
+# their constraints are geometrically independent of everything else in this
+# phase, so excluding them from `mol_list` means this call's cost scales with
+# the number of molecules still in violation (plus any just-randomized ones),
+# not with the total free-molecule count.
+#
+function constraint_only_fg_for_mols!(
     g, x,
     fg_output::InteratomicDistanceFG{D,T},
     packmol_system::PackmolSystem{D,T},
     atom_positions::Vector{SVector{D,T}},
-    free_mol_indices::Vector{Int},
+    mol_list::Vector{Int},
+    mol_structure_type::Vector{Int},
+    mol_iat_first::Vector{Int},
 ) where {D,T}
-    # Unpack optimizer variables into free molecule slots
     x_mol = reinterpret(MoleculePosition{D,T}, x)
-    for (k, imol) in enumerate(free_mol_indices)
+    for (k, imol) in enumerate(mol_list)
         packmol_system.molecule_positions[imol] = x_mol[k]
     end
-    # Reset fg output (no CellListMap to do it for us)
-    CellListMap.reset_output!(fg_output)
-    # Single pass: compute atom positions AND constraint penalties/gradients
-    compute_positions_and_constraints!(atom_positions, fg_output, packmol_system.molecule_positions, packmol_system)
-    # Chain rule: Cartesian → molecule DOF gradients (for all molecules)
-    chain_rule!(fg_output, packmol_system)
-    # Pack only free molecule gradients into optimizer gradient vector
+    compute_positions_and_constraints_for_mols!(
+        atom_positions, fg_output, packmol_system, mol_list, mol_structure_type, mol_iat_first,
+    )
+    chain_rule_for_mols!(fg_output, packmol_system, mol_list, mol_structure_type, mol_iat_first)
     g_mol = reinterpret(MoleculePosition{D,T}, g)
-    for (k, imol) in enumerate(free_mol_indices)
+    for (k, imol) in enumerate(mol_list)
         g_mol[k] = fg_output.g[imol]
     end
     return fg_output.f
