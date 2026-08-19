@@ -1,0 +1,5 @@
+TITLE     water
+MODEL        1
+ATOM      1  W     W     2       6.230  64.530  27.460  1.00  0.00
+TER
+ENDMDL
