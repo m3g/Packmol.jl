@@ -9,7 +9,7 @@ function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_sy
     atom_positions = Vector{SVector{D,T}}(undef, natoms)
     compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
 
-    output_atoms = Atom[]
+    output_atoms = Atom{Nothing}[]
     iat = 0
     imol = 0
     atom_serial = 0
@@ -24,9 +24,7 @@ function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_sy
                 atom.index = atom_serial
                 atom.x = pos[1]
                 atom.y = pos[2]
-                if D == 3
-                    atom.z = pos[3]
-                end
+                atom.z = D == 3 ? pos[3] : zero(eltype(pos[3]))
                 atom.resnum = imol
                 push!(output_atoms, atom)
             end
