@@ -16,7 +16,7 @@ function molecule_badness(
     tol::T;
     buffers::Union{Nothing,MemoryBuffers} = nothing,
 ) where {D,T}
-    has_pbc = !isnothing(packmol_system.unitcell)
+    has_pbc, unitcell, unitcell_center = _typed_unitcell(packmol_system)
     nmols = packmol_system.nmols
     if isnothing(buffers)
         badness = zeros(T, nmols)
@@ -27,33 +27,9 @@ function molecule_badness(
     ntasks = Threads.nthreads()
 
     # Phase 1: constraint penalties (parallel over molecule ranges)
-    imol_offset = 0
-    atom_offset = 0
-    @sync for st in packmol_system.structure_types
-        st_mol_offset = imol_offset
-        st_atom_offset = atom_offset
-        for (_, irange) in enumerate(chunks(1:st.number_of_molecules; n=ntasks))
-            @spawn begin
-                for i in irange
-                    imol = st_mol_offset + i
-                    iat_first = st_atom_offset + (i - 1) * st.natoms + 1
-                    for j in 1:st.natoms
-                        iat = iat_first + j - 1
-                        x = atom_positions[iat]
-                        if has_pbc
-                            x = wrap_to_center(x, packmol_system.unitcell, packmol_system.unitcell_center)
-                        end
-                        for ic in packmol_system.atoms[iat].constraints
-                            c = st.constraints[ic]
-                            badness[imol] += constraint_penalty(c, x)
-                        end
-                    end
-                end
-            end
-        end
-        imol_offset += st.number_of_molecules
-        atom_offset += st.number_of_molecules * st.natoms
-    end
+    _molecule_badness_constraints!(
+        badness, packmol_system, atom_positions, Val(has_pbc), unitcell, unitcell_center, ntasks,
+    )
 
     # Phase 2: fixed-atom overlaps — single pairwise! call over all free atoms.
     # xpositions is updated once with all free-atom positions; the fixed-atom
@@ -104,5 +80,47 @@ function molecule_badness(
         badness .+= fixed_sys.output.molecule_badness.value
     end
 
+    return badness
+end
+
+# HASPBC is a type parameter (via Val), not a runtime Bool, so the non-PBC
+# specialization never compiles the wrap_to_center branch at all — see the
+# comment on _constraint_fg! in interatomic_distance_fg.jl for why that matters.
+function _molecule_badness_constraints!(
+    badness::Vector{T},
+    packmol_system::PackmolSystem{D,T},
+    atom_positions::Vector{SVector{D,T}},
+    ::Val{HASPBC},
+    unitcell::Matrix{T},
+    unitcell_center::SVector{D,T},
+    ntasks::Int,
+) where {D,T,HASPBC}
+    imol_offset = 0
+    atom_offset = 0
+    @sync for st in packmol_system.structure_types
+        st_mol_offset = imol_offset
+        st_atom_offset = atom_offset
+        for (_, irange) in enumerate(chunks(1:st.number_of_molecules; n=ntasks))
+            @spawn begin
+                for i in irange
+                    imol = st_mol_offset + i
+                    iat_first = st_atom_offset + (i - 1) * st.natoms + 1
+                    for j in 1:st.natoms
+                        iat = iat_first + j - 1
+                        x = atom_positions[iat]
+                        if HASPBC
+                            x = wrap_to_center(x, unitcell, unitcell_center)
+                        end
+                        for ic in packmol_system.atoms[iat].constraints
+                            c = st.constraints[ic]
+                            badness[imol] += constraint_penalty(c, x)
+                        end
+                    end
+                end
+            end
+        end
+        imol_offset += st.number_of_molecules
+        atom_offset += st.number_of_molecules * st.natoms
+    end
     return badness
 end

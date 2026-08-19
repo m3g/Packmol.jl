@@ -32,6 +32,7 @@ include("./constraints/spheres.jl")
 include("./constraints/planes.jl")
 include("./constraints/cylinders.jl")
 include("./constraints/ellipsoids.jl")
+include("./constraints/constraint_types.jl")
 
 # Data structures
 include("./data_structures/atoms_and_molecules.jl")
