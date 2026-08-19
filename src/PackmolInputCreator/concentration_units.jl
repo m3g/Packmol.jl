@@ -768,7 +768,7 @@ end
 
 @testsnippet CConvert begin
     using Packmol
-    using Unitful: ustrip, Na, dimensiohn, Quantity, uconvert
+    using Unitful: ustrip, Na, dimension, Quantity, uconvert
 
     # --- Test Data: Ethanol (EtOH) in Water (H2O) mixture at 25oC
     M_EtOH = 46.068u"g/mol"
