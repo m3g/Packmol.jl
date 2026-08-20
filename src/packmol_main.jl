@@ -45,9 +45,9 @@ function packmol(
     _version = pkgversion(Packmol)
     println()
     println(hash_line)
-    println(" PACKMOL - Packing optimization for the automated generation of")
-    println(" starting configurations for molecular dynamics simulations.")
-    println(" ")
+    println("  PACKMOL - Packing optimization for the automated generation of")
+    println("  starting configurations for molecular dynamics simulations.")
+    println()
     @printf("%62s\n", "Version $_version ")
     println(hash_line)
     println()
@@ -73,7 +73,7 @@ function packmol(
 
     # check mode: write the initial approximation and return
     if packmol_system.check
-        println("Check mode: writing initial approximation to $(packmol_system.output_file)")
+        println("  Check mode: writing initial approximation to $(packmol_system.output_file)")
         if !isempty(packmol_system.output_file)
             write_output(packmol_system)
         end
@@ -131,9 +131,9 @@ function packmol(
 
     # Set up CellListMap
     fg_output = InteratomicDistanceFG{D,T}(packmol_system)
-    println(" Total number of atoms: ", natoms)
-    println(" Number of free molecules: ", nfree)
-    println(" Number of variables: ", nfree * 2 * D)
+    println("  Total number of atoms: ", natoms)
+    println("  Number of free molecules: ", nfree)
+    println("  Number of variables: ", nfree * 2 * D)
     cl_system = ParticleSystem(
         xpositions=atom_positions,
         unitcell=unitcell,
@@ -160,7 +160,7 @@ function packmol(
     # contributions, and randomly re-places the worst molecules.
     println()
     println(dash_line)
-    println(" Packing $nfree free molecules ($(packmol_system.nmols) total)...")
+    println("  Packing $nfree free molecules ($(packmol_system.nmols) total)...")
     println(dash_line)
     # Evaluate and print initial function value
     g0 = similar(x)
@@ -173,7 +173,7 @@ function packmol(
     # are unaffected since they measure the real, unscaled distances.
     radscale = packmol_system.radscale
     f0 = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, radscale)
-    @printf(" Objective function at initial point: %10.5e\n", f0)
+    @printf("  Objective function at initial point: %10.5e\n", f0)
     bestf = typemax(T)
     flast = typemax(T)
     converged = false
@@ -182,8 +182,8 @@ function packmol(
 
         println()
         println(dash_line)
-        @printf(" Starting packing loop: %8d\n", loop)
-        @printf(" Tolerance in this loop: %8.4f\n", radscale * tol)
+        @printf("  Starting packing loop: %8d\n", loop)
+        @printf("  Tolerance in this loop: %8.4f\n", radscale * tol)
         println()
 
         # Run a short optimization (maxit iterations per loop)
@@ -237,8 +237,12 @@ function packmol(
         # Statistics: compute improvement of this loop relative to flast
         fx = optresult.f
         dmin = min(cl_system.fg.dmin, cl_system.cutoff)
-        fimp_last = flast > zero(T) ? clamp(-100 * (fx - flast) / flast, T(-99.99), T(99.99)) : T(100)
         fimprov = bestf < typemax(T) ? clamp(-100 * (fx - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
+        # On the very first loop, flast is still its typemax sentinel (no
+        # previous loop to compare against): fall back to the improvement
+        # from the best function value instead of computing a bogus
+        # Inf/Inf = NaN ratio against the sentinel.
+        fimp_last = flast < typemax(T) ? clamp(-100 * (fx - flast) / flast, T(-99.99), T(99.99)) : fimprov
         improved = fx < bestf
         if improved
             bestf = fx
@@ -291,7 +295,7 @@ function packmol(
             write_output(packmol_system)
             packmol_system.molecule_positions = saved_positions
             println()
-            println(" Current solution written to file: ", packmol_system.output_file)
+            println("  Current solution written to file: ", packmol_system.output_file)
         end
 
         # Move bad molecules once the tolerance has been fully tightened
@@ -305,7 +309,7 @@ function packmol(
                 cm_lo_type=cm_min, cm_hi_type=cm_max,
             )
             if nmoved > 0
-                println(" Moved $nmoved bad molecules randomly to new positions.")
+                println("  Moved $nmoved bad molecules randomly to new positions.")
             end
         end
         # Re-pack optimizer variables from (possibly moved) molecule positions
@@ -328,7 +332,7 @@ function packmol(
     if !converged
         println()
         println(hash_line)
-        @printf(" WARNING: packing did not converge after %d loops (best f = %.4e)\n", nloop, bestf)
+        @printf("  WARNING: packing did not converge after %d loops (best f = %.4e)\n", nloop, bestf)
         println(hash_line)
     end
 
@@ -366,13 +370,13 @@ function packmol(
     if !isempty(packmol_system.output_file)
         write_output(packmol_system)
         println()
-        println(" Solution written to file: ", packmol_system.output_file)
+        println("  Solution written to file: ", packmol_system.output_file)
     end
 
     println()
     println(dash_line)
     tend = time()
-    @printf(" Running time: %12.4f seconds.\n", tend - tstart)
+    @printf("  Running time: %12.4f seconds.\n", tend - tstart)
     println(dash_line)
     println()
 
