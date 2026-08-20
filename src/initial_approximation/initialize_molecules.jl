@@ -110,14 +110,29 @@ function _sample_in_region(rng, lo::SVector{3,T}, hi::SVector{3,T}, constraints,
     return best
 end
 
-function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D,T}
-    # Center reference coordinates at origin (required for chain rule)
+#
+# Center each free structure type's reference coordinates at their own
+# centroid (required for the chain rule, and for `compute_atom_positions!`'s
+# `R*ref + cm` to mean what it says). Idempotent, so calling it more than
+# once is harmless — but it must run exactly once before any molecule of
+# that type is ever positioned, restart or not: skipping it (e.g. for a
+# `restart=true` run that skips the rest of `initialize_molecules!`) would
+# leave `reference_coordinates` at the template's own raw, uncentered PDB
+# coordinates, silently shifting every restarted molecule of that type by
+# that offset.
+#
+function _center_reference_coordinates!(packmol_system::PackmolSystem)
     for st in packmol_system.structure_types
         if !st.fixed.fixed
             cm = mean(st.reference_coordinates)
             st.reference_coordinates .-= Ref(cm)
         end
     end
+    return packmol_system
+end
+
+function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D,T}
+    _center_reference_coordinates!(packmol_system)
 
     # Determine the placement region
     has_pbc = !isnothing(packmol_system.unitcell)
@@ -169,7 +184,15 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
                         else
                             cm = SVector{D,T}(ntuple(_ -> sidemax * (T(2) * rand(task_rng, T) - one(T)), D))
                         end
-                        angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(task_rng, T), D))
+                        angles = SVector{D,T}(ntuple(D) do d
+                            bounds = st.rotation_bounds[d]
+                            if isnothing(bounds)
+                                T(2π) * rand(task_rng, T)
+                            else
+                                lo, hi = bounds
+                                lo + rand(task_rng, T) * (hi - lo)
+                            end
+                        end)
                         packmol_system.molecule_positions[imol_local] = MoleculePosition(cm, angles)
                     end
                 end

@@ -64,8 +64,46 @@ function packmol(
     # Pre-allocate scratch buffers once; reused across all hot-path calls.
     buffers = MemoryBuffers(packmol_system)
 
+    # Restart (Fortran's `restart_from`): read saved molecule positions
+    # instead of deriving a starting point the normal way, for either the
+    # whole system or specific structure types — fixed molecules are never
+    # included, since their position is already fully determined by their
+    # own `fixed` keyword regardless of restart. A whole-system restart_from
+    # skips the initial-approximation pipeline entirely for the free
+    # molecules it covers (that's the point — for a large system, it's the
+    # expensive part); a per-structure-type one is applied on top, after
+    # that pipeline runs (whether or not it was itself skipped), since
+    # re-placing only some molecule types still needs the others normally
+    # initialized. Reference coordinates must already be centered (matching
+    # what `_align_molecule` assumes) before either is read, since a
+    # PDB-based restart_from needs them for its rigid-body alignment.
+    _center_reference_coordinates!(packmol_system)
+    if !isnothing(packmol_system.restart_from)
+        println("  Restarting all free molecules from: ", packmol_system.restart_from)
+        segments = Tuple{Int,Int,Vector{SVector{D,T}}}[
+            (st.number_of_molecules, st.natoms, st.reference_coordinates)
+            for st in packmol_system.structure_types if !st.fixed.fixed
+        ]
+        positions = _restart_positions(packmol_system.restart_from, segments, MoleculePosition{D,T})
+        for (k, imol) in enumerate(free_mol_indices)
+            packmol_system.molecule_positions[imol] = positions[k]
+        end
+        restart = true
+    end
+
     # Pre-optimization: set initial approximation (random placement + constraint fitting)
     set_initial_approximation!(packmol_system, free_mol_indices, RNG; restart, buffers)
+
+    imol_offset = 0
+    for st in packmol_system.structure_types
+        if !st.fixed.fixed && !isnothing(st.restart_from)
+            println("  Restarting structure type '", basename(st.filename), "' from: ", st.restart_from)
+            segments = [(st.number_of_molecules, st.natoms, st.reference_coordinates)]
+            positions = _restart_positions(st.restart_from, segments, MoleculePosition{D,T})
+            packmol_system.molecule_positions[imol_offset+1:imol_offset+st.number_of_molecules] .= positions
+        end
+        imol_offset += st.number_of_molecules
+    end
 
     # check mode: write the initial approximation and return
     if packmol_system.check
@@ -151,6 +189,34 @@ function packmol(
     mol_structure_type = _build_mol_structure_type(packmol_system)
     precision = packmol_system.tolerance_precision
 
+    # `constrain_rotation` bounds (per structure type, per axis) as hard
+    # bounds on the rotation-angle optimization variables — matching Fortran
+    # Packmol's own `pgencan`, which sets GENCAN's `l`/`u` this way rather
+    # than adding a soft penalty term. Built once (bounds don't change loop
+    # to loop) in the same flat MoleculePosition-reinterpreted layout as `x`;
+    # translation DOFs are always unbounded. `nothing` (not just ±Inf
+    # vectors) when no structure type constrains any axis, so SPGBox skips
+    # the bound-checking overhead entirely in the common case.
+    any_rotation_constrained = any(packmol_system.structure_types) do st
+        any(!isnothing, st.rotation_bounds)
+    end
+    lower, upper = if any_rotation_constrained
+        lower_mol = Vector{MoleculePosition{D,T}}(undef, nfree)
+        upper_mol = Vector{MoleculePosition{D,T}}(undef, nfree)
+        cm_lo = SVector{D,T}(ntuple(_ -> T(-Inf), D))
+        cm_hi = SVector{D,T}(ntuple(_ -> T(Inf), D))
+        for (k, imol) in enumerate(free_mol_indices)
+            bounds = packmol_system.structure_types[mol_structure_type[imol]].rotation_bounds
+            ang_lo = SVector{D,T}(ntuple(d -> isnothing(bounds[d]) ? T(-Inf) : bounds[d][1], D))
+            ang_hi = SVector{D,T}(ntuple(d -> isnothing(bounds[d]) ? T(Inf) : bounds[d][2], D))
+            lower_mol[k] = MoleculePosition(cm_lo, ang_lo)
+            upper_mol[k] = MoleculePosition(cm_hi, ang_hi)
+        end
+        reinterpret(T, lower_mol), reinterpret(T, upper_mol)
+    else
+        nothing, nothing
+    end
+
     # Outer packing loop (following Fortran Packmol gencanloop):
     # Each iteration runs a short optimization, evaluates per-molecule
     # contributions, and randomly re-places the worst molecules.
@@ -224,6 +290,7 @@ function packmol(
             vaux=auxvecs,
             nitmax=maxit,
             nfevalmax=10 * maxit,
+            lower, upper,
         )
 
         # Update molecule positions with optimized values

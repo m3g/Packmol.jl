@@ -2,7 +2,7 @@ module Packmol
 
 using TestItems: @testitem, @testsnippet
 using StaticArrays: SVector, SMatrix, @SMatrix, MMatrix
-using LinearAlgebra: norm, eigen, dot, det, Diagonal
+using LinearAlgebra: norm, eigen, dot, det, Diagonal, svd
 using Statistics: mean
 using Base: @kwdef
 using Base.Threads: @spawn

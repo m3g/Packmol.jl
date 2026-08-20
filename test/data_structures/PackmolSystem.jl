@@ -80,3 +80,29 @@ end
         @test sys.radscale == 1.3
     end
 end
+
+@testitem "per-structure keyword does not leak into the global setting" begin
+    using Packmol: read_packmol_input
+    # `restart_from`/`restart_to` are valid both as a global keyword and as a
+    # per-structure one (inside `structure ... end structure`); a
+    # per-structure occurrence must only set that structure type's field,
+    # not the whole-system `PackmolSystem` field of the same name —
+    # regression test for a parser bug where the global-keyword dispatch
+    # table was consulted unconditionally, before checking whether the
+    # current line was inside a structure block.
+    dir = dirname(Packmol.src_dir * "/../test/input_files/water_box.inp")
+    original = read(Packmol.src_dir * "/../test/input_files/water_box.inp", String)
+
+    mktempdir() do tmp
+        cp(joinpath(dir, "water.pdb"), joinpath(tmp, "water.pdb"))
+        restart_touched = joinpath(tmp, "some_restart_file.txt")
+
+        text = replace(original, "end structure" => "restart_from $restart_touched\nend structure")
+        file = joinpath(tmp, "per_structure_restart.inp")
+        write(file, text)
+
+        sys = read_packmol_input(file)
+        @test isnothing(sys.restart_from)
+        @test only(sys.structure_types).restart_from == restart_touched
+    end
+end
