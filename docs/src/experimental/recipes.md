@@ -64,7 +64,7 @@ native, pure-Julia [Julia API](julia_api.md) uses) and hands it to
 only file produced. Keyword arguments specific to each recipe
 (`margin`/`box_sides`/`cubic`, plus `concentration`/`ionic_concentration`
 where relevant) are documented under each recipe below; any other keyword
-(`nloop`, `iprint`, `seed`, `optimizer`, ...) is forwarded to the packing
+(`nloop`, `iprint`, `seed`, ...) is forwarded to the packing
 engine itself — see `packmol(::PackmolSystem)`.
 
 Alternatively, `write_packmol_input` generates the `.inp` file on its own,

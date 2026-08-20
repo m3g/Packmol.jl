@@ -116,7 +116,7 @@ end
 # `radscale` implements the same "loose start" heuristic as the original
 # Fortran Packmol (getinp.f90's `discale`, default 1.1): early in packing,
 # atom radii (thus the target distance) are inflated by `radscale`, giving
-# GENCAN/SPGBox a looser, easier target while molecules are far from
+# SPGBox a looser, easier target while molecules are far from
 # feasible; `radscale` decays toward 1.0 as improvement stalls (see
 # packmol_main.jl). `fg.dmin` tracks the true (unscaled) minimum distance
 # regardless of radscale, so convergence checks against the real tolerance

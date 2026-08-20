@@ -25,17 +25,8 @@ function packmol(
     movefrac::T=T(0.05),
     seed::Int=packmol_system.seed,
     restart::Bool=false,
-    optimizer::Symbol=:spgbox,
 ) where {D,T}
-    optimizer in (:spgbox, :gencan) ||
-        error("unknown optimizer :$optimizer (expected :spgbox or :gencan)")
-    if optimizer === :gencan && T !== Float64
-        error("optimizer=:gencan requires T === Float64 (GENCAN is hardcoded double precision), got T = $T")
-    end
-    # GENCAN's default per-chunk iteration budget matches the original
-    # Fortran Packmol default (getinp.f90: maxit = 20); SPGBox keeps its
-    # existing default of 200. Either can be overridden explicitly.
-    maxit = something(maxit, optimizer === :gencan ? 20 : 800)
+    maxit = something(maxit, 800)
     # Initialize RNG and molecule positions
     RNG = Random.Xoshiro(seed)
 
@@ -202,41 +193,18 @@ function packmol(
         constraint_stall_detector = StallDetector{T}()
         dmin_stalled_flag = Ref(false)
         constraint_stalled_flag = Ref(false)
-        optresult = if optimizer === :spgbox
-            spgbox!(
-                fg_closure,
-                x;
-                callback=(_) -> packmol_callback(cl_system, tol, iprint,
-                    packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
-                    dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
-                    dmin_stalled_flag, constraint_stalled_flag,
-                ),
-                vaux=auxvecs,
-                nitmax=maxit,
-                nfevalmax=10 * maxit,
-            )
-        else # optimizer === :gencan
-            # GENCAN's callback (unlike SPGBox's) can't signal early-exit —
-            # it runs its full maxit-iteration budget (or until its own
-            # internal epsgpsn criterion triggers). This is fine: the outer
-            # loop below still re-checks Packmol's own tol_ok/const_ok
-            # convergence after every chunk regardless of which optimizer
-            # produced it. Stall detection itself works the same as for
-            # SPGBox, since it reads `cl_system.fg.dmin` (updated by every
-            # `fg_closure` evaluation, regardless of which optimizer drives
-            # it) rather than anything GENCAN's argument-less callback would
-            # need to supply.
-            gencan!(
-                fg_closure, x;
-                callback=() -> packmol_callback(cl_system, tol, iprint,
-                    packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
-                    dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
-                    dmin_stalled_flag, constraint_stalled_flag,
-                ),
-                nitmax=maxit,
-                nfevalmax=10 * maxit,
-            )
-        end
+        optresult = spgbox!(
+            fg_closure,
+            x;
+            callback=(_) -> packmol_callback(cl_system, tol, iprint,
+                packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
+                dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
+                dmin_stalled_flag, constraint_stalled_flag,
+            ),
+            vaux=auxvecs,
+            nitmax=maxit,
+            nfevalmax=10 * maxit,
+        )
 
         # Update molecule positions with optimized values
         x_mol = reinterpret(MoleculePosition{D,T}, x)
@@ -269,20 +237,19 @@ function packmol(
         # (or more) of the stall conditions cut it short, or the chunk simply
         # ran through its maxit/nfevalmax budget. A stall condition fires
         # from either of the two dmin/constraint plateau detectors above, or
-        # (SPGBox only, since that's the only optimizer that reports it) from
-        # the optimizer reaching its own internal convergence criterion
-        # (small projected gradient) short of Packmol's own tolerance/
-        # constraint targets — this happens when re-optimizing from the
-        # exact same starting point produces so few iterations that the
-        # plateau detectors never get the several consecutive readings they
-        # need to fire, even though nothing is actually still improving. In
-        # that ambiguous case, attribute it to whichever of tol_ok/const_ok
-        # is still unmet (possibly both), so it feeds movebad!/radscale
-        # decay below the same way an explicit plateau detection would.
+        # from SPGBox reaching its own internal convergence criterion (small
+        # projected gradient) short of Packmol's own tolerance/constraint
+        # targets — this happens when re-optimizing from the exact same
+        # starting point produces so few iterations that the plateau
+        # detectors never get the several consecutive readings they need to
+        # fire, even though nothing is actually still improving. In that
+        # ambiguous case, attribute it to whichever of tol_ok/const_ok is
+        # still unmet (possibly both), so it feeds movebad!/radscale decay
+        # below the same way an explicit plateau detection would.
         stall_reasons = String[]
         dmin_stalled_flag[] && push!(stall_reasons, "minimum distance plateaued")
         constraint_stalled_flag[] && push!(stall_reasons, "constraint violation plateaued")
-        optimizer_converged_internally = optresult isa SPGBoxResult && optresult.ierr == 0
+        optimizer_converged_internally = optresult.ierr == 0
         if optimizer_converged_internally && isempty(stall_reasons)
             !tol_ok && push!(stall_reasons, "optimizer converged internally short of the distance tolerance")
             !const_ok && push!(stall_reasons, "optimizer converged internally short of the constraints")
@@ -298,7 +265,7 @@ function packmol(
             "converged"
         elseif chunk_stalled
             "stalled (" * join(stall_reasons, ", ") * ")"
-        elseif optresult isa SPGBoxResult && optresult.ierr == 2
+        elseif optresult.ierr == 2
             "chunk function-evaluation budget (nfevalmax) reached"
         else
             "chunk iteration budget (maxit) reached"
@@ -589,60 +556,4 @@ end
     output_atoms = read_pdb(output_file)
     @test length(output_atoms) == 300
     rm(output_file; force=true)
-end
-
-@testitem "water box packing (gencan)" begin
-    using Packmol
-
-    if !Packmol.gencan_gfortran_available()
-        @warn "gfortran not available: skipping gencan integration test"
-        @test_skip false
-    else
-        using PDBTools: read_pdb
-        using StaticArrays
-        using LinearAlgebra: norm
-
-        input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "water_box_small.inp")
-        sys = Packmol.read_packmol_input(input_file)
-        @test sys.nmols == 100
-        @test length(sys.atoms) == 300
-        @test sys.tolerance == 2.0
-
-        Packmol.packmol(sys; nloop=200, maxit=20, iprint=10, optimizer=:gencan)
-
-        # Compute final atom positions
-        atom_positions = Vector{SVector{3,Float64}}(undef, length(sys.atoms))
-        Packmol.compute_atom_positions!(atom_positions, sys.molecule_positions, sys)
-
-        # Check that all atoms satisfy the box constraint (penalty ≈ 0)
-        st = sys.structure_types[1]
-        c = st.constraints[1]  # InsideBox
-        for pos in atom_positions
-            @test Packmol.constraint_penalty(c, pos) ≈ 0.0 atol = 0.1
-        end
-
-        # Check minimum inter-molecular distance is close to tolerance
-        natoms_per_mol = st.natoms
-        dmin = let dmin = Inf
-            for i in 1:length(atom_positions)
-                mol_i = (i - 1) ÷ natoms_per_mol + 1
-                for j in i+1:length(atom_positions)
-                    mol_j = (j - 1) ÷ natoms_per_mol + 1
-                    if mol_i != mol_j
-                        d = norm(atom_positions[i] - atom_positions[j])
-                        dmin = min(dmin, d)
-                    end
-                end
-            end
-            dmin
-        end
-        @test dmin >= sys.tolerance - 0.1
-
-        # Write output and verify
-        output_file = Packmol.write_output(sys)
-        @test isfile(output_file)
-        output_atoms = read_pdb(output_file)
-        @test length(output_atoms) == 300
-        rm(output_file; force=true)
-    end
 end
