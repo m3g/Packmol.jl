@@ -156,7 +156,16 @@ function adjust_constraints!(
     active_free_atoms = Vector{SVector{D,T}}(undef, n_free_atoms_max)
     active_free_atom_mol = Vector{Int}(undef, n_free_atoms_max)
 
-    println("  Adjusting initial point to fit the constraints")
+    # `fixed_sys` (built above only when domovebad=true, and only if there
+    # are fixed atoms and avoid_overlap is on) is what makes badness/"bad
+    # molecules" below include fixed-structure overlap on top of geometric
+    # constraint violations — not just a cosmetic label: it's why this same
+    # function's two calls in set_initial_approximation! (domovebad=false,
+    # then domovebad=true) can report very different "bad" counts for what
+    # looks like the same problem. Say so up front so the two phases don't
+    # read as inconsistent.
+    checking_str = isnothing(fixed_sys) ? "geometric constraints" : "geometric constraints and fixed-structure overlap"
+    println("  Adjusting initial point to fit $checking_str")
 
     # The active set starts as every free molecule (all need their first
     # evaluation); it only shrinks from here — a molecule leaves it as soon
@@ -212,7 +221,7 @@ function adjust_constraints!(
         # Check if all constraints are satisfied and no overlaps with fixed
         total_badness = sum(badness[imol] for imol in free_mol_indices)
         if total_badness < precision
-            @printf("  Constraint adjustment converged at loop %d (f = %.2e)\n", iloop, total_badness)
+            @printf("  Adjustment for %s converged at loop %d (f = %.2e)\n", checking_str, iloop, total_badness)
             return packmol_system
         end
 
@@ -229,7 +238,7 @@ function adjust_constraints!(
         nbad = length(bad_mols)
 
         if nbad == 0
-            @printf("  All molecules satisfy constraints at loop %d\n", iloop)
+            @printf("  All molecules satisfy %s at loop %d\n", checking_str, iloop)
             return packmol_system
         end
 
@@ -284,6 +293,6 @@ function adjust_constraints!(
     compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
     badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol; buffers)
     total_badness = sum(badness[imol] for imol in free_mol_indices)
-    @printf("  WARNING: constraint adjustment did not fully converge after %d loops (f = %.2e)\n", nloop, total_badness)
+    @printf("  WARNING: adjustment for %s did not fully converge after %d loops (f = %.2e)\n", checking_str, nloop, total_badness)
     return packmol_system
 end

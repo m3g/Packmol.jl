@@ -62,7 +62,9 @@ function reinitialize_with_bounds!(
     fixed_sys, fixed_lo, fixed_hi = _build_overlap_check_system(packmol_system, tol)
     task_fixed_syss = isnothing(fixed_sys) ? nothing : [deepcopy(fixed_sys) for _ in 1:ntasks]
 
-    println("  Setting initial trial coordinates (best of $max_guess_try per molecule)...")
+    checking_str = isnothing(fixed_sys) ? "constraints" : "constraints and fixed-structure overlap"
+    println("  Setting initial trial coordinates (best of $max_guess_try per molecule, checking $checking_str)...")
+    progress_meter = Progress(nfree; desc="  Molecules placed: ", barlen=40)
 
     # Structure types are processed sequentially, each under its own @sync, so
     # that reusing task_fixed_syss[ichunk] across structure types is race-free:
@@ -117,6 +119,7 @@ function reinitialize_with_bounds!(
                         overlaps_fixed(best_mp, st.reference_coordinates, task_fixed_sys, mol_positions, fixed_lo, fixed_hi, tol)
                     best_fx = best_overlaps ? typemax(T) : constraint_penalty_sum(best_mp, st)
                     if !best_overlaps && best_fx < precision
+                        next!(progress_meter)
                         continue
                     end
 
@@ -157,11 +160,13 @@ function reinitialize_with_bounds!(
                         end
                     end
                     packmol_system.molecule_positions[imol] = best_mp
+                    next!(progress_meter)
                 end
             end
         end
         imol_offset += st.number_of_molecules
     end
+    finish!(progress_meter)
 
     return packmol_system
 end
