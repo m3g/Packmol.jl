@@ -250,7 +250,18 @@ function packmol(
         dmin_stalled_flag[] && push!(stall_reasons, "minimum distance plateaued")
         constraint_stalled_flag[] && push!(stall_reasons, "constraint violation plateaued")
         optimizer_converged_internally = optresult.ierr == 0
-        if optimizer_converged_internally && isempty(stall_reasons)
+        # `ierr == 0` alone doesn't distinguish genuine internal convergence
+        # from a callback-triggered early stop: SPGBox returns the very same
+        # ierr==0 when the callback returns true (spgbox_main.jl's `return
+        # SPGBoxResult(...,0,true)` on a stall-detector hit) as when it
+        # actually converges. So `ambiguous_stall` — the fallback below —
+        # must only apply when *neither* plateau detector already explains
+        # why the chunk stopped; otherwise a pure dmin-only stall (with
+        # constraints still unmet, as they almost always are while dmin is
+        # the one being fixed) would get relabeled as also constraint-stalled
+        # just because ierr==0 and const_ok happens to still be false.
+        ambiguous_stall = optimizer_converged_internally && isempty(stall_reasons)
+        if ambiguous_stall
             !tol_ok && push!(stall_reasons, "optimizer converged internally short of the distance tolerance")
             !const_ok && push!(stall_reasons, "optimizer converged internally short of the constraints")
         end
@@ -258,8 +269,8 @@ function packmol(
         # the pairwise-distance tolerance); constraint-related stalls are
         # not — a molecule stuck outside its assigned region isn't helped by
         # relaxing radscale, only by being relocated via movebad!.
-        dmin_stalled = dmin_stalled_flag[] || (optimizer_converged_internally && !tol_ok)
-        constraint_stalled = constraint_stalled_flag[] || (optimizer_converged_internally && !const_ok)
+        dmin_stalled = dmin_stalled_flag[] || (ambiguous_stall && !tol_ok)
+        constraint_stalled = constraint_stalled_flag[] || (ambiguous_stall && !const_ok)
         chunk_stalled = dmin_stalled || constraint_stalled
         loop_end_reason = if tol_ok && const_ok
             "converged"
