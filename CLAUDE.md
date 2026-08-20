@@ -61,7 +61,10 @@ src/
 julia --project -e 'using TestItemRunner; @run_package_tests'
 ```
 
-Individual test items are defined inline with `@testitem` in the source files.
+Individual test items are defined with `@testitem` in `test/`, mirroring the `src/` layout
+(e.g. tests for `src/constraints/boxes.jl` live in `test/constraints/boxes.jl`). The exception
+is `src/Recipes/test/`, which holds data files (and doctested paths) for the Recipes docs
+examples, not test code.
 
 ---
 
@@ -272,4 +275,4 @@ implementation in the Fortran version.
 ## Conventions
 - Dimensions are parameterized: `D=2` or `D=3` (though 3D is the primary target)
 - Coordinates in Angstroms, consistent with PDB format
-- Tests use `@testitem` from TestItems.jl for inline test definitions
+- Tests use `@testitem` from TestItems.jl, placed in `test/` mirroring `src/`'s layout (not inline in `src/`)
