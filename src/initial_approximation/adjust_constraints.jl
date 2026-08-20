@@ -110,6 +110,29 @@ function adjust_constraints!(
     end
     tol = packmol_system.tolerance
 
+    # Avoid fixed-atom overlaps during this placement phase against the same
+    # (loose) distance the main packing loop's own first iteration actually
+    # enforces — `radscale * tolerance` (Fortran Packmol's `discale`; see
+    # `packmol_system.radscale`'s docstring) — rather than the bare
+    # tolerance. Placing free molecules only `tolerance` away from the fixed
+    # structure still leaves them violating that first, loosest loop, which
+    # just pushes the problem into the (slower) main optimization instead of
+    # avoiding it here where it's cheap.
+    overlap_tol = packmol_system.radscale * tol
+
+    # Separate, single-molecule-at-a-time overlap-check system for the
+    # movebad loop below: randomize_molecule! draws one trial molecule at a
+    # time (not a bulk `pairwise!` over every free atom, unlike `fixed_sys`
+    # above), so it needs the `nmols=1` kind of system `overlaps_fixed`
+    # expects — see `_build_overlap_check_system`. Without this, a molecule
+    # randomized away from one bad position had no way to avoid landing on
+    # top of the fixed structure again, which for a large/dense fixed
+    # structure (e.g. a real protein) could take many loops to resolve by
+    # chance, or never resolve within `nloop` at all.
+    randomize_fixed_sys, randomize_fixed_lo, randomize_fixed_hi = domovebad ?
+        _build_overlap_check_system(packmol_system, overlap_tol) :
+        (nothing, zero(SVector{D,T}), zero(SVector{D,T}))
+
     # Build molecule → structure type / first-atom-index mappings
     mol_structure_type = _build_mol_structure_type(packmol_system)
     mol_iat_first = _build_mol_iat_first(packmol_system)
@@ -182,7 +205,7 @@ function adjust_constraints!(
         # outside active_mols are untouched — they haven't moved, so their
         # last-computed badness is still correct.
         molecule_badness_for_mols!(
-            badness, packmol_system, atom_positions, fixed_sys, tol,
+            badness, packmol_system, atom_positions, fixed_sys, overlap_tol,
             active_mols, mol_structure_type, mol_iat_first, active_free_atoms, active_free_atom_mol,
         )
 
@@ -230,9 +253,18 @@ function adjust_constraints!(
                 randomize_molecule!(packmol_system, bad_mols[i], st, RNG;
                     cm_lo = has_valid_bounds ? lo : nothing,
                     cm_hi = has_valid_bounds ? hi : nothing,
+                    fixed_sys = randomize_fixed_sys,
+                    fixed_lo = randomize_fixed_lo,
+                    fixed_hi = randomize_fixed_hi,
+                    tol = overlap_tol,
                 )
             else
-                randomize_molecule!(packmol_system, bad_mols[i], st, RNG)
+                randomize_molecule!(packmol_system, bad_mols[i], st, RNG;
+                    fixed_sys = randomize_fixed_sys,
+                    fixed_lo = randomize_fixed_lo,
+                    fixed_hi = randomize_fixed_hi,
+                    tol = overlap_tol,
+                )
             end
         end
 

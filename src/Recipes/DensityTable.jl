@@ -10,7 +10,7 @@ function DensityTable(
     M_solvent::Quantity,
     M_cossolvent::Quantity,
 )
-    dvec = typeof(1.0u"g/mL")[uconvert(u"g/mL", 1u"g/mL" * d) for d in density]
+    dvec = typeof(1.0u"g/mL")[_ensure_unit(d, u"g/mL") for d in density]
     cvec = typeof(1.0u"mol/L")[
         cconvert(c, concentration_units => "mol/L"; M_solvent, M_solute=M_cossolvent, rho_solution=d) 
         for (c,d) in zip(concentration,dvec)
@@ -45,7 +45,7 @@ function density_pure_solvent(density_table::DensityTable)
     end
     first(density_table.density)
 end
-density_pure_solvent(system::SolutionBox) = density_pure_solvent(system.density_table)
+density_pure_solvent(system::Recipe) = density_pure_solvent(system.density_table)
 
 function density_pure_cossolvent(density_table::DensityTable, M_solvent::Quantity, M_solute::Quantity) 
     clast = last(density_table.concentration)
@@ -59,7 +59,7 @@ function density_pure_cossolvent(density_table::DensityTable, M_solvent::Quantit
     end
     last(density_table.density[end])
 end
-function density_pure_cossolvent(system::SolutionBox) 
+function density_pure_cossolvent(system::Recipe) 
     return density_pure_cossolvent(
         system.density_table,
         system.solvent_molar_mass,
@@ -70,7 +70,7 @@ end
 #
 # Interpolate density
 #
-function interpolate_density(system::SolutionBox, concentration::Number, concentration_units::String)
+function interpolate_density(system::Recipe, concentration::Number, concentration_units::String)
     return interpolate_density(
         system.density_table, 
         system.solvent_molar_mass,

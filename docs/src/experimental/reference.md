@@ -5,8 +5,9 @@ CollapsedDocStrings = true
 # Reference
 
 !!! warning "Experimental"
-    These are the public functions of the native Julia packing engine and of
-    `PackmolInputCreator`. Signatures and behavior may still change.
+    These are the public functions of the native Julia packing engine.
+    Signatures and behavior may still change. Recipes' functions are
+    documented on their own [Recipes](recipes.md) page.
 
 ## Packing engine
 
@@ -15,13 +16,4 @@ packmol
 structure_type
 PackmolSystem
 write_output
-```
-
-## PackmolInputCreator
-
-```@docs
-SolutionBoxUS
-SolutionBoxUSC
-SolutionBoxUWI
-write_packmol_input
 ```

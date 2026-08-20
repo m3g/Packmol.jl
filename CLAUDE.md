@@ -9,8 +9,11 @@ better maintainability, and leveraging the Julia ecosystem.
 
 The package also includes:
 - A **legacy runner** (`run_packmol`) that wraps the Fortran binary via `Packmol_jll`.
-- **PackmolInputCreator**: a Julia-specific module for generating Packmol input files
-  for common solution setups (solute+solvent, cossolvent, ions).
+- **Recipes**: higher-level, parameter-driven system setups (target densities/
+  concentrations instead of molecule counts) — solute+solvent, cossolvent, water+ions
+  today; membranes, vesicles, nanotubes, and special (octahedral/dodecahedral) box
+  shapes planned. Each recipe supports both `write_packmol_input` (generate a `.inp`
+  file) and `packmol(recipe; ...)` (build and pack directly, no file left behind).
 
 ## Project Structure
 
@@ -35,11 +38,11 @@ src/
   rigid_body/
     rigid_body.jl                     # Euler angles, rotations, translations
     chain_rule.jl                     # Gradient chain rule for rigid bodies
-  PackmolInputCreator/                # Input generation for common solution types
-    PackmolInputCreator.jl
+  Recipes/                            # Parameter-driven system setups (recipes)
+    Recipes.jl
     SolutionBoxUS.jl                  # Solute + Solvent
     SolutionBoxUSC.jl                 # Solute + Solvent + Cossolvent
-    SolutionBoxUWI.jl                 # Solute + Water + Ions (incomplete)
+    SolutionBoxUWI.jl                 # Solute + Water + Ions
     DensityTable.jl
     concentration_units.jl
 ```
@@ -50,7 +53,7 @@ src/
 - `SPGBox.jl`: Spectral projected gradient optimizer (replaces GENCAN from Fortran)
 - `PDBTools.jl`: PDB and mmCIF (which will be a new feature) file reading/writing
 - `StaticArrays.jl`: Fixed-size vectors/matrices for performance
-- `Unitful.jl`: Physical unit handling (in PackmolInputCreator)
+- `Unitful.jl`: Physical unit handling (in Recipes)
 
 ## Running Tests
 
@@ -208,13 +211,16 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 
 ---
 
-### Phase 7: PackmolInputCreator (Julia-specific)
+### Phase 7: Recipes (Julia-specific)
 
 - [x] `SolutionBoxUS` - solute + solvent setup
 - [x] `SolutionBoxUSC` - solute + solvent + cossolvent setup
-- [~] `SolutionBoxUWI` - solute + water + ions setup (incomplete, `write_packmol_input` has early return)
+- [x] `SolutionBoxUWI` - solute + water + ions setup (target ionic concentration, automatic solute charge neutralization)
+- [x] `packmol(recipe; ...)` - build and pack a recipe directly, without an explicit input file
 - [x] Concentration unit conversions (Molarity, Molality, MoleFraction, etc.)
 - [x] DensityTable interpolation
+- [x] Documented on its own `experimental/recipes.md` docs page
+- [ ] Future recipes: membranes, vesicles, nanotubes, octahedral/dodecahedral box shapes
 
 ---
 

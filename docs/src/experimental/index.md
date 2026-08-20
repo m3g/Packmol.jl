@@ -31,9 +31,12 @@ calling the packing engine directly.
   — shared syntax between input files and the Julia API.
 - [Defining systems in Julia](julia_api.md): building and packing a system
   with `structure_type`/`PackmolSystem`/`packmol`, without a text file.
-- [Concentration Unit Conversion](@ref): part of `PackmolInputCreator`,
-  which helps generate Packmol input files for common solution setups
-  (solute + solvent, cosolvent, ions).
+- [Recipes](recipes.md): higher-level, parameter-driven system setups
+  (solute + solvent, cosolvent, water + ions, with membranes/vesicles/
+  nanotubes/special box shapes planned) from target densities/
+  concentrations instead of molecule counts.
+- [Concentration Unit Conversion](@ref): the unit-conversion machinery
+  (`cconvert`) that Recipes are built on.
 
 Everything else about the native packing engine is listed, undocumented
 beyond docstrings, on the [Reference](reference.md) page. A proper usage

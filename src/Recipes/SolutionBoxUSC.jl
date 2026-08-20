@@ -1,4 +1,4 @@
-mutable struct SolutionBoxUSC <: SolutionBox
+mutable struct SolutionBoxUSC <: Recipe
     solute_pdbfile::String
     solvent_pdbfile::String
     cossolvent_pdbfile::String
@@ -87,49 +87,26 @@ function Base.show(io::IO, ::MIME"text/plain", system::SolutionBoxUSC)
             solute: $(system.solute_molar_mass)
             solvent: $(system.solvent_molar_mass)
             cossolvent: $(system.cossolvent_molar_mass)
-        Cocentration range: $(first(system.density_table.concentration)) - $(last(system.density_table.concentration))
+        Concentration range: $(first(system.density_table.concentration)) - $(last(system.density_table.concentration))
         Density range: $(first(system.density_table.density)) - $(last(system.density_table.density))
     ==================================================================
     """))
 end
 
-"""
-    write_packmol_input(
-        system::SolutionBoxUSC;
-        concentration::Number, 
-        input="box.inp",
-        output="system.pdb",
-        # box size
-        box_sides::AbstractVector{<:Number}, # or
-        margin::Number,
-        cubic::Bool = false,
-    )
-
-Function that generates an input file for Packmol. 
-
-The box sides are given in Ångströms, and can be provided as a vector of 3 elements.
-Alternativelly, the margin can be provided, and the box sides will be calculated as
-the maximum and minimum coordinates of the solute plus the margin in all 3 dimensions.
-
-If `cubic` is set to true, the box will be cubic, and the box sides will be
-equal in all 3 dimensions, respecting the minimum margin provided.
-
-"""
-function write_packmol_input(
-    system::SolutionBoxUSC;
-    concentration::Number, 
-    concentration_units::Union{Nothing,String} = nothing,
-    input="box.inp",
-    output="system.pdb",
-    box_sides::Union{AbstractVector{<:Number},Nothing} = nothing,
-    margin::Union{Number,Nothing} = nothing, 
-    cubic::Bool = false,
-    # testing option
-    debug = false,
+#
+# Shared box-sizing/molecule-count computation for SolutionBoxUSC, used by
+# both `write_packmol_input` (which prints/writes `summary` to a `.inp` file)
+# and `packmol` (which builds a `PackmolSystem` directly and never writes one).
+#
+function _setup(
+    system::SolutionBoxUSC,
+    concentration::Number,
+    concentration_units::Union{Nothing,String},
+    box_sides::Union{AbstractVector{<:Number},Nothing},
+    margin::Union{Number,Nothing},
+    cubic::Bool,
 )
-
-    (; solute_pdbfile,
-       solvent_pdbfile,
+    (; solvent_pdbfile,
        cossolvent_pdbfile,
        solute_molar_mass,
        solvent_molar_mass,
@@ -158,10 +135,10 @@ function write_packmol_input(
     cc_mm = cconvert(concentration, cunit => "w/w";  M_solvent = Ms, M_solute = Mc, rho_solution = ρ)
 
     # aliases for clearer formulas
-    ρs = density_pure_solvent(system) 
+    ρs = density_pure_solvent(system)
 
     box_sides, solute_extrema = set_box_sides(system, box_sides, margin, cubic)
-    vbox = prod(box_sides) 
+    vbox = prod(box_sides)
 
     # Solution volume (vbox - vsolute) - vsolute is estimated
     # as if it had the same mass density of the solution
@@ -208,20 +185,59 @@ function write_packmol_input(
         Cossolvent molar mass = $Mc
         Solvent molar mass = $Ms
 
-        Number of cossolvent ($(basename(cossolvent_pdbfile))) molecules = $nc 
-        Number of solvent ($(basename(solvent_pdbfile))) molecules = $ns 
+        Number of cossolvent ($(basename(cossolvent_pdbfile))) molecules = $nc
+        Number of solvent ($(basename(solvent_pdbfile))) molecules = $ns
 
-        Final cossolvent concentration = $cc_f 
+        Final cossolvent concentration = $cc_f
                                     = $(inv(cconvert(cc_f, "mol/L" => "NumberDensity"))) per molecule.
         Final solvent concentration = $cs_f
                                     = $(inv(cconvert(cs_f, "mol/L" => "NumberDensity"))) per molecule.
-                                    
+
         Final molar fraction = $(nc/(nc+ns))
 
         Cubic box requested: $cubic
 
         ==================================================================
         """
+    return (; ns, nc, l, summary)
+end
+
+"""
+    write_packmol_input(
+        system::SolutionBoxUSC;
+        concentration::Number,
+        input="box.inp",
+        output="system.pdb",
+        # box size
+        box_sides::AbstractVector{<:Number}, # or
+        margin::Number,
+        cubic::Bool = false,
+    )
+
+Function that generates an input file for Packmol.
+
+The box sides are given in Ångströms, and can be provided as a vector of 3 elements.
+Alternatively, the margin can be provided, and the box sides will be calculated as
+the maximum and minimum coordinates of the solute plus the margin in all 3 dimensions.
+
+If `cubic` is set to true, the box will be cubic, and the box sides will be
+equal in all 3 dimensions, respecting the minimum margin provided.
+
+"""
+function write_packmol_input(
+    system::SolutionBoxUSC;
+    concentration::Number,
+    concentration_units::Union{Nothing,String} = nothing,
+    input="box.inp",
+    output="system.pdb",
+    box_sides::Union{AbstractVector{<:Number},Nothing} = nothing,
+    margin::Union{Number,Nothing} = nothing,
+    cubic::Bool = false,
+    # testing option
+    debug = false,
+)
+    (; solute_pdbfile, solvent_pdbfile, cossolvent_pdbfile) = system
+    (; ns, nc, l, summary) = _setup(system, concentration, concentration_units, box_sides, margin, cubic)
     println(summary)
 
     open(input, "w") do io
@@ -230,7 +246,7 @@ function write_packmol_input(
             # 
             # Packmol input file
             # 
-            # Generated by MolSimToolkit.jl
+            # Generated by Packmol.jl
             #
             """
         )
@@ -246,7 +262,7 @@ function write_packmol_input(
             filetype pdb
             seed -1
             packall
-            pbc $(join(-1.0*ustrip(l), " ")), $(join(ustrip(l), " "))
+            pbc $(join(-1.0*ustrip(l), " ")) $(join(ustrip(l), " "))
 
             structure $solute_pdbfile
                 number 1
@@ -281,12 +297,58 @@ function write_packmol_input(
     end
 end # function write_packmol_input
 
+"""
+    packmol(
+        system::SolutionBoxUSC;
+        concentration::Number,
+        concentration_units::Union{Nothing,String} = nothing,
+        output="system.pdb",
+        # box size
+        box_sides::AbstractVector{<:Number}, # or
+        margin::Number,
+        cubic::Bool = false,
+        kwargs...,
+    )
+
+Builds and packs a Solute + Solvent + Cossolvent system directly, entirely in memory:
+equivalent to calling
+[`write_packmol_input`](@ref write_packmol_input(::SolutionBoxUSC)) followed by `packmol`
+on the resulting file, except no `.inp` file is ever written.
+
+`concentration`, `concentration_units`, `output`, `box_sides`, `margin`, and `cubic`
+behave as in `write_packmol_input`. Any other keyword (`nloop`, `iprint`, `seed`,
+`optimizer`, ...) is forwarded to the packing engine — see `packmol(::PackmolSystem)`.
+
+"""
+function packmol(
+    system::SolutionBoxUSC;
+    concentration::Number,
+    concentration_units::Union{Nothing,String}=nothing,
+    output="system.pdb",
+    box_sides::Union{AbstractVector{<:Number},Nothing}=nothing,
+    margin::Union{Number,Nothing}=nothing,
+    cubic::Bool=false,
+    kwargs...,
+)
+    (; solute_pdbfile, solvent_pdbfile, cossolvent_pdbfile) = system
+    (; ns, nc, l) = _setup(system, concentration, concentration_units, box_sides, margin, cubic)
+    structure_types = [
+        _fixed_solute_structure_type(solute_pdbfile),
+        structure_type(solvent_pdbfile; number=ns),
+    ]
+    nc > 0 && push!(structure_types, structure_type(cossolvent_pdbfile; number=nc))
+    packmol_system = PackmolSystem(structure_types;
+        output, tolerance=2.0, add_box_sides=true, seed=-1, _recipe_unitcell(l)...,
+    )
+    return packmol(packmol_system; kwargs...)
+end
+
 @testitem "SolutionBoxUSC" begin
     using Packmol
     using Unitful
     using ShowMethodTesting
 
-    test_dir = Packmol.PackmolInputCreatorDirectory*"/test"
+    test_dir = Packmol.RecipesDirectory*"/test"
 
     mw = 55.508250191225926
     # system with ideal solution 
@@ -355,7 +417,7 @@ end # function write_packmol_input
             solute: 5612.801f0 g mol^-1
             solvent: 46.069218f0 g mol^-1
             cossolvent: 18.01534f0 g mol^-1
-        Cocentration range: 0.0 mol L^-1 - 55.40278204007167 mol L^-1
+        Concentration range: 0.0 mol L^-1 - 55.40278204007167 mol L^-1
         Density range: 0.7906 g mL^-1 - 0.9981 g mL^-1
     ==================================================================
     """
@@ -401,6 +463,14 @@ end # function write_packmol_input
     @test r1[1] == 10075
     @test r1[2] == 10075
     @test r1[3] ≈ [117.37, 89.79, 118.81]u"Å"
+
+    # The generated input file must be valid Packmol syntax for the native engine
+    # itself, not just the (more lenient) legacy Fortran binary — regression test
+    # for a stray comma once present in the `pbc` line, which the native parser
+    # rejected outright.
+    psys = Packmol.read_packmol_input(tmp_input_file)
+    @test psys.nmols == 1 + r1[1] + r1[2]
+    rm(tmp_input_file, force=true)
 
     # In this test, if we (incorrectly) provide the concentration in mol/L,
     # the conversion of the density table will not change the values

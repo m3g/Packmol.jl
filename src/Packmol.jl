@@ -71,7 +71,7 @@ include("./packmol_runner.jl")
 end
 
 # Packmol input file creator
-include("./PackmolInputCreator/PackmolInputCreator.jl")
+include("./Recipes/Recipes.jl")
 
 function __init__()
     # A @cfunction pointer is a JIT address valid only for the current
