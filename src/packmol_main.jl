@@ -189,12 +189,18 @@ function packmol(
         # Run a short optimization (maxit iterations per loop)
         progress_meter = Progress(maxit; desc=" Iterations: ", barlen=47)
         fg_closure = (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices, radscale)
+        # Fresh stall detector per chunk: plateau state from the *previous*
+        # chunk isn't meaningful here, since movebad! (or the initial
+        # placement) just changed the starting point.
+        stall_detector = StallDetector{T}()
         optresult = if optimizer === :spgbox
             spgbox!(
                 fg_closure,
                 x;
                 callback=(result) -> packmol_callback(result, cl_system, tol, iprint,
-                    packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter),
+                    packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
+                    stall_detector, stall_tolerance=packmol_system.stall_tolerance,
+                ),
                 vaux=auxvecs,
                 nitmax=maxit,
                 nfevalmax=10 * maxit,
@@ -208,10 +214,15 @@ function packmol(
             # produced it. `packmol_callback`'s first argument (`spgresult`)
             # is unused in its body, so it's safe to reuse here with a
             # dummy value just for the progress-bar/showvalues side effect.
+            # Stall detection is skipped too (stall_detector=nothing): it
+            # relies on `spgresult.f` at each iteration, which GENCAN's
+            # argument-less callback doesn't provide.
             gencan!(
                 fg_closure, x;
                 callback=() -> packmol_callback(nothing, cl_system, tol, iprint,
-                    packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter),
+                    packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
+                    stall_detector=nothing, stall_tolerance=packmol_system.stall_tolerance,
+                ),
                 nitmax=maxit,
                 nfevalmax=10 * maxit,
             )
@@ -375,9 +386,49 @@ const dash_line = repeat('-', 80)
 const hash_line = repeat('#', 80)
 
 #
+# Tracks whether `f` has stopped meaningfully improving over several
+# *consecutive* SPGBox iterations within a single packing-loop chunk — a
+# more robust stall signal than an instantaneous gradient/function ratio
+# (tried and reverted: on this coupled, many-body objective, the projected
+# gradient can look artificially small for the first iteration or two after
+# a chunk starts, e.g. right after movebad! scrambles some positions, well
+# before the spectral step-size estimate has calibrated — that caused chunks
+# to bail out almost immediately, before making any real progress).
+#
+# `f_prev = nothing` marks "no baseline yet" (start of a chunk), so the
+# first call is never counted as a plateau. `plateau_count` counts
+# consecutive iterations whose relative improvement over the previous one
+# falls below `rel_tol`; it resets to 0 on any iteration that improves by
+# more than that. `is_stalled!` reports true once `plateau_count` reaches
+# `max_plateau`.
+#
+mutable struct StallDetector{T}
+    f_prev::Union{Nothing,T}
+    plateau_count::Int
+end
+StallDetector{T}() where {T} = StallDetector{T}(nothing, 0)
+
+function is_stalled!(detector::StallDetector{T}, f::T; rel_tol::T, max_plateau::Int=5) where {T}
+    f_prev = detector.f_prev
+    detector.f_prev = f
+    isnothing(f_prev) && return false
+    rel_improvement = f_prev > zero(T) ? (f_prev - f) / f_prev : zero(T)
+    if rel_improvement < rel_tol
+        detector.plateau_count += 1
+    else
+        detector.plateau_count = 0
+    end
+    return detector.plateau_count >= max_plateau
+end
+
+#
 # SPGBox callback: print progress and check convergence
 #
-function packmol_callback(spgresult, cl_system, tol, iprint, tolerance_precision, constraint_precision, progress_meter)
+function packmol_callback(
+    spgresult, cl_system, tol, iprint, tolerance_precision, constraint_precision, progress_meter;
+    stall_detector::Union{Nothing,StallDetector} = nothing,
+    stall_tolerance = 1e-2 * tolerance_precision,
+)
     next!(progress_meter; showvalues = [
         (" Minimum distance: ", min(cl_system.fg.dmin, cl_system.cutoff)),
         (" Maximum constraint violation: ", cl_system.fg.max_constraint_penalty),
@@ -386,6 +437,16 @@ function packmol_callback(spgresult, cl_system, tol, iprint, tolerance_precision
     tol_ok = tol - dmin < tolerance_precision
     const_ok = cl_system.fg.max_constraint_penalty < constraint_precision
     if tol_ok && const_ok
+        return true
+    end
+    # Cut this chunk short once f has plateaued for several consecutive
+    # iterations: a handful of molecules genuinely stuck (deep inside a
+    # fixed structure, or wedged against others with nowhere left to go)
+    # produce exactly this signature, while the bulk of the system is
+    # otherwise fine — grinding through the rest of this chunk's maxit
+    # budget on them cannot help; movebad! (once this chunk returns to the
+    # outer loop) is what actually relocates them.
+    if !isnothing(stall_detector) && is_stalled!(stall_detector, spgresult.f; rel_tol=stall_tolerance)
         return true
     end
     return false

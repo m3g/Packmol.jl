@@ -97,7 +97,8 @@ These are the building blocks everything else depends on.
 #### Input Parser
 - [x] Global keywords: `tolerance`, `output`, `filetype`, `seed`, `maxit`, `writeout`, `writebad`,
       `randominitialpoint`, `avoid_overlap`, `add_amber_ter`, `amber_ter_preserve`, `add_box_sides`,
-      `connect`, `optimization_print_level`, `chkgrad`, `tolerance_precision`, `constraint_precision`
+      `connect`, `optimization_print_level`, `chkgrad`, `tolerance_precision`, `constraint_precision`,
+      `stall_tolerance`
 - [x] Structure blocks: `structure/end structure`, `number`, `fixed`, `center`, `radius`
 - [x] Constraint parsing: `inside/outside box`, `inside/outside cube`, `inside/outside sphere`,
       `inside/outside cylinder`, `inside/outside ellipsoid`, `above/over/below plane`
