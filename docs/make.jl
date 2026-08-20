@@ -16,6 +16,7 @@ makedocs(
             "Input files" => "experimental/input_files.md",
             "Constraints" => "experimental/constraints.md",
             "Defining systems in Julia" => "experimental/julia_api.md",
+            "Recipes" => "experimental/recipes.md",
             "Concentration units" => "concentration_units.md",
             "Reference" => "experimental/reference.md",
         ],

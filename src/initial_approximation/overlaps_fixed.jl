@@ -62,3 +62,36 @@ function overlaps_fixed(
 ) where {D,T}
     return false
 end
+
+#
+# Build a lightweight CellListMap system (nmols=1 output, one trial molecule's
+# atoms queried against the fixed atoms at a time) plus the (undilated)
+# bounding box of the fixed atoms, for repeated `overlaps_fixed` queries
+# against trial molecule placements. Shared by `reinitialize_with_bounds!`
+# and `adjust_constraints!`'s movebad loop — both need the exact same kind of
+# system, just used with different (parallel vs. serial) calling patterns.
+#
+# Returns `(nothing, zero, zero)` when there are no fixed atoms (or
+# `avoid_overlap` is false — see `_collect_fixed_positions`): callers pass
+# that straight through to `overlaps_fixed`, whose `fixed_sys::Nothing`
+# method always returns "no overlap", so no extra branching is needed at the
+# call site.
+#
+function _build_overlap_check_system(packmol_system::PackmolSystem{D,T}, tol::T) where {D,T}
+    max_extent = zero(T)
+    for st in packmol_system.structure_types
+        st.fixed.fixed && continue
+        for r in st.reference_coordinates
+            max_extent = max(max_extent, norm(r))
+        end
+    end
+    fixed_atom_positions = _collect_fixed_positions(packmol_system)
+    isempty(fixed_atom_positions) && return nothing, zero(SVector{D,T}), zero(SVector{D,T})
+    lo, hi = compute_bounding_box(fixed_atom_positions)
+    margin = max_extent + tol
+    fixed_unitcell = T(1.2) * ((hi .+ margin) - (lo .- margin))
+    volume = prod(fixed_unitcell)
+    cutoff = _capped_cutoff(volume, tol, length(fixed_atom_positions), D)
+    fixed_sys = build_fixed_particle_system(packmol_system; nmols=1, parallel=false, unitcell=fixed_unitcell, cutoff)
+    return fixed_sys, lo, hi
+end

@@ -34,6 +34,7 @@ end structure
 | `maxit <int>` | Iterations per packing loop chunk. |
 | `radscale <value>` | Loose-start radius scale factor (see [`packmol`](@ref)); `discale` is accepted as a legacy alias. |
 | `tolerance_precision <value>`, `constraint_precision <value>` | Convergence tolerances for the distance and constraint checks. |
+| `stall_tolerance <value>` | Relative-improvement threshold below which a packing chunk is considered stalled and cut short (default `1e-2 * tolerance_precision`). |
 | `max_random_init <int>` | Best-of-`N` random placements tried per molecule during initialization. |
 | `adjust_constraints_on_init yes\|no` | Whether to run constraint-only pre-optimization before packing. |
 | `avoid_overlap yes\|no` | Whether trial placements are rejected if they overlap fixed atoms. |

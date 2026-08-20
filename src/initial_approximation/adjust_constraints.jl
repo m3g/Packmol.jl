@@ -110,6 +110,29 @@ function adjust_constraints!(
     end
     tol = packmol_system.tolerance
 
+    # Avoid fixed-atom overlaps during this placement phase against the same
+    # (loose) distance the main packing loop's own first iteration actually
+    # enforces — `radscale * tolerance` (Fortran Packmol's `discale`; see
+    # `packmol_system.radscale`'s docstring) — rather than the bare
+    # tolerance. Placing free molecules only `tolerance` away from the fixed
+    # structure still leaves them violating that first, loosest loop, which
+    # just pushes the problem into the (slower) main optimization instead of
+    # avoiding it here where it's cheap.
+    overlap_tol = packmol_system.radscale * tol
+
+    # Separate, single-molecule-at-a-time overlap-check system for the
+    # movebad loop below: randomize_molecule! draws one trial molecule at a
+    # time (not a bulk `pairwise!` over every free atom, unlike `fixed_sys`
+    # above), so it needs the `nmols=1` kind of system `overlaps_fixed`
+    # expects — see `_build_overlap_check_system`. Without this, a molecule
+    # randomized away from one bad position had no way to avoid landing on
+    # top of the fixed structure again, which for a large/dense fixed
+    # structure (e.g. a real protein) could take many loops to resolve by
+    # chance, or never resolve within `nloop` at all.
+    randomize_fixed_sys, randomize_fixed_lo, randomize_fixed_hi = domovebad ?
+        _build_overlap_check_system(packmol_system, overlap_tol) :
+        (nothing, zero(SVector{D,T}), zero(SVector{D,T}))
+
     # Build molecule → structure type / first-atom-index mappings
     mol_structure_type = _build_mol_structure_type(packmol_system)
     mol_iat_first = _build_mol_iat_first(packmol_system)
@@ -133,7 +156,16 @@ function adjust_constraints!(
     active_free_atoms = Vector{SVector{D,T}}(undef, n_free_atoms_max)
     active_free_atom_mol = Vector{Int}(undef, n_free_atoms_max)
 
-    println("  Adjusting initial point to fit the constraints")
+    # `fixed_sys` (built above only when domovebad=true, and only if there
+    # are fixed atoms and avoid_overlap is on) is what makes badness/"bad
+    # molecules" below include fixed-structure overlap on top of geometric
+    # constraint violations — not just a cosmetic label: it's why this same
+    # function's two calls in set_initial_approximation! (domovebad=false,
+    # then domovebad=true) can report very different "bad" counts for what
+    # looks like the same problem. Say so up front so the two phases don't
+    # read as inconsistent.
+    checking_str = isnothing(fixed_sys) ? "constraints" : "constraints + fixed overlap"
+    println("  Adjusting initial point to fit $checking_str")
 
     # The active set starts as every free molecule (all need their first
     # evaluation); it only shrinks from here — a molecule leaves it as soon
@@ -182,14 +214,14 @@ function adjust_constraints!(
         # outside active_mols are untouched — they haven't moved, so their
         # last-computed badness is still correct.
         molecule_badness_for_mols!(
-            badness, packmol_system, atom_positions, fixed_sys, tol,
+            badness, packmol_system, atom_positions, fixed_sys, overlap_tol,
             active_mols, mol_structure_type, mol_iat_first, active_free_atoms, active_free_atom_mol,
         )
 
         # Check if all constraints are satisfied and no overlaps with fixed
         total_badness = sum(badness[imol] for imol in free_mol_indices)
         if total_badness < precision
-            @printf("  Constraint adjustment converged at loop %d (f = %.2e)\n", iloop, total_badness)
+            @printf("  Adjustment for %s converged at loop %d (f = %.2e)\n", checking_str, iloop, total_badness)
             return packmol_system
         end
 
@@ -206,7 +238,7 @@ function adjust_constraints!(
         nbad = length(bad_mols)
 
         if nbad == 0
-            @printf("  All molecules satisfy constraints at loop %d\n", iloop)
+            @printf("  All molecules satisfy %s at loop %d\n", checking_str, iloop)
             return packmol_system
         end
 
@@ -230,9 +262,18 @@ function adjust_constraints!(
                 randomize_molecule!(packmol_system, bad_mols[i], st, RNG;
                     cm_lo = has_valid_bounds ? lo : nothing,
                     cm_hi = has_valid_bounds ? hi : nothing,
+                    fixed_sys = randomize_fixed_sys,
+                    fixed_lo = randomize_fixed_lo,
+                    fixed_hi = randomize_fixed_hi,
+                    tol = overlap_tol,
                 )
             else
-                randomize_molecule!(packmol_system, bad_mols[i], st, RNG)
+                randomize_molecule!(packmol_system, bad_mols[i], st, RNG;
+                    fixed_sys = randomize_fixed_sys,
+                    fixed_lo = randomize_fixed_lo,
+                    fixed_hi = randomize_fixed_hi,
+                    tol = overlap_tol,
+                )
             end
         end
 
@@ -252,6 +293,6 @@ function adjust_constraints!(
     compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
     badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol; buffers)
     total_badness = sum(badness[imol] for imol in free_mol_indices)
-    @printf("  WARNING: constraint adjustment did not fully converge after %d loops (f = %.2e)\n", nloop, total_badness)
+    @printf("  WARNING: adjustment for %s did not fully converge after %d loops (f = %.2e)\n", checking_str, nloop, total_badness)
     return packmol_system
 end

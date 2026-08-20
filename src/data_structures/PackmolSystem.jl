@@ -12,6 +12,11 @@
     structure_types::Vector{StructureType{D,T}} = StructureType{D,T}[]
     tolerance_precision::T = 1e-2
     constraint_precision::T = 1e-2
+    # Relative-improvement threshold below which the stall detector counts a
+    # plateau iteration in either the minimum interatomic distance or the
+    # maximum constraint violation during a packing chunk (see
+    # packmol_main.jl).
+    stall_tolerance::T = 1e-2 * tolerance_precision
     max_iter::Int = 1000
     max_random_init::Int=20
     adjust_constraints_on_init::Bool=true
@@ -184,6 +189,7 @@ packmol_input_keywords = Dict{String,Function}(
     end,
     "tolerance_precision"      => (T, val) -> (:tolerance_precision, _parse_value(T, "tolerance_precision", val)),
     "constraint_precision"     => (T, val) -> (:constraint_precision, _parse_value(T, "constraint_precision", val)),
+    "stall_tolerance"          => (T, val) -> (:stall_tolerance, _parse_value(T, "stall_tolerance", val)),
     "maxit"                    => (T, val) -> (:maxit, _parse_value(Int, "max_iter", val)),
     "max_random_init"          => (T, val) -> (:max_random_init, _parse_value(Int, "max_random_init", val)),
     "adjust_constraints_on_init" => (T, val) -> (:adjust_constraints_on_init, _parse_options(String, "adjust_constraints_on_init", val, ("yes" => true, "no" => false))),

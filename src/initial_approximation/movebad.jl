@@ -36,9 +36,9 @@ function movebad!(
     for imol in free_mol_indices
         nmoved >= nmove && break
         if fmol[imol] > precision / packmol_system.nmols
-            # Probability increases with fmol value: always move the worst,
-            # linearly decreasing probability for better molecules
-            prob = fmol[imol] / fmol_max
+            # Probability increases with fmol value: move the worst with 0.5
+            # probablity, linearly decreasing probability for better molecules
+            prob = 0.5 * fmol[imol] / fmol_max
             if rand(RNG, T) < prob
                 ist = mol_structure_type[imol]
                 st = packmol_system.structure_types[ist]

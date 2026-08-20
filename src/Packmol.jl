@@ -12,8 +12,6 @@ using ProgressMeter: Progress, next!, finish!
 using SPGBox
 using Printf: @printf, @sprintf
 import CellListMap
-import Scratch
-import Libdl
 
 const src_dir = @__DIR__
 
@@ -56,11 +54,6 @@ include("./initial_approximation/initial_approximation.jl")
 # Output
 include("./io/write_output.jl")
 
-# GENCAN FFI wrapper (experimental, opt-in alternative optimizer)
-include("./gencan/build.jl")
-include("./gencan/ffi.jl")
-include("./gencan/gencan.jl")
-
 # Packing functions
 include("./packmol_main.jl")
 
@@ -71,16 +64,6 @@ include("./packmol_runner.jl")
 end
 
 # Packmol input file creator
-include("./PackmolInputCreator/PackmolInputCreator.jl")
-
-function __init__()
-    # A @cfunction pointer is a JIT address valid only for the current
-    # process; it must be computed here, not as a top-level `const`, or it
-    # would be a stale/dangling pointer after loading a precompiled image.
-    GENCAN_FG_CALLBACK[] = @cfunction(
-        gencan_fg_callback, Cint, (Cint, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble})
-    )
-    return nothing
-end
+include("./Recipes/Recipes.jl")
 
 end
