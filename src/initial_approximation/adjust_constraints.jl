@@ -164,7 +164,7 @@ function adjust_constraints!(
     # then domovebad=true) can report very different "bad" counts for what
     # looks like the same problem. Say so up front so the two phases don't
     # read as inconsistent.
-    checking_str = isnothing(fixed_sys) ? "geometric constraints" : "geometric constraints and fixed-structure overlap"
+    checking_str = isnothing(fixed_sys) ? "constraints" : "constraints + fixed overlap"
     println("  Adjusting initial point to fit $checking_str")
 
     # The active set starts as every free molecule (all need their first
