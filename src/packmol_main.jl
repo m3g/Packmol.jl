@@ -23,6 +23,8 @@ function packmol(
     nloop::Int=200,
     maxit::Union{Nothing,Int}=nothing,
     movefrac::T=T(0.05),
+    n_stall_iterations::Int=10,
+    f_stall_tolerance::T=T(0.10),
     seed::Int=packmol_system.seed,
     restart::Bool=false,
 ) where {D,T}
@@ -193,16 +195,31 @@ function packmol(
         # outer loop below uses them, instead of an inter-loop function-value
         # comparison, both to decide whether to move bad molecules or
         # loosen/tighten radscale, and to report why this chunk ended.
-        dmin_stall_detector = StallDetector{T}()
-        constraint_stall_detector = StallDetector{T}()
+        dmin_stall_detector = StallDetector{T}(n_stall_iterations)
+        constraint_stall_detector = StallDetector{T}(n_stall_iterations)
+        # dmin/max_const are each a worst-case-over-all-atoms extremum, not
+        # an aggregate, so whichever single pair currently holds that worst
+        # value routinely sits frozen for a while — stuck behind other
+        # molecules resolving their own, larger violations first — even
+        # while the coupled objective f is still falling sharply overall.
+        # That made every chunk on a large, realistic system report "stalled"
+        # within ~n_stall_iterations regardless of how much real progress f
+        # was making elsewhere. `f_stall_detector` tracks f over a much
+        # longer window (maxit/20, e.g. 40 iterations at the default
+        # maxit=800) — long enough to average out that per-pair noise — and
+        # packmol_callback only honors a dmin/const stall once f *also* shows
+        # no net improvement (< f_stall_tolerance, e.g. 10%) over that
+        # window: genuine overall progress vetoes a worst-case-metric stall.
+        f_stall_detector = StallDetector{T}(max(1, maxit ÷ 20))
         dmin_stalled_flag = Ref(false)
         constraint_stalled_flag = Ref(false)
         optresult = spgbox!(
             fg_closure,
             x;
-            callback=(_) -> packmol_callback(cl_system, tol, iprint,
+            callback=(result) -> packmol_callback(cl_system, tol, iprint,
                 packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
                 dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
+                f_stall_detector, f=result.f, f_stall_tolerance,
                 dmin_stalled_flag, constraint_stalled_flag,
             ),
             vaux=auxvecs,
@@ -335,7 +352,10 @@ function packmol(
         # amount of radscale/tolerance easing frees a molecule stuck outside
         # its assigned region — relocating it is the only fix), or once the
         # tolerance has been fully tightened (radscale == 1, matching
-        # Fortran) on a distance-related stall.
+        # Fortran) on a distance-related stall. `dmin_stalled`/
+        # `constraint_stalled` already require f to also be making no real
+        # headway (see packmol_callback), so acting on them here can't
+        # disrupt a loop that's still genuinely improving.
         if constraint_stalled || (radscale == one(T) && dmin_stalled)
             cm_min, cm_max = compute_cm_bounds(packmol_system)
             nmoved = movebad!(
@@ -427,7 +447,7 @@ const hash_line = repeat('#', 80)
 
 #
 # Tracks whether a scalar convergence metric has stopped meaningfully
-# improving over several *consecutive* SPGBox iterations within a single
+# improving over a trailing *window* of SPGBox iterations within a single
 # packing-loop chunk. Used for two independent metrics: the minimum
 # interatomic distance `dmin` (the quantity `tol_ok` depends on, larger is
 # better) and the maximum constraint violation `max_constraint_penalty` (the
@@ -442,43 +462,45 @@ const hash_line = repeat('#', 80)
 # calibrated — that caused chunks to bail out almost immediately, before
 # making any real progress).
 #
-# `prev = nothing` marks "no baseline yet" (start of a chunk), so the first
-# call is never counted as a plateau. `plateau_count` counts consecutive
-# iterations whose relative improvement over the previous one falls below
-# `rel_tol`; it resets to 0 on any iteration that improves by more than
-# that. `is_stalled!` reports true once `plateau_count` reaches
-# `max_plateau`.
+# A fixed-size circular buffer holds the last `n_stall_iterations` values.
+# `is_stalled!` compares the current value against the one from exactly
+# `n_stall_iterations` calls ago and reports true only once that *net* change
+# over the whole window falls below `rel_tol` — not once any single step
+# does. A metric that improves slowly but steadily (each individual SPGBox
+# step under `rel_tol`, e.g. because the tolerance is tight relative to the
+# step size) still shows real progress once accumulated over the window, and
+# is correctly not flagged as stalled; a metric genuinely flatlined shows
+# ~zero net change over the same window regardless of how it's chopped up.
+# Before the buffer has seen `n_stall_iterations` values there's no full
+# window to compare yet, so the metric is never counted as stalled.
 #
 mutable struct StallDetector{T}
-    prev::Union{Nothing,T}
-    plateau_count::Int
-    # The only constructor ever needed (see call sites below) — declaring it
-    # as the sole inner constructor suppresses Julia's auto-generated default
-    # constructors, in particular the outer one taking `prev` positionally:
-    # with `prev::Union{Nothing,T}`, that auto-generated method's `T` isn't
-    # inferable from a `nothing` argument, which Aqua's unbound-args check
-    # (rightly) flags.
-    StallDetector{T}() where {T} = new{T}(nothing, 0)
+    window::Vector{T}
+    head::Int  # next slot to write (1-based); also the slot holding the oldest value once full
+    count::Int  # total values seen so far, capped at length(window)
+    StallDetector{T}(n_stall_iterations::Int) where {T} = new{T}(Vector{T}(undef, n_stall_iterations), 1, 0)
 end
 
 function is_stalled!(
     detector::StallDetector{T}, value::T;
-    rel_tol::T, larger_is_better::Bool, max_plateau::Int=5,
+    rel_tol::T, larger_is_better::Bool,
 ) where {T}
-    prev = detector.prev
-    detector.prev = value
-    isnothing(prev) && return false
-    rel_improvement = if prev > zero(T)
-        larger_is_better ? (value - prev) / prev : (prev - value) / prev
+    n = length(detector.window)
+    detector.count += 1
+    if detector.count <= n
+        detector.window[detector.head] = value
+        detector.head = detector.head == n ? 1 : detector.head + 1
+        return false
+    end
+    oldest = detector.window[detector.head]
+    detector.window[detector.head] = value
+    detector.head = detector.head == n ? 1 : detector.head + 1
+    rel_improvement = if oldest > zero(T)
+        larger_is_better ? (value - oldest) / oldest : (oldest - value) / oldest
     else
         zero(T)
     end
-    if rel_improvement < rel_tol
-        detector.plateau_count += 1
-    else
-        detector.plateau_count = 0
-    end
-    return detector.plateau_count >= max_plateau
+    return rel_improvement < rel_tol
 end
 
 #
@@ -489,6 +511,9 @@ function packmol_callback(
     dmin_stall_detector::Union{Nothing,StallDetector} = nothing,
     constraint_stall_detector::Union{Nothing,StallDetector} = nothing,
     stall_tolerance = 1e-2 * tolerance_precision,
+    f_stall_detector::Union{Nothing,StallDetector} = nothing,
+    f::Union{Nothing,Real} = nothing,
+    f_stall_tolerance = 0.10,
     dmin_stalled_flag::Union{Nothing,Ref{Bool}} = nothing,
     constraint_stalled_flag::Union{Nothing,Ref{Bool}} = nothing,
 )
@@ -503,20 +528,38 @@ function packmol_callback(
     if tol_ok && const_ok
         return true
     end
+    # dmin/max_const are each a worst-case-over-all-atoms extremum, not an
+    # aggregate: in a large system it's common for whichever single pair
+    # currently holds that worst value to sit frozen for a stretch — stuck
+    # behind other molecules resolving their own, larger violations first —
+    # even while the coupled objective f is still falling sharply overall.
+    # So neither metric's own plateau is trusted on its own: it only counts
+    # as a real stall once f *also* shows no significant net improvement
+    # (< f_stall_tolerance, e.g. 10%) over its own, much longer window
+    # (`f_stall_detector`, sized to maxit/20 by the caller) — genuine
+    # overall progress vetoes a worst-case-metric plateau. `is_stalled!` is
+    # still called unconditionally each iteration (not short-circuited) so
+    # every detector's window stays populated regardless of which branch
+    # ends up mattering.
+    f_not_improving = isnothing(f_stall_detector) || isnothing(f) ||
+        is_stalled!(f_stall_detector, oftype(dmin, f); rel_tol=oftype(dmin, f_stall_tolerance), larger_is_better=false)
     # Cut this chunk short once either the minimum distance or the maximum
-    # constraint violation has plateaued for several consecutive iterations
-    # — grinding through the rest of this chunk's maxit budget on a stuck
-    # molecule cannot help; movebad! (once this chunk returns to the outer
-    # loop) is what actually relocates them. Each metric's stall detector
-    # keeps tracking regardless, but only gates the cut-short decision (and
-    # the corresponding flag, which the outer loop reports as the reason
-    # this chunk ended) while its own criterion hasn't yet converged: once
-    # dmin (or the constraints) is already within tolerance, there's nothing
-    # left to stall on for it.
+    # constraint violation shows ~no net improvement over the trailing
+    # `n_stall_iterations`-iteration window (and, per above, f isn't picking
+    # up the slack) — grinding through the rest of this chunk's maxit budget
+    # on a stuck molecule cannot help; movebad! (once this chunk returns to
+    # the outer loop) is what actually relocates them. Each metric's stall
+    # detector keeps tracking regardless, but only gates the cut-short
+    # decision (and the corresponding flag, which the outer loop reports as
+    # the reason this chunk ended) while its own criterion hasn't yet
+    # converged: once dmin (or the constraints) is already within tolerance,
+    # there's nothing left to stall on for it.
     dmin_stalled = !isnothing(dmin_stall_detector) &&
-        is_stalled!(dmin_stall_detector, dmin; rel_tol=stall_tolerance, larger_is_better=true)
+        is_stalled!(dmin_stall_detector, dmin; rel_tol=stall_tolerance, larger_is_better=true) &&
+        f_not_improving
     const_stalled = !isnothing(constraint_stall_detector) &&
-        is_stalled!(constraint_stall_detector, max_const; rel_tol=stall_tolerance, larger_is_better=false)
+        is_stalled!(constraint_stall_detector, max_const; rel_tol=stall_tolerance, larger_is_better=false) &&
+        f_not_improving
     if !tol_ok && dmin_stalled
         isnothing(dmin_stalled_flag) || (dmin_stalled_flag[] = true)
     end
