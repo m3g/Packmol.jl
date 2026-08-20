@@ -452,8 +452,14 @@ const hash_line = repeat('#', 80)
 mutable struct StallDetector{T}
     prev::Union{Nothing,T}
     plateau_count::Int
+    # The only constructor ever needed (see call sites below) — declaring it
+    # as the sole inner constructor suppresses Julia's auto-generated default
+    # constructors, in particular the outer one taking `prev` positionally:
+    # with `prev::Union{Nothing,T}`, that auto-generated method's `T` isn't
+    # inferable from a `nothing` argument, which Aqua's unbound-args check
+    # (rightly) flags.
+    StallDetector{T}() where {T} = new{T}(nothing, 0)
 end
-StallDetector{T}() where {T} = StallDetector{T}(nothing, 0)
 
 function is_stalled!(
     detector::StallDetector{T}, value::T;
