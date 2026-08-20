@@ -189,17 +189,25 @@ function packmol(
         # Run a short optimization (maxit iterations per loop)
         progress_meter = Progress(maxit; desc=" Iterations: ", barlen=47)
         fg_closure = (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices, radscale)
-        # Fresh stall detector per chunk: plateau state from the *previous*
+        # Fresh stall detectors per chunk: plateau state from the *previous*
         # chunk isn't meaningful here, since movebad! (or the initial
-        # placement) just changed the starting point.
-        stall_detector = StallDetector{T}()
+        # placement) just changed the starting point. `chunk_stalled` is set
+        # by `packmol_callback` when it cuts the chunk short because of a
+        # stall (as opposed to full convergence or simply exhausting the
+        # maxit budget) — the outer loop below uses it, instead of an
+        # inter-loop function-value comparison, to decide whether to move
+        # bad molecules or loosen/tighten radscale.
+        dmin_stall_detector = StallDetector{T}()
+        constraint_stall_detector = StallDetector{T}()
+        chunk_stalled = Ref(false)
         optresult = if optimizer === :spgbox
             spgbox!(
                 fg_closure,
                 x;
-                callback=(result) -> packmol_callback(result, cl_system, tol, iprint,
+                callback=(_) -> packmol_callback(cl_system, tol, iprint,
                     packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
-                    stall_detector, stall_tolerance=packmol_system.stall_tolerance,
+                    dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
+                    stalled=chunk_stalled,
                 ),
                 vaux=auxvecs,
                 nitmax=maxit,
@@ -211,17 +219,17 @@ function packmol(
             # internal epsgpsn criterion triggers). This is fine: the outer
             # loop below still re-checks Packmol's own tol_ok/const_ok
             # convergence after every chunk regardless of which optimizer
-            # produced it. `packmol_callback`'s first argument (`spgresult`)
-            # is unused in its body, so it's safe to reuse here with a
-            # dummy value just for the progress-bar/showvalues side effect.
-            # Stall detection is skipped too (stall_detector=nothing): it
-            # relies on `spgresult.f` at each iteration, which GENCAN's
-            # argument-less callback doesn't provide.
+            # produced it. Stall detection itself works the same as for
+            # SPGBox, since it reads `cl_system.fg.dmin` (updated by every
+            # `fg_closure` evaluation, regardless of which optimizer drives
+            # it) rather than anything GENCAN's argument-less callback would
+            # need to supply.
             gencan!(
                 fg_closure, x;
-                callback=() -> packmol_callback(nothing, cl_system, tol, iprint,
+                callback=() -> packmol_callback(cl_system, tol, iprint,
                     packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
-                    stall_detector=nothing, stall_tolerance=packmol_system.stall_tolerance,
+                    dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
+                    stalled=chunk_stalled,
                 ),
                 nitmax=maxit,
                 nfevalmax=10 * maxit,
@@ -299,9 +307,8 @@ function packmol(
         end
 
         # Move bad molecules once the tolerance has been fully tightened
-        # (radscale == 1, matching Fortran) and this loop did not improve
-        # f by at least 10%.
-        if radscale == one(T) && fimp_last < T(10)
+        # (radscale == 1, matching Fortran) and this chunk stalled.
+        if radscale == one(T) && chunk_stalled[]
             cm_min, cm_max = compute_cm_bounds(packmol_system)
             nmoved = movebad!(
                 packmol_system, cl_system.fg.fmol, free_mol_indices, mol_structure_type, RNG;
@@ -319,13 +326,10 @@ function packmol(
         end
 
         # Loosen-tolerance heuristic decay: relax radscale toward 1.0 once
-        # improvement stalls (either already within tolerance precision and
-        # improving less than 10%, or improving less than 2% regardless).
-        # This sets the radscale movebad above will see next loop.
-        if radscale > one(T)
-            if (tol_ok && fimp_last < T(10)) || fimp_last < T(2)
-                radscale = max(T(0.9) * radscale, one(T))
-            end
+        # this chunk stalled. This sets the radscale movebad above will see
+        # next loop.
+        if radscale > one(T) && chunk_stalled[]
+            radscale = max(T(0.9) * radscale, one(T))
         end
     end
 
@@ -390,33 +394,47 @@ const dash_line = repeat('-', 80)
 const hash_line = repeat('#', 80)
 
 #
-# Tracks whether `f` has stopped meaningfully improving over several
-# *consecutive* SPGBox iterations within a single packing-loop chunk — a
-# more robust stall signal than an instantaneous gradient/function ratio
-# (tried and reverted: on this coupled, many-body objective, the projected
-# gradient can look artificially small for the first iteration or two after
-# a chunk starts, e.g. right after movebad! scrambles some positions, well
-# before the spectral step-size estimate has calibrated — that caused chunks
-# to bail out almost immediately, before making any real progress).
+# Tracks whether a scalar convergence metric has stopped meaningfully
+# improving over several *consecutive* SPGBox iterations within a single
+# packing-loop chunk. Used for two independent metrics: the minimum
+# interatomic distance `dmin` (the quantity `tol_ok` depends on, larger is
+# better) and the maximum constraint violation `max_constraint_penalty` (the
+# quantity `const_ok` depends on, smaller is better). A handful of molecules
+# genuinely stuck (deep inside a fixed structure, or wedged against others
+# with nowhere left to go) show up as one of these flatlining, even while
+# the coupled many-body objective f may still be improving elsewhere in the
+# system (tried f itself and reverted: on this coupled objective, an
+# instantaneous gradient/function ratio can look artificially small for the
+# first iteration or two after a chunk starts, e.g. right after movebad!
+# scrambles some positions, well before the spectral step-size estimate has
+# calibrated — that caused chunks to bail out almost immediately, before
+# making any real progress).
 #
-# `f_prev = nothing` marks "no baseline yet" (start of a chunk), so the
-# first call is never counted as a plateau. `plateau_count` counts
-# consecutive iterations whose relative improvement over the previous one
-# falls below `rel_tol`; it resets to 0 on any iteration that improves by
-# more than that. `is_stalled!` reports true once `plateau_count` reaches
+# `prev = nothing` marks "no baseline yet" (start of a chunk), so the first
+# call is never counted as a plateau. `plateau_count` counts consecutive
+# iterations whose relative improvement over the previous one falls below
+# `rel_tol`; it resets to 0 on any iteration that improves by more than
+# that. `is_stalled!` reports true once `plateau_count` reaches
 # `max_plateau`.
 #
 mutable struct StallDetector{T}
-    f_prev::Union{Nothing,T}
+    prev::Union{Nothing,T}
     plateau_count::Int
 end
 StallDetector{T}() where {T} = StallDetector{T}(nothing, 0)
 
-function is_stalled!(detector::StallDetector{T}, f::T; rel_tol::T, max_plateau::Int=5) where {T}
-    f_prev = detector.f_prev
-    detector.f_prev = f
-    isnothing(f_prev) && return false
-    rel_improvement = f_prev > zero(T) ? (f_prev - f) / f_prev : zero(T)
+function is_stalled!(
+    detector::StallDetector{T}, value::T;
+    rel_tol::T, larger_is_better::Bool, max_plateau::Int=5,
+) where {T}
+    prev = detector.prev
+    detector.prev = value
+    isnothing(prev) && return false
+    rel_improvement = if prev > zero(T)
+        larger_is_better ? (value - prev) / prev : (prev - value) / prev
+    else
+        zero(T)
+    end
     if rel_improvement < rel_tol
         detector.plateau_count += 1
     else
@@ -429,28 +447,37 @@ end
 # SPGBox callback: print progress and check convergence
 #
 function packmol_callback(
-    spgresult, cl_system, tol, iprint, tolerance_precision, constraint_precision, progress_meter;
-    stall_detector::Union{Nothing,StallDetector} = nothing,
+    cl_system, tol, iprint, tolerance_precision, constraint_precision, progress_meter;
+    dmin_stall_detector::Union{Nothing,StallDetector} = nothing,
+    constraint_stall_detector::Union{Nothing,StallDetector} = nothing,
     stall_tolerance = 1e-2 * tolerance_precision,
+    stalled::Union{Nothing,Ref{Bool}} = nothing,
 )
-    next!(progress_meter; showvalues = [
-        (" Minimum distance: ", min(cl_system.fg.dmin, cl_system.cutoff)),
-        (" Maximum constraint violation: ", cl_system.fg.max_constraint_penalty),
-    ])
     dmin = min(cl_system.fg.dmin, cl_system.cutoff)
+    max_const = cl_system.fg.max_constraint_penalty
+    next!(progress_meter; showvalues = [
+        (" Minimum distance: ", dmin),
+        (" Maximum constraint violation: ", max_const),
+    ])
     tol_ok = tol - dmin < tolerance_precision
-    const_ok = cl_system.fg.max_constraint_penalty < constraint_precision
+    const_ok = max_const < constraint_precision
     if tol_ok && const_ok
         return true
     end
-    # Cut this chunk short once f has plateaued for several consecutive
-    # iterations: a handful of molecules genuinely stuck (deep inside a
-    # fixed structure, or wedged against others with nowhere left to go)
-    # produce exactly this signature, while the bulk of the system is
-    # otherwise fine — grinding through the rest of this chunk's maxit
-    # budget on them cannot help; movebad! (once this chunk returns to the
-    # outer loop) is what actually relocates them.
-    if !isnothing(stall_detector) && is_stalled!(stall_detector, spgresult.f; rel_tol=stall_tolerance)
+    # Cut this chunk short once either the minimum distance or the maximum
+    # constraint violation has plateaued for several consecutive iterations
+    # — grinding through the rest of this chunk's maxit budget on a stuck
+    # molecule cannot help; movebad! (once this chunk returns to the outer
+    # loop) is what actually relocates them. Each metric's stall detector
+    # keeps tracking regardless, but only gates the cut-short decision while
+    # its own criterion hasn't yet converged: once dmin (or the constraints)
+    # is already within tolerance, there's nothing left to stall on for it.
+    dmin_stalled = !isnothing(dmin_stall_detector) &&
+        is_stalled!(dmin_stall_detector, dmin; rel_tol=stall_tolerance, larger_is_better=true)
+    const_stalled = !isnothing(constraint_stall_detector) &&
+        is_stalled!(constraint_stall_detector, max_const; rel_tol=stall_tolerance, larger_is_better=false)
+    if (!tol_ok && dmin_stalled) || (!const_ok && const_stalled)
+        isnothing(stalled) || (stalled[] = true)
         return true
     end
     return false

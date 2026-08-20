@@ -13,7 +13,9 @@
     tolerance_precision::T = 1e-2
     constraint_precision::T = 1e-2
     # Relative-improvement threshold below which the stall detector counts a
-    # plateau iteration during SPGBox packing chunks (see packmol_main.jl).
+    # plateau iteration in either the minimum interatomic distance or the
+    # maximum constraint violation during a packing chunk (see
+    # packmol_main.jl).
     stall_tolerance::T = 1e-2 * tolerance_precision
     max_iter::Int = 1000
     max_random_init::Int=20
