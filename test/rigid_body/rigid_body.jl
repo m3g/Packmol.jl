@@ -70,6 +70,48 @@ The new position is returned in `x_new`, a previously allocated array.
     @test check_internal_distances(x, Packmol.random_move!(copy(x), 1, system, RNG))
 end
 
+@testitem "kabsch_rotation / euler_angles" setup=[RigidBody] begin
+    using StaticArrays
+    using LinearAlgebra: norm
+    import Random
+
+    # A generic (5-point, non-degenerate) centered point cloud, rotated by a
+    # known R, must have that R (and its Euler-angle decomposition) exactly
+    # recoverable — this is what `_align_molecule` relies on for a PDB-based
+    # restart_from.
+    rng = Random.Xoshiro(1)
+    n = 5
+    pts = [SVector{3,Float64}(randn(rng, 3)) for _ in 1:n]
+    pts .-= Ref(sum(pts) / n)
+
+    for _ in 1:200
+        beta, gamma, theta = 2π .* rand(rng, 3) .- π
+        R_true = Packmol.eulermat(beta, gamma, theta)
+        observed = [R_true * p for p in pts]
+
+        R_rec = Packmol.kabsch_rotation(pts, observed)
+        @test maximum(norm(R_rec * pts[i] - observed[i]) for i in 1:n) < 1e-8
+
+        angles = Packmol.euler_angles(R_rec)
+        R_from_angles = Packmol.eulermat(angles...)
+        @test maximum(norm(R_from_angles * pts[i] - observed[i]) for i in 1:n) < 1e-3
+    end
+
+    # Gimbal lock (gamma = ±π/2): beta and theta aren't individually
+    # identifiable from R alone, but the reconstructed rotation must still
+    # match — see `euler_angles`'s docstring.
+    for (beta, gamma, theta) in ((0.3, π / 2, 0.7), (1.1, -π / 2, -0.4), (2.0, -π / 2, -1.5))
+        R_true = Packmol.eulermat(beta, gamma, theta)
+        observed = [R_true * p for p in pts]
+        R_rec = Packmol.kabsch_rotation(pts, observed)
+        angles = Packmol.euler_angles(R_rec)
+        R_from_angles = Packmol.eulermat(angles...)
+        @test maximum(norm(R_from_angles * pts[i] - observed[i]) for i in 1:n) < 1e-6
+    end
+
+    @test_throws ArgumentError Packmol.kabsch_rotation(pts, pts[1:end-1])
+end
+
 @testitem "set_reference_coordinates!" setup=[RigidBody] begin
     using PDBTools
     using StaticArrays

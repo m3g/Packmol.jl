@@ -13,7 +13,34 @@ Structure that contains the input data for a structure block in the input file.
     fixed::FixedMoleculeData{D,T} = zero(FixedMoleculeData{D,T})
     reference_coordinates::Vector{SVector{D,T}}
     radii::Vector{T} = T[]
-    residue_numbering::Int = 1
+    # -1 (unset, Fortran Packmol's own sentinel) is resolved at output time
+    # (write_output.jl) to 0 for a single-residue template or 1 for a
+    # multi-residue one — matching Fortran's `setrnum` auto-detection, since
+    # a literal default of 1 (verbatim template residue number) would give
+    # every copy of a single-residue solvent molecule the same residue
+    # number.
+    residue_numbering::Int = -1
+    # `nothing` (Fortran's `chain` unset, "#") means auto-assign a chain letter
+    # per molecule at output time (see write_output.jl); an explicit `Char`
+    # (from the `chain <c>` keyword) fixes every molecule of this type to
+    # that one chain identifier instead.
+    chain::Union{Nothing,Char} = nothing
+    changechains::Bool = false
+    # Per-axis (index 1=x, 2=y, 3=z — matching `eulermat`'s angle order, see
+    # rigid_body.jl) bound on that molecule's rotation angle, as
+    # (lower, upper) in radians; `nothing` means unconstrained. Set by
+    # `constrain_rotation <axis> <center_deg> <halfwidth_deg>`, one line per
+    # constrained axis. Applied as hard bounds on the optimization variables
+    # in the main packing loop (matching Fortran Packmol's own `pgencan`,
+    # which sets GENCAN's `l`/`u` this way) and as the sampling range for
+    # that axis during initial random placement.
+    rotation_bounds::Vector{Union{Nothing,Tuple{T,T}}} = fill(nothing, D)
+    # Per-structure-type restart (Fortran's `restart_from`/`restart_to` given
+    # inside a `structure ... end structure` block): `nothing` means unset.
+    # See `PackmolSystem.restart_from`/`restart_to` for the whole-system
+    # version, and its docstring for the accepted `restart_from` sources.
+    restart_from::Union{Nothing,String,Vector{<:Atom}} = nothing
+    restart_to::Union{Nothing,String} = nothing
     connect::Vector{Vector{Int}} = Vector{Int}[]
     # AnyConstraint{T} (a closed Union of every concrete constraint type, not
     # the abstract Constraint) so constraint dispatch in the hot packing loop
@@ -77,7 +104,7 @@ end
 
 """
     structure_type(filename; number, constraints=Constraint[], tolerance=2.0, radius=nothing,
-                    fixed=nothing, center=:none, residue_numbering=1, D=3, T=Float64)
+                    fixed=nothing, center=:none, residue_numbering=-1, D=3, T=Float64)
 
 Build a `StructureType` for `number` copies of the molecule read from the PDB file
 `filename`, without going through an input file. Every constraint in `constraints`
@@ -107,10 +134,19 @@ function structure_type(filename::String;
     radius::Union{Nothing,Real} = nothing,
     fixed::Union{Nothing,Tuple} = nothing,
     center::Symbol = :none,
-    residue_numbering::Int = 1,
+    residue_numbering::Int = -1,
+    chain::Union{Nothing,Char} = nothing,
+    changechains::Bool = false,
+    # e.g. `constrain_rotation=Dict(:x => (45, 10))` bounds the x-axis
+    # rotation angle to 45° ± 10°; see `StructureType.rotation_bounds`.
+    constrain_rotation::AbstractDict{Symbol} = Dict{Symbol,Tuple{Float64,Float64}}(),
+    restart_from::Union{Nothing,String,Vector{<:Atom}} = nothing,
+    restart_to::Union{Nothing,String} = nothing,
     D::Int = 3,
     T::DataType = Float64,
 )
+    changechains && !isnothing(chain) &&
+        error("'changechains' and 'chain' are not compatible for a single structure.")
     atoms = read_pdb(filename)
     natoms = length(atoms)
     reference_coordinates = [SVector{D,T}(c[1:D]...) for c in coor(atoms)]
@@ -126,10 +162,21 @@ function structure_type(filename::String;
     end
     _apply_fixed_center!(reference_coordinates, atoms, fixed_data, center)
 
+    rotation_bounds = Union{Nothing,Tuple{T,T}}[nothing for _ in 1:D]
+    axis_index = Dict(:x => 1, :y => 2, :z => 3)
+    for (axis, (center_deg, halfwidth_deg)) in constrain_rotation
+        haskey(axis_index, axis) || error("constrain_rotation axis must be :x, :y, or :z, got $(repr(axis))")
+        idx = axis_index[axis]
+        idx > D && error("constrain_rotation axis $axis is out of range for D=$D")
+        hw = abs(T(halfwidth_deg)) * T(π) / 180
+        c = T(center_deg) * T(π) / 180
+        rotation_bounds[idx] = (c - hw, c + hw)
+    end
+
     return StructureType{D,T}(;
-        filename, natoms, atoms, number_of_molecules=number,
+        filename, natoms, atoms, number_of_molecules=number, rotation_bounds, restart_from, restart_to,
         fixed=fixed_data, reference_coordinates, radii,
-        residue_numbering, constraints, atom_constraints,
+        residue_numbering, chain, changechains, constraints, atom_constraints,
     )
 end
 
@@ -185,6 +232,25 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
             structure_data[:center] = :mass
         elseif keyword == "resnumbers"
             structure_data[:residue_numbering] = parse(Int, values[1])
+        elseif keyword == "chain"
+            structure_data[:chain] = only(values[1])
+        elseif keyword == "changechains"
+            structure_data[:changechains] = true
+        elseif keyword == "constrain_rotation"
+            axis, center_str, halfwidth_str = values[1], values[2], values[3]
+            idx = axis == "x" ? 1 : axis == "y" ? 2 : axis == "z" ? 3 :
+                error("constrain_rotation axis must be x, y, or z, got '$axis'")
+            idx > D && error("constrain_rotation axis '$axis' is out of range for D=$D")
+            if !haskey(structure_data, :rotation_bounds)
+                structure_data[:rotation_bounds] = Union{Nothing,Tuple{T,T}}[nothing for _ in 1:D]
+            end
+            hw = abs(parse(T, halfwidth_str)) * T(π) / 180
+            c = parse(T, center_str) * T(π) / 180
+            structure_data[:rotation_bounds][idx] = (c - hw, c + hw)
+        elseif keyword == "restart_from"
+            structure_data[:restart_from] = string(values[1])
+        elseif keyword == "restart_to"
+            structure_data[:restart_to] = string(values[1])
         elseif keyword in constraint_placements
             iconstraint += 1
             push!(structure_data[:constraints], parse_constraint["$keyword $(values[1])"](structure_data, values[2:end]; T=T))
@@ -231,6 +297,9 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
                 end
             end
         end
+    end
+    if get(structure_data, :changechains, false) && !isnothing(get(structure_data, :chain, nothing))
+        error("'changechains' and 'chain' input parameters are not compatible for a single structure.")
     end
     return StructureType{D,T}(;structure_data...)
 end

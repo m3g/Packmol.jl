@@ -110,7 +110,7 @@ These are the building blocks everything else depends on.
 - [x] Julia-native construction API (no input file needed): `structure_type(pdbfile; number, constraints, ...)`
       + `PackmolSystem(structure_types; output, ...)`, documented in `docs/src/experimental/julia_api.md`
 - [ ] Missing keyword parsing: `movefrac`, `movebadrandom`, `sidemax` (won't be supported),
-      `precision`, `fbins` (won´t be supported), `fscale`, `use_short_tol`, `short_tol_dist`, `short_tol_scale`, `short_radius`, `short_radius_scale`, `resnumbers`, `changechains`, `chain`, `restart_from`, `restart_to`, `constrain_rotation`, `nloop`
+      `precision`, `fbins` (won´t be supported), `fscale`, `use_short_tol`, `short_tol_dist`, `short_tol_scale`, `short_radius`, `short_radius_scale`, `nloop`
 
 ---
 
@@ -165,11 +165,13 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 
 #### PDB Output
 - [x] Write packed coordinates to PDB file
-- [ ] Residue numbering schemes (`resnumbers` 0/1/2/3)
-- [ ] Chain identifier control (`changechains`, `chain`)
+- [x] Residue numbering schemes (`resnumbers` 0/1/2/3, per structure type, with Fortran's
+      single-/multi-residue-template auto-detected default when unset)
+- [x] Chain identifier control (`changechains`, `chain`, per structure type, with Fortran's
+      auto-cycling A-Z/1-9/0 default when unset)
 - [ ] AMBER TER records (`add_amber_ter`, `amber_ter_preserve`)
-- [ ] CONECT record preservation (`connect`) - requires PDBTools.jl to support connectivity.
-- [ ] CRYST1 record with box dimensions (`add_box_sides`)
+- [ ] CONECT record preservation (`connect`) - requires PDBTools.jl to support connectivity first.
+- [x] CRYST1 record with box dimensions (`add_box_sides`, or automatically when PBC is set)
 
 #### Other Output Formats
 - [ ] Tinker XYZ format (won't be supported)
@@ -180,9 +182,13 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 
 ### Phase 5: Advanced Features
 
-- [ ] Restart capability (`restart_from`, `restart_to`)
+- [x] Restart capability (`restart_from`, `restart_to`, whole-system and per structure type). Raw
+      Packmol-format restart files only for now (a PDB-based restart, rigid-body-aligning each
+      molecule's template to observed atom positions, was discussed and judged feasible but not
+      yet built).
 - [ ] Short-range tolerance (`use_short_tol`, `short_tol_dist`, etc.)
-- [ ] Rotation constraints (`constrain_rotation`)
+- [x] Rotation constraints (`constrain_rotation`) - implemented as hard bounds on the rotation-angle
+      optimization variables (matching Fortran's own `pgencan` bound-setting), not a soft penalty.
 - [ ] Gradient checking mode (`chkgrad` - compare analytical vs numerical gradients) - This is not necessary in the code itself, but for testing, and if the user implements new constraints, we will provide the directives on how to test their gradients. 
 - [ ] 2D packing support (data structures support D=2, needs testing and validation)
 
@@ -249,7 +255,6 @@ Key bugs fixed along the way:
 Next priorities:
 1. Multi-start strategy for better initial convergence
 2. Multi-structure systems (protein + water + ions)
-3. Output options (residue numbering, chain IDs, CRYST1 record)
 
 ---
 

@@ -40,10 +40,20 @@ function set_initial_approximation!(
     restart::Bool=false,
     buffers::Union{Nothing,MemoryBuffers{D,T}} = nothing,
 ) where {D,T}
+    # Reference-coordinate centering must happen regardless of `restart`:
+    # skipping it would leave restarted molecules offset by their template's
+    # raw, uncentered PDB coordinates (see `_center_reference_coordinates!`).
+    _center_reference_coordinates!(packmol_system)
+
+    # `restart=true` means the caller has already set every molecule's
+    # position (packmol()'s whole-system restart_from) and the whole point
+    # is to skip the rest of this pipeline entirely — including step 1's
+    # random placement, which would otherwise unconditionally overwrite
+    # those positions before ever checking this flag.
+    restart && return packmol_system
+
     # Step 1: Random initial placement
     initialize_molecules!(packmol_system, RNG)
-
-    restart && return packmol_system
 
     # Step 2: Constraint-only optimization (no movebad) to push molecules
     # toward feasible regions, then compute CM bounds from the result.

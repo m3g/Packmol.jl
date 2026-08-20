@@ -31,6 +31,23 @@
     optim_print_level::Int = 0
     chkgrad::Bool = false
     check::Bool = false
+    # Whole-system restart (Fortran's `restart_from`/`restart_to` with no
+    # structure type, i.e. index 0): `nothing` means unset. When
+    # `restart_from` is set, packmol() skips the whole initial-approximation
+    # pipeline entirely and reads every molecule's position from this
+    # source instead — the point of a whole-system restart is to skip that
+    # (potentially expensive, for a large system) phase, not just to get
+    # the same final starting point some other way.
+    # `restart_from` accepts either a file path (a raw Packmol-format
+    # restart file, or a `.pdb` — recognized by extension — whose atoms are
+    # rigid-body-aligned against each structure type's own template to
+    # recover (cm, angles); see `_align_molecule` in write_output.jl) or,
+    # Julia-API only, a `Vector{<:Atom}` already in memory (skipping the
+    # file entirely). `restart_to` only ever writes the raw format.
+    # See also `StructureType.restart_from`/`restart_to` for the
+    # per-structure-type equivalents.
+    restart_from::Union{Nothing,String,Vector{<:Atom}} = nothing
+    restart_to::Union{Nothing,String} = nothing
     # Unit cell for periodic boundary conditions (nothing = no PBC)
     unitcell::Union{Nothing, Matrix{T}} = nothing
     # Reference center for PBC wrapping (constraints evaluated relative to this point)
@@ -178,6 +195,8 @@ packmol_input_keywords = Dict{String,Function}(
     "writebad"                 => (T, val) -> (:writebad, true),
     "optimization_print_level" => (T, val) -> (:optimization_print_level, _parse_value(Int, "optim_print_level", val)),
     "chkgrad"                  => (T, val) -> (:chkgrad, true),
+    "restart_from"             => (T, val) -> (:restart_from, _parse_value(String, "restart_from", val)),
+    "restart_to"               => (T, val) -> (:restart_to, _parse_value(String, "restart_to", val)),
 )
 #! format: on
 
@@ -228,8 +247,6 @@ packmol_unimplemented_keywords = Dict{String,String}(
     "short_radius" => "short_radius keyword is not yet implemented in Packmol.jl and was ignored.",
     "short_radius_scale" => "short_radius_scale keyword is not yet implemented in Packmol.jl and was ignored.",
     "nloop" => "nloop keyword is not yet implemented in Packmol.jl and was ignored.",
-    "restart_from" => "restart_from keyword is not yet implemented in Packmol.jl and was ignored.",
-    "restart_to" => "restart_to keyword is not yet implemented in Packmol.jl and was ignored.",
 )
 
 #=
@@ -250,6 +267,24 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
             line = strip(line)
             (startswith(line, "#") || isempty(line)) && continue
             keyword, values... = split(line)
+            # `structure`/`end structure` must be recognized regardless of
+            # section state (to track it in the first place); everything
+            # else inside a structure block is skipped here unconditionally
+            # and left entirely to the second pass (`read_structure_data`
+            # below) — otherwise a keyword name valid both globally and
+            # per-structure (e.g. `restart_from`) would be wrongly applied
+            # system-wide from inside a `structure ... end structure` block.
+            if keyword == "structure"
+                structure_section = true
+                continue
+            end
+            if keyword == "end" && !isempty(values) && values[1] == "structure"
+                structure_section = false
+                continue
+            end
+            if structure_section
+                continue
+            end
             # Handle no-value keywords first
             if keyword == "check"
                 input_data[:check] = true
@@ -304,19 +339,6 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
                 params = [_parse_value(T, "unitcell", v) for v in values]
                 input_data[:unitcell] = Matrix{T}(unitcell_matrix(T, params...))
                 input_data[:unitcell_center] = zero(SVector{D,T})
-                continue
-            end
-            if keyword == "structure"
-                structure_section = true
-                continue
-            end
-            if keyword == "end" && values[1] == "structure"
-                if structure_section
-                    structure_section = false
-                end 
-                continue
-            end
-            if structure_section
                 continue
             end
             throw(ArgumentError("Keyword $keyword not recognized"))

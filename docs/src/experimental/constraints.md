@@ -92,6 +92,23 @@ An axis-aligned ellipsoid centered at `(cx,cy,cz)` with semi-axes `a`, `b`,
 `c*scale`. `scale` lets the same base ellipsoid (e.g. one fit to a
 reference structure) be grown or shrunk without recomputing `a`, `b`, `c`.
 
+## Rotation constraint
+
+```
+constrain_rotation <x|y|z> <center_deg> <halfwidth_deg>
+```
+
+Unlike the shape constraints above, this does not restrict where a
+structure's atoms are placed — it restricts how the whole molecule is
+allowed to rotate. It bounds rotation about the given axis to
+`<center_deg> ± <halfwidth_deg>` degrees, as a hard bound on the optimizer's
+own rotation-angle variable rather than a soft penalty. It is set once per
+structure (not per constraint line, and not wrappable in `atoms ... end`);
+repeat the line once per axis to constrain more than one. In the [Julia
+API](julia_api.md), it is the `constrain_rotation` keyword of
+[`structure_type`](@ref), taking a `Dict` such as
+`Dict(:z => (0.0, 15.0))`.
+
 ## Julia constructors
 
 Each shape above also has `Inside`/`Outside` (or `Above`/`Below`) Julia

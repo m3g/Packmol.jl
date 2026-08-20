@@ -68,6 +68,51 @@ rotate!(x::AbstractVector{<:SVector{D,T}}, pos::MoleculePosition{D,T}) where {D,
 rotate!(x::AbstractVector{<:SVector{3,T}}, angles::SVector{3,T}) where {T} =
     rotate!(x, angles[1], angles[2], angles[3])
 
+#
+# Optimal rigid-body rotation (Kabsch algorithm) aligning `reference` onto
+# `observed`, both already centered at their own centroid: the rotation
+# matrix R minimizing `sum(norm(R*reference[i] - observed[i])^2 for i)`.
+# `reference`/`observed` must correspond atom-for-atom (same length, same
+# order). Used to recover a molecule's (cm, angles) from a PDB restart file
+# — see `_align_molecule` in write_output.jl.
+#
+function kabsch_rotation(reference::AbstractVector{<:SVector{3,T}}, observed::AbstractVector{<:SVector{3,T}}) where {T}
+    length(reference) == length(observed) ||
+        throw(ArgumentError("reference and observed must have the same number of points, got $(length(reference)) and $(length(observed))"))
+    H = sum(r * o' for (r, o) in zip(reference, observed))
+    F = svd(Matrix(H))
+    d = sign(det(F.V * F.U'))
+    D = Diagonal(SVector(one(T), one(T), T(d)))
+    return SMatrix{3,3,T}(F.V * D * F.U')
+end
+
+#
+# Inverse of `eulermat`: recovers (beta, gamma, theta) — in eulermat's own
+# convention (x, y, z rotation, respectively) — from a rotation matrix, up
+# to the usual gimbal-lock ambiguity at gamma = ±π/2 (there beta and theta
+# are not individually identifiable from R alone; beta is arbitrarily fixed
+# to 0 and theta absorbs the whole remaining rotation).
+#
+function euler_angles(R::AbstractMatrix{T}) where {T}
+    s2 = clamp(R[1, 3], -one(T), one(T))
+    gamma = asin(s2)
+    c2 = sqrt(one(T) - s2^2)
+    # A generous threshold, not just "not exactly zero": `R[2,3]`/`R[3,3]`
+    # (used in the well-conditioned branch below) both scale with c2, so
+    # their ratio becomes numerically unstable well before c2 actually
+    # reaches zero — particularly for an `R` that, unlike a literal
+    # `eulermat(...)` call, is itself already the result of a noisy
+    # computation (e.g. `kabsch_rotation`'s SVD).
+    if c2 > sqrt(sqrt(eps(T)))
+        beta = atan(-R[2, 3], R[3, 3])
+        theta = atan(-R[1, 2], R[1, 1])
+    else
+        beta = zero(T)
+        theta = atan(R[2, 1], R[2, 2])
+    end
+    return SVector{3,T}(beta, gamma, theta)
+end
+
 function random_move!(
     x::AbstractVector{<:SVector{3}},
     irefatom::Int,
