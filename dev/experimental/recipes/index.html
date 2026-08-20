@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Recipes · Packmol.jl</title><meta name="title" content="Recipes · Packmol.jl"/><meta property="og:title" content="Recipes · Packmol.jl"/><meta property="twitter:title" content="Recipes · Packmol.jl"/><meta name="description" content="Documentation for Packmol.jl."/><meta property="og:description" content="Documentation for Packmol.jl."/><meta property="twitter:description" content="Documentation for Packmol.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div class="has-top-menu" id="documenter"><nav class="docs-top-menu"><div class="container"><ul class="docs-top-menu-list"><li class="docs-top-dropdown"><a class="docs-top-menu-link" href="../../">Stable<span class="docs-top-dropdown-caret">▾</span></a><ul class="docs-top-dropdown-menu"><li><a class="docs-top-dropdown-item" href="../../">Home</a></li></ul></li><li class="docs-top-dropdown is-active"><a class="docs-top-menu-link" href="../">Experimental<span class="docs-top-dropdown-caret">▾</span></a><ul class="docs-top-dropdown-menu"><li><a class="docs-top-dropdown-item" href="../">Home</a></li><li><a class="docs-top-dropdown-item" href="../input_files/">Input files</a></li><li><a class="docs-top-dropdown-item" href="../constraints/">Constraints</a></li><li><a class="docs-top-dropdown-item" href="../julia_api/">Defining systems in Julia</a></li><li><a class="docs-top-dropdown-item" href>Recipes</a></li><li><a class="docs-top-dropdown-item" href="../../concentration_units/">Concentration units</a></li><li><a class="docs-top-dropdown-item" href="../reference/">Reference</a></li></ul></li></ul></div></nav><div class="docs-content-wrapper"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="Packmol.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Packmol.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../input_files/">Input files</a></li><li><a class="tocitem" href="../constraints/">Constraints</a></li><li><a class="tocitem" href="../julia_api/">Defining systems in Julia</a></li><li class="is-active"><a class="tocitem" href>Recipes</a><ul class="internal"><li><a class="tocitem" href="#Overview"><span>Overview</span></a></li><li><a class="tocitem" href="#Running-Packmol"><span>Running Packmol</span></a></li><li><a class="tocitem" href="#Solute-Solvent-system"><span>Solute-Solvent system</span></a></li><li><a class="tocitem" href="#Solute-Solvent-Cossolvent-system"><span>Solute-Solvent-Cossolvent system</span></a></li><li><a class="tocitem" href="#Solute-Water-Ions-system"><span>Solute-Water-Ions system</span></a></li></ul></li><li><a class="tocitem" href="../../concentration_units/">Concentration units</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Experimental</a></li><li class="is-active"><a href>Recipes</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Recipes</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/m3g/Packmol.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/m3g/Packmol.jl/blob/main/docs/src/experimental/recipes.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Recipes"><a class="docs-heading-anchor" href="#Recipes">Recipes</a><a id="Recipes-1"></a><a class="docs-heading-anchor-permalink" href="#Recipes" title="Permalink"></a></h1><div class="admonition is-warning" id="Experimental-f9228f58116fa7f0"><header class="admonition-header">Experimental<a class="admonition-anchor" href="#Experimental-f9228f58116fa7f0" title="Permalink"></a></header><div class="admonition-body"><p>Recipes are under active development. Struct fields, keyword arguments, and the exact contents of generated input files may still change.</p></div></div><h2 id="Overview"><a class="docs-heading-anchor" href="#Overview">Overview</a><a id="Overview-1"></a><a class="docs-heading-anchor-permalink" href="#Overview" title="Permalink"></a></h2><p>A recipe is a higher-level, parameter-driven system setup: instead of specifying molecule counts directly (as a <code>structure ... end structure</code> block does), a recipe takes target densities or concentrations and works out the molecule counts and box size itself. Recipes currently cover common solvation setups:</p><ul><li><a href="#Solute-Solvent-system">Solute-Solvent system</a>: a solute solvated by a single solvent.</li><li><a href="#Solute-Solvent-Cossolvent-system">Solute-Solvent-Cossolvent system</a>: a solute solvated by a mixture of two solvents (e.g. water/ethanol), at a target cossolvent concentration.</li><li><a href="#Solute-Water-Ions-system">Solute-Water-Ions system</a>: a solute solvated by water and a background salt (e.g. NaCl) at a target ionic concentration, with automatic charge neutralization of the solute.</li></ul><p>Membranes, vesicles, nanotubes, and special (octahedral/dodecahedral) box shapes are planned as future recipes.</p><p>Each solvation recipe is built the same way: construct a <code>SolutionBoxU*</code> data structure describing the components of the system (PDB files, molar masses, densities), then either call <code>write_packmol_input</code> on it to generate a <code>.inp</code> file, or call <code>packmol</code> on it directly to build and pack the system without ever writing one (see <a href="#Running-Packmol">Running Packmol</a>).</p><p>Concentrations and densities can be given as plain numbers (assumed to be in the units noted in each function&#39;s docstring) or as <a href="https://painterqubits.github.io/Unitful.jl/stable/">Unitful.jl</a> quantities (<code>55.5u&quot;mol/L&quot;</code>, <code>1.0u&quot;g/mL&quot;</code>, ...). See <a href="../../concentration_units/#Concentration-Unit-Conversion">Concentration Unit Conversion</a> for the underlying <code>cconvert</code> machinery used to convert between them.</p><h3 id="How-to-use-it"><a class="docs-heading-anchor" href="#How-to-use-it">How to use it</a><a id="How-to-use-it-1"></a><a class="docs-heading-anchor-permalink" href="#How-to-use-it" title="Permalink"></a></h3><pre><code class="language-julia-repl hljs">julia&gt; using Packmol</code></pre><p><code>SolutionBoxUS</code>, <code>SolutionBoxUSC</code>, <code>SolutionBoxUWI</code>, and <code>write_packmol_input</code> are exported directly from <code>Packmol</code>.</p><h2 id="Running-Packmol"><a class="docs-heading-anchor" href="#Running-Packmol">Running Packmol</a><a id="Running-Packmol-1"></a><a class="docs-heading-anchor-permalink" href="#Running-Packmol" title="Permalink"></a></h2><p>A recipe can be packed directly, without ever writing an explicit input file:</p><pre><code class="language-julia hljs">using Packmol
+sys = SolutionBoxUS(...)
+packmol(sys; margin=20.0, cubic=true, output=&quot;system.pdb&quot;)</code></pre><p>This builds a <code>PackmolSystem</code> directly in memory (the same structure the native, pure-Julia <a href="../julia_api/">Julia API</a> uses) and hands it to <code>packmol(::PackmolSystem)</code> — no <code>.inp</code> file is ever written; <code>output</code> is the only file produced. Keyword arguments specific to each recipe (<code>margin</code>/<code>box_sides</code>/<code>cubic</code>, plus <code>concentration</code>/<code>ionic_concentration</code> where relevant) are documented under each recipe below; any other keyword (<code>nloop</code>, <code>iprint</code>, <code>seed</code>, ...) is forwarded to the packing engine itself — see <code>packmol(::PackmolSystem)</code>.</p><p>Alternatively, <code>write_packmol_input</code> generates the <code>.inp</code> file on its own, to be run (or inspected, or edited) separately — either with the native engine:</p><pre><code class="language-julia hljs">using Packmol
+packmol(&quot;box.inp&quot;)</code></pre><p>or with the legacy Fortran binary, wrapped by <a href="../../#Packmol.run_packmol"><code>run_packmol</code></a>:</p><pre><code class="language-julia hljs">using Packmol
+run_packmol(&quot;box.inp&quot;)</code></pre><h2 id="Solute-Solvent-system"><a class="docs-heading-anchor" href="#Solute-Solvent-system">Solute-Solvent system</a><a id="Solute-Solvent-system-1"></a><a class="docs-heading-anchor-permalink" href="#Solute-Solvent-system" title="Permalink"></a></h2><p>Here, <code>SolutionBoxUS</code> stands for <code>Solute (U)</code> and <code>Solvent (S)</code>. The density of the pure solvent is given directly (<code>g/mL</code> by default, or <code>mol/L</code> for molarity).</p><article><details class="docstring"><summary id="Packmol.SolutionBoxUS"><a class="docstring-binding" href="#Packmol.SolutionBoxUS"><code>Packmol.SolutionBoxUS</code></a> — <span class="docstring-category">Type</span></summary><section><div><pre><code class="language-julia hljs">SolutionBoxUS(; 
+    solute_pdbfile::String, 
+    solvent_pdbfile::String,
+    density::Union{Quantity,Real}, # density, using Unitful units, or assumed to be g/mL
+    solute_molar_mass = nothing, # optional
+    solvent_molar_mass = nothing, # optional
+)</code></pre><p>Setup a system composed of a solute (U) and a solvent (S). </p><p>The mass or molar density can be provided. If unitless specified, the density will be assumed to be in g/mL, and the molar masses in g/mol.</p><p>If the molar masses are not provided, they will be computed from the atom types in the PDB file.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/Packmol.jl/blob/e8d92cd8cf20987390952bb10d3e7f60a5fad116/src/Recipes/SolutionBoxUS.jl#L30-L45">source</a></section></details></article><article><details class="docstring"><summary id="Packmol.write_packmol_input-Tuple{SolutionBoxUS}"><a class="docstring-binding" href="#Packmol.write_packmol_input-Tuple{SolutionBoxUS}"><code>Packmol.write_packmol_input</code></a> — <span class="docstring-category">Method</span></summary><section><div><pre><code class="language-julia hljs">write_packmol_input(
+    system::SolutionBoxUS;
+    input=&quot;box.inp&quot;,
+    output=&quot;system.pdb&quot;,
+    # box size
+    box_sides::AbstractVector{&lt;:Number}, # or
+    margin::Number,
+    cubic::Bool = false,
+)</code></pre><p>Function that generates an input file for Packmol for a Solute + Solvent system.</p><p>The box sides are given in Ångströms, and can be provided as a vector of 3 elements. Alternatively, the margin can be provided, and the box sides will be calculated as the maximum and minimum coordinates of the solute plus the margin in all 3 dimensions.</p><p>If <code>cubic</code> is set to true, the box will be cubic, and the box sides will be equal in all 3 dimensions, respecting the minimum margin provided.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/Packmol.jl/blob/e8d92cd8cf20987390952bb10d3e7f60a5fad116/src/Recipes/SolutionBoxUS.jl#L160-L180">source</a></section></details></article><article><details class="docstring"><summary id="Packmol.packmol-Tuple{SolutionBoxUS}"><a class="docstring-binding" href="#Packmol.packmol-Tuple{SolutionBoxUS}"><code>Packmol.packmol</code></a> — <span class="docstring-category">Method</span></summary><section><div><pre><code class="language-julia hljs">packmol(
+    system::SolutionBoxUS;
+    output=&quot;system.pdb&quot;,
+    # box size
+    box_sides::AbstractVector{&lt;:Number}, # or
+    margin::Number,
+    cubic::Bool = false,
+    kwargs...,
+)</code></pre><p>Builds and packs a Solute + Solvent system directly, entirely in memory: equivalent to calling <a href="#Packmol.write_packmol_input-Tuple{SolutionBoxUS}"><code>write_packmol_input</code></a> followed by <code>packmol</code> on the resulting file, except no <code>.inp</code> file is ever written.</p><p><code>output</code>, <code>box_sides</code>, <code>margin</code>, and <code>cubic</code> behave as in <code>write_packmol_input</code>. Any other keyword (<code>nloop</code>, <code>iprint</code>, <code>seed</code>, <code>optimizer</code>, ...) is forwarded to the packing engine — see <code>packmol(::PackmolSystem)</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/Packmol.jl/blob/e8d92cd8cf20987390952bb10d3e7f60a5fad116/src/Recipes/SolutionBoxUS.jl#L244-L263">source</a></section></details></article><h3 id="Setting-up-the-system-properties"><a class="docs-heading-anchor" href="#Setting-up-the-system-properties">Setting up the system properties</a><a id="Setting-up-the-system-properties-1"></a><a class="docs-heading-anchor-permalink" href="#Setting-up-the-system-properties" title="Permalink"></a></h3><p>We initialize the system data structure given the PDB files of <em>one molecule</em> of the solute (a polymer, <code>poly_h.pdb</code>) and <em>one molecule</em> of the solvent (water):</p><pre><code class="language-julia hljs">using Packmol
+test_dir = Packmol.RecipesDirectory * &quot;/test&quot;
+system = SolutionBoxUS(
+    solute_pdbfile = &quot;$test_dir/data/poly_h.pdb&quot;,
+    solvent_pdbfile = &quot;$test_dir/data/water.pdb&quot;,
+    density = 1.0u&quot;g/mL&quot;,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">==================================================================
+SolutionBoxUS properties (Solute + Solvent):
+==================================================================
+    Solute pdb file: poly_h.pdb
+    Solvent pdb file: water.pdb
+    Density of pure solvent: 1.0 g mL^-1
+    Molarity of pure solvent: 55.50824771072204 mol L^-1
+    Molar masses: 
+        solute: 5612.80078125 g mol^-1
+        solvent: 18.01534080505371 g mol^-1
+==================================================================</code></pre><p>The molar masses of the solute and solvent can be provided explicitly with the <code>solute_molar_mass</code>/<code>solvent_molar_mass</code> keywords. If not, they are computed from the atom types in the PDB files, which may fail if the mass of some atom type is unknown.</p><p>Finally, we generate an input file for Packmol with:</p><pre><code class="language-julia hljs">write_packmol_input(
+    system;
+    margin = 20.0,
+    cubic = true,
+    input = &quot;box.inp&quot;,
+    output = &quot;system.pdb&quot;,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">==================================================================
+Summary:
+==================================================================
+
+Target concentration = 55.50824771072204 mol L^-1
+(of solvent   )      = 0.03342784810549159 Å^-3
+                     = 1.0 g mL^-1
+
+Box volume = 1.677100110841e6 Å^3
+Solution volume = 1.6677798358674704e6 Å^3
+Solute extrema = [ -38.685 Å, -24.895 Å, -39.405 Å, 38.685 Å, 24.895 Å, 39.405 Å ]
+Periodic box = [ -59.405 Å, -59.405 Å, -59.405 Å, 59.405 Å, 59.405 Å, 59.405 Å ]
+
+Solute molar mass = 5612.80078125 g mol^-1
+Solvent molar mass = 18.01534080505371 g mol^-1
+
+Number of solvent (water.pdb) molecules = 55750
+
+Cubic box requested: true
+
+==================================================================
+
+Wrote file: box.inp
+
+==================================================================</code></pre><p>or build and pack the system directly, with <code>packmol</code>:</p><pre><code class="language-julia hljs">packmol(system; margin = 20.0, cubic = true, output = &quot;system.pdb&quot;)</code></pre><p>The <code>input</code> parameter (<code>write_packmol_input</code> only) is the name of the generated Packmol input file, and <code>output</code> is the name assigned to the packed system.</p><p><code>margin</code> sets the size of the box from the solute&#39;s own bounding box plus this margin, in every dimension. If <code>cubic</code> is <code>true</code> the box is a cube (all three sides set to the largest of the three margined dimensions); otherwise it is orthorhombic, with each side sized independently.</p><p>Alternatively, the box size can be given explicitly with <code>box_sides = [a, b, c]</code> (in Å), instead of <code>margin</code>.</p><h2 id="Solute-Solvent-Cossolvent-system"><a class="docs-heading-anchor" href="#Solute-Solvent-Cossolvent-system">Solute-Solvent-Cossolvent system</a><a id="Solute-Solvent-Cossolvent-system-1"></a><a class="docs-heading-anchor-permalink" href="#Solute-Solvent-Cossolvent-system" title="Permalink"></a></h2><p>Here, <code>SolutionBoxUSC</code> stands for <code>Solute (U)</code>, <code>Solvent (S)</code>, and <code>Cossolvent (C)</code>. Concentrations can be given in molarity (<code>&quot;mol/L&quot;</code>), molar fraction (<code>&quot;x&quot;</code>), mass fraction (<code>&quot;w/w&quot;</code>), or volume fraction (<code>&quot;v/v&quot;</code>); see <a href="../../concentration_units/#Concentration-Unit-Conversion">Concentration Unit Conversion</a> for the full list of unit aliases.</p><article><details class="docstring"><summary id="Packmol.SolutionBoxUSC"><a class="docstring-binding" href="#Packmol.SolutionBoxUSC"><code>Packmol.SolutionBoxUSC</code></a> — <span class="docstring-category">Type</span></summary><section><div><pre><code class="language-julia hljs">SolutionBoxUSC(; 
+    solute_pdbfile::String, 
+    solvent_pdbfile::String,
+    cossolvent_pdbfile::String,
+    density_table::Matrix{&lt;:Number},
+    concentration_unit = &quot;x&quot;,
+    solute_molar_mass = nothing, # optional
+    solvent_molar_mass = nothing, # optional
+    cossolvent_molar_mass = nothing, # optional
+)</code></pre><p>Setup a system composed of a solute (U) a solvent (S) and a cossolvent (C). </p><p>The concentration units of the density table can be provided explicitly and are assumed by default to be the molar fraction, <code>x</code>, of the cossolvent. The density units are assumed to be <code>g/mL</code> unless the values are explicitly provided with Unitful units. </p><p>The molar masses of the solute, solvent, and cossolvent can be provided manually. If not, they will be computed from the atom types in the PDB file.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/Packmol.jl/blob/e8d92cd8cf20987390952bb10d3e7f60a5fad116/src/Recipes/SolutionBoxUSC.jl#L11-L33">source</a></section></details></article><article><details class="docstring"><summary id="Packmol.write_packmol_input-Tuple{SolutionBoxUSC}"><a class="docstring-binding" href="#Packmol.write_packmol_input-Tuple{SolutionBoxUSC}"><code>Packmol.write_packmol_input</code></a> — <span class="docstring-category">Method</span></summary><section><div><pre><code class="language-julia hljs">write_packmol_input(
+    system::SolutionBoxUSC;
+    concentration::Number,
+    input=&quot;box.inp&quot;,
+    output=&quot;system.pdb&quot;,
+    # box size
+    box_sides::AbstractVector{&lt;:Number}, # or
+    margin::Number,
+    cubic::Bool = false,
+)</code></pre><p>Function that generates an input file for Packmol.</p><p>The box sides are given in Ångströms, and can be provided as a vector of 3 elements. Alternatively, the margin can be provided, and the box sides will be calculated as the maximum and minimum coordinates of the solute plus the margin in all 3 dimensions.</p><p>If <code>cubic</code> is set to true, the box will be cubic, and the box sides will be equal in all 3 dimensions, respecting the minimum margin provided.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/Packmol.jl/blob/e8d92cd8cf20987390952bb10d3e7f60a5fad116/src/Recipes/SolutionBoxUSC.jl#L205-L226">source</a></section></details></article><article><details class="docstring"><summary id="Packmol.packmol-Tuple{SolutionBoxUSC}"><a class="docstring-binding" href="#Packmol.packmol-Tuple{SolutionBoxUSC}"><code>Packmol.packmol</code></a> — <span class="docstring-category">Method</span></summary><section><div><pre><code class="language-julia hljs">packmol(
+    system::SolutionBoxUSC;
+    concentration::Number,
+    concentration_units::Union{Nothing,String} = nothing,
+    output=&quot;system.pdb&quot;,
+    # box size
+    box_sides::AbstractVector{&lt;:Number}, # or
+    margin::Number,
+    cubic::Bool = false,
+    kwargs...,
+)</code></pre><p>Builds and packs a Solute + Solvent + Cossolvent system directly, entirely in memory: equivalent to calling <a href="#Packmol.write_packmol_input-Tuple{SolutionBoxUSC}"><code>write_packmol_input</code></a> followed by <code>packmol</code> on the resulting file, except no <code>.inp</code> file is ever written.</p><p><code>concentration</code>, <code>concentration_units</code>, <code>output</code>, <code>box_sides</code>, <code>margin</code>, and <code>cubic</code> behave as in <code>write_packmol_input</code>. Any other keyword (<code>nloop</code>, <code>iprint</code>, <code>seed</code>, <code>optimizer</code>, ...) is forwarded to the packing engine — see <code>packmol(::PackmolSystem)</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/Packmol.jl/blob/e8d92cd8cf20987390952bb10d3e7f60a5fad116/src/Recipes/SolutionBoxUSC.jl#L300-L322">source</a></section></details></article><h3 id="Setting-up-the-system-properties-2"><a class="docs-heading-anchor" href="#Setting-up-the-system-properties-2">Setting up the system properties</a><a class="docs-heading-anchor-permalink" href="#Setting-up-the-system-properties-2" title="Permalink"></a></h3><p>The density of the mixture as a function of cossolvent concentration is given as a table. Here, for a water/ethanol mixture, as a function of the molar fraction of ethanol:</p><pre><code class="language-julia hljs">using Packmol
+density_table = [
+#   x cossolvent (ethanol)     density (g/mL)
+             0.0000                 0.9981
+             0.0416                 0.9820
+             0.0890                 0.9685
+             0.1434                 0.9537
+             0.2066                 0.9369
+             0.2809                 0.9151
+             0.3695                 0.8923
+             0.4769                 0.8685
+             0.6098                 0.8450
+             0.7786                 0.8195
+             1.0000                 0.7906
+]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">11×2 Matrix{Float64}:
+ 0.0     0.9981
+ 0.0416  0.982
+ 0.089   0.9685
+ 0.1434  0.9537
+ 0.2066  0.9369
+ 0.2809  0.9151
+ 0.3695  0.8923
+ 0.4769  0.8685
+ 0.6098  0.845
+ 0.7786  0.8195
+ 1.0     0.7906</code></pre><p>We then initialize the system data structure, given the PDB files of <em>one molecule</em> of the solute, the solvent (water), and the cossolvent (ethanol):</p><pre><code class="language-julia hljs">test_dir = Packmol.RecipesDirectory * &quot;/test&quot;
+system = SolutionBoxUSC(
+    solute_pdbfile = &quot;$test_dir/data/poly_h.pdb&quot;,
+    solvent_pdbfile = &quot;$test_dir/data/water.pdb&quot;,
+    cossolvent_pdbfile = &quot;$test_dir/data/ethanol.pdb&quot;,
+    density_table = density_table,
+    concentration_units = &quot;x&quot;, # molar fraction
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">==================================================================
+SolutionBoxUSC properties (Solute + Solvent + Cossolvent):
+==================================================================
+    Solute pdb file: poly_h.pdb
+    Solvent pdb file: water.pdb
+    Cossolvent pdb file: ethanol.pdb
+    Molar masses: 
+        solute: 5612.801f0 g mol^-1
+        solvent: 18.01534f0 g mol^-1
+        cossolvent: 46.069218f0 g mol^-1
+    Concentration range: 0.0 mol L^-1 - 17.161133611150465 mol L^-1
+    Density range: 0.9981 g mL^-1 - 0.7906 g mL^-1
+==================================================================</code></pre><p>As with <code>SolutionBoxUS</code>, molar masses are computed from the PDB files unless given explicitly.</p><p>Finally, we generate the input file at a target cossolvent concentration:</p><pre><code class="language-julia hljs">write_packmol_input(
+    system;
+    concentration = 0.5, # molar fraction of ethanol, by the density_table&#39;s default units
+    margin = 20.0,
+    cubic = true,
+    input = &quot;box.inp&quot;,
+    output = &quot;system.pdb&quot;,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: Concentration units not provided, assuming molar fraction (x).
+└ @ Packmol
+==================================================================
+Summary:
+==================================================================
+
+Target concentration = 13.48866825794416 mol L^-1
+(of cossolvent)      = 0.5 (molar fraction)
+                     = 0.7188817208013449 (mass fraction)
+
+Box volume = 1.677100110841e6 Å^3
+Solution volume = 1.6677620936347786e6 Å^3
+Solute extrema = [ -38.685 Å, -24.895 Å, -39.405 Å, 38.685 Å, 24.895 Å, 39.405 Å ]
+Periodic box = [ -59.405 Å, -59.405 Å, -59.405 Å, 59.405 Å, 59.405 Å, 59.405 Å ]
+
+Density of solution = 0.5205499653178447 g Å^-3 mol^-1
+Solute molar mass = 5612.801f0 g mol^-1
+Cossolvent molar mass = 46.069218f0 g mol^-1
+Solvent molar mass = 18.01534f0 g mol^-1
+
+Number of cossolvent (ethanol.pdb) molecules = 13547
+Number of solvent (water.pdb) molecules = 13547
+
+Final cossolvent concentration = 13.488328358619189 mol L^-1
+                            = 123.10933000921082 Å^3 per molecule.
+Final solvent concentration = 13.488328358619189 mol L^-1
+                            = 123.10933000921082 Å^3 per molecule.
+
+Final molar fraction = 0.5
+
+Cubic box requested: true
+
+==================================================================
+
+Wrote file: box.inp
+
+==================================================================</code></pre><p>or, equivalently, pack it directly with <code>packmol(system; concentration=0.5, margin=20.0, cubic=true, output=&quot;system.pdb&quot;)</code>.</p><p><code>concentration_units</code> can be passed to interpret <code>concentration</code> in units other than the density table&#39;s own (e.g. request a concentration in <code>&quot;mol/L&quot;</code> even though the table above is indexed by molar fraction). <code>margin</code>, <code>box_sides</code>, and <code>cubic</code> behave as in <code>SolutionBoxUS</code>.</p><h2 id="Solute-Water-Ions-system"><a class="docs-heading-anchor" href="#Solute-Water-Ions-system">Solute-Water-Ions system</a><a id="Solute-Water-Ions-system-1"></a><a class="docs-heading-anchor-permalink" href="#Solute-Water-Ions-system" title="Permalink"></a></h2><p>Here, <code>SolutionBoxUWI</code> stands for <code>Solute (U)</code>, <code>Water (W)</code>, and <code>Ions (I)</code>: a solute solvated by water and a background salt at a target ionic concentration (<code>0.15u&quot;mol/L&quot;</code>, physiological saline, by default). The solute&#39;s own net charge (<code>solute_charge</code>, computed from the PDB file&#39;s <code>charge</code> records unless given explicitly) is automatically neutralized with extra counter-ions, on top of the bulk salt.</p><article><details class="docstring"><summary id="Packmol.SolutionBoxUWI"><a class="docstring-binding" href="#Packmol.SolutionBoxUWI"><code>Packmol.SolutionBoxUWI</code></a> — <span class="docstring-category">Type</span></summary><section><div><pre><code class="language-julia hljs">SolutionBoxUWI(;
+    solute_pdbfile::String,
+    solute_charge::Integer, # optional - computed from PDB file by default
+    water_pdbfile::String, # optional
+    cation_pdbfile::String, # optional - SOD (Na+) by default
+    anion_pdbfile::String, # optional - CLA (Cl-) by default
+    cation_charge::Integer, # optional - 1 by default
+    anion_charge::Integer, # optional - -1 by default
+    solute_molar_mass = nothing, # optional
+    water_molar_mass = nothing, # optional
+    cation_molar_mass = nothing, # optional
+    anion_molar_mass = nothing, # optional
+    density_table::Matrix{&lt;:Number} = density_NaCl_aq, # optional
+    density_table_units = &quot;mol/kg&quot;, # optional
+)</code></pre><p>Setup a system composed of a solute (U), water (W), a cation and an anion (I, for ions).</p><p><code>cation_charge</code> must be a positive integer and <code>anion_charge</code> a negative integer. Molar masses are computed from the atom types in the PDB files if not provided.</p><p><code>density_table</code> provides the density of the salt solution as a function of ionic concentration, used to size the number of water molecules. It defaults to the density of aqueous NaCl, appropriate for the default (sodium/chloride) ions; a custom table should be provided (as a <code>concentration_units =&gt; density</code> matrix, with <code>density_table_units</code> set accordingly) if custom ions are used and an accurate solution density is required.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/Packmol.jl/blob/e8d92cd8cf20987390952bb10d3e7f60a5fad116/src/Recipes/SolutionBoxUWI.jl#L51-L79">source</a></section></details></article><article><details class="docstring"><summary id="Packmol.write_packmol_input-Tuple{SolutionBoxUWI}"><a class="docstring-binding" href="#Packmol.write_packmol_input-Tuple{SolutionBoxUWI}"><code>Packmol.write_packmol_input</code></a> — <span class="docstring-category">Method</span></summary><section><div><pre><code class="language-julia hljs">write_packmol_input(
+    system::SolutionBoxUWI;
+    ionic_concentration::Number=0.15u&quot;mol/L&quot;,
+    input=&quot;box.inp&quot;,
+    output=&quot;system.pdb&quot;,
+    # box size
+    box_sides::AbstractVector{&lt;:Number}, # or
+    margin::Number,
+    cubic::Bool = false,
+)</code></pre><p>Function that generates an input file for Packmol for a Solute + Water + Ions system.</p><p><code>ionic_concentration</code> is the target bulk salt concentration (e.g. NaCl), assumed to be in <code>mol/L</code> if given unitless. Enough additional counter-ions (of a single sign) are added, on top of the bulk salt, to exactly neutralize the solute&#39;s own charge (<code>system.solute_charge</code>); an <code>ArgumentError</code> is thrown if that charge cannot be exactly neutralized with the ions&#39; charges (e.g. neutralizing an odd solute charge with only doubly-charged counter-ions).</p><p>The box sides are given in Ångströms, and can be provided as a vector of 3 elements. Alternatively, the margin can be provided, and the box sides will be calculated as the maximum and minimum coordinates of the solute plus the margin in all 3 dimensions.</p><p>If <code>cubic</code> is set to true, the box will be cubic, and the box sides will be equal in all 3 dimensions, respecting the minimum margin provided.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/Packmol.jl/blob/e8d92cd8cf20987390952bb10d3e7f60a5fad116/src/Recipes/SolutionBoxUWI.jl#L360-L387">source</a></section></details></article><article><details class="docstring"><summary id="Packmol.packmol-Tuple{SolutionBoxUWI}"><a class="docstring-binding" href="#Packmol.packmol-Tuple{SolutionBoxUWI}"><code>Packmol.packmol</code></a> — <span class="docstring-category">Method</span></summary><section><div><pre><code class="language-julia hljs">packmol(
+    system::SolutionBoxUWI;
+    ionic_concentration::Number=0.15u&quot;mol/L&quot;,
+    output=&quot;system.pdb&quot;,
+    # box size
+    box_sides::AbstractVector{&lt;:Number}, # or
+    margin::Number,
+    cubic::Bool = false,
+    kwargs...,
+)</code></pre><p>Builds and packs a Solute + Water + Ions system directly, entirely in memory: equivalent to calling <a href="#Packmol.write_packmol_input-Tuple{SolutionBoxUWI}"><code>write_packmol_input</code></a> followed by <code>packmol</code> on the resulting file, except no <code>.inp</code> file is ever written.</p><p><code>ionic_concentration</code>, <code>output</code>, <code>box_sides</code>, <code>margin</code>, and <code>cubic</code> behave as in <code>write_packmol_input</code>. Any other keyword (<code>nloop</code>, <code>iprint</code>, <code>seed</code>, <code>optimizer</code>, ...) is forwarded to the packing engine — see <code>packmol(::PackmolSystem)</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/m3g/Packmol.jl/blob/e8d92cd8cf20987390952bb10d3e7f60a5fad116/src/Recipes/SolutionBoxUWI.jl#L468-L488">source</a></section></details></article><h3 id="Setting-up-the-system-properties-3"><a class="docs-heading-anchor" href="#Setting-up-the-system-properties-3">Setting up the system properties</a><a class="docs-heading-anchor-permalink" href="#Setting-up-the-system-properties-3" title="Permalink"></a></h3><p>By default the ions are sodium and chloride (charges <code>+1</code>/<code>-1</code>), generated automatically, and the solution density as a function of ionic strength is looked up from a table of aqueous NaCl densities:</p><pre><code class="language-julia hljs">using Packmol
+test_dir = Packmol.RecipesDirectory * &quot;/test&quot;
+system = SolutionBoxUWI(
+    solute_pdbfile = &quot;$test_dir/data/poly_h.pdb&quot;,
+    solute_charge = 2,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">==================================================================
+SolutionBoxUWI properties (Solute + Water + Ions):
+==================================================================
+    Solute pdb file: poly_h.pdb
+    Solute charge: 2
+    Water pdb file: HOH.pdb
+    Cation pdb file and charge: SOD.pdb +1
+    Anion pdb file and charge: CLA.pdb -1
+    Molar masses:
+        solute: 5612.80078125 g mol^-1
+        water: 18.01534080505371 g mol^-1
+        cation: 22.989770889282227 g mol^-1
+        anion: 35.452999114990234 g mol^-1
+    Ionic concentration range: 0.09953429399586157 mol L^-1 - 5.30461986641539 mol L^-1
+    Density range: 1.00116 g mL^-1 - 1.19412 g mL^-1
+==================================================================</code></pre><p>Custom cation/anion PDB files can be given with the <code>cation_pdbfile</code>/ <code>anion_pdbfile</code> keywords (with their <code>cation_charge</code>/<code>anion_charge</code>); a matching <code>density_table</code> should then be provided too, since the default one is specific to NaCl.</p><p>Finally, we generate the input file at a target ionic concentration:</p><pre><code class="language-julia hljs">write_packmol_input(
+    system;
+    ionic_concentration = 0.15u&quot;mol/L&quot;,
+    margin = 20.0,
+    cubic = true,
+    input = &quot;box.inp&quot;,
+    output = &quot;system.pdb&quot;,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">==================================================================
+Summary:
+==================================================================
+
+Target ionic concentration = 0.15 mol L^-1
+Solution density (at that concentration) = 1.0032156090904947 g mL^-1
+
+Box volume = 1.677100110841e6 Å^3
+Solution volume = 1.6677524931509653e6 Å^3
+Solute extrema = [ -38.685 Å, -24.895 Å, -39.405 Å, 38.685 Å, 24.895 Å, 39.405 Å ]
+Periodic box = [ -59.405 Å, -59.405 Å, -59.405 Å, 59.405 Å, 59.405 Å, 59.405 Å ]
+
+Solute molar mass = 5612.80078125 g mol^-1
+Solute charge = 2
+
+Number of water (HOH.pdb) molecules = 55435
+Number of cations (SOD.pdb, charge +1) = 151
+Number of anions (CLA.pdb, charge -1) = 153
+Total system charge (check) = 0
+
+Cubic box requested: true
+
+==================================================================
+
+Wrote file: box.inp
+
+==================================================================</code></pre><p>or, equivalently, pack it directly with <code>packmol(system; ionic_concentration=0.15u&quot;mol/L&quot;, margin=20.0, cubic=true, output=&quot;system.pdb&quot;)</code>.</p><p>Enough cations or anions (of a single sign) are added on top of the bulk salt to exactly neutralize <code>system.solute_charge</code>; a <code>SolutionBoxUWI</code> with default (monovalent) ions can neutralize any integer solute charge. An <code>ArgumentError</code> is raised if the requested charge cannot be exactly neutralized with the ions&#39; charges (for instance, a solute charge of <code>-3</code> with only doubly-charged cations available). <code>margin</code>, <code>box_sides</code>, and <code>cubic</code> behave as in <code>SolutionBoxUS</code>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../julia_api/">« Defining systems in Julia</a><a class="docs-footer-nextpage" href="../../concentration_units/">Concentration units »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 20 August 2026 19:06">Thursday 20 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body><div data-docstringscollapsed="true"></div></html>
