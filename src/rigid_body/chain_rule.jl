@@ -37,6 +37,40 @@ function chain_rule!(fg, packmol_system::PackmolSystem{D,T}) where {D,T}
     return packmol_system
 end
 
+# Same as chain_rule! above, restricted to an explicit, possibly
+# non-contiguous list of molecules. Used by adjust_constraints!'s active-set
+# loop, alongside compute_positions_and_constraints_for_mols! — only
+# molecules with a fresh fg.gxcar this pass need their gradient chain-ruled.
+#
+# partial_derivatives accumulates onto its `gmol` argument (see gcm/grot
+# below), so chain_rule! normally relies on the caller having zeroed the
+# *entire* fg.g array first (CellListMap.reset_output! in the full-system
+# path). Here that would reintroduce an O(nmols) cost on every call, which is
+# exactly what the active-set restriction is meant to avoid — so this passes
+# a fresh zero seed per molecule directly instead of reading (possibly stale)
+# fg.g[imol].
+function chain_rule_for_mols!(
+    fg, packmol_system::PackmolSystem{D,T},
+    mol_list::Vector{Int}, mol_structure_type::Vector{Int}, mol_iat_first::Vector{Int},
+) where {D,T}
+    @sync for (_, mrange) in enumerate(chunks(1:length(mol_list); n=Threads.nthreads()))
+        @spawn for k in mrange
+            imol = mol_list[k]
+            structure_type = packmol_system.structure_types[mol_structure_type[imol]]
+            ifmol = mol_iat_first[imol]
+            ilmol = ifmol + structure_type.natoms - 1
+            gmol = partial_derivatives(
+                zero(MoleculePosition{D,T}),
+                packmol_system.molecule_positions[imol].angles,
+                structure_type.reference_coordinates,
+                @view(fg.gxcar[ifmol:ilmol]),
+            )
+            fg.g[imol] = gmol
+        end
+    end
+    return packmol_system
+end
+
 #=
 
 For a single molecule, computes the partial derivatives of the gradient of the
