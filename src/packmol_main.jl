@@ -27,8 +27,12 @@ function packmol(
     restart::Bool=false,
 ) where {D,T}
     maxit = something(maxit, 800)
-    # Initialize RNG and molecule positions
-    RNG = Random.Xoshiro(seed)
+    # Initialize RNG and molecule positions. Negative seed (Fortran Packmol's
+    # `seed -1`, used by the Recipes as their default) means "pick a random
+    # seed" rather than a literal RNG seed — passing it straight to
+    # Xoshiro(seed) throws a DomainError on Julia 1.10 (LTS), since negative
+    # integers there hit make_seed's "n must be non-negative" path.
+    RNG = seed < 0 ? Random.Xoshiro() : Random.Xoshiro(seed)
 
     tstart = time()    
 
