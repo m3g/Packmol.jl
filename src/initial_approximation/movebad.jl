@@ -1,8 +1,9 @@
 #
 # Move the worst molecules to new random positions.
 # Scans fmol for free molecules with fmol > precision, computes the number
-# of bad molecules and moves a fraction of them randomly.
-# No extra arrays are allocated: fmol itself carries all the information.
+# of bad molecules and moves a fraction of them randomly. Returns the
+# indices of the molecules actually moved, so the caller can act on them
+# individually (e.g. packmol_main.jl fattens their atom radii back up).
 # Following the Fortran Packmol heuristic (heuristics.f90 movebad subroutine).
 #
 function movebad!(
@@ -26,15 +27,15 @@ function movebad!(
             fmol_max = max(fmol_max, fmol[imol])
         end
     end
-    nbad == 0 && return 0
+    nbad == 0 && return Int[]
     # Number of molecules to move
     frac = min(movefrac, nbad / nfree)
     nmove = max(1, min(nbad, round(Int, frac * nfree)))
     # Move molecules randomly: probability of moving is proportional
     # to fmol value (worse molecules are more likely to be moved).
-    nmoved = 0
+    moved = Int[]
     for imol in free_mol_indices
-        nmoved >= nmove && break
+        length(moved) >= nmove && break
         if fmol[imol] > precision / packmol_system.nmols
             # Probability increases with fmol value: move the worst with 0.5
             # probablity, linearly decreasing probability for better molecules
@@ -53,9 +54,9 @@ function movebad!(
                 else
                     randomize_molecule!(packmol_system, imol, st, RNG)
                 end
-                nmoved += 1
+                push!(moved, imol)
             end
         end
     end
-    return nmoved
+    return moved
 end
