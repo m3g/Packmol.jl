@@ -698,11 +698,11 @@ function packmol_callback(
     # (e.g. a degenerate/coincident atom pair) rather than just a hard,
     # slow-converging landscape.
     next!(progress_meter; showvalues = [
-        (" Function value: ", f),
-        (" Minimum distance: ", dmin),
-        (" Maximum constraint violation: ", max_const),
-        (" Function evaluations: ", isnothing(nfeval) ? nfeval : "$nfeval / $nfevalmax"),
-        (" Projected gradient norm: ", gnorm),
+        (" Function value", f),
+        (" Minimum distance", dmin),
+        (" Maximum constraint violation", max_const),
+        (" Function evaluations", isnothing(nfeval) ? nfeval : "$nfeval / $nfevalmax"),
+        (" Projected gradient norm", gnorm),
     ])
     tol_ok = tol - dmin < tolerance_precision
     const_ok = max_const < constraint_precision
