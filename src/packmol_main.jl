@@ -237,7 +237,6 @@ function packmol(
     f0 = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, radscale)
     @printf("  Objective function at initial point: %10.5e\n", f0)
     bestf = typemax(T)
-    flast = typemax(T)
     converged = false
     best_positions = copy(packmol_system.molecule_positions)
     for loop in 0:nloop
@@ -247,6 +246,18 @@ function packmol(
         @printf("  Starting packing loop: %8d\n", loop)
         @printf("  Tolerance in this loop: %8.4f\n", radscale * tol)
         println()
+
+        # True (radscale = 1.0) objective value at the position this loop
+        # starts from — always evaluated at the real tolerance, regardless of
+        # this loop's own (possibly inflated) working radscale, so it can be
+        # compared on equal footing with f_true_loop_end below to isolate this
+        # loop's own net effect on the real objective (see "Improvement within
+        # this loop" reported at the end of the loop). When this loop's own
+        # radscale is 1.0, the optimizer directly minimizes this same
+        # quantity, so that comparison is guaranteed non-increasing; when
+        # radscale > 1.0, the optimizer is chasing an inflated target instead,
+        # so the real objective isn't guaranteed to move in either direction.
+        f_true_loop_start = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, one(T))
 
         # The block below runs one SPGBox chunk and classifies how it ended.
         # Most of the time that's the end of this iteration of the visible
@@ -266,7 +277,7 @@ function packmol(
         # a safety net against a pathological run of ever-smaller-but-still->
         # threshold gains that never falls through on its own.
         max_silent_retries = 20
-        local optresult, fx, dmin, max_const, tol_ok, const_ok, fimprov, fimp_last, improved
+        local optresult, fx, dmin, max_const, tol_ok, const_ok, fimprov, improved
         local stall_reasons, ambiguous_stall, raw_dmin_stall, raw_constraint_stall
         local dmin_stalled, constraint_stalled, chunk_stalled
         silent_retries = 0
@@ -330,21 +341,15 @@ function packmol(
                 packmol_system.molecule_positions[imol] = x_mol[k]
             end
 
-            # Statistics: compute improvement of this loop relative to flast
+            # Statistics: compute improvement of this loop relative to bestf
             fx = optresult.f
             dmin = min(cl_system.fg.dmin, cl_system.cutoff)
             fimprov = bestf < typemax(T) ? clamp(-100 * (fx - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
-            # On the very first loop, flast is still its typemax sentinel (no
-            # previous loop to compare against): fall back to the improvement
-            # from the best function value instead of computing a bogus
-            # Inf/Inf = NaN ratio against the sentinel.
-            fimp_last = flast < typemax(T) ? clamp(-100 * (fx - flast) / flast, T(-99.99), T(99.99)) : fimprov
             improved = fx < bestf
             if improved
                 bestf = fx
                 copyto!(best_positions, packmol_system.molecule_positions)
             end
-            flast = fx
             max_const = cl_system.fg.max_constraint_penalty
 
             # Check convergence: both tolerance and constraint precisions must be satisfied
@@ -444,12 +449,30 @@ function packmol(
             "chunk iteration budget (maxit) reached"
         end
 
+        # True (radscale = 1.0) objective value at the position this loop
+        # ends at, paired with f_true_loop_start above: this isolates what
+        # this loop's own optimization did to the real objective, as opposed
+        # to comparing against the previous loop's ending value (which mixes
+        # in whatever movebad!/radscale-decay happened between loops). Same
+        # sign convention as "Improvement from best function value" above
+        # (positive = the real objective got better): since this loop's own
+        # optimizer worked under radscale (not necessarily 1.0), a negative
+        # value here is possible — it means the inflated target it was
+        # actually chasing pulled the real, unscaled objective the wrong way.
+        f_true_loop_end = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, one(T))
+        fimp_within_loop = clamp(-100 * (f_true_loop_end - f_true_loop_start) / f_true_loop_start, T(-99.99), T(99.99))
+        # The call above overwrote cl_system.fg (fmol, gradients, dmin, ...)
+        # with radscale = 1.0 values; restore it to this loop's own working
+        # radscale before movebad! (below) reads fmol to pick which
+        # molecules to relocate.
+        fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, radscale)
+
         @printf("\n  Packing loop ended: %s\n", loop_end_reason)
         @printf("  Function value from last loop: f = %10.5e\n", fx)
         @printf("  Best function value before: f = %10.5e\n", bestf)
         @printf("  Improvement from best function value: %8.2f %%\n", fimprov)
-        @printf("  Improvement from last loop: %8.2f %%\n", fimp_last)
-        @printf("  Maximum violation of target distance: %12.6f\n", tol - dmin)
+        @printf("  Improvement within this loop: %8.2f %%\n", fimp_within_loop)
+        @printf("  Minimum distance: %12.6f\n", dmin)
         @printf("  Maximum violation of the constraints: %10.5e\n", max_const)
 
         if tol_ok && const_ok
@@ -457,7 +480,7 @@ function packmol(
             println(hash_line)
             @printf("\n%s Success! \n", " "^32)
             @printf("%s Final objective function value: %10.5e\n", " "^13, fx)
-            @printf("%s Maximum violation of target distance: %10.6f\n", " "^13, tol - dmin)
+            @printf("%s Minimum distance: %10.6f\n", " "^13, dmin)
             @printf("%s Maximum violation of the constraints: %10.5e\n", " "^13, max_const)
             println()
             println(dash_line)
