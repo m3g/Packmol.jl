@@ -339,6 +339,7 @@ function packmol(
         dmin = min(cl_system.fg.dmin, cl_system.cutoff)
         fimprov = bestf < typemax(T) ? clamp(-100 * (fx - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
         improved = fx < bestf
+        bestf_before_loop = bestf
         if improved
             bestf = fx
             copyto!(best_positions, packmol_system.molecule_positions)
@@ -452,7 +453,7 @@ function packmol(
 
         @printf("\n  Packing loop ended: %s\n", loop_end_reason)
         @printf("  Function value from last loop: f = %10.5e\n", fx)
-        @printf("  Best function value before: f = %10.5e\n", bestf)
+        @printf("  Best function value before: f = %10.5e\n", bestf_before_loop)
         @printf("  Improvement from best function value: %8.2f %%\n", fimprov)
         @printf("  Improvement within this loop: %8.2f %%\n", fimp_within_loop)
         @printf("  Minimum distance: %12.6f\n", dmin)
