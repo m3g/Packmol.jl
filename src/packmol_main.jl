@@ -187,6 +187,7 @@ function packmol(
 
     # Placement region for movebad! randomization
     mol_structure_type = _build_mol_structure_type(packmol_system)
+    mol_iat_first = _build_mol_iat_first(packmol_system)
     precision = packmol_system.tolerance_precision
 
     # `constrain_rotation` bounds (per structure type, per axis) as hard
@@ -227,17 +228,26 @@ function packmol(
     # Evaluate and print initial function value
     g0 = similar(x)
     # Start packing with a looser-than-required tolerance (matches the
-    # original Fortran Packmol's `discale` heuristic, default 1.1): atom
-    # radii are effectively inflated by radscale in the optimization
-    # target, giving the optimizer an easier target while far from
-    # feasible. radscale decays toward 1.0 as improvement stalls (see the
-    # end of the loop body below); true convergence checks (tol_ok, dmin)
-    # are unaffected since they measure the real, unscaled distances.
-    radscale = packmol_system.radscale
-    f0 = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, radscale)
+    # original Fortran Packmol's `discale` heuristic, default 1.1): every
+    # atom's own radius is inflated by radscale in the optimization target,
+    # giving the optimizer an easier target while far from feasible.
+    # `atom_radii` is the mutable, per-atom working radius used by the
+    # optimizer — it decays toward each atom's own floor (`atom_radii_floor`,
+    # its user-specified or default radius) every loop (see the end of the
+    # loop body below), and a molecule relocated by movebad! has its atoms'
+    # entries reset back up to the full inflation, since a freshly randomized
+    # molecule needs the easier target again. True convergence checks
+    # (tol_ok, dmin) are unaffected since they measure the real, unscaled
+    # distances, and `atom_radii_floor` is what the "true objective"
+    # evaluations below (`f_true_loop_start`/`f_true_loop_end`) use.
+    atom_radii_floor = Vector{T}(undef, natoms)
+    for (iat, a) in enumerate(packmol_system.atoms)
+        atom_radii_floor[iat] = a.radius
+    end
+    atom_radii = packmol_system.radscale .* atom_radii_floor
+    f0 = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
     @printf("  Objective function at initial point: %10.5e\n", f0)
     bestf = typemax(T)
-    flast = typemax(T)
     converged = false
     best_positions = copy(packmol_system.molecule_positions)
     for loop in 0:nloop
@@ -245,12 +255,28 @@ function packmol(
         println()
         println(dash_line)
         @printf("  Starting packing loop: %8d\n", loop)
-        @printf("  Tolerance in this loop: %8.4f\n", radscale * tol)
+        atom_radii_lo, atom_radii_hi = extrema(atom_radii)
+        @printf("  Atom radii in this loop: [ %8.4f - %8.4f ]\n", atom_radii_lo, atom_radii_hi)
         println()
+
+        # True (floor) objective value at the position this loop starts
+        # from — always evaluated at each atom's own floor radius
+        # (atom_radii_floor), regardless of this loop's own (possibly
+        # inflated) working atom_radii, so it can be compared on equal
+        # footing with f_true_loop_end below to isolate this loop's own net
+        # effect on the real objective (see "Improvement within this loop"
+        # reported at the end of the loop). When atom_radii already equals
+        # atom_radii_floor for every atom in this loop (fully decayed, no
+        # atom freshly fattened by movebad!), the optimizer directly
+        # minimizes this same quantity, so that comparison is guaranteed
+        # non-increasing; otherwise, the optimizer is chasing an inflated
+        # target instead, so the real objective isn't guaranteed to move in
+        # either direction.
+        f_true_loop_start = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
 
         # Run a short optimization (maxit iterations per loop)
         progress_meter = Progress(maxit; desc=" Iterations: ", barlen=47)
-        fg_closure = (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices, radscale)
+        fg_closure = (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
         # Fresh stall detectors per chunk: plateau state from the *previous*
         # chunk isn't meaningful here, since movebad! (or the initial
         # placement) just changed the starting point. `dmin_stalled_flag`/
@@ -258,8 +284,8 @@ function packmol(
         # cuts the chunk short because of a stall in that metric (as opposed
         # to full convergence or simply exhausting the maxit budget) — the
         # outer loop below uses them, instead of an inter-loop function-value
-        # comparison, both to decide whether to move bad molecules or
-        # loosen/tighten radscale, and to report why this chunk ended.
+        # comparison, both to decide whether to move bad molecules and to
+        # report why this chunk ended.
         dmin_stall_detector = StallDetector{T}(n_stall_iterations)
         constraint_stall_detector = StallDetector{T}(n_stall_iterations)
         # dmin/max_const are each a worst-case-over-all-atoms extremum, not
@@ -278,6 +304,14 @@ function packmol(
         f_stall_detector = StallDetector{T}(max(1, maxit ÷ 20))
         dmin_stalled_flag = Ref(false)
         constraint_stalled_flag = Ref(false)
+        # f as of the first callback invocation in this chunk (typemax(T)
+        # sentinel until then) — the reference packmol_callback compares
+        # against to see whether the *whole chunk so far*, not just its
+        # trailing f_stall_detector window, has made significant progress.
+        # See the comment above f_not_improving in packmol_callback for why
+        # the narrower window alone isn't enough to justify cutting a chunk
+        # short.
+        f_chunk_start = Ref(typemax(T))
         optresult = spgbox!(
             fg_closure,
             x;
@@ -285,7 +319,8 @@ function packmol(
                 packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
                 dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
                 f_stall_detector, f=result.f, f_stall_tolerance,
-                dmin_stalled_flag, constraint_stalled_flag,
+                dmin_stalled_flag, constraint_stalled_flag, f_chunk_start,
+                nfeval=result.nfeval, nfevalmax=10 * maxit, gnorm=result.gnorm,
             ),
             vaux=auxvecs,
             nitmax=maxit,
@@ -299,21 +334,16 @@ function packmol(
             packmol_system.molecule_positions[imol] = x_mol[k]
         end
 
-        # Statistics: compute improvement of this loop relative to flast
+        # Statistics: compute improvement of this loop relative to bestf
         fx = optresult.f
         dmin = min(cl_system.fg.dmin, cl_system.cutoff)
         fimprov = bestf < typemax(T) ? clamp(-100 * (fx - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
-        # On the very first loop, flast is still its typemax sentinel (no
-        # previous loop to compare against): fall back to the improvement
-        # from the best function value instead of computing a bogus
-        # Inf/Inf = NaN ratio against the sentinel.
-        fimp_last = flast < typemax(T) ? clamp(-100 * (fx - flast) / flast, T(-99.99), T(99.99)) : fimprov
         improved = fx < bestf
+        bestf_before_loop = bestf
         if improved
             bestf = fx
             copyto!(best_positions, packmol_system.molecule_positions)
         end
-        flast = fx
         max_const = cl_system.fg.max_constraint_penalty
 
         # Check convergence: both tolerance and constraint precisions must be satisfied
@@ -331,8 +361,8 @@ function packmol(
         # detectors never get the several consecutive readings they need to
         # fire, even though nothing is actually still improving. In that
         # ambiguous case, attribute it to whichever of tol_ok/const_ok is
-        # still unmet (possibly both), so it feeds movebad!/radscale decay
-        # below the same way an explicit plateau detection would.
+        # still unmet (possibly both), so it feeds movebad! below the same
+        # way an explicit plateau detection would.
         stall_reasons = String[]
         dmin_stalled_flag[] && push!(stall_reasons, "minimum distance plateaued")
         constraint_stalled_flag[] && push!(stall_reasons, "constraint violation plateaued")
@@ -352,30 +382,81 @@ function packmol(
             !tol_ok && push!(stall_reasons, "optimizer converged internally short of the distance tolerance")
             !const_ok && push!(stall_reasons, "optimizer converged internally short of the constraints")
         end
-        # Distance-related stalls are what radscale decay addresses (easing
-        # the pairwise-distance tolerance); constraint-related stalls are
-        # not — a molecule stuck outside its assigned region isn't helped by
-        # relaxing radscale, only by being relocated via movebad!.
-        dmin_stalled = dmin_stalled_flag[] || (ambiguous_stall && !tol_ok)
-        constraint_stalled = constraint_stalled_flag[] || (ambiguous_stall && !const_ok)
+        # dmin_stalled_flag/constraint_stalled_flag (and the ambiguous_stall
+        # fallback) are set from packmol_callback's *internal* trailing-window
+        # view of this chunk (its own f_stall_detector, sized to maxit/20 —
+        # e.g. the last ~40 iterations of an 800-iteration chunk). That's the
+        # right granularity for "stop burning iterations on a plateaued
+        # metric", but it's blind to the chunk as a whole: a chunk that fell
+        # sharply in its first two-thirds and only flattened out in that
+        # trailing window has made excellent overall progress, even though
+        # the window itself looks stalled. Concretely: dmin/max_const
+        # plateaued while fimprov (the real, whole-chunk improvement vs. the
+        # best f seen so far, computed above) was ~99.78% — nothing here
+        # actually needs fixing, movebad! shouldn't fire for this loop. So a
+        # raw plateau only becomes an actionable stall (worth relocating
+        # molecules) once the whole-chunk fimprov *also* fails to clear
+        # f_stall_tolerance — genuine chunk-level progress vetoes a
+        # trailing-window plateau, mirroring how f_stall_detector already
+        # vetoes dmin/const plateaus with its own (shorter) window.
+        #
+        # This must compare against bestf (fimprov), not against the
+        # immediately preceding loop's ending f: after a movebad! has
+        # scrambled positions, the next chunk's f is often still far worse
+        # than bestf even once it has clawed back >f_stall_tolerance of that
+        # self-inflicted damage. Comparing to the immediately preceding f
+        # would then read as "significant progress" purely from recovering
+        # off a low bar it created itself, vetoing further movebad! action
+        # while the packing remains deeply regressed relative to its
+        # actual best-ever state — visible as a "stalled" -> "plateau
+        # ignored" -> "stalled" thrash with no net improvement. fimprov,
+        # anchored to bestf, isn't corrupted by that recent self-inflicted
+        # dip.
+        significant_progress = fimprov > T(100) * f_stall_tolerance
+        raw_dmin_stall = dmin_stalled_flag[] || (ambiguous_stall && !tol_ok)
+        raw_constraint_stall = constraint_stalled_flag[] || (ambiguous_stall && !const_ok)
+        dmin_stalled = raw_dmin_stall && !significant_progress
+        constraint_stalled = raw_constraint_stall && !significant_progress
         chunk_stalled = dmin_stalled || constraint_stalled
+        finish!(progress_meter)
+
         loop_end_reason = if tol_ok && const_ok
             "converged"
         elseif chunk_stalled
             "stalled (" * join(stall_reasons, ", ") * ")"
+        elseif raw_dmin_stall || raw_constraint_stall
+            "plateau ignored (f still improving)"
         elseif optresult.ierr == 2
             "chunk function-evaluation budget (nfevalmax) reached"
         else
             "chunk iteration budget (maxit) reached"
         end
 
-        finish!(progress_meter)
+        # True (floor) objective value at the position this loop ends at,
+        # paired with f_true_loop_start above: this isolates what this loop's
+        # own optimization did to the real objective, as opposed to comparing
+        # against the previous loop's ending value (which mixes in whatever
+        # movebad!/decay happened between loops). Same sign convention as
+        # "Improvement from best function value" above (positive = the real
+        # objective got better): since this loop's own optimizer worked
+        # under atom_radii (not necessarily equal to atom_radii_floor for
+        # every atom), a negative value here is possible — it means the
+        # inflated target it was actually chasing pulled the real, unscaled
+        # objective the wrong way.
+        f_true_loop_end = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
+        fimp_within_loop = clamp(-100 * (f_true_loop_end - f_true_loop_start) / f_true_loop_start, T(-99.99), T(99.99))
+        # The call above overwrote cl_system.fg (fmol, gradients, dmin, ...)
+        # with atom_radii_floor values; restore it to this loop's own working
+        # atom_radii before movebad! (below) reads fmol to pick which
+        # molecules to relocate.
+        fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
+
         @printf("\n  Packing loop ended: %s\n", loop_end_reason)
         @printf("  Function value from last loop: f = %10.5e\n", fx)
-        @printf("  Best function value before: f = %10.5e\n", bestf)
+        @printf("  Best function value before: f = %10.5e\n", bestf_before_loop)
         @printf("  Improvement from best function value: %8.2f %%\n", fimprov)
-        @printf("  Improvement from last loop: %8.2f %%\n", fimp_last)
-        @printf("  Maximum violation of target distance: %12.6f\n", tol - dmin)
+        @printf("  Improvement within this loop: %8.2f %%\n", fimp_within_loop)
+        @printf("  Minimum distance: %12.6f\n", dmin)
         @printf("  Maximum violation of the constraints: %10.5e\n", max_const)
 
         if tol_ok && const_ok
@@ -383,7 +464,7 @@ function packmol(
             println(hash_line)
             @printf("\n%s Success! \n", " "^32)
             @printf("%s Final objective function value: %10.5e\n", " "^13, fx)
-            @printf("%s Maximum violation of target distance: %10.6f\n", " "^13, tol - dmin)
+            @printf("%s Minimum distance: %10.6f\n", " "^13, dmin)
             @printf("%s Maximum violation of the constraints: %10.5e\n", " "^13, max_const)
             println()
             println(dash_line)
@@ -414,40 +495,58 @@ function packmol(
             println("  Current solution written to file: ", packmol_system.output_file)
         end
 
-        # Move bad molecules: immediately on a constraint-related stall (no
-        # amount of radscale/tolerance easing frees a molecule stuck outside
-        # its assigned region — relocating it is the only fix), or once the
-        # tolerance has been fully tightened (radscale == 1, matching
-        # Fortran) on a distance-related stall. `dmin_stalled`/
-        # `constraint_stalled` already require f to also be making no real
-        # headway (see packmol_callback), so acting on them here can't
-        # disrupt a loop that's still genuinely improving.
-        if constraint_stalled || (radscale == one(T) && dmin_stalled)
+        # Every atom's working radius always decays 10% toward its own floor
+        # (atom_radii_floor), every loop, regardless of stall state — this is
+        # unconditional background behavior, not a stall response.
+        for iat in eachindex(atom_radii)
+            atom_radii[iat] = max(T(0.9) * atom_radii[iat], atom_radii_floor[iat])
+        end
+        # `dmin_stalled`/`constraint_stalled` already require the whole-chunk
+        # function improvement to also be small (see above), so acting on
+        # them here can't disrupt a loop that's genuinely still improving.
+        # movebad! relocates the offending molecules to new random positions;
+        # since a freshly randomized molecule needs the easier (inflated)
+        # target again rather than whatever its radii had already decayed
+        # down to, its atoms are individually fattened back up to the full
+        # initial inflation — overriding the decay just applied to them
+        # above — while every other atom's decay stands.
+        #
+        # A pure distance stall (dmin_stalled, no constraint_stalled) isn't
+        # relocated on its own: the decay just applied above is already
+        # easing the target every loop, so a molecule that's merely a bit
+        # too close under the still-inflated tolerance may resolve on its
+        # own as radii keep shrinking — relocating it preemptively is
+        # needless disruption. Only once every atom has fully decayed to its
+        # own floor (nothing left to ease) does a lingering distance stall
+        # fall back to relocation. A constraint stall always relocates
+        # immediately regardless of radii state: a molecule stuck outside
+        # its assigned region isn't helped by easing the interatomic-
+        # distance target at all.
+        radii_at_floor = all(atom_radii[iat] == atom_radii_floor[iat] for iat in eachindex(atom_radii))
+        do_movebad = constraint_stalled || (dmin_stalled && radii_at_floor)
+        if do_movebad
             cm_min, cm_max = compute_cm_bounds(packmol_system)
-            nmoved = movebad!(
+            moved = movebad!(
                 packmol_system, cl_system.fg.fmol, free_mol_indices, mol_structure_type, RNG;
                 movefrac, precision,
                 cm_lo_type=cm_min, cm_hi_type=cm_max,
             )
-            if nmoved > 0
-                println("  Moved $nmoved bad molecules randomly to new positions.")
+            if !isempty(moved)
+                println("  Moved $(length(moved)) bad molecules randomly to new positions.")
+                for imol in moved
+                    ist = mol_structure_type[imol]
+                    natoms_mol = packmol_system.structure_types[ist].natoms
+                    iat_first = mol_iat_first[imol]
+                    for iat in iat_first:(iat_first + natoms_mol - 1)
+                        atom_radii[iat] = packmol_system.radscale * atom_radii_floor[iat]
+                    end
+                end
             end
         end
         # Re-pack optimizer variables from (possibly moved) molecule positions
         x_mol = reinterpret(MoleculePosition{D,T}, x)
         for (k, imol) in enumerate(free_mol_indices)
             x_mol[k] = packmol_system.molecule_positions[imol]
-        end
-
-        # Loosen-tolerance heuristic decay: relax radscale toward 1.0 once
-        # the stall is for distances only. If constraints are also stalled,
-        # radscale is left alone — it only eases the pairwise-distance
-        # tolerance, so decaying it would not help a molecule stuck outside
-        # its assigned region, and movebad! above is already handling that
-        # case directly. This sets the radscale movebad above will see next
-        # loop.
-        if radscale > one(T) && dmin_stalled && !constraint_stalled
-            radscale = max(T(0.9) * radscale, one(T))
         end
     end
 
@@ -582,12 +681,29 @@ function packmol_callback(
     f_stall_tolerance = 0.10,
     dmin_stalled_flag::Union{Nothing,Ref{Bool}} = nothing,
     constraint_stalled_flag::Union{Nothing,Ref{Bool}} = nothing,
+    f_chunk_start::Union{Nothing,Ref} = nothing,
+    nfeval::Union{Nothing,Integer} = nothing,
+    nfevalmax::Union{Nothing,Integer} = nothing,
+    gnorm::Union{Nothing,Real} = nothing,
 )
     dmin = min(cl_system.fg.dmin, cl_system.cutoff)
     max_const = cl_system.fg.max_constraint_penalty
+    # nfeval/nfevalmax and gnorm are diagnostic only (not used in any
+    # convergence/stall decision below): the progress bar and the
+    # f/dmin/max_const values above only update once SPGBox *accepts* an
+    # outer iteration, so a chunk stuck deep in one slow or failing internal
+    # line search can look completely frozen for a long time even though
+    # it's still working — nfeval climbing (against the nfevalmax budget
+    # this whole chunk is capped at) shows that's what's happening, while a
+    # blown-up or NaN gnorm points instead to a genuine numerical problem
+    # (e.g. a degenerate/coincident atom pair) rather than just a hard,
+    # slow-converging landscape.
     next!(progress_meter; showvalues = [
-        (" Minimum distance: ", dmin),
-        (" Maximum constraint violation: ", max_const),
+        (" Function value", f),
+        (" Minimum distance", dmin),
+        (" Maximum constraint violation", max_const),
+        (" Function evaluations", isnothing(nfeval) ? nfeval : "$nfeval / $nfevalmax"),
+        (" Projected gradient norm", gnorm),
     ])
     tol_ok = tol - dmin < tolerance_precision
     const_ok = max_const < constraint_precision
@@ -607,8 +723,46 @@ function packmol_callback(
     # still called unconditionally each iteration (not short-circuited) so
     # every detector's window stays populated regardless of which branch
     # ends up mattering.
-    f_not_improving = isnothing(f_stall_detector) || isnothing(f) ||
+    f_window_stalled = isnothing(f_stall_detector) || isnothing(f) ||
         is_stalled!(f_stall_detector, oftype(dmin, f); rel_tol=oftype(dmin, f_stall_tolerance), larger_is_better=false)
+    # f_stall_detector's window (~40 iterations at the default maxit=800) is
+    # sized to average out per-pair noise, but it's still only a trailing
+    # slice of the chunk: a chunk that fell sharply over its first several
+    # hundred iterations and has merely leveled off in this recent window has
+    # made excellent progress overall, and cutting it short here would just
+    # force the outer loop to close this chunk out and immediately open a new
+    # one from the same point — wasted bookkeeping for no benefit, since nitmax
+    # iterations remain unused. So a plateaued trailing window is itself
+    # vetoed by whole-chunk progress: `f_chunk_start` starts out as the first
+    # f this callback ever sees in this chunk, and as long as f has dropped
+    # more than `f_stall_tolerance` from that reference, the chunk keeps
+    # running regardless of what the trailing window shows — but the
+    # reference is then advanced to the current f (see the re-baseline below)
+    # every time that grants a reprieve, rather than staying pinned to the
+    # chunk's opening value forever. Without that re-baseline this veto is a
+    # one-way latch: a chunk that drops >10% in its first few dozen
+    # iterations and then genuinely flatlines for the rest of its multi-
+    # hundred-iteration budget would have `chunk_progress_significant` stuck
+    # true for the remainder (the ratio against a fixed, already-cleared
+    # opening value can only grow as f falls further, never revert), so the
+    # dmin/const stall detectors below — and thus movebad!'s only trigger —
+    # would never fire again for the rest of the chunk, no matter how long it
+    # sits doing nothing; observed in practice as a chunk grinding silently
+    # through its entire maxit/nfevalmax budget on a large system instead of
+    # being cut short to let the outer loop relocate whatever molecule is
+    # actually stuck. Re-baselining requires *renewed* progress to keep
+    # earning the reprieve, which is what "genuine ongoing progress vetoes a
+    # trailing-window plateau" was actually supposed to mean.
+    if !isnothing(f_chunk_start) && !isnothing(f) && f_chunk_start[] == typemax(f_chunk_start[])
+        f_chunk_start[] = oftype(dmin, f)
+    end
+    chunk_progress_significant = !isnothing(f_chunk_start) && !isnothing(f) &&
+        f_chunk_start[] < typemax(f_chunk_start[]) && f_chunk_start[] > zero(f_chunk_start[]) &&
+        (f_chunk_start[] - oftype(dmin, f)) / f_chunk_start[] > oftype(dmin, f_stall_tolerance)
+    if chunk_progress_significant
+        f_chunk_start[] = oftype(dmin, f)
+    end
+    f_not_improving = f_window_stalled && !chunk_progress_significant
     # Cut this chunk short once either the minimum distance or the maximum
     # constraint violation shows ~no net improvement over the trailing
     # `n_stall_iterations`-iteration window (and, per above, f isn't picking
