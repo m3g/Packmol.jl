@@ -6,18 +6,14 @@
 # individually (e.g. packmol_main.jl fattens their atom radii back up).
 # Following the Fortran Packmol heuristic (heuristics.f90 movebad subroutine).
 #
-# Each moved molecule goes through the same two-step placement as
-# `adjust_constraints!`'s own movebad loop: (1) `randomize_molecule!` draws a
-# new center of mass and rotation, rejecting (up to `max_guess_try` times)
-# any trial that overlaps the fixed structure when `fixed_sys` is given; (2)
-# once every molecule selected this call has been randomized, a short
-# constraint-only optimization (`constraint_only_fg_for_mols!`, run only when
-# `fg_output`/`atom_positions`/`mol_iat_first` are supplied) settles them into
-# a constraint-satisfying position before control returns to the caller's own
-# (distance-based) optimization. Molecules are geometrically independent in
-# this constraint-only objective, so batching every moved molecule into one
-# solver call is equivalent to — and cheaper than — minimizing them one at a
-# time.
+# Each moved molecule is placed by `_movebad_place_molecule!`: up to
+# `max_guess_try` trials, each drawing a fresh random center of mass/rotation
+# and then (when `fg_output`/`atom_positions`/`mol_iat_first` are supplied)
+# running a short constraint-only fit on it, keeping whichever trial scores
+# best (lowest post-fit constraint penalty among non-overlapping trials).
+# This mirrors `reinitialize_with_bounds!`'s own best-of-N placement, with
+# the constraint fit folded into each trial rather than left for a separate
+# pass afterward.
 #
 function movebad!(
     packmol_system::PackmolSystem{D,T},
@@ -37,6 +33,7 @@ function movebad!(
     atom_positions::Union{Nothing,Vector{SVector{D,T}}} = nothing,
     mol_iat_first::Union{Nothing,Vector{Int}} = nothing,
     opt_nit::Int = 20,
+    max_guess_try::Int = 20,
 ) where {D,T}
     nfree = length(free_mol_indices)
     # Count bad molecules and find fmol range among them
@@ -64,51 +61,97 @@ function movebad!(
             if rand(RNG, T) < prob
                 ist = mol_structure_type[imol]
                 st = packmol_system.structure_types[ist]
-                if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
-                    lo = cm_lo_type[ist]
-                    hi = cm_hi_type[ist]
-                    has_valid_bounds = all(lo .< hi)
-                    randomize_molecule!(packmol_system, imol, st, RNG;
-                        cm_lo = has_valid_bounds ? lo : nothing,
-                        cm_hi = has_valid_bounds ? hi : nothing,
-                        fixed_sys, fixed_lo, fixed_hi, tol = overlap_tol,
-                    )
+                lo, hi = if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
+                    l, h = cm_lo_type[ist], cm_hi_type[ist]
+                    all(l .< h) ? (l, h) : (nothing, nothing)
                 else
-                    randomize_molecule!(packmol_system, imol, st, RNG;
-                        fixed_sys, fixed_lo, fixed_hi, tol = overlap_tol,
-                    )
+                    (nothing, nothing)
                 end
+                _movebad_place_molecule!(
+                    packmol_system, imol, st, RNG;
+                    cm_lo=lo, cm_hi=hi,
+                    fixed_sys, fixed_lo, fixed_hi, overlap_tol,
+                    fg_output, atom_positions, mol_structure_type, mol_iat_first,
+                    precision, opt_nit, max_guess_try,
+                )
                 push!(moved, imol)
             end
         end
     end
-
-    # Step 2: settle the just-randomized molecules into a constraint-proper
-    # starting position (constraints only — this does not touch the
-    # distance-based objective the caller optimizes afterward) before
-    # returning control. Skipped when the caller didn't supply the scratch
-    # buffers this needs (e.g. a system with no constraints at all wouldn't
-    # benefit from it either).
-    if !isempty(moved) && !isnothing(fg_output) && !isnothing(atom_positions) && !isnothing(mol_iat_first)
-        x = Vector{T}(undef, length(moved) * 2 * D)
-        x_mol = reinterpret(MoleculePosition{D,T}, x)
-        for (k, imol) in enumerate(moved)
-            x_mol[k] = packmol_system.molecule_positions[imol]
-        end
-        spgbox!(
-            (g, x) -> constraint_only_fg_for_mols!(
-                g, x, fg_output, packmol_system, atom_positions, moved, mol_structure_type, mol_iat_first,
-            ),
-            x;
-            nitmax=opt_nit,
-            nfevalmax=10 * opt_nit,
-            callback=(result) -> result.f < precision,
-        )
-        x_mol = reinterpret(MoleculePosition{D,T}, x)
-        for (k, imol) in enumerate(moved)
-            packmol_system.molecule_positions[imol] = x_mol[k]
-        end
-    end
-
     return moved
+end
+
+#
+# Best-of-`max_guess_try` placement for a single molecule: each trial draws a
+# random center of mass/rotation, optionally fits it against constraints only
+# (when the scratch buffers are supplied), and scores it as the post-fit
+# constraint penalty (or the raw one, when no fit is done) — with any trial
+# that overlaps the fixed structure forced to the worst possible score,
+# regardless of how good its own constraint penalty looks, since overlap
+# with fixed atoms isn't reflected in that penalty at all. The best-scoring
+# trial is kept; if every trial overlaps, the last trial is kept anyway
+# (matching `randomize_molecule!`'s own fallback) rather than leaving the
+# molecule at its original, already-bad position.
+#
+function _movebad_place_molecule!(
+    packmol_system::PackmolSystem{D,T},
+    imol::Int,
+    st::StructureType{D,T},
+    RNG;
+    cm_lo::Union{Nothing,SVector{D,T}},
+    cm_hi::Union{Nothing,SVector{D,T}},
+    fixed_sys,
+    fixed_lo::SVector{D,T},
+    fixed_hi::SVector{D,T},
+    overlap_tol::T,
+    fg_output::Union{Nothing,InteratomicDistanceFG{D,T}},
+    atom_positions::Union{Nothing,Vector{SVector{D,T}}},
+    mol_structure_type::Vector{Int},
+    mol_iat_first::Union{Nothing,Vector{Int}},
+    precision::T,
+    opt_nit::Int,
+    max_guess_try::Int,
+) where {D,T}
+    do_fit = !isnothing(fg_output) && !isnothing(atom_positions) && !isnothing(mol_iat_first)
+    mol_list = [imol]
+    overlap_positions = isnothing(fixed_sys) ? SVector{D,T}[] : Vector{SVector{D,T}}(undef, st.natoms)
+    x = do_fit ? Vector{T}(undef, 2 * D) : T[]
+
+    best_mp = packmol_system.molecule_positions[imol]
+    best_score = typemax(T)
+    last_mp = best_mp
+    for _ in 1:max_guess_try
+        mp = _random_molecule_position(packmol_system, RNG; cm_lo, cm_hi)
+        packmol_system.molecule_positions[imol] = mp
+        score = if do_fit
+            x_mol = reinterpret(MoleculePosition{D,T}, x)
+            x_mol[1] = mp
+            spgresult = spgbox!(
+                (g, x) -> constraint_only_fg_for_mols!(
+                    g, x, fg_output, packmol_system, atom_positions, mol_list, mol_structure_type, mol_iat_first,
+                ),
+                x;
+                nitmax=opt_nit,
+                nfevalmax=10 * opt_nit,
+                callback=(result) -> result.f < precision,
+            )
+            x_mol = reinterpret(MoleculePosition{D,T}, x)
+            mp = x_mol[1]
+            packmol_system.molecule_positions[imol] = mp
+            spgresult.f
+        else
+            constraint_penalty_sum(mp, st)
+        end
+        last_mp = mp
+        overlaps = !isnothing(fixed_sys) &&
+            overlaps_fixed(mp, st.reference_coordinates, fixed_sys, overlap_positions, fixed_lo, fixed_hi, overlap_tol)
+        score = overlaps ? typemax(T) : score
+        if score < best_score
+            best_score = score
+            best_mp = mp
+        end
+        best_score < precision && break
+    end
+    packmol_system.molecule_positions[imol] = best_score < typemax(T) ? best_mp : last_mp
+    return nothing
 end
