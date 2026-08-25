@@ -511,19 +511,14 @@ function packmol(
         # initial inflation — overriding the decay just applied to them
         # above — while every other atom's decay stands.
         #
-        # A pure distance stall (dmin_stalled, no constraint_stalled) isn't
-        # relocated on its own: the decay just applied above is already
-        # easing the target every loop, so a molecule that's merely a bit
-        # too close under the still-inflated tolerance may resolve on its
-        # own as radii keep shrinking — relocating it preemptively is
-        # needless disruption. Only once every atom has fully decayed to its
-        # own floor (nothing left to ease) does a lingering distance stall
-        # fall back to relocation. A constraint stall always relocates
-        # immediately regardless of radii state: a molecule stuck outside
-        # its assigned region isn't helped by easing the interatomic-
-        # distance target at all.
+        # Neither stall kind relocates on its own: the decay just applied
+        # above is already easing the target every loop, so a stall may
+        # resolve on its own as radii keep shrinking — relocating
+        # preemptively is needless disruption. Only once every atom has
+        # fully decayed to its own floor (nothing left to ease) does a
+        # lingering stall (distance or constraint) fall back to relocation.
         radii_at_floor = all(atom_radii[iat] == atom_radii_floor[iat] for iat in eachindex(atom_radii))
-        do_movebad = constraint_stalled || (dmin_stalled && radii_at_floor)
+        do_movebad = chunk_stalled && radii_at_floor
         if do_movebad
             cm_min, cm_max = compute_cm_bounds(packmol_system)
             moved = movebad!(
