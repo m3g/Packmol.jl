@@ -190,6 +190,14 @@ function packmol(
     mol_iat_first = _build_mol_iat_first(packmol_system)
     precision = packmol_system.tolerance_precision
 
+    # Fixed-structure overlap-check system and constraint-only scratch for
+    # movebad! (see movebad.jl): built once here, since the fixed atoms never
+    # move over the course of the run, and reused on every relocation.
+    movebad_overlap_tol = packmol_system.radscale * packmol_system.tolerance
+    movebad_fixed_sys, movebad_fixed_lo, movebad_fixed_hi =
+        _build_overlap_check_system(packmol_system, movebad_overlap_tol)
+    movebad_fg_output = InteratomicDistanceFG{D,T}(packmol_system)
+
     # `constrain_rotation` bounds (per structure type, per axis) as hard
     # bounds on the rotation-angle optimization variables — matching Fortran
     # Packmol's own `pgencan`, which sets GENCAN's `l`/`u` this way rather
@@ -525,6 +533,9 @@ function packmol(
                 packmol_system, cl_system.fg.fmol, free_mol_indices, mol_structure_type, RNG;
                 movefrac, precision,
                 cm_lo_type=cm_min, cm_hi_type=cm_max,
+                fixed_sys=movebad_fixed_sys, fixed_lo=movebad_fixed_lo, fixed_hi=movebad_fixed_hi,
+                overlap_tol=movebad_overlap_tol,
+                fg_output=movebad_fg_output, atom_positions=buffers.atom_positions, mol_iat_first,
             )
             if !isempty(moved)
                 println("  Moved $(length(moved)) bad molecules randomly to new positions.")
