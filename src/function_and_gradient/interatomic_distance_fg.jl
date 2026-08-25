@@ -113,22 +113,26 @@ end
 # Updates the function and gradient of the system given a pair of
 # particles within the cutoff.
 #
-# `radscale` implements the same "loose start" heuristic as the original
-# Fortran Packmol (getinp.f90's `discale`, default 1.1): early in packing,
-# atom radii (thus the target distance) are inflated by `radscale`, giving
-# SPGBox a looser, easier target while molecules are far from
-# feasible; `radscale` decays toward 1.0 as improvement stalls (see
-# packmol_main.jl). `fg.dmin` tracks the true (unscaled) minimum distance
-# regardless of radscale, so convergence checks against the real tolerance
-# are unaffected by this internal optimization-target adjustment.
-function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_system, radscale)
+# `atom_radii` implements the same "loose start" heuristic as the original
+# Fortran Packmol (getinp.f90's `discale`, default 1.1), generalized to a
+# per-atom working radius rather than a single global scale factor: early in
+# packing, every atom's own radius (thus its contribution to the pairwise
+# target distance) is inflated, giving SPGBox a looser, easier target while
+# molecules are far from feasible; each atom's entry in `atom_radii` decays
+# toward its own floor (its user-specified or default radius) as improvement
+# stalls, and is fattened back up when its molecule is relocated by
+# movebad! (see packmol_main.jl). `fg.dmin` tracks the true (unscaled)
+# minimum distance regardless of `atom_radii`, so convergence checks against
+# the real tolerance are unaffected by this internal optimization-target
+# adjustment.
+function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_system, atom_radii)
     (; x, y, i, j, d2) = pair
     iatom = packmol_system.atoms[i]
     jatom = packmol_system.atoms[j]
     if iatom.molecule_index == jatom.molecule_index
         return fg
     end
-    tol = radscale * (iatom.radius + jatom.radius)
+    tol = atom_radii[i] + atom_radii[j]
     d = sqrt(d2)
     fg.dmin = min(d, fg.dmin)
     if d < tol
@@ -384,7 +388,7 @@ function fg!(g, x,
     packmol_system::PackmolSystem{D,T},
     atom_positions::Vector{SVector{D,T}},
     free_mol_indices::Vector{Int},
-    radscale::T=one(T),
+    atom_radii::Vector{T}=map(a -> a.radius, packmol_system.atoms),
 ) where {D,T}
     # Unpack optimizer variables into free molecule slots
     x_mol = reinterpret(MoleculePosition{D,T}, x)
@@ -402,7 +406,7 @@ function fg!(g, x,
         end
     end
     # Compute pairwise distance penalties and Cartesian gradients
-    pairwise!((pair, output) -> cartesian_fg!(pair, output, packmol_system, radscale), cl_system,)
+    pairwise!((pair, output) -> cartesian_fg!(pair, output, packmol_system, atom_radii), cl_system,)
     # Add constraint penalties and gradients
     constraint_fg!(cl_system.fg, atom_positions, packmol_system)
     # Zero molecule-level gradients (excluded from CellListMap reset/reduce)
