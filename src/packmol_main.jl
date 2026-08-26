@@ -48,14 +48,20 @@ function packmol(
     println(hash_line)
     println()
 
-    # Build index of free (non-fixed) molecules
+    # Build index of free (non-fixed) molecules, and its complement (fixed
+    # molecules) — the latter used below to detect when a stall is caused by
+    # a free molecule wedged against a fixed one, rather than mere free-free
+    # crowding.
     free_mol_indices = Int[]
+    fixed_mol_indices = Int[]
     imol = 0
     for st in packmol_system.structure_types
         for _ in 1:st.number_of_molecules
             imol += 1
             if !st.fixed.fixed
                 push!(free_mol_indices, imol)
+            else
+                push!(fixed_mol_indices, imol)
             end
         end
     end
@@ -237,25 +243,30 @@ function packmol(
     g0 = similar(x)
     # Start packing with a looser-than-required tolerance (matches the
     # original Fortran Packmol's `discale` heuristic, default 1.1): every
-    # atom's own radius is inflated by radscale in the optimization target,
-    # giving the optimizer an easier target while far from feasible.
-    # `atom_radii` is the mutable, per-atom working radius used by the
-    # optimizer — it decays toward each atom's own floor (`atom_radii_floor`,
-    # its user-specified or default radius) every loop (see the end of the
-    # loop body below), and a molecule relocated by movebad! has its atoms'
-    # entries reset back up to the full inflation, since a freshly randomized
-    # molecule needs the easier target again. True convergence checks
-    # (tol_ok, dmin) are unaffected since they measure the real, unscaled
-    # distances, and `atom_radii_floor` is what the "true objective"
-    # evaluations below (`f_true_loop_start`/`f_true_loop_end`) use.
+    # atom's own radius is inflated by a single global radscale factor in
+    # the optimization target, giving the optimizer an easier target while
+    # far from feasible. `atom_radii` is the mutable working radius used by
+    # the optimizer, always `radscale .* atom_radii_floor` uniformly across
+    # every atom, where `atom_radii_floor` is each atom's own user-specified
+    # or default radius. This "breathing" radscale is recomputed after every
+    # loop from that loop's own dmin (see the end of the loop body below) as
+    # `max(1, min(input radscale, tol / dmin))`: it inflates when dmin falls
+    # far short of tol, and relaxes back toward 1 as dmin approaches tol,
+    # capped above by the user-specified radscale and never dropping below 1
+    # (each atom's true radius). True convergence checks (tol_ok, dmin) are
+    # unaffected since they measure the real, unscaled distances, and
+    # `atom_radii_floor` is what the "true objective" evaluations below
+    # (`f_true_loop_start`/`f_true_loop_end`) use.
     atom_radii_floor = Vector{T}(undef, natoms)
     for (iat, a) in enumerate(packmol_system.atoms)
         atom_radii_floor[iat] = a.radius
     end
-    atom_radii = packmol_system.radscale .* atom_radii_floor
+    radscale = packmol_system.radscale
+    atom_radii = radscale .* atom_radii_floor
     f0 = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
     @printf("  Objective function at initial point: %10.5e\n", f0)
     bestf = typemax(T)
+    prev_loop_f = f0
     converged = false
     best_positions = copy(packmol_system.molecule_positions)
     for loop in 0:nloop
@@ -263,6 +274,7 @@ function packmol(
         println()
         println(dash_line)
         @printf("  Starting packing loop: %8d\n", loop)
+        @printf("  Radius scaling factor (radscale): %8.4f\n", radscale)
         atom_radii_lo, atom_radii_hi = extrema(atom_radii)
         @printf("  Atom radii in this loop: [ %8.4f - %8.4f ]\n", atom_radii_lo, atom_radii_hi)
         println()
@@ -346,6 +358,14 @@ function packmol(
         fx = optresult.f
         dmin = min(cl_system.fg.dmin, cl_system.cutoff)
         fimprov = bestf < typemax(T) ? clamp(-100 * (fx - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
+        # Improvement relative to the immediately preceding loop's own f
+        # (as opposed to fimprov above, which is relative to the best f seen
+        # so far) — used below to gate movebad!: a loop that barely moves f
+        # from where the previous loop left it is a direct, simple sign that
+        # this loop's own optimization isn't making headway, independent of
+        # whatever the historical best happens to be.
+        loop_over_loop_improvement = prev_loop_f > zero(T) ?
+            clamp(-100 * (fx - prev_loop_f) / prev_loop_f, T(-99.99), T(99.99)) : T(100)
         improved = fx < bestf
         bestf_before_loop = bestf
         if improved
@@ -453,6 +473,12 @@ function packmol(
         # objective the wrong way.
         f_true_loop_end = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
         fimp_within_loop = clamp(-100 * (f_true_loop_end - f_true_loop_start) / f_true_loop_start, T(-99.99), T(99.99))
+        # Whether any fixed molecule currently has a nonzero contribution to
+        # the true (unscaled, atom_radii_floor) objective — i.e. some free
+        # molecule is genuinely overlapping a fixed one right now, not merely
+        # falling short of this loop's (possibly inflated) working target.
+        # Read from the fg! call just above, before it's overwritten below.
+        has_fixed_overlap = any(imol -> cl_system.fg.fmol[imol] > zero(T), fixed_mol_indices)
         # The call above overwrote cl_system.fg (fmol, gradients, dmin, ...)
         # with atom_radii_floor values; restore it to this loop's own working
         # atom_radii before movebad! (below) reads fmol to pick which
@@ -463,6 +489,7 @@ function packmol(
         @printf("  Function value from last loop: f = %10.5e\n", fx)
         @printf("  Best function value before: f = %10.5e\n", bestf_before_loop)
         @printf("  Improvement from best function value: %8.2f %%\n", fimprov)
+        @printf("  Improvement from previous loop: %8.2f %%\n", loop_over_loop_improvement)
         @printf("  Improvement within this loop: %8.2f %%\n", fimp_within_loop)
         @printf("  Minimum distance: %12.6f\n", dmin)
         @printf("  Maximum violation of the constraints: %10.5e\n", max_const)
@@ -503,30 +530,43 @@ function packmol(
             println("  Current solution written to file: ", packmol_system.output_file)
         end
 
-        # Every atom's working radius always decays 10% toward its own floor
-        # (atom_radii_floor), every loop, regardless of stall state — this is
-        # unconditional background behavior, not a stall response.
-        for iat in eachindex(atom_radii)
-            atom_radii[iat] = max(T(0.9) * atom_radii[iat], atom_radii_floor[iat])
-        end
-        # `dmin_stalled`/`constraint_stalled` already require the whole-chunk
-        # function improvement to also be small (see above), so acting on
-        # them here can't disrupt a loop that's genuinely still improving.
-        # movebad! relocates the offending molecules to new random positions;
-        # since a freshly randomized molecule needs the easier (inflated)
-        # target again rather than whatever its radii had already decayed
-        # down to, its atoms are individually fattened back up to the full
-        # initial inflation — overriding the decay just applied to them
-        # above — while every other atom's decay stands.
+        # "Breathing" radscale heuristic: after this loop's optimization,
+        # rescale every atom's working radius uniformly based on how far this
+        # loop's dmin fell short of tol: `max(1, min(input radscale, tol /
+        # dmin))`. This inflates the shared radscale when dmin is far below
+        # tol (an easier target for the optimizer), and relaxes it back
+        # toward 1 as dmin approaches tol, capped above by the user-specified
+        # radscale and never dropping below 1 (each atom's true radius).
+        # Applies uniformly to every atom, including ones movebad! is about
+        # to relocate below — there's no separate per-molecule inflation.
+        radscale = max(one(T), min(packmol_system.radscale, tol / dmin))
+        atom_radii .= radscale .* atom_radii_floor
+        # Whether this loop is making real headway: compared directly
+        # against the immediately preceding loop's own f (loop_over_loop_
+        # improvement, computed above), not against the historical best
+        # (fimprov) — a loop can sit far from the best-ever f while still
+        # legitimately grinding forward, and that shouldn't count against it
+        # here.
+        low_improvement = loop_over_loop_improvement < T(100) * f_stall_tolerance
         #
-        # Neither stall kind relocates on its own: the decay just applied
-        # above is already easing the target every loop, so a stall may
-        # resolve on its own as radii keep shrinking — relocating
-        # preemptively is needless disruption. Only once every atom has
-        # fully decayed to its own floor (nothing left to ease) does a
-        # lingering stall (distance or constraint) fall back to relocation.
-        radii_at_floor = all(atom_radii[iat] == atom_radii_floor[iat] for iat in eachindex(atom_radii))
-        do_movebad = chunk_stalled && radii_at_floor
+        # Not every unmet target warrants relocation: a *constraint*
+        # violation that persists with low improvement is a genuine dead end
+        # for the current positions — nothing but relocation will fix it.
+        # A distance-tolerance violation only counts the same way when it's
+        # actually a free molecule wedged against a fixed one
+        # (has_fixed_overlap): a lingering distance violation among free
+        # molecules alone is not treated as stuck, since as other molecules
+        # keep resolving their own larger violations, room for the ones
+        # behind them tends to open up on its own — relocating preemptively
+        # there is needless disruption.
+        #
+        # Not gated on radscale: a molecule genuinely wedged (against a
+        # fixed structure, or against other molecules with nowhere left to
+        # go) can hold dmin far below tol indefinitely, which — per the
+        # breathing formula above — pins radscale at its ceiling forever.
+        # Gating relocation on radscale having relaxed would then mean
+        # movebad! never fires for exactly the cases it's meant to catch.
+        do_movebad = (!const_ok && low_improvement) || (!tol_ok && has_fixed_overlap && low_improvement)
         if do_movebad
             cm_min, cm_max = compute_cm_bounds(packmol_system)
             moved = movebad!(
@@ -539,14 +579,6 @@ function packmol(
             )
             if !isempty(moved)
                 println("  Moved $(length(moved)) bad molecules randomly to new positions.")
-                for imol in moved
-                    ist = mol_structure_type[imol]
-                    natoms_mol = packmol_system.structure_types[ist].natoms
-                    iat_first = mol_iat_first[imol]
-                    for iat in iat_first:(iat_first + natoms_mol - 1)
-                        atom_radii[iat] = packmol_system.radscale * atom_radii_floor[iat]
-                    end
-                end
             end
         end
         # Re-pack optimizer variables from (possibly moved) molecule positions
@@ -554,6 +586,7 @@ function packmol(
         for (k, imol) in enumerate(free_mol_indices)
             x_mol[k] = packmol_system.molecule_positions[imol]
         end
+        prev_loop_f = fx
     end
 
     if !converged
