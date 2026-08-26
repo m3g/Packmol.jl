@@ -49,17 +49,33 @@ function movebad!(
     # Number of molecules to move
     frac = min(movefrac, nbad / nfree)
     nmove = max(1, min(nbad, round(Int, frac * nfree)))
-    # Move molecules randomly: probability of moving is proportional
-    # to fmol value (worse molecules are more likely to be moved).
+    # Move molecules randomly: worse molecules are more likely to be moved
+    # (see the probability formula below).
     moved = Int[]
     for imol in free_mol_indices
         length(moved) >= nmove && break
         if fmol[imol] > precision / packmol_system.nmols
-            # Probability increases with fmol value: move the worst with 0.5
-            # probablity, linearly decreasing probability for better molecules
-            prob = 0.5 * fmol[imol] / fmol_max
+            # Probability is `movefrac` (the target move fraction, e.g. 5%)
+            # scaled down exponentially by how far this molecule's fmol falls
+            # short of the worst one (fmol_max): in the degenerate case where
+            # every bad molecule of this type is equally bad (fmol ==
+            # fmol_max for all), the exponential factor is 1 for each of
+            # them, so each independently has probability exactly `movefrac`
+            # — the expected fraction moved is then exactly `movefrac`, never
+            # more. In the normal case, where the worst molecule's fmol
+            # genuinely stands out from the rest, the exponential pulls every
+            # other candidate's probability well below `movefrac`, so the
+            # expected fraction moved drops well under the target as the
+            # population's badness becomes less uniform. The decay is
+            # weighted by the molecule's own atom count (natoms_mol) so that
+            # bigger molecules — whose fmol naturally accumulates more terms
+            # simply from having more atoms — aren't penalized for that size
+            # alone: the same absolute gap in fmol decays more gently for a
+            # larger molecule.
+            ist = mol_structure_type[imol]
+            natoms_mol = packmol_system.structure_types[ist].natoms
+            prob = movefrac * exp(-(fmol_max - fmol[imol]) / natoms_mol)
             if rand(RNG, T) < prob
-                ist = mol_structure_type[imol]
                 st = packmol_system.structure_types[ist]
                 lo, hi = if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
                     l, h = cm_lo_type[ist], cm_hi_type[ist]

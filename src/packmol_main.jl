@@ -487,7 +487,7 @@ function packmol(
 
         @printf("\n  Packing loop ended: %s\n", loop_end_reason)
         @printf("  Function value from last loop: f = %10.5e\n", fx)
-        @printf("  Best function value before: f = %10.5e\n", bestf_before_loop)
+        @printf("  Best function value before: f = %10.5e\n", bestf_before_loop == typemax(T) ? f0 : bestf_before_loop)
         @printf("  Improvement from best function value: %8.2f %%\n", fimprov)
         @printf("  Improvement from previous loop: %8.2f %%\n", loop_over_loop_improvement)
         @printf("  Improvement within this loop: %8.2f %%\n", fimp_within_loop)
@@ -547,7 +547,7 @@ function packmol(
         # (fimprov) — a loop can sit far from the best-ever f while still
         # legitimately grinding forward, and that shouldn't count against it
         # here.
-        low_improvement = loop_over_loop_improvement < T(100) * f_stall_tolerance
+        low_improvement = fimp_within_loop < T(100) * f_stall_tolerance
         #
         # Not every unmet target warrants relocation: a *constraint*
         # violation that persists with low improvement is a genuine dead end
