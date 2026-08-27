@@ -23,6 +23,9 @@ function movebad!(
     RNG;
     movefrac::T=T(0.05),
     precision::T=T(1e-2),
+    loop::Int=0,
+    nloop::Int=1,
+    fmol_max_type::Vector{T}=zeros(T, length(packmol_system.structure_types)),
     cm_lo_type::Union{Nothing,Vector{SVector{D,T}}} = nothing,
     cm_hi_type::Union{Nothing,Vector{SVector{D,T}}} = nothing,
     fixed_sys = nothing,
@@ -36,45 +39,85 @@ function movebad!(
     max_guess_try::Int = 20,
 ) where {D,T}
     nfree = length(free_mol_indices)
-    # Count bad molecules and find fmol range among them
+    # Count bad molecules, the fmol range among them (per structure type,
+    # both for this call alone and the historical worst-ever — see below),
+    # and per-structure-type free-molecule totals (n_type) — the latter used
+    # below to size each type's initial (loop 0) move quota.
+    ntypes = length(packmol_system.structure_types)
     nbad = 0
-    fmol_max = zero(T)
+    fmol_max_now = zeros(T, ntypes)
+    n_type = zeros(Int, ntypes)
     for imol in free_mol_indices
+        ist = mol_structure_type[imol]
+        n_type[ist] += 1
         if fmol[imol] > precision / packmol_system.nmols
             nbad += 1
-            fmol_max = max(fmol_max, fmol[imol])
+            fmol_max_now[ist] = max(fmol_max_now[ist], fmol[imol])
         end
     end
     nbad == 0 && return Int[]
+    # `fmol_max_type` (owned and persisted by the caller across loops) tracks
+    # the worst fmol ever observed for each structure type, not just this
+    # call's own candidates: once the population of bad molecules becomes
+    # homogeneous late in the packing (all clustered near the same, small
+    # fmol), using *this call's* max as the exponential's reference would
+    # make every candidate look nearly as bad as the worst one, driving most
+    # of their probabilities back up toward the prefactor ceiling even
+    # though none of them is actually far from converged. Anchoring instead
+    # to the historical worst-ever value keeps the exponential gap — and
+    # thus the probability — small for a mildly-bad, tightly-clustered
+    # population, exactly as it should be.
+    fmol_max_type .= max.(fmol_max_type, fmol_max_now)
     # Number of molecules to move
     frac = min(movefrac, nbad / nfree)
     nmove = max(1, min(nbad, round(Int, frac * nfree)))
+    # As packing progresses, movebad! should disturb the system less: `stage`
+    # ramps linearly from 0 (loop 0) to 1 (loop == nloop/2) and stays at 1
+    # for the remainder of the run. It drives two things together, both
+    # shrinking from their loop-0 behavior down to "at most 1 molecule of
+    # each type" by the halfway point: the per-type move quota (quota_type,
+    # a hard cap enforced below via moved_count_type) and the probability
+    # prefactor itself (movefrac scaled by the same quota_type/quota0_type
+    # ratio) — so a call late in the run is both less likely to move any
+    # given candidate and structurally unable to move more than one member
+    # of a type, rather than merely unlikely to.
+    half = max(one(T), T(nloop) / 2)
+    stage = clamp(T(loop) / half, zero(T), one(T))
+    quota0_type = max.(1, round.(Int, movefrac .* n_type))
+    quota_type = max.(1, round.(Int, (1 - stage) .* quota0_type .+ stage))
+    moved_count_type = zeros(Int, ntypes)
     # Move molecules randomly: worse molecules are more likely to be moved
     # (see the probability formula below).
     moved = Int[]
     for imol in free_mol_indices
         length(moved) >= nmove && break
         if fmol[imol] > precision / packmol_system.nmols
-            # Probability is `movefrac` (the target move fraction, e.g. 5%)
-            # scaled down exponentially by how far this molecule's fmol falls
-            # short of the worst one (fmol_max): in the degenerate case where
-            # every bad molecule of this type is equally bad (fmol ==
-            # fmol_max for all), the exponential factor is 1 for each of
-            # them, so each independently has probability exactly `movefrac`
-            # — the expected fraction moved is then exactly `movefrac`, never
-            # more. In the normal case, where the worst molecule's fmol
-            # genuinely stands out from the rest, the exponential pulls every
-            # other candidate's probability well below `movefrac`, so the
-            # expected fraction moved drops well under the target as the
-            # population's badness becomes less uniform. The decay is
-            # weighted by the molecule's own atom count (natoms_mol) so that
-            # bigger molecules — whose fmol naturally accumulates more terms
-            # simply from having more atoms — aren't penalized for that size
-            # alone: the same absolute gap in fmol decays more gently for a
-            # larger molecule.
             ist = mol_structure_type[imol]
+            moved_count_type[ist] >= quota_type[ist] && continue
+            # Probability is `movefrac` (the target move fraction, e.g. 5%),
+            # itself shrunk by this call's stage-dependent quota ratio (see
+            # above), scaled down exponentially by how far this molecule's
+            # fmol falls short of the worst one ever seen for this type
+            # (fmol_max_type[ist], the historical running max — see above,
+            # not just this call's own candidates): in the degenerate case
+            # where every bad molecule of this type is equally bad (fmol ==
+            # fmol_max_type[ist] for all), the exponential factor is 1 for
+            # each of them, so each independently has probability exactly
+            # the (stage-scaled) prefactor — the expected fraction moved is
+            # then exactly that prefactor, never more. In the normal case,
+            # where the worst-ever fmol for this type genuinely stands out
+            # from the current candidates, the exponential pulls every
+            # candidate's probability well below the prefactor, so the
+            # expected fraction moved drops well under the target as the
+            # population's badness becomes less uniform (or simply smaller
+            # than it once was). The decay is weighted by the molecule's own
+            # atom count (natoms_mol) so that bigger molecules — whose fmol
+            # naturally accumulates more terms simply from having more atoms
+            # — aren't penalized for that size alone: the same absolute gap
+            # in fmol decays more gently for a larger molecule.
             natoms_mol = packmol_system.structure_types[ist].natoms
-            prob = movefrac * exp(-(fmol_max - fmol[imol]) / natoms_mol)
+            movefrac_now = movefrac * quota_type[ist] / quota0_type[ist]
+            prob = movefrac_now * exp(-(fmol_max_type[ist] - fmol[imol]) / natoms_mol)
             if rand(RNG, T) < prob
                 st = packmol_system.structure_types[ist]
                 lo, hi = if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
@@ -91,6 +134,7 @@ function movebad!(
                     precision, opt_nit, max_guess_try,
                 )
                 push!(moved, imol)
+                moved_count_type[ist] += 1
             end
         end
     end

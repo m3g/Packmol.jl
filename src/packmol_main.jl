@@ -195,6 +195,10 @@ function packmol(
     mol_structure_type = _build_mol_structure_type(packmol_system)
     mol_iat_first = _build_mol_iat_first(packmol_system)
     precision = packmol_system.tolerance_precision
+    # Worst fmol ever observed per structure type, across every movebad! call
+    # over the whole run (see movebad.jl for why this must persist rather
+    # than being recomputed fresh each call).
+    fmol_max_type = zeros(T, length(packmol_system.structure_types))
 
     # Fixed-structure overlap-check system and constraint-only scratch for
     # movebad! (see movebad.jl): built once here, since the fixed atoms never
@@ -265,8 +269,13 @@ function packmol(
     atom_radii = radscale .* atom_radii_floor
     f0 = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
     @printf("  Objective function at initial point: %10.5e\n", f0)
+    # True (floor-radii) counterpart of f0, at the same (initial) position —
+    # used below to seed `prev_loop_f`/the loop-0 "best function value
+    # before" print on the same scale-invariant basis as every other
+    # cross-loop comparison (see the comment above f_true_loop_end).
+    f0_true = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
     bestf = typemax(T)
-    prev_loop_f = f0
+    prev_loop_f = f0_true
     converged = false
     best_positions = copy(packmol_system.molecule_positions)
     for loop in 0:nloop
@@ -353,26 +362,68 @@ function packmol(
         for (k, imol) in enumerate(free_mol_indices)
             packmol_system.molecule_positions[imol] = x_mol[k]
         end
-
-        # Statistics: compute improvement of this loop relative to bestf
         fx = optresult.f
+
+        # True (floor) objective value at the position this loop ends at,
+        # paired with f_true_loop_start above: this isolates what this
+        # loop's own optimization did to the real objective. Since this
+        # loop's own optimizer worked under atom_radii (not necessarily
+        # equal to atom_radii_floor for every atom), a negative
+        # fimp_within_loop below is possible — it means the inflated target
+        # it was actually chasing pulled the real, unscaled objective the
+        # wrong way.
+        #
+        # dmin/max_const/fimprov/loop_over_loop_improvement/bestf below are
+        # all deliberately based on this true, floor-radii value rather than
+        # the optimizer's own (possibly radscale-inflated) fx =
+        # optresult.f: fx isn't on a consistent scale across loops, since
+        # the breathing radscale heuristic can inflate it back up after
+        # shrinking it, making a raw fx-to-fx comparison across loops
+        # compare two different objective functions rather than two
+        # snapshots of the same one. (dmin and max_const are unaffected
+        # either way — the interatomic-distance minimum and the geometric
+        # constraint penalties are both independent of atom_radii — so
+        # reading them off this floor-radii evaluation gives exactly the
+        # same value they'd have under the working atom_radii.)
+        f_true_loop_end = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
         dmin = min(cl_system.fg.dmin, cl_system.cutoff)
-        fimprov = bestf < typemax(T) ? clamp(-100 * (fx - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
-        # Improvement relative to the immediately preceding loop's own f
-        # (as opposed to fimprov above, which is relative to the best f seen
-        # so far) — used below to gate movebad!: a loop that barely moves f
-        # from where the previous loop left it is a direct, simple sign that
-        # this loop's own optimization isn't making headway, independent of
-        # whatever the historical best happens to be.
+        fimp_within_loop = clamp(-100 * (f_true_loop_end - f_true_loop_start) / f_true_loop_start, T(-99.99), T(99.99))
+        fimprov = bestf < typemax(T) ?
+            clamp(-100 * (f_true_loop_end - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
+        # Improvement relative to the immediately preceding loop's own true
+        # end-of-optimization value (as opposed to fimprov above, which is
+        # relative to the best true f seen so far) — used below to gate
+        # movebad!: a loop that barely moves the true objective from where
+        # the previous loop left it is a direct, simple sign that this
+        # loop's own optimization isn't making headway, independent of
+        # whatever the historical best happens to be. This agrees with
+        # fimp_within_loop above exactly unless movebad! relocated molecules
+        # between the previous loop's end and this loop's start — prev_loop_f
+        # is set (below) from this loop's own f_true_loop_end *before*
+        # movebad! runs, so if nothing gets relocated, f_true_loop_start on
+        # the next loop is the very same position/value as this loop's
+        # prev_loop_f, and the two metrics coincide; a relocation in between
+        # is exactly what makes them diverge.
         loop_over_loop_improvement = prev_loop_f > zero(T) ?
-            clamp(-100 * (fx - prev_loop_f) / prev_loop_f, T(-99.99), T(99.99)) : T(100)
-        improved = fx < bestf
+            clamp(-100 * (f_true_loop_end - prev_loop_f) / prev_loop_f, T(-99.99), T(99.99)) : T(100)
+        improved = f_true_loop_end < bestf
         bestf_before_loop = bestf
         if improved
-            bestf = fx
+            bestf = f_true_loop_end
             copyto!(best_positions, packmol_system.molecule_positions)
         end
         max_const = cl_system.fg.max_constraint_penalty
+        # Whether any fixed molecule currently has a nonzero contribution to
+        # the true (unscaled, atom_radii_floor) objective — i.e. some free
+        # molecule is genuinely overlapping a fixed one right now, not merely
+        # falling short of this loop's (possibly inflated) working target.
+        # Read from the fg! call above, before it's overwritten below.
+        has_fixed_overlap = any(imol -> cl_system.fg.fmol[imol] > zero(T), fixed_mol_indices)
+        # The call above overwrote cl_system.fg (fmol, gradients, dmin, ...)
+        # with atom_radii_floor values; restore it to this loop's own working
+        # atom_radii before movebad! (below) reads fmol to pick which
+        # molecules to relocate.
+        fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
 
         # Check convergence: both tolerance and constraint precisions must be satisfied
         tol_ok = tol - dmin < packmol_system.tolerance_precision
@@ -460,34 +511,9 @@ function packmol(
             "chunk iteration budget (maxit) reached"
         end
 
-        # True (floor) objective value at the position this loop ends at,
-        # paired with f_true_loop_start above: this isolates what this loop's
-        # own optimization did to the real objective, as opposed to comparing
-        # against the previous loop's ending value (which mixes in whatever
-        # movebad!/decay happened between loops). Same sign convention as
-        # "Improvement from best function value" above (positive = the real
-        # objective got better): since this loop's own optimizer worked
-        # under atom_radii (not necessarily equal to atom_radii_floor for
-        # every atom), a negative value here is possible — it means the
-        # inflated target it was actually chasing pulled the real, unscaled
-        # objective the wrong way.
-        f_true_loop_end = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
-        fimp_within_loop = clamp(-100 * (f_true_loop_end - f_true_loop_start) / f_true_loop_start, T(-99.99), T(99.99))
-        # Whether any fixed molecule currently has a nonzero contribution to
-        # the true (unscaled, atom_radii_floor) objective — i.e. some free
-        # molecule is genuinely overlapping a fixed one right now, not merely
-        # falling short of this loop's (possibly inflated) working target.
-        # Read from the fg! call just above, before it's overwritten below.
-        has_fixed_overlap = any(imol -> cl_system.fg.fmol[imol] > zero(T), fixed_mol_indices)
-        # The call above overwrote cl_system.fg (fmol, gradients, dmin, ...)
-        # with atom_radii_floor values; restore it to this loop's own working
-        # atom_radii before movebad! (below) reads fmol to pick which
-        # molecules to relocate.
-        fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
-
         @printf("\n  Packing loop ended: %s\n", loop_end_reason)
         @printf("  Function value from last loop: f = %10.5e\n", fx)
-        @printf("  Best function value before: f = %10.5e\n", bestf_before_loop == typemax(T) ? f0 : bestf_before_loop)
+        @printf("  Best function value before: f = %10.5e\n", bestf_before_loop == typemax(T) ? f0_true : bestf_before_loop)
         @printf("  Improvement from best function value: %8.2f %%\n", fimprov)
         @printf("  Improvement from previous loop: %8.2f %%\n", loop_over_loop_improvement)
         @printf("  Improvement within this loop: %8.2f %%\n", fimp_within_loop)
@@ -498,7 +524,7 @@ function packmol(
             println()
             println(hash_line)
             @printf("\n%s Success! \n", " "^32)
-            @printf("%s Final objective function value: %10.5e\n", " "^13, fx)
+            @printf("%s Final objective function value: %10.5e\n", " "^13, f_true_loop_end)
             @printf("%s Minimum distance: %10.6f\n", " "^13, dmin)
             @printf("%s Maximum violation of the constraints: %10.5e\n", " "^13, max_const)
             println()
@@ -571,7 +597,7 @@ function packmol(
             cm_min, cm_max = compute_cm_bounds(packmol_system)
             moved = movebad!(
                 packmol_system, cl_system.fg.fmol, free_mol_indices, mol_structure_type, RNG;
-                movefrac, precision,
+                movefrac, precision, loop, nloop, fmol_max_type,
                 cm_lo_type=cm_min, cm_hi_type=cm_max,
                 fixed_sys=movebad_fixed_sys, fixed_lo=movebad_fixed_lo, fixed_hi=movebad_fixed_hi,
                 overlap_tol=movebad_overlap_tol,
@@ -586,7 +612,7 @@ function packmol(
         for (k, imol) in enumerate(free_mol_indices)
             x_mol[k] = packmol_system.molecule_positions[imol]
         end
-        prev_loop_f = fx
+        prev_loop_f = f_true_loop_end
     end
 
     if !converged
