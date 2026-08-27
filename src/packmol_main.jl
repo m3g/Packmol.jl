@@ -22,8 +22,8 @@ function packmol(
     nloop::Int=200,
     maxit::Union{Nothing,Int}=nothing,
     movefrac::T=T(0.05),
-    n_stall_iterations::Int=10,
-    f_stall_tolerance::T=T(0.10),
+    n_stall_iterations::Int=40,
+    f_stall_tolerance::T=T(0.01),
     seed::Int=packmol_system.seed,
     restart::Bool=false,
 ) where {D,T}
@@ -66,23 +66,36 @@ function packmol(
 
     # Restart (Fortran's `restart_from`): read saved molecule positions
     # instead of deriving a starting point the normal way, for either the
-    # whole system or specific structure types — fixed molecules are never
-    # included, since their position is already fully determined by their
-    # own `fixed` keyword regardless of restart. A whole-system restart_from
-    # skips the initial-approximation pipeline entirely for the free
-    # molecules it covers (that's the point — for a large system, it's the
-    # expensive part); a per-structure-type one is applied on top, after
-    # that pipeline runs (whether or not it was itself skipped), since
-    # re-placing only some molecule types still needs the others normally
-    # initialized. Reference coordinates must already be centered (matching
-    # what `_align_molecule` assumes) before either is read, since a
-    # PDB-based restart_from needs them for its rigid-body alignment.
+    # whole system or specific structure types — fixed molecules' own
+    # positions are never overwritten, since they're already fully
+    # determined by their own `fixed` keyword regardless of restart. A
+    # whole-system restart_from skips the initial-approximation pipeline
+    # entirely for the free molecules it covers (that's the point — for a
+    # large system, it's the expensive part); a per-structure-type one is
+    # applied on top, after that pipeline runs (whether or not it was itself
+    # skipped), since re-placing only some molecule types still needs the
+    # others normally initialized. Reference coordinates must already be
+    # centered (matching what `_align_molecule` assumes) before either is
+    # read, since a PDB-based restart_from needs them for its rigid-body
+    # alignment.
+    #
+    # A *whole-system* restart source (PDB or raw) is whatever a prior
+    # `write_output`/`_write_restart_files` call wrote for the entire
+    # system, so it lists every molecule of every structure type, fixed
+    # ones included, interleaved in structure-declaration order — not just
+    # the free ones. `segments` below therefore spans every structure type
+    # (not just the non-fixed ones), with `extract` (the tuple's 4th field)
+    # marking which ones to actually read a position back from; a fixed
+    # segment's atoms/lines still have to be counted and skipped over so the
+    # expected total and the file's actual layout line up (see
+    # `_restart_positions_from_atoms`/`_restart_positions`), even though its
+    # own position is discarded.
     _center_reference_coordinates!(packmol_system)
     if !isnothing(packmol_system.restart_from)
         println("  Restarting all free molecules from: ", packmol_system.restart_from)
-        segments = Tuple{Int,Int,Vector{SVector{D,T}}}[
-            (st.number_of_molecules, st.natoms, st.reference_coordinates)
-            for st in packmol_system.structure_types if !st.fixed.fixed
+        segments = Tuple{Int,Int,Vector{SVector{D,T}},Bool}[
+            (st.number_of_molecules, st.natoms, st.reference_coordinates, !st.fixed.fixed)
+            for st in packmol_system.structure_types
         ]
         positions = _restart_positions(packmol_system.restart_from, segments, MoleculePosition{D,T})
         for (k, imol) in enumerate(free_mol_indices)
@@ -98,7 +111,11 @@ function packmol(
     for st in packmol_system.structure_types
         if !st.fixed.fixed && !isnothing(st.restart_from)
             println("  Restarting structure type '", basename(st.filename), "' from: ", st.restart_from)
-            segments = [(st.number_of_molecules, st.natoms, st.reference_coordinates)]
+            # A per-structure-type restart source only ever contains this
+            # one type's own molecules (e.g. its own `restart_to` file from
+            # an earlier run), so its segment list is just itself — always
+            # extracted, nothing to skip.
+            segments = [(st.number_of_molecules, st.natoms, st.reference_coordinates, true)]
             positions = _restart_positions(st.restart_from, segments, MoleculePosition{D,T})
             packmol_system.molecule_positions[imol_offset+1:imol_offset+st.number_of_molecules] .= positions
         end
@@ -189,6 +206,10 @@ function packmol(
     mol_structure_type = _build_mol_structure_type(packmol_system)
     mol_iat_first = _build_mol_iat_first(packmol_system)
     precision = packmol_system.tolerance_precision
+    # Worst fmol ever observed per structure type, across every movebad! call
+    # over the whole run (see movebad.jl for why this must persist rather
+    # than being recomputed fresh each call).
+    fmol_max_type = zeros(T, length(packmol_system.structure_types))
 
     # Fixed-structure overlap-check system and constraint-only scratch for
     # movebad! (see movebad.jl): built once here, since the fixed atoms never
@@ -255,6 +276,11 @@ function packmol(
     atom_radii = packmol_system.radscale .* atom_radii_floor
     f0 = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
     @printf("  Objective function at initial point: %10.5e\n", f0)
+    # True (floor-radii) counterpart of f0, at the same (initial) position —
+    # used below to print the loop-0 "best function value before" on the
+    # same scale-invariant basis as every other cross-loop comparison (see
+    # the comment above f_true_loop_end).
+    f0_true = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
     bestf = typemax(T)
     converged = false
     best_positions = copy(packmol_system.molecule_positions)
@@ -307,7 +333,7 @@ function packmol(
         # longer window (maxit/20, e.g. 40 iterations at the default
         # maxit=800) — long enough to average out that per-pair noise — and
         # packmol_callback only honors a dmin/const stall once f *also* shows
-        # no net improvement (< f_stall_tolerance, e.g. 10%) over that
+        # no net improvement (< f_stall_tolerance, e.g. 5%) over that
         # window: genuine overall progress vetoes a worst-case-metric stall.
         f_stall_detector = StallDetector{T}(max(1, maxit ÷ 20))
         dmin_stalled_flag = Ref(false)
@@ -326,7 +352,7 @@ function packmol(
             callback=(result) -> packmol_callback(cl_system, tol, iprint,
                 packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
                 dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
-                f_stall_detector, f=result.f, f_stall_tolerance,
+                f_stall_detector, f=result.f, f_stall_tolerance, f_true_loop_start,
                 dmin_stalled_flag, constraint_stalled_flag, f_chunk_start,
                 nfeval=result.nfeval, nfevalmax=10 * maxit, gnorm=result.gnorm,
             ),
@@ -341,18 +367,46 @@ function packmol(
         for (k, imol) in enumerate(free_mol_indices)
             packmol_system.molecule_positions[imol] = x_mol[k]
         end
-
-        # Statistics: compute improvement of this loop relative to bestf
         fx = optresult.f
+
+        # True (floor) objective value at the position this loop ends at,
+        # paired with f_true_loop_start above: this isolates what this
+        # loop's own optimization did to the real objective. Since this
+        # loop's own optimizer worked under atom_radii (not necessarily
+        # equal to atom_radii_floor for every atom), a negative
+        # fimp_within_loop below is possible — it means the inflated target
+        # it was actually chasing pulled the real, unscaled objective the
+        # wrong way.
+        #
+        # dmin/max_const/fimprov/bestf below are all deliberately based on
+        # this true, floor-radii value rather than the optimizer's own
+        # (possibly radscale-inflated) fx = optresult.f: fx isn't on a
+        # consistent scale across loops, since atom_radii decays toward
+        # atom_radii_floor at different rates per atom and gets fattened
+        # back up by movebad!, making a raw fx-to-fx comparison across loops
+        # compare two different objective functions rather than two
+        # snapshots of the same one. (dmin and max_const are unaffected
+        # either way — the interatomic-distance minimum and the geometric
+        # constraint penalties are both independent of atom_radii — so
+        # reading them off this floor-radii evaluation gives exactly the
+        # same value they'd have under the working atom_radii.)
+        f_true_loop_end = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
         dmin = min(cl_system.fg.dmin, cl_system.cutoff)
-        fimprov = bestf < typemax(T) ? clamp(-100 * (fx - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
-        improved = fx < bestf
+        fimp_within_loop = clamp(-100 * (f_true_loop_end - f_true_loop_start) / f_true_loop_start, T(-99.99), T(99.99))
+        fimprov = bestf < typemax(T) ?
+            clamp(-100 * (f_true_loop_end - bestf) / bestf, T(-99.99), T(99.99)) : T(100)
+        improved = f_true_loop_end < bestf
         bestf_before_loop = bestf
         if improved
-            bestf = fx
+            bestf = f_true_loop_end
             copyto!(best_positions, packmol_system.molecule_positions)
         end
         max_const = cl_system.fg.max_constraint_penalty
+        # The call above overwrote cl_system.fg (fmol, gradients, dmin, ...)
+        # with atom_radii_floor values; restore it to this loop's own working
+        # atom_radii before movebad! (below) reads fmol to pick which
+        # molecules to relocate.
+        fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
 
         # Check convergence: both tolerance and constraint precisions must be satisfied
         tol_ok = tol - dmin < packmol_system.tolerance_precision
@@ -440,28 +494,9 @@ function packmol(
             "chunk iteration budget (maxit) reached"
         end
 
-        # True (floor) objective value at the position this loop ends at,
-        # paired with f_true_loop_start above: this isolates what this loop's
-        # own optimization did to the real objective, as opposed to comparing
-        # against the previous loop's ending value (which mixes in whatever
-        # movebad!/decay happened between loops). Same sign convention as
-        # "Improvement from best function value" above (positive = the real
-        # objective got better): since this loop's own optimizer worked
-        # under atom_radii (not necessarily equal to atom_radii_floor for
-        # every atom), a negative value here is possible — it means the
-        # inflated target it was actually chasing pulled the real, unscaled
-        # objective the wrong way.
-        f_true_loop_end = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
-        fimp_within_loop = clamp(-100 * (f_true_loop_end - f_true_loop_start) / f_true_loop_start, T(-99.99), T(99.99))
-        # The call above overwrote cl_system.fg (fmol, gradients, dmin, ...)
-        # with atom_radii_floor values; restore it to this loop's own working
-        # atom_radii before movebad! (below) reads fmol to pick which
-        # molecules to relocate.
-        fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
-
         @printf("\n  Packing loop ended: %s\n", loop_end_reason)
         @printf("  Function value from last loop: f = %10.5e\n", fx)
-        @printf("  Best function value before: f = %10.5e\n", bestf_before_loop)
+        @printf("  Best function value before: f = %10.5e\n", bestf_before_loop == typemax(T) ? f0_true : bestf_before_loop)
         @printf("  Improvement from best function value: %8.2f %%\n", fimprov)
         @printf("  Improvement within this loop: %8.2f %%\n", fimp_within_loop)
         @printf("  Minimum distance: %12.6f\n", dmin)
@@ -471,7 +506,7 @@ function packmol(
             println()
             println(hash_line)
             @printf("\n%s Success! \n", " "^32)
-            @printf("%s Final objective function value: %10.5e\n", " "^13, fx)
+            @printf("%s Final objective function value: %10.5e\n", " "^13, f_true_loop_end)
             @printf("%s Minimum distance: %10.6f\n", " "^13, dmin)
             @printf("%s Maximum violation of the constraints: %10.5e\n", " "^13, max_const)
             println()
@@ -531,7 +566,7 @@ function packmol(
             cm_min, cm_max = compute_cm_bounds(packmol_system)
             moved = movebad!(
                 packmol_system, cl_system.fg.fmol, free_mol_indices, mol_structure_type, RNG;
-                movefrac, precision,
+                movefrac, precision, fmol_max_type,
                 cm_lo_type=cm_min, cm_hi_type=cm_max,
                 fixed_sys=movebad_fixed_sys, fixed_lo=movebad_fixed_lo, fixed_hi=movebad_fixed_hi,
                 overlap_tol=movebad_overlap_tol,
@@ -684,7 +719,8 @@ function packmol_callback(
     stall_tolerance = 1e-2 * tolerance_precision,
     f_stall_detector::Union{Nothing,StallDetector} = nothing,
     f::Union{Nothing,Real} = nothing,
-    f_stall_tolerance = 0.10,
+    f_stall_tolerance = 0.05,
+    f_true_loop_start::Union{Nothing,Real} = nothing,
     dmin_stalled_flag::Union{Nothing,Ref{Bool}} = nothing,
     constraint_stalled_flag::Union{Nothing,Ref{Bool}} = nothing,
     f_chunk_start::Union{Nothing,Ref} = nothing,
@@ -723,7 +759,7 @@ function packmol_callback(
     # even while the coupled objective f is still falling sharply overall.
     # So neither metric's own plateau is trusted on its own: it only counts
     # as a real stall once f *also* shows no significant net improvement
-    # (< f_stall_tolerance, e.g. 10%) over its own, much longer window
+    # (< f_stall_tolerance, e.g. 5%) over its own, much longer window
     # (`f_stall_detector`, sized to maxit/20 by the caller) — genuine
     # overall progress vetoes a worst-case-metric plateau. `is_stalled!` is
     # still called unconditionally each iteration (not short-circuited) so
@@ -746,7 +782,7 @@ function packmol_callback(
     # reference is then advanced to the current f (see the re-baseline below)
     # every time that grants a reprieve, rather than staying pinned to the
     # chunk's opening value forever. Without that re-baseline this veto is a
-    # one-way latch: a chunk that drops >10% in its first few dozen
+    # one-way latch: a chunk that drops >5% in its first few dozen
     # iterations and then genuinely flatlines for the rest of its multi-
     # hundred-iteration budget would have `chunk_progress_significant` stuck
     # true for the remainder (the ratio against a fixed, already-cleared
@@ -762,9 +798,32 @@ function packmol_callback(
     if !isnothing(f_chunk_start) && !isnothing(f) && f_chunk_start[] == typemax(f_chunk_start[])
         f_chunk_start[] = oftype(dmin, f)
     end
-    chunk_progress_significant = !isnothing(f_chunk_start) && !isnothing(f) &&
+    local_progress_significant = !isnothing(f_chunk_start) && !isnothing(f) &&
         f_chunk_start[] < typemax(f_chunk_start[]) && f_chunk_start[] > zero(f_chunk_start[]) &&
         (f_chunk_start[] - oftype(dmin, f)) / f_chunk_start[] > oftype(dmin, f_stall_tolerance)
+    # In addition to the chunk-local check above (this chunk's own working,
+    # atom_radii-inflated f, start vs now), also treat this chunk as making
+    # significant progress once it has cleared `f_stall_tolerance` relative
+    # to `f_true_loop_start` — the *true* (floor-radii) objective at the
+    # exact position this loop started from, fixed for the duration of this
+    # chunk and passed in by the caller. This mirrors the outer loop's own
+    # "Improvement within this loop" check (`fimp_within_loop`, computed once
+    # after the chunk ends, from `f_true_loop_start` and the true
+    # floor-radii value at the chunk's end) using the same reference — so a
+    # chunk the outer loop will end up judging as having made real headway
+    # since it started isn't cut short in here first purely for looking flat
+    # in working-scale terms. `f` here is still this chunk's own working
+    # objective, not the true one `f_true_loop_start` is measured in, so
+    # this comparison mixes scales: unlike a pure historical-best reference,
+    # atom_radii isn't monotonically decaying — a molecule relocated by
+    # movebad! has its atoms' radii fattened back up to the full inflation
+    # — so `f` is not guaranteed to sit on either side of
+    # `f_true_loop_start` in general; this is a useful, cheap proxy for
+    # within-loop progress, not an exact bound.
+    progress_vs_true_start = !isnothing(f_true_loop_start) && !isnothing(f) &&
+        f_true_loop_start > zero(f_true_loop_start) &&
+        (f_true_loop_start - oftype(dmin, f)) / f_true_loop_start > oftype(dmin, f_stall_tolerance)
+    chunk_progress_significant = local_progress_significant || progress_vs_true_start
     if chunk_progress_significant
         f_chunk_start[] = oftype(dmin, f)
     end

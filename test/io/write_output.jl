@@ -191,13 +191,13 @@ end
 
     # Both the file (`.pdb`, dispatched by extension) and in-memory
     # `Vector{<:Atom}` sources go through the same alignment and must agree.
-    segments = [(water.number_of_molecules, natoms, refcoords)]
+    segments = [(water.number_of_molecules, natoms, refcoords, true)]
     positions_from_file = Packmol._restart_positions(source_pdb, segments, Packmol.MoleculePosition{3,Float64})
     positions_from_atoms = Packmol._restart_positions(atoms, segments, Packmol.MoleculePosition{3,Float64})
     @test positions_from_file == positions_from_atoms
 
     # A source with the wrong atom count is a clear, immediate error.
-    wrong_segments = [(water.number_of_molecules + 1, natoms, refcoords)]
+    wrong_segments = [(water.number_of_molecules + 1, natoms, refcoords, true)]
     @test_throws ErrorException Packmol._restart_positions(atoms, wrong_segments, Packmol.MoleculePosition{3,Float64})
 
     rm(sys.output_file; force=true)

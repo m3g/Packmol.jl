@@ -163,3 +163,60 @@ end
 
     rm(source_pdb; force=true)
 end
+
+@testitem "restart_from with a fixed molecule present" begin
+    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    uc = Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0)
+
+    restart_all = tempname()
+
+    # Fixed structure type declared *before* the free one — matching common
+    # real-world inputs (e.g. a fixed protein listed first, solvent after) —
+    # so a whole-system restart must correctly skip over the fixed
+    # molecule's own atoms/lines (interleaved at the front of the restart
+    # source) instead of assuming the source only ever lists free molecules.
+    fixed_water = structure_type(water_pdb; number=1, fixed=(zeros(3), zeros(3)))
+    water1 = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
+    # `avoid_overlap=false`: with only 3 fixed atoms, the fixed-particle
+    # overlap-check system's own auto-sized cutoff (see
+    # `_build_overlap_check_system`) can exceed half its own bounding box —
+    # a pre-existing limitation for tiny fixed structures, unrelated to what
+    # this test is actually checking (restart_from's atom bookkeeping).
+    sys1 = PackmolSystem([fixed_water, water1]; output=tempname() * ".pdb", tolerance=2.0,
+        unitcell=uc, unitcell_center=zeros(3), restart_to=restart_all, avoid_overlap=false,
+    )
+    @test packmol(sys1; nloop=20, maxit=100, iprint=1000, seed=41)
+    source_pdb = sys1.output_file
+    saved_free_cm = [sys1.molecule_positions[i].cm for i in 2:5]
+
+    # Whole-system restart_from a PDB written for the entire system (fixed
+    # molecule included) must not error on the atom count, and must recover
+    # the free molecules' positions (the fixed one keeps its own `fixed`
+    # position regardless of what the restart source contains for it).
+    fixed_water2 = structure_type(water_pdb; number=1, fixed=(zeros(3), zeros(3)))
+    water2 = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
+    sys2 = PackmolSystem([fixed_water2, water2]; output=tempname() * ".pdb", tolerance=2.0,
+        unitcell=uc, unitcell_center=zeros(3), restart_from=source_pdb, avoid_overlap=false,
+    )
+    @test packmol(sys2; nloop=20, maxit=100, iprint=1000, seed=42)
+    for i in 2:5
+        @test sys2.molecule_positions[i].cm ≈ saved_free_cm[i-1] atol = 1e-2
+    end
+    rm(sys2.output_file; force=true)
+
+    # Same, but restarting from the raw whole-system restart_to file (also
+    # written for the entire system, fixed molecule included).
+    fixed_water3 = structure_type(water_pdb; number=1, fixed=(zeros(3), zeros(3)))
+    water3 = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
+    sys3 = PackmolSystem([fixed_water3, water3]; output=tempname() * ".pdb", tolerance=2.0,
+        unitcell=uc, unitcell_center=zeros(3), restart_from=restart_all, avoid_overlap=false,
+    )
+    @test packmol(sys3; nloop=20, maxit=100, iprint=1000, seed=43)
+    for i in 2:5
+        @test sys3.molecule_positions[i].cm ≈ saved_free_cm[i-1] atol = 1e-2
+    end
+    rm(sys3.output_file; force=true)
+
+    rm(source_pdb; force=true)
+    rm(restart_all; force=true)
+end

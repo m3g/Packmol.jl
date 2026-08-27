@@ -23,6 +23,7 @@ function movebad!(
     RNG;
     movefrac::T=T(0.05),
     precision::T=T(1e-2),
+    fmol_max_type::Vector{T}=zeros(T, length(packmol_system.structure_types)),
     cm_lo_type::Union{Nothing,Vector{SVector{D,T}}} = nothing,
     cm_hi_type::Union{Nothing,Vector{SVector{D,T}}} = nothing,
     fixed_sys = nothing,
@@ -36,16 +37,30 @@ function movebad!(
     max_guess_try::Int = 20,
 ) where {D,T}
     nfree = length(free_mol_indices)
-    # Count bad molecules and find fmol range among them
+    ntypes = length(packmol_system.structure_types)
+    # Count bad molecules and find fmol range among them, per structure type
     nbad = 0
-    fmol_max = zero(T)
+    fmol_max_now = zeros(T, ntypes)
     for imol in free_mol_indices
         if fmol[imol] > precision / packmol_system.nmols
             nbad += 1
-            fmol_max = max(fmol_max, fmol[imol])
+            ist = mol_structure_type[imol]
+            fmol_max_now[ist] = max(fmol_max_now[ist], fmol[imol])
         end
     end
     nbad == 0 && return Int[]
+    # `fmol_max_type` (owned and persisted by the caller across loops) tracks
+    # the worst fmol ever observed for each structure type, not just this
+    # call's own candidates: once the population of bad molecules becomes
+    # homogeneous late in the packing (all clustered near the same, small
+    # fmol), using *this call's* max as the probability's reference would
+    # make every candidate look nearly as bad as the worst one, driving most
+    # of their move probabilities back up toward 0.5 even though none of
+    # them is actually far from converged. Anchoring instead to the
+    # historical worst-ever value (per type) keeps that ratio — and thus the
+    # probability — small for a mildly-bad, tightly-clustered population,
+    # exactly as it should be.
+    fmol_max_type .= max.(fmol_max_type, fmol_max_now)
     # Number of molecules to move
     frac = min(movefrac, nbad / nfree)
     nmove = max(1, min(nbad, round(Int, frac * nfree)))
@@ -55,11 +70,12 @@ function movebad!(
     for imol in free_mol_indices
         length(moved) >= nmove && break
         if fmol[imol] > precision / packmol_system.nmols
-            # Probability increases with fmol value: move the worst with 0.5
-            # probablity, linearly decreasing probability for better molecules
-            prob = 0.5 * fmol[imol] / fmol_max
+            ist = mol_structure_type[imol]
+            # Probability increases with fmol value: move the worst-ever
+            # molecule of this type with 0.5 probability, linearly
+            # decreasing probability for better molecules.
+            prob = 0.5 * fmol[imol] / fmol_max_type[ist]
             if rand(RNG, T) < prob
-                ist = mol_structure_type[imol]
                 st = packmol_system.structure_types[ist]
                 lo, hi = if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
                     l, h = cm_lo_type[ist], cm_hi_type[ist]

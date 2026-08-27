@@ -154,27 +154,39 @@ end
 
 #
 # Reads restart positions for a sequence of structure-type "segments" — each
-# a (number_of_molecules, natoms, reference_coordinates) triple, in the same
-# order the atoms appear in `atoms` — by rigid-body-aligning every molecule's
-# atoms against its own type's template (see `_align_molecule`). Used for
-# both a `.pdb`-file restart_from and an in-memory `Vector{<:Atom}` one; both
-# go through this same function once the atoms are in hand.
+# a (number_of_molecules, natoms, reference_coordinates, extract) tuple, in
+# the same order the atoms appear in `atoms` — by rigid-body-aligning every
+# molecule's atoms against its own type's template (see `_align_molecule`).
+# Used for both a `.pdb`-file restart_from and an in-memory `Vector{<:Atom}`
+# one; both go through this same function once the atoms are in hand.
+#
+# `extract` lets a segment's atoms be *skipped* (counted toward the expected
+# total and advanced over, but not aligned/returned) rather than always
+# producing a position: a whole-system restart_from PDB is whatever
+# `write_output` last wrote for the *entire* system, fixed molecules
+# included (interleaved with free ones in structure-declaration order) — so
+# the expected atom count and the file's actual atom-by-atom layout both
+# need every structure type accounted for, even though a fixed molecule's
+# own position is never read back (it's already pinned by its own `fixed`
+# keyword regardless of what the restart source says).
 #
 function _restart_positions_from_atoms(
-    atoms::AbstractVector{<:Atom}, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}}}},
+    atoms::AbstractVector{<:Atom}, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}},Bool}},
 ) where {D,T}
-    expected = sum(nmols * natoms for (nmols, natoms, _) in segments)
+    expected = sum(nmols * natoms for (nmols, natoms, _, _) in segments)
     length(atoms) == expected || error(
         "Restart PDB has $(length(atoms)) atoms, expected $expected " *
-        "($(join(("$nmols × $natoms" for (nmols, natoms, _) in segments), " + ")))."
+        "($(join(("$nmols × $natoms" for (nmols, natoms, _, _) in segments), " + ")))."
     )
     positions = MoleculePosition{D,T}[]
     iat = 0
-    for (nmols, natoms, refcoords) in segments
+    for (nmols, natoms, refcoords, extract) in segments
         for _ in 1:nmols
-            observed = SVector{D,T}[SVector{D,T}(coor(atoms[iat+j])[1:D]) for j in 1:natoms]
+            if extract
+                observed = SVector{D,T}[SVector{D,T}(coor(atoms[iat+j])[1:D]) for j in 1:natoms]
+                push!(positions, _align_molecule(refcoords, observed))
+            end
             iat += natoms
-            push!(positions, _align_molecule(refcoords, observed))
         end
     end
     return positions
@@ -186,20 +198,35 @@ _is_pdb_path(path::AbstractString) = lowercase(splitext(path)[2]) == ".pdb"
 
 #
 # Restart positions for one or more structure-type `segments` (see
-# `_restart_positions_from_atoms`), dispatching on what `source` is: an
-# in-memory atom vector (Julia API only), a `.pdb` file path (rigid-body
-# alignment against each segment's template), or any other file path (the
-# raw Packmol restart format, read directly with no alignment needed since
-# it already stores (cm, angles) verbatim).
+# `_restart_positions_from_atoms` for the tuple layout and what `extract`
+# means), dispatching on what `source` is: an in-memory atom vector (Julia
+# API only), a `.pdb` file path (rigid-body alignment against each segment's
+# template), or any other file path (the raw Packmol restart format, read
+# directly with no alignment needed since it already stores (cm, angles)
+# verbatim). The raw format mirrors the PDB path: it too has one line per
+# *molecule* for the whole system (fixed ones included, in the same
+# structure-declaration order — see `_write_restart_files`), so all
+# `sum(nmols)` lines are read and only the `extract`-flagged segments'
+# positions are kept.
 #
-function _restart_positions(source::Vector{<:Atom}, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}}}}, ::Type{MoleculePosition{D,T}}) where {D,T}
+function _restart_positions(source::Vector{<:Atom}, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}},Bool}}, ::Type{MoleculePosition{D,T}}) where {D,T}
     _restart_positions_from_atoms(source, segments)
 end
-function _restart_positions(source::AbstractString, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}}}}, ::Type{MoleculePosition{D,T}}) where {D,T}
+function _restart_positions(source::AbstractString, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}},Bool}}, ::Type{MoleculePosition{D,T}}) where {D,T}
     if _is_pdb_path(source)
         _restart_positions_from_atoms(read_pdb(source), segments)
     else
-        _read_restart(source, sum(nmols for (nmols, _, _) in segments), MoleculePosition{D,T})
+        total = sum(nmols for (nmols, _, _, _) in segments)
+        all_positions = _read_restart(source, total, MoleculePosition{D,T})
+        positions = MoleculePosition{D,T}[]
+        i = 0
+        for (nmols, _, _, extract) in segments
+            for _ in 1:nmols
+                i += 1
+                extract && push!(positions, all_positions[i])
+            end
+        end
+        positions
     end
 end
 
