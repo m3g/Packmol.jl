@@ -172,6 +172,19 @@ function adjust_constraints!(
     # as it's satisfied, and only re-enters if explicitly randomized.
     active_mols = copy(free_mol_indices)
 
+    # `constrain_rotation` bounds for the optimization below, mirroring
+    # packmol_main.jl's own main-loop bounds: without these, this
+    # constraint-only fit is free to rotate a molecule away from its
+    # configured rotation bounds while chasing a lower "inside box"/other
+    # geometric penalty — since it runs before packmol()'s own bounded
+    # main-loop optimizer ever sees these molecules, that violation isn't
+    # just transient, it's what the main loop then starts from. Rebuilt
+    # every loop (below, from `active_mols`) since the active set shrinks as
+    # molecules satisfy their constraints.
+    any_rotation_constrained = any(packmol_system.structure_types) do st
+        any(!isnothing, st.rotation_bounds)
+    end
+
     for iloop in 1:nloop
         nactive = length(active_mols)
 
@@ -187,6 +200,25 @@ function adjust_constraints!(
         end
         auxvecs = (!isnothing(buffers) && nactive == nfree) ? buffers.vaux : SPGBox.VAux(x, zero(T))
 
+        # `constrain_rotation` bounds for the currently active molecules (see
+        # comment above); rebuilt every loop since active_mols shrinks.
+        lower, upper = if any_rotation_constrained
+            lower_mol = Vector{MoleculePosition{D,T}}(undef, nactive)
+            upper_mol = Vector{MoleculePosition{D,T}}(undef, nactive)
+            cm_lo = SVector{D,T}(ntuple(_ -> T(-Inf), D))
+            cm_hi = SVector{D,T}(ntuple(_ -> T(Inf), D))
+            for (k, imol) in enumerate(active_mols)
+                bounds = packmol_system.structure_types[mol_structure_type[imol]].rotation_bounds
+                ang_lo = SVector{D,T}(ntuple(d -> isnothing(bounds[d]) ? T(-Inf) : bounds[d][1], D))
+                ang_hi = SVector{D,T}(ntuple(d -> isnothing(bounds[d]) ? T(Inf) : bounds[d][2], D))
+                lower_mol[k] = MoleculePosition(cm_lo, ang_lo)
+                upper_mol[k] = MoleculePosition(cm_hi, ang_hi)
+            end
+            reinterpret(T, lower_mol), reinterpret(T, upper_mol)
+        else
+            nothing, nothing
+        end
+
         # Run a short constraint-only optimization, touching only active_mols
         spgresult = spgbox!(
             (g, x) -> constraint_only_fg_for_mols!(
@@ -197,6 +229,7 @@ function adjust_constraints!(
             nitmax=opt_nit,
             nfevalmax=10 * opt_nit,
             callback=(result) -> result.f < precision,
+            lower, upper,
         )
 
         # Update molecule positions from optimizer

@@ -133,11 +133,26 @@ function _movebad_place_molecule!(
     overlap_positions = isnothing(fixed_sys) ? SVector{D,T}[] : Vector{SVector{D,T}}(undef, st.natoms)
     x = do_fit ? Vector{T}(undef, 2 * D) : T[]
 
+    # Hard bounds on the rotation-angle DOFs (constrain_rotation), matching
+    # packmol_main.jl's own bounds on the main optimization: without these,
+    # the constraint-only fit below is free to rotate the molecule away from
+    # st.rotation_bounds while chasing a lower constraint penalty, silently
+    # undoing the bounded draw from _random_molecule_position above.
+    lower, upper = if do_fit && any(!isnothing, st.rotation_bounds)
+        cm_lo_inf = SVector{D,T}(ntuple(_ -> T(-Inf), D))
+        cm_hi_inf = SVector{D,T}(ntuple(_ -> T(Inf), D))
+        ang_lo = SVector{D,T}(ntuple(d -> isnothing(st.rotation_bounds[d]) ? T(-Inf) : st.rotation_bounds[d][1], D))
+        ang_hi = SVector{D,T}(ntuple(d -> isnothing(st.rotation_bounds[d]) ? T(Inf) : st.rotation_bounds[d][2], D))
+        reinterpret(T, [MoleculePosition(cm_lo_inf, ang_lo)]), reinterpret(T, [MoleculePosition(cm_hi_inf, ang_hi)])
+    else
+        nothing, nothing
+    end
+
     best_mp = packmol_system.molecule_positions[imol]
     best_score = typemax(T)
     last_mp = best_mp
     for _ in 1:max_guess_try
-        mp = _random_molecule_position(packmol_system, RNG; cm_lo, cm_hi)
+        mp = _random_molecule_position(packmol_system, RNG; cm_lo, cm_hi, rotation_bounds=st.rotation_bounds)
         packmol_system.molecule_positions[imol] = mp
         score = if do_fit
             x_mol = reinterpret(MoleculePosition{D,T}, x)
@@ -150,6 +165,7 @@ function _movebad_place_molecule!(
                 nitmax=opt_nit,
                 nfevalmax=10 * opt_nit,
                 callback=(result) -> result.f < precision,
+                lower, upper,
             )
             x_mol = reinterpret(MoleculePosition{D,T}, x)
             mp = x_mol[1]
