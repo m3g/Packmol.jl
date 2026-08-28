@@ -5,17 +5,19 @@
     output_file::String
     tolerance::T = 2.0
     # Loose-start radius scale factor for the packing objective (Fortran Packmol's
-    # `discale`): atom radii are inflated by this factor early in packing, then
-    # decayed toward 1.0 as improvement stalls (see packmol_main.jl).
+    # `discale`): atom radii are inflated by this factor at the start of packing
+    # (loop 0), then decayed exponentially toward 1.0 by loop `nloop`, the
+    # same for every atom regardless of movebad! relocations (see
+    # `_radscale_at` and the outer packing loop in packmol_main.jl).
     radscale::T = 1.2
     structure_types::Vector{StructureType{D,T}} = StructureType{D,T}[]
-    tolerance_precision::T = 1e-2
+    tolerance_precision::T = 1e-1
     constraint_precision::T = 1e-2
     # Relative-improvement threshold below which the stall detector counts a
     # plateau iteration in either the minimum interatomic distance or the
     # maximum constraint violation during a packing chunk (see
     # packmol_main.jl).
-    stall_tolerance::T = 1e-2 * tolerance_precision
+    stall_tolerance::T = 1e-3 * tolerance_precision
     max_iter::Int = 1000
     max_random_init::Int=20
     adjust_constraints_on_init::Bool=true
