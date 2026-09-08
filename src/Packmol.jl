@@ -36,6 +36,7 @@ include("./constraints/constraint_types.jl")
 include("./data_structures/atoms_and_molecules.jl")
 include("./data_structures/StructureType.jl")
 include("./data_structures/PackmolSystem.jl")
+include("./data_structures/dodecahedron.jl")
 include("./data_structures/FixedParticleSystem.jl")
 
 # Random number generation

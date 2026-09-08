@@ -17,3 +17,11 @@ structure_type
 PackmolSystem
 write_output
 ```
+
+## Dodecahedral periodic box
+
+```@docs
+dodecahedral_unitcell
+triclinic_to_dodecahedral
+dodecahedral_to_triclinic
+```

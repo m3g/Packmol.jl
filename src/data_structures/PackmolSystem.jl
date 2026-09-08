@@ -406,6 +406,11 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
             #   3 values (side lengths): center at origin
             #   6 values (xmin ymin zmin xmax ymax zmax): center at midpoint
             if keyword == "pbc"
+                if !isempty(values) && values[1] == "dodecahedral"
+                    input_data[:unitcell], input_data[:unitcell_center] =
+                        parse_pbc_dodecahedral(T, values[2:end], D)
+                    continue
+                end
                 vals = [_parse_value(T, "pbc", v) for v in values]
                 if length(vals) == D
                     # 3 values: side lengths, center at origin
