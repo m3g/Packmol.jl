@@ -1,4 +1,4 @@
-"""
+#=
     _radscale_at(elapsed::Int, radscale_start::T, radscale_decay_loops::T) where {T}
 
 Loop-indexed radscale schedule: `radscale_start` at `elapsed == 0`, decaying
@@ -7,7 +7,7 @@ precision by `elapsed == radscale_decay_loops`, and staying at `1.0` beyond
 that. `elapsed` is simply the current packing loop count (see the outer
 packing loop in `packmol`) — every atom follows this same schedule, with no
 per-atom or per-molecule restart.
-"""
+=#
 function _radscale_at(elapsed::Int, radscale_start::T, radscale_decay_loops::T) where {T}
     (radscale_start <= one(T) || radscale_decay_loops <= zero(T) || elapsed >= radscale_decay_loops) && return one(T)
     k = -log(T(1e-3)) / radscale_decay_loops

@@ -24,6 +24,35 @@ a subset of lines in an `atoms <indices> ... end` block restricts a
 constraint to just those atoms (see [Structure blocks](input_files.md) in
 Input files).
 
+## Periodic boundary conditions
+
+```
+pbc a b c
+pbc xmin ymin zmin  xmax ymax zmax
+unitcell a b c alpha beta gamma
+```
+
+`pbc`/`unitcell` are not shape constraints declared inside a `structure`
+block — they are global keywords that set up a periodic simulation cell (see
+[Input files](input_files.md)). `pbc` gives an orthorhombic box, either as
+side lengths (centered at the origin) or explicit min/max corners;
+`unitcell` gives a general triclinic cell, CRYST1-style, also centered at
+the origin. Once set, interatomic distances (and any explicit constraint
+below) are evaluated using the periodic cell — atoms are wrapped to the
+image centered on the cell before a constraint checks them.
+
+!!! note
+    Setting `pbc`/`unitcell` also implicitly confines every non-fixed structure
+    type to (a slightly inflated version of) the cell, even if that structure
+    declares no explicit constraint of its own. This matters because PBC by
+    itself only bounds interatomic distances and how existing constraints are
+    evaluated — it does not stop a molecule's own center-of-mass from drifting
+    away along a direction nothing else bounds (most visibly for a half-space
+    constraint like `above plane`/`below plane`, which has no periodicity of
+    its own). The implicit confinement removes the need to add a redundant
+    `inside box`/`inside cube` matching the cell just to keep molecules from
+    wandering off.
+
 ## Box
 
 ```

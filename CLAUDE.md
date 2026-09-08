@@ -244,20 +244,6 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 
 ---
 
-## Current Priority
-
-The first end-to-end example is working (water box, both with constraints and PBC).
-Key bugs fixed along the way:
-- **Rotation derivative matrices** in `chain_rule.jl` were from a different parameterization than `eulermat()` — rewritten to match.
-- **Inside box constraint** gradient had wrong sign for the left wall (`xc < -side/2` case) in `boxes.jl`.
-- **Project.toml** merge conflicts resolved.
-
-Next priorities:
-1. Multi-start strategy for better initial convergence
-2. Multi-structure systems (protein + water + ions)
-
----
-
 ## Architecture Notes
 
 ### Optimization Variables
