@@ -105,11 +105,26 @@ function _molecule_badness_constraints!(
                 for i in irange
                     imol = st_mol_offset + i
                     iat_first = st_atom_offset + (i - 1) * st.natoms + 1
+                    # Shift every atom of this molecule by the same offset —
+                    # the one that wraps the molecule's own CM into the
+                    # canonical cell — rather than wrapping each atom's
+                    # absolute position independently. See the comment on
+                    # `_constraint_fg!` in interatomic_distance_fg.jl for why:
+                    # wrapping atoms independently lets one atom of a
+                    # molecule cross a wrap seam while its CM (and the rest
+                    # of the molecule) doesn't, turning a harmless boundary
+                    # touch into a spurious constraint violation.
+                    cm_shift = if HASPBC
+                        cm = packmol_system.molecule_positions[imol].cm
+                        wrap_to_center(cm, unitcell, unitcell_center) - cm
+                    else
+                        zero(SVector{D,T})
+                    end
                     for j in 1:st.natoms
                         iat = iat_first + j - 1
                         x = atom_positions[iat]
                         if HASPBC
-                            x = wrap_to_center(x, unitcell, unitcell_center)
+                            x = x + cm_shift
                         end
                         for ic in packmol_system.atoms[iat].constraints
                             c = st.constraints[ic]
@@ -214,11 +229,19 @@ function _molecule_badness_constraints_for_mols!(
             b = zero(T)
             if !isempty(st.constraints)
                 iat_first = mol_iat_first[imol]
+                # Same molecule-CM-based wrap offset as
+                # `_molecule_badness_constraints!` above — see its comment.
+                cm_shift = if HASPBC
+                    cm = packmol_system.molecule_positions[imol].cm
+                    wrap_to_center(cm, unitcell, unitcell_center) - cm
+                else
+                    zero(SVector{D,T})
+                end
                 for j in 1:st.natoms
                     iat = iat_first + j - 1
                     x = atom_positions[iat]
                     if HASPBC
-                        x = wrap_to_center(x, unitcell, unitcell_center)
+                        x = x + cm_shift
                     end
                     for ic in packmol_system.atoms[iat].constraints
                         c = st.constraints[ic]

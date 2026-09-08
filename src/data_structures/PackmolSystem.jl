@@ -85,6 +85,87 @@ function _atoms_and_molecule_positions(structure_types::Vector{StructureType{D,T
     return atoms, molecule_positions, mol_index
 end
 
+#
+# Append one constraint to a structure type's own constraint list, wiring it
+# into every atom's `atom_constraints` (not just the atoms present when the
+# structure type was originally built) — including atoms whose own
+# `atoms ... end atoms` block already narrowed them to a custom subset of
+# constraints, since this one is a whole-system requirement, not a per-atom
+# feature toggle.
+#
+function _push_constraint!(st::StructureType{D,T}, c::AnyConstraint{T}) where {D,T}
+    push!(st.constraints, c)
+    idx = length(st.constraints)
+    for ac in st.atom_constraints
+        push!(ac, idx)
+    end
+    return st
+end
+
+#
+# Implicitly confine every free (non-fixed) structure type to (a slightly
+# inflated version of) the PBC unit cell, whenever PBC is active.
+#
+# Without this, PBC only affects interatomic distances (via CellListMap) and
+# how *explicit* constraints get evaluated (wrapped into one cell image) —
+# nothing stops a molecule's own (unbounded) center-of-mass optimization
+# variable from drifting freely along any direction no explicit constraint
+# happens to bound. That's mostly harmless for a structure type with its own
+# `inside box`/`inside cube` already matching the cell, but a constraint like
+# `above plane`/`below plane` is a half-space with no periodicity of its
+# own — nothing else ties it to one well-defined periodic image, and without
+# some other bound the molecule is free to wander along the plane's
+# unconstrained directions (or its own unconstrained side).
+#
+# For an orthorhombic cell (diagonal `unitcell`) this reduces to a single
+# `InsideBox` spanning the cell; the general (triclinic) case needs one
+# inward-facing `Plane` pair per pair of opposing cell faces instead, since a
+# box's axis-aligned edges can't represent a sheared cell.
+#
+# Each face is pushed outward by `tolerance / 2` (so the box/planes end up
+# `tolerance` larger than the literal cell, in total, along each axis): an
+# atom sitting exactly on the true cell boundary needs its own radius'
+# worth of room (the default atom radius is `tolerance / 2`) to interact
+# naturally with its periodic image across that boundary, the same way it
+# would with a same-radius neighbor anywhere in the interior. Without this
+# slack, the implicit confinement would push back *before* that natural
+# interaction has a chance to happen, visibly flattening the packing right
+# at the cell boundary instead of letting it look like an unbroken,
+# continuous interior.
+function _add_pbc_confinement_constraints!(
+    structure_types::Vector{StructureType{D,T}},
+    unitcell::Matrix{T},
+    unitcell_center::SVector{D,T},
+    tolerance::T,
+) where {D,T}
+    is_orthorhombic = D == 3 && all(i == j || unitcell[i, j] == zero(T) for i in 1:D, j in 1:D)
+    if is_orthorhombic
+        sides = SVector{D,T}(ntuple(i -> unitcell[i, i] + tolerance, D))
+        confinement = (InsideBox(unitcell_center, sides),)
+    else
+        a = SVector{3,T}(unitcell[1, 1], unitcell[2, 1], unitcell[3, 1])
+        b = SVector{3,T}(unitcell[1, 2], unitcell[2, 2], unitcell[3, 2])
+        c = SVector{3,T}(unitcell[1, 3], unitcell[2, 3], unitcell[3, 3])
+        confinement = ntuple(3) do k
+            u, v, w = (a, b, c)[k], (b, c, a)[k], (c, a, b)[k]
+            n = cross(v, w)
+            n = n / norm(n)
+            dot(u, n) < zero(T) && (n = -n)
+            d0 = dot(n, unitcell_center)
+            half = dot(n, u) / 2 + tolerance / 2
+            (BelowPlane(n, d0 + half), AbovePlane(n, d0 - half))
+        end
+        confinement = (confinement[1]..., confinement[2]..., confinement[3]...)
+    end
+    for st in structure_types
+        st.fixed.fixed && continue
+        for c in confinement
+            _push_constraint!(st, c)
+        end
+    end
+    return structure_types
+end
+
 """
     PackmolSystem(structure_types::Vector{<:StructureType}; output::String, kargs...)
 
@@ -99,6 +180,16 @@ function PackmolSystem(
     input_file::String = "",
     kargs...,
 ) where {D,T}
+    # Implicitly confine every free structure type to (a slightly inflated
+    # version of) the PBC cell, when PBC is active — see
+    # `_add_pbc_confinement_constraints!`'s own docstring for why.
+    unitcell_raw = get(kargs, :unitcell, nothing)
+    if !isnothing(unitcell_raw)
+        unitcell = Matrix{T}(unitcell_raw)
+        unitcell_center = SVector{D,T}(get(kargs, :unitcell_center, zero(SVector{D,T})))
+        tolerance = T(get(kargs, :tolerance, T(2.0)))
+        _add_pbc_confinement_constraints!(structure_types, unitcell, unitcell_center, tolerance)
+    end
     atoms, molecule_positions, nmols = _atoms_and_molecule_positions(structure_types)
     return PackmolSystem{D,T}(;
         structure_types, atoms, molecule_positions, nmols,
@@ -374,6 +465,14 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
                 continue
             end
         end
+    end
+    # Implicitly confine every free structure type to (a slightly inflated
+    # version of) the PBC cell, when PBC is active — see
+    # `_add_pbc_confinement_constraints!`'s own docstring for why.
+    if haskey(input_data, :unitcell)
+        _add_pbc_confinement_constraints!(
+            input_data[:structure_types], input_data[:unitcell], input_data[:unitcell_center], input_data[:tolerance],
+        )
     end
     #
     # Initialize atom data and molecule position arrays

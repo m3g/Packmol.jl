@@ -258,6 +258,10 @@ function _compute_positions_and_constraints_for_mols!(
                 mp = packmol_system.molecule_positions[imol]
                 R = eulermat(mp.angles)
                 cm = mp.cm
+                # Wrap the molecule's CM once (not each atom's own absolute
+                # position independently) — see the comment on
+                # `_constraint_fg!` below for why this matters.
+                wrapped_cm = HASPBC ? wrap_to_center(cm, unitcell, unitcell_center) : cm
                 has_constraints = !isempty(st.constraints)
                 fmol_local = zero(T)
                 for j in 1:natoms_st
@@ -266,7 +270,7 @@ function _compute_positions_and_constraints_for_mols!(
                     atom_positions[iat] = pos
                     gxc = zero(SVector{D,T})
                     if has_constraints
-                        x = HASPBC ? wrap_to_center(pos, unitcell, unitcell_center) : pos
+                        x = wrapped_cm + R * ref[j]
                         atom = packmol_system.atoms[iat]
                         for ic in atom.constraints
                             c = st.constraints[ic]
@@ -319,6 +323,68 @@ function _typed_unitcell(packmol_system::PackmolSystem{D,T}) where {D,T}
 end
 
 #
+# Copy `atom_positions` into CellListMap's own position buffer, wrapping
+# into the canonical cell (centered at `unitcell_center`) first when PBC is
+# active. `atom_positions` are raw Cartesian coordinates computed straight
+# from each molecule's *unbounded* optimization-variable center of mass, so
+# over the course of optimization an atom whose true position sits near a
+# periodic boundary can end up with a raw coordinate that straddles that
+# boundary from the unwrapped side (e.g. z barely negative instead of
+# barely below the cell's upper edge). A tiny *physical* displacement
+# across that boundary is then a near-full-cell jump in the raw coordinate
+# CellListMap sees between two consecutive calls — indistinguishable, from
+# CellListMap's side, from the atom genuinely having moved a full cell
+# width — which produces spuriously wrong neighbor pairs (and from there a
+# wildly incorrect pairwise gradient, confirmed by finite differences at
+# one such point: an analytical gradient of exactly 0 against a numerical
+# one of order 1e9) for that one atom right at the crossing. Wrapping first
+# keeps every atom's coordinate within one canonical copy of the cell on
+# every call, so a small physical displacement is always a small raw-
+# coordinate displacement too.
+#
+# Every atom of a molecule is shifted by the *same* offset — the one that
+# wraps that molecule's own CM into the canonical cell — rather than each
+# atom wrapped independently, for the same reason as `_constraint_fg!`
+# below: a molecule's CM can sit close enough to a periodic face that some
+# of its own atoms (offset from the CM by rotation) fall on the near side
+# of the wrap seam while others fall on the far side. Wrapped
+# independently, those atoms end up wrapped by a *different* integer
+# multiple of the box than their own CM — landing them in a periodic image
+# CellListMap's neighbor search now judges relative to the wrong nearby
+# atoms, while the constraint gradient (already CM-consistent) still judges
+# the same atom relative to the correct one. That mismatch means the
+# distance term and the constraint term can pull a molecule near a boundary
+# in ways that don't agree even in sign, which reads externally as the
+# molecule being unable to work its way back across the seam.
+#
+# `Val(HASPBC)` (not a runtime `has_pbc` check) for the same reason as
+# `_compute_positions_and_constraints_for_mols!` above: keeps the non-PBC
+# specialization from ever compiling the (allocating) wrap_to_center branch
+# at all.
+function _update_cl_positions!(
+    cl_xpositions,
+    atom_positions::Vector{SVector{D,T}},
+    packmol_system::PackmolSystem{D,T},
+    ::Val{HASPBC},
+    unitcell::Matrix{T},
+    unitcell_center::SVector{D,T},
+) where {D,T,HASPBC}
+    @sync for (_, iatrange) in enumerate(chunks(eachindex(atom_positions); n=Threads.nthreads()))
+        @spawn for iat in iatrange
+            if HASPBC
+                imol = packmol_system.atoms[iat].molecule_index
+                cm = packmol_system.molecule_positions[imol].cm
+                cm_shift = wrap_to_center(cm, unitcell, unitcell_center) - cm
+                cl_xpositions[iat] = atom_positions[iat] + cm_shift
+            else
+                cl_xpositions[iat] = atom_positions[iat]
+            end
+        end
+    end
+    return cl_xpositions
+end
+
+#
 # Add constraint penalties and gradients to the fg output structure.
 # When PBC is active, atom positions are wrapped to the unit cell centered
 # at unitcell_center before evaluating constraints.
@@ -354,7 +420,21 @@ function _constraint_fg!(
                 atom = packmol_system.atoms[iat]
                 x = atom_positions[iat]
                 if HASPBC
-                    x = wrap_to_center(x, unitcell, unitcell_center)
+                    # Shift by exactly the offset that wraps this atom's own
+                    # *molecule* CM into the canonical cell, rather than
+                    # wrapping the atom's own absolute position independently
+                    # — see the comment on `_compute_positions_and_constraints_for_mols!`
+                    # above for why: an atom offset from a comfortably
+                    # mid-cell CM by rotation can independently land right at
+                    # a wrap seam even though its own CM never gets near one,
+                    # turning a harmless boundary touch into a spurious
+                    # jump-to-the-opposite-side-of-the-cell constraint
+                    # violation. Shifting every atom of a molecule by the
+                    # same amount (its own CM's wrap offset) instead means an
+                    # atom only ever crosses a wrap seam when its molecule's
+                    # CM does.
+                    cm = packmol_system.molecule_positions[atom.molecule_index].cm
+                    x = x + (wrap_to_center(cm, unitcell, unitcell_center) - cm)
                 end
                 st = packmol_system.structure_types[atom.structure_type_index]
                 atom_penalty = zero(T)
@@ -399,12 +479,10 @@ function fg!(g, x,
     end
     # Compute Cartesian atomic coordinates from ALL molecule DOFs
     compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
-    # Update CellListMap positions
-    @sync for (_, iatrange) in enumerate(chunks(eachindex(atom_positions); n=Threads.nthreads()))
-        @spawn for iat in iatrange
-            cl_system.xpositions[iat] = atom_positions[iat]
-        end
-    end
+    # Update CellListMap positions (wrapped into the canonical cell under
+    # PBC — see `_update_cl_positions!` below for why).
+    has_pbc, unitcell, unitcell_center = _typed_unitcell(packmol_system)
+    _update_cl_positions!(cl_system.xpositions, atom_positions, packmol_system, Val(has_pbc), unitcell, unitcell_center)
     # Compute pairwise distance penalties and Cartesian gradients
     pairwise!((pair, output) -> cartesian_fg!(pair, output, packmol_system, atom_radii), cl_system,)
     # Add constraint penalties and gradients

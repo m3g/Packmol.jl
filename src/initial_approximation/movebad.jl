@@ -36,61 +36,93 @@ function movebad!(
     opt_nit::Int = 20,
     max_guess_try::Int = 20,
 ) where {D,T}
-    nfree = length(free_mol_indices)
     ntypes = length(packmol_system.structure_types)
-    # Count bad molecules and find fmol range among them, per structure type
-    nbad = 0
-    fmol_max_now = zeros(T, ntypes)
+    bad_threshold = precision / packmol_system.nmols
+
+    # Group free molecules by structure type once, so badness, quota and
+    # selection are all computed *per type* below, rather than pooled across
+    # the whole system. Pooling is what caused a real bug: with a single
+    # system-wide quota (movefrac of the total free count) and one combined
+    # scan that stops as soon as the quota is filled, a large structure type
+    # (e.g. 1000 water molecules) fills that quota on its own almost every
+    # call, so a much smaller type (e.g. 100 lipids) never gets scanned at
+    # all — its worst molecules are never relocated and can get permanently
+    # stuck at the same constraint violation. Confirmed by instrumentation on
+    # `bilayer-pbc.inp`: one lipid atom's constraint violation stayed
+    # bit-for-bit frozen across hundreds of outer loops. Giving each type its
+    # own quota (movefrac of *that type's* free count) guarantees every type
+    # gets a proportional share of moves every call, regardless of how the
+    # other types are sized.
+    free_by_type = [Int[] for _ in 1:ntypes]
     for imol in free_mol_indices
-        if fmol[imol] > precision / packmol_system.nmols
-            nbad += 1
-            ist = mol_structure_type[imol]
-            fmol_max_now[ist] = max(fmol_max_now[ist], fmol[imol])
-        end
+        push!(free_by_type[mol_structure_type[imol]], imol)
     end
-    nbad == 0 && return Int[]
-    # `fmol_max_type` (owned and persisted by the caller across loops) tracks
-    # the worst fmol ever observed for each structure type, not just this
-    # call's own candidates: once the population of bad molecules becomes
-    # homogeneous late in the packing (all clustered near the same, small
-    # fmol), using *this call's* max as the probability's reference would
-    # make every candidate look nearly as bad as the worst one, driving most
-    # of their move probabilities back up toward 0.5 even though none of
-    # them is actually far from converged. Anchoring instead to the
-    # historical worst-ever value (per type) keeps that ratio — and thus the
-    # probability — small for a mildly-bad, tightly-clustered population,
-    # exactly as it should be.
-    fmol_max_type .= max.(fmol_max_type, fmol_max_now)
-    # Number of molecules to move
-    frac = min(movefrac, nbad / nfree)
-    nmove = max(1, min(nbad, round(Int, frac * nfree)))
-    # Move molecules randomly: probability of moving is proportional
-    # to fmol value (worse molecules are more likely to be moved).
+
     moved = Int[]
-    for imol in free_mol_indices
-        length(moved) >= nmove && break
-        if fmol[imol] > precision / packmol_system.nmols
-            ist = mol_structure_type[imol]
-            # Probability increases with fmol value: move the worst-ever
-            # molecule of this type with 0.5 probability, linearly
-            # decreasing probability for better molecules.
-            prob = 0.5 * fmol[imol] / fmol_max_type[ist]
-            if rand(RNG, T) < prob
-                st = packmol_system.structure_types[ist]
-                lo, hi = if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
-                    l, h = cm_lo_type[ist], cm_hi_type[ist]
-                    all(l .< h) ? (l, h) : (nothing, nothing)
-                else
-                    (nothing, nothing)
+    for ist in 1:ntypes
+        candidates = free_by_type[ist]
+        nfree_type = length(candidates)
+        nfree_type == 0 && continue
+
+        nbad_type = 0
+        fmol_max_now = zero(T)
+        for imol in candidates
+            if fmol[imol] > bad_threshold
+                nbad_type += 1
+                fmol_max_now = max(fmol_max_now, fmol[imol])
+            end
+        end
+        nbad_type == 0 && continue
+        # `fmol_max_type` (owned and persisted by the caller across loops)
+        # tracks the worst fmol ever observed for this type, not just this
+        # call's own candidates: once the population of bad molecules of this
+        # type becomes homogeneous late in the packing (all clustered near
+        # the same, small fmol), using *this call's* max as the probability's
+        # reference would make every candidate look nearly as bad as the
+        # worst one, driving most of their move probabilities back up toward
+        # 0.5 even though none of them is actually far from converged.
+        # Anchoring instead to the historical worst-ever value keeps that
+        # ratio — and thus the probability — small for a mildly-bad,
+        # tightly-clustered population, exactly as it should be.
+        fmol_max_type[ist] = max(fmol_max_type[ist], fmol_max_now)
+
+        # Number of molecules of this type to move
+        frac = min(movefrac, nbad_type / nfree_type)
+        nmove = max(1, min(nbad_type, round(Int, frac * nfree_type)))
+
+        st = packmol_system.structure_types[ist]
+        lo, hi = if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
+            l, h = cm_lo_type[ist], cm_hi_type[ist]
+            all(l .< h) ? (l, h) : (nothing, nothing)
+        else
+            (nothing, nothing)
+        end
+
+        # Move molecules of this type randomly: probability of moving is
+        # proportional to fmol value (worse molecules are more likely to be
+        # moved). Scanned in a shuffled order (not `candidates`' own
+        # molecule-index order) so that, within this type, the early-exit
+        # once `nmove` is filled doesn't systematically favor whichever
+        # molecules happen to sit first.
+        n_moved_type = 0
+        for imol in Random.shuffle(RNG, candidates)
+            n_moved_type >= nmove && break
+            if fmol[imol] > bad_threshold
+                # Probability increases with fmol value: move the worst-ever
+                # molecule of this type with 0.5 probability, linearly
+                # decreasing probability for better molecules.
+                prob = 0.5 * fmol[imol] / fmol_max_type[ist]
+                if rand(RNG, T) < prob
+                    _movebad_place_molecule!(
+                        packmol_system, imol, st, RNG;
+                        cm_lo=lo, cm_hi=hi,
+                        fixed_sys, fixed_lo, fixed_hi, overlap_tol,
+                        fg_output, atom_positions, mol_structure_type, mol_iat_first,
+                        precision, opt_nit, max_guess_try,
+                    )
+                    push!(moved, imol)
+                    n_moved_type += 1
                 end
-                _movebad_place_molecule!(
-                    packmol_system, imol, st, RNG;
-                    cm_lo=lo, cm_hi=hi,
-                    fixed_sys, fixed_lo, fixed_hi, overlap_tol,
-                    fg_output, atom_positions, mol_structure_type, mol_iat_first,
-                    precision, opt_nit, max_guess_try,
-                )
-                push!(moved, imol)
             end
         end
     end

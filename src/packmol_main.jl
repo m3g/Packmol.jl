@@ -240,18 +240,51 @@ function packmol(
     # bounds on the rotation-angle optimization variables — matching Fortran
     # Packmol's own `pgencan`, which sets GENCAN's `l`/`u` this way rather
     # than adding a soft penalty term. Built once (bounds don't change loop
-    # to loop) in the same flat MoleculePosition-reinterpreted layout as `x`;
-    # translation DOFs are always unbounded. `nothing` (not just ±Inf
-    # vectors) when no structure type constrains any axis, so SPGBox skips
-    # the bound-checking overhead entirely in the common case.
+    # to loop) in the same flat MoleculePosition-reinterpreted layout as `x`.
+    #
+    # Under PBC, translation is *also* hard-bounded — to exactly one
+    # canonical period of the cell, centered at `unitcell_center` — rather
+    # than left unbounded. Without this, a molecule can be pushed by a large
+    # gradient (e.g. deep inside a non-periodic constraint's violation
+    # region, like `below plane`, whose restoring force has no periodicity
+    # of its own even though the cell does) past a periodic face in a single
+    # SPGBox trial step. Since the wrap used to *evaluate* fg! at that trial
+    # point (`wrap_to_center`) is a sawtooth function of the raw coordinate —
+    # continuous almost everywhere but jumping by a full period exactly at
+    # each face — a step that crosses one or more periods lands the wrapped
+    # position somewhere uncorrelated with where the gradient was actually
+    # aiming. That corrupts the spectral step-size estimate (built from the
+    # secant/curvature ratio between consecutive gradients), which then
+    # keeps producing further oversized, uncorrelated steps: confirmed by
+    # instrumentation on a single stuck molecule — its *raw* cm spiralled
+    # from z=49 to z=-14295 (nearly 300 box-periods away) over just a dozen
+    # SPGBox iterations, each burning dozens of backtracking function
+    # evaluations for near-zero net progress, before the search happened to
+    # land somewhere feasible by chance. Bounding cm to one period is not a
+    # loss of generality — every reachable physical configuration already has
+    # a representative inside that one period, via wrapping — it just forces
+    # SPGBox to find it directly instead of possibly overshooting through
+    # several periods and having to claw back. `nothing` (not just ±Inf
+    # vectors) when neither PBC nor any structure type's rotation is
+    # constrained, so SPGBox skips the bound-checking overhead entirely in
+    # that common case.
     any_rotation_constrained = any(packmol_system.structure_types) do st
         any(!isnothing, st.rotation_bounds)
     end
-    lower, upper = if any_rotation_constrained
+    lower, upper = if has_pbc || any_rotation_constrained
         lower_mol = Vector{MoleculePosition{D,T}}(undef, nfree)
         upper_mol = Vector{MoleculePosition{D,T}}(undef, nfree)
-        cm_lo = SVector{D,T}(ntuple(_ -> T(-Inf), D))
-        cm_hi = SVector{D,T}(ntuple(_ -> T(Inf), D))
+        cm_lo, cm_hi = if has_pbc
+            # Axis-aligned half-extent of the (possibly triclinic) periodic
+            # cell — exact for an orthorhombic (diagonal) unitcell, and a
+            # (safe, if not perfectly tight) enclosing box for a sheared one.
+            half_extent = SVector{D,T}(
+                ntuple(i -> sum(abs(packmol_system.unitcell[i, j]) for j in 1:D) / 2, D)
+            )
+            packmol_system.unitcell_center .- half_extent, packmol_system.unitcell_center .+ half_extent
+        else
+            SVector{D,T}(ntuple(_ -> T(-Inf), D)), SVector{D,T}(ntuple(_ -> T(Inf), D))
+        end
         for (k, imol) in enumerate(free_mol_indices)
             bounds = packmol_system.structure_types[mol_structure_type[imol]].rotation_bounds
             ang_lo = SVector{D,T}(ntuple(d -> isnothing(bounds[d]) ? T(-Inf) : bounds[d][1], D))
@@ -590,30 +623,25 @@ function packmol(
     # Restore best molecule positions
     copyto!(packmol_system.molecule_positions, best_positions)
 
-    # For PBC: wrap atom positions to the unit cell centered at unitcell_center
+    # For PBC: wrap each molecule's CM into the unit cell centered at
+    # unitcell_center, and carry every atom of that molecule along by the
+    # same offset (rigidly, via its CM) rather than wrapping each atom's
+    # absolute position independently. Wrapping atoms independently lets a
+    # molecule straddling a periodic boundary be torn in two (part of it
+    # wrapped to the opposite face while the rest stays put), which can land
+    # those wrapped atoms on top of whatever else sits there — visible as
+    # overlapping atoms in the output even though the packing itself
+    # converged. `write_output` recomputes atom positions from
+    # `molecule_positions` below, so updating the CM here is what actually
+    # takes effect. See the analogous comment on `_constraint_fg!` in
+    # interatomic_distance_fg.jl for the same fix applied during optimization.
     if has_pbc
         center = packmol_system.unitcell_center
-        compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
-        for i in eachindex(atom_positions)
-            atom_positions[i] = wrap_to_center(atom_positions[i], packmol_system.unitcell, center)
-        end
-        # Update molecule centers of mass to wrapped positions
-        # (recompute CM from the wrapped atom positions for each molecule)
-        iat = 0
-        imol = 0
-        for st in packmol_system.structure_types
-            for _ in 1:st.number_of_molecules
-                imol += 1
-                mol_cm = zero(SVector{D,T})
-                for j in 1:st.natoms
-                    iat += 1
-                    mol_cm += atom_positions[iat]
-                end
-                mol_cm /= st.natoms
-                packmol_system.molecule_positions[imol] = MoleculePosition(
-                    mol_cm, packmol_system.molecule_positions[imol].angles
-                )
-            end
+        for imol in eachindex(packmol_system.molecule_positions)
+            mp = packmol_system.molecule_positions[imol]
+            packmol_system.molecule_positions[imol] = MoleculePosition(
+                wrap_to_center(mp.cm, packmol_system.unitcell, center), mp.angles
+            )
         end
     end
 
