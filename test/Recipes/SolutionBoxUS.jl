@@ -69,19 +69,28 @@
     ) 
     tmp_input_file = tempname()*".inp"
     rm(tmp_input_file, force=true)
-    r1 = write_packmol_input(system; margin = 20.0, input = tmp_input_file, debug = true)
+    r1 = write_packmol_input(system; margin = 20.0, input = tmp_input_file, debug = true, pbc = :orthorhombic)
     @test r1[1] == 41543
-    @test r1[2] ≈ [117.37, 89.79, 118.81]u"Å" 
+    @test r1[2] ≈ [117.37, 89.79, 118.81]u"Å"
     @test isfile(tmp_input_file)
     rm(tmp_input_file, force=true)
-    r1 = write_packmol_input(system; margin = 20.0, input = tmp_input_file, debug = true, cubic = true)
+    # :cubic is the default
+    r1 = write_packmol_input(system; margin = 20.0, input = tmp_input_file, debug = true)
     @test r1[1] == 55750
     @test r1[2] ≈ [118.81, 118.81, 118.81]u"Å"
     @test isfile(tmp_input_file)
     rm(tmp_input_file, force=true)
-    r1 = write_packmol_input(system; margin = 2.0u"nm", input = tmp_input_file, debug = true, cubic = true)
+    r1 = write_packmol_input(system; margin = 2.0u"nm", input = tmp_input_file, debug = true, pbc = :cubic)
     @test r1[1] == 55750
     @test r1[2] ≈ [118.81, 118.81, 118.81]u"Å"
+    @test isfile(tmp_input_file)
+    rm(tmp_input_file, force=true)
+    # :dodecahedral: same "size" (d = 118.81 Å) as the cubic case above, but a
+    # smaller volume (d³/√2 instead of d³) since the shape wastes less volume
+    # relative to the sphere it needs to enclose in every direction.
+    r1 = write_packmol_input(system; margin = 20.0, input = tmp_input_file, debug = true, pbc = :dodecahedral)
+    @test r1[2] ≈ [118.81, 118.81, 118.81]u"Å"
+    @test r1[1] < 55750
     @test isfile(tmp_input_file)
 
     # The generated input file must be valid Packmol syntax for the native engine
@@ -90,6 +99,10 @@
     # rejected outright.
     psys = Packmol.read_packmol_input(tmp_input_file)
     @test psys.nmols == 1 + r1[1]
+    a, b, c, α, β, γ = Packmol._unitcell_abc_angles(psys.unitcell)
+    @test a ≈ b ≈ c ≈ 118.81
+    @test α ≈ β ≈ 60.0
+    @test γ ≈ 90.0
     rm(tmp_input_file, force=true)
 
     # packmol(::SolutionBoxUS) builds and packs the system directly: no input
@@ -100,7 +113,12 @@
         density = 1.0,
     )
     tmp_output_file = tempname()*".pdb"
-    packmol(small_system; box_sides = [25.0, 25.0, 25.0], output = tmp_output_file, iprint = 1000, nloop = 20)
+    # packmol(::Recipe) forwards packmol(::PackmolSystem)'s own return value:
+    # the built PackmolSystem itself (with its packing outcome in `.status`),
+    # not a bare Bool, so the caller can inspect/reuse the packed system.
+    packed_sys = packmol(small_system; box_sides = [25.0, 25.0, 25.0], output = tmp_output_file, iprint = 1000, nloop = 20)
+    @test packed_sys isa Packmol.PackmolSystem
+    @test packed_sys.status == :packing_ready
     @test isfile(tmp_output_file)
     rm(tmp_output_file, force=true)
 

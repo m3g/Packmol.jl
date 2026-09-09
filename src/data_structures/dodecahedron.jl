@@ -13,6 +13,10 @@ periodic-image conventions: the ordinary skewed-parallelepiped shape (what
 rhombic-dodecahedron-shaped (Wigner-Seitz) "compact" shape, which is more
 useful for visualization or analysis centered on a solute (the same
 distinction GROMACS draws between `trjconv -ur rect` and `-ur compact`).
+Each also has a single-argument `(::PackmolSystem)` method that instead
+toggles `packmol_system.periodic_boundary_style` — the flag `get_atoms`
+(see write_output.jl) and `write_output` read to decide which shape to wrap
+molecule positions into when they materialize atomic coordinates.
 =#
 
 export dodecahedral_unitcell
@@ -72,30 +76,37 @@ on it. `x` can be a single `SVector{3}` or a vector of them. `unitcell` and
 
 See also [`dodecahedral_to_triclinic`](@ref) for the reverse mapping.
 """
-function triclinic_to_dodecahedral(x::SVector{3,T}, unitcell::AbstractMatrix, center::SVector{3,T}) where {T}
-    rel = x - center
-    v1 = SVector{3,T}(unitcell[1, 1], unitcell[2, 1], unitcell[3, 1])
-    v2 = SVector{3,T}(unitcell[1, 2], unitcell[2, 2], unitcell[3, 2])
-    v3 = SVector{3,T}(unitcell[1, 3], unitcell[2, 3], unitcell[3, 3])
-    best = rel
-    best_dist2 = sum(abs2, rel)
-    for n1 in -1:1, n2 in -1:1, n3 in -1:1
-        (n1 == 0 && n2 == 0 && n3 == 0) && continue
-        cand = rel + n1 * v1 + n2 * v2 + n3 * v3
-        dist2 = sum(abs2, cand)
-        if dist2 < best_dist2
-            best = cand
-            best_dist2 = dist2
-        end
-    end
-    return best + center
-end
+triclinic_to_dodecahedral(x::SVector{3,T}, unitcell::AbstractMatrix, center::SVector{3,T}) where {T} =
+    _nearest_periodic_image(x, unitcell, center)
 
 triclinic_to_dodecahedral(xs::AbstractVector{<:SVector{3}}, unitcell::AbstractMatrix, center::SVector{3}) =
     [triclinic_to_dodecahedral(x, unitcell, center) for x in xs]
 
 triclinic_to_dodecahedral(x, packmol_system::PackmolSystem) =
     triclinic_to_dodecahedral(x, packmol_system.unitcell, packmol_system.unitcell_center)
+
+"""
+    triclinic_to_dodecahedral(packmol_system::PackmolSystem)
+
+Sets `packmol_system.periodic_boundary_style = :dodecahedral` and returns
+`packmol_system` — unlike the coordinate-remapping methods above, this one
+touches no coordinates itself. It just selects, for subsequent calls to
+[`get_atoms`](@ref)/`write_output`, which fundamental-domain shape molecule
+positions get wrapped into: the rhombic-dodecahedron (Wigner-Seitz)
+"compact" shape instead of the default triclinic one. The actual remapping
+happens on demand each time `get_atoms` runs, not here.
+
+Requires `packmol_system.unitcell` to already be set (typically to a
+dodecahedral cell — e.g. via [`dodecahedral_unitcell`](@ref) or the input
+file's `pbc dodecahedral ...` — though any triclinic cell works).
+"""
+function triclinic_to_dodecahedral(packmol_system::PackmolSystem)
+    isnothing(packmol_system.unitcell) && throw(ArgumentError(
+        "triclinic_to_dodecahedral(::PackmolSystem) requires packmol_system.unitcell to be set (no PBC is configured)."
+    ))
+    packmol_system.periodic_boundary_style = :dodecahedral
+    return packmol_system
+end
 
 """
     dodecahedral_to_triclinic(x, unitcell, center)
@@ -117,3 +128,16 @@ dodecahedral_to_triclinic(xs::AbstractVector{<:SVector{3}}, unitcell::AbstractMa
 
 dodecahedral_to_triclinic(x, packmol_system::PackmolSystem) =
     dodecahedral_to_triclinic(x, packmol_system.unitcell, packmol_system.unitcell_center)
+
+"""
+    dodecahedral_to_triclinic(packmol_system::PackmolSystem)
+
+The other direction of [`triclinic_to_dodecahedral`](@ref)`(packmol_system)`:
+sets `packmol_system.periodic_boundary_style = :triclinic` (the default) and
+returns `packmol_system`, so [`get_atoms`](@ref)/`write_output` go back to
+wrapping molecule positions into the ordinary skewed-parallelepiped shape.
+"""
+function dodecahedral_to_triclinic(packmol_system::PackmolSystem)
+    packmol_system.periodic_boundary_style = :triclinic
+    return packmol_system
+end

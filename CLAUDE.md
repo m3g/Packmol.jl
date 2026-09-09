@@ -11,9 +11,11 @@ The package also includes:
 - A **legacy runner** (`run_packmol`) that wraps the Fortran binary via `Packmol_jll`.
 - **Recipes**: higher-level, parameter-driven system setups (target densities/
   concentrations instead of molecule counts) — solute+solvent, cossolvent, water+ions
-  today; membranes, vesicles, nanotubes, and special (octahedral/dodecahedral) box
-  shapes planned. Each recipe supports both `write_packmol_input` (generate a `.inp`
-  file) and `packmol(recipe; ...)` (build and pack directly, no file left behind).
+  today, each with a `pbc` keyword (`:cubic`/`:orthorhombic`/`:dodecahedral`/
+  `:octahedral`) selecting the periodic cell shape; membranes, vesicles, and
+  nanotubes are planned. Each recipe supports both `write_packmol_input`
+  (generate a `.inp` file) and `packmol(recipe; ...)` (build and pack directly, no
+  file left behind).
 
 ## Project Structure
 
@@ -54,6 +56,10 @@ src/
 - `PDBTools.jl`: PDB and mmCIF (which will be a new feature) file reading/writing
 - `StaticArrays.jl`: Fixed-size vectors/matrices for performance
 - `Unitful.jl`: Physical unit handling (in Recipes)
+- `MolSimToolkitShared.jl`: shared function-name stubs across the M3G package ecosystem
+  (MolSimToolkit.jl, ComplexMixtures.jl, ...) — Packmol `import`s and extends `get_atoms`
+  from it rather than defining its own, so packages that already `using MolSimToolkitShared`
+  can call `get_atoms` on a `PackmolSystem` too, and vice versa
 
 ## Running Tests
 
@@ -134,7 +140,17 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] Orthorhombic boxes (`pbc` keyword: 3 values = side lengths centered at origin; 6 values = xmin/xmax with center at midpoint)
 - [x] Triclinic systems (`unitcell` keyword with CRYST1-style a b c α β γ, centered at origin)
 - [x] Reference center for PBC: constraints evaluated on atoms wrapped to cell centered at `unitcell_center`
-- [ ] New feature: Recipes for octahedric/icosaedric boxes.
+- [x] Rhombic dodecahedron box (`pbc dodecahedral cx cy cz d` keyword, `dodecahedral_unitcell`
+      Julia API helper, `triclinic_to_dodecahedral`/`dodecahedral_to_triclinic` coordinate
+      conversion helpers — see `src/data_structures/dodecahedron.jl`); recipes support it via
+      their `pbc = :dodecahedral` keyword.
+- [x] Truncated octahedron box (`pbc octahedral cx cy cz d` keyword, `octahedral_unitcell`
+      Julia API helper, `triclinic_to_octahedral`/`octahedral_to_triclinic` coordinate
+      conversion helpers — see `src/data_structures/octahedron.jl`, mirroring
+      `dodecahedron.jl`; both share the same "nearest periodic image" search in
+      `src/data_structures/periodic_cells.jl`); recipes support it via their
+      `pbc = :octahedral` keyword.
+- [ ] New feature: Recipes for icosaedric boxes.
 
 ---
 
@@ -165,6 +181,18 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 
 #### PDB Output
 - [x] Write packed coordinates to PDB file
+- [x] `get_atoms(::PackmolSystem)` - packed atomic coordinates as `Vector{Atom}`, generated
+      fresh from `molecule_positions` on every call (never cached on the system); `write_output`
+      is now a thin wrapper around it. `get_atoms` itself is `import`ed (not defined) from
+      `MolSimToolkitShared.jl` (a shared dependency across the M3G package ecosystem — see its
+      own `function get_atoms end` stub) and extended here with a `PackmolSystem` method,
+      rather than declared as an unrelated function of the same name; also `export`ed from
+      Packmol for direct use after `using Packmol`. Under PBC, wraps each molecule rigidly by
+      its center of mass (never atom-by-atom, so a molecule is never torn across a periodic
+      boundary), in the shape selected by `PackmolSystem.periodic_boundary_style` (`:triclinic`,
+      the default, `:dodecahedral`, or `:octahedral` — see
+      `triclinic_to_dodecahedral(::PackmolSystem)`/`dodecahedral_to_triclinic(::PackmolSystem)`
+      and their `octahedral` counterparts).
 - [x] Residue numbering schemes (`resnumbers` 0/1/2/3, per structure type, with Fortran's
       single-/multi-residue-template auto-detected default when unset)
 - [x] Chain identifier control (`changechains`, `chain`, per structure type, with Fortran's
@@ -230,7 +258,10 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 - [x] Concentration unit conversions (Molarity, Molality, MoleFraction, etc.)
 - [x] DensityTable interpolation
 - [x] Documented on its own `experimental/recipes.md` docs page
-- [ ] Future recipes: membranes, vesicles, nanotubes, octahedral/dodecahedral box shapes
+- [x] `pbc` keyword (`:cubic`/`:orthorhombic`/`:dodecahedral`/`:octahedral`) selecting the
+      periodic cell shape, shared by all three recipes; cell volume computed generally as
+      `det(unitcell)` rather than assuming an orthorhombic box
+- [ ] Future recipes: membranes, vesicles, nanotubes
 
 ---
 

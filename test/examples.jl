@@ -15,8 +15,9 @@
     @test sys.nmols == 1400
 
     sys.output_file = tempname() * ".pdb"
-    converged = Packmol.packmol(sys; nloop=20)
-    @test converged
+    result = Packmol.packmol(sys; nloop=20)
+    @test result === sys
+    @test sys.status == :packing_ready
 
     @test isfile(sys.output_file)
     @test length(read_pdb(sys.output_file)) == length(sys.atoms)
@@ -31,8 +32,9 @@ end
     @test sys.nmols == 18234
 
     sys.output_file = tempname() * ".pdb"
-    converged = Packmol.packmol(sys; nloop=20)
-    @test converged
+    result = Packmol.packmol(sys; nloop=20)
+    @test result === sys
+    @test sys.status == :packing_ready
 
     @test isfile(sys.output_file)
     @test length(read_pdb(sys.output_file)) == length(sys.atoms)
@@ -47,8 +49,9 @@ end
     @test sys.nmols == 16551
 
     sys.output_file = tempname() * ".pdb"
-    converged = Packmol.packmol(sys; nloop=20)
-    @test converged
+    result = Packmol.packmol(sys; nloop=20)
+    @test result === sys
+    @test sys.status == :packing_ready
 
     @test isfile(sys.output_file)
     @test length(read_pdb(sys.output_file)) == length(sys.atoms)
@@ -63,8 +66,9 @@ end
     @test sys.nmols == 1100
 
     sys.output_file = tempname() * ".pdb"
-    converged = Packmol.packmol(sys; nloop=50)
-    @test converged
+    result = Packmol.packmol(sys; nloop=50)
+    @test result === sys
+    @test sys.status == :packing_ready
 
     @test isfile(sys.output_file)
     @test length(read_pdb(sys.output_file)) == length(sys.atoms)

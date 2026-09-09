@@ -29,12 +29,16 @@ calling the packing engine directly.
 - [Constraints](constraints.md): the geometric regions (`box`, `sphere`,
   `plane`, `cylinder`, `ellipsoid`, ...) that structures can be packed into
   — shared syntax between input files and the Julia API.
+- [Periodic boundary conditions](periodic_boundary_conditions.md): the
+  `pbc`/`unitcell` keywords (orthorhombic, triclinic, rhombic dodecahedral,
+  truncated octahedral) and how they interact with constraints.
 - [Defining systems in Julia](julia_api.md): building and packing a system
   with `structure_type`/`PackmolSystem`/`packmol`, without a text file.
 - [Recipes](recipes.md): higher-level, parameter-driven system setups
-  (solute + solvent, cosolvent, water + ions, with membranes/vesicles/
-  nanotubes/special box shapes planned) from target densities/
-  concentrations instead of molecule counts.
+  (solute + solvent, cosolvent, water + ions — each with a choice of cubic/
+  orthorhombic/dodecahedral/octahedral periodic box; membranes, vesicles,
+  and nanotubes are planned) from target densities/concentrations instead
+  of molecule counts.
 - [Concentration Unit Conversion](@ref): the unit-conversion machinery
   (`cconvert`) that Recipes are built on.
 

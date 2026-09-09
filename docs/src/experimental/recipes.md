@@ -23,8 +23,10 @@ solvation setups:
   background salt (e.g. NaCl) at a target ionic concentration, with
   automatic charge neutralization of the solute.
 
-Membranes, vesicles, nanotubes, and special (octahedral/dodecahedral) box
-shapes are planned as future recipes.
+Membranes, vesicles, and nanotubes are planned as future recipes; a rhombic
+dodecahedron or truncated octahedron box is already available today, for
+any of the three recipes above, via the `pbc` keyword (see [Running
+Packmol](@ref)).
 
 Each solvation recipe is built the same way: construct a `SolutionBoxU*`
 data structure describing the components of the system (PDB files, molar
@@ -55,17 +57,30 @@ file:
 ```julia
 using Packmol
 sys = SolutionBoxUS(...)
-packmol(sys; margin=20.0, cubic=true, output="system.pdb")
+packmol(sys; margin=20.0, output="system.pdb")
 ```
 
 This builds a `PackmolSystem` directly in memory (the same structure the
 native, pure-Julia [Julia API](julia_api.md) uses) and hands it to
 `packmol(::PackmolSystem)` — no `.inp` file is ever written; `output` is the
 only file produced. Keyword arguments specific to each recipe
-(`margin`/`box_sides`/`cubic`, plus `concentration`/`ionic_concentration`
+(`margin`/`box_sides`/`pbc`, plus `concentration`/`ionic_concentration`
 where relevant) are documented under each recipe below; any other keyword
 (`nloop`, `iprint`, `seed`, ...) is forwarded to the packing
 engine itself — see `packmol(::PackmolSystem)`.
+
+`pbc` selects the shape of the periodic cell that `margin`/`box_sides` size:
+`:cubic` (the default) forces all 3 sides to their maximum, giving a cube;
+`:orthorhombic` keeps the (possibly unequal) sides as computed; and
+`:dodecahedral`/`:octahedral` build a rhombic dodecahedron/truncated
+octahedron cell of that same maximum side (see
+[`dodecahedral_unitcell`](@ref)/[`octahedral_unitcell`](@ref) and [Periodic
+boundary conditions](periodic_boundary_conditions.md)) — smaller-volume,
+more sphere-like alternatives to the cube, useful for solvating a single
+roughly-spherical solute with fewer solvent molecules. In every case the
+cell's volume is `det(unitcell)` (rather than simply the product of 3 sides,
+once the shape isn't an orthorhombic box), and that volume is what's used to
+size the number of solvent/water/ion molecules needed.
 
 Alternatively, `write_packmol_input` generates the `.inp` file on its own,
 to be run (or inspected, or edited) separately — either with the native
@@ -122,7 +137,6 @@ Finally, we generate an input file for Packmol with:
 write_packmol_input(
     system;
     margin = 20.0,
-    cubic = true,
     input = "box.inp",
     output = "system.pdb",
 )
@@ -131,7 +145,7 @@ write_packmol_input(
 or build and pack the system directly, with `packmol`:
 
 ```julia
-packmol(system; margin = 20.0, cubic = true, output = "system.pdb")
+packmol(system; margin = 20.0, output = "system.pdb")
 ```
 
 The `input` parameter (`write_packmol_input` only) is the name of the
@@ -139,9 +153,12 @@ generated Packmol input file, and `output` is the name assigned to the
 packed system.
 
 `margin` sets the size of the box from the solute's own bounding box plus
-this margin, in every dimension. If `cubic` is `true` the box is a cube
-(all three sides set to the largest of the three margined dimensions);
-otherwise it is orthorhombic, with each side sized independently.
+this margin, in every dimension. By default (`pbc = :cubic`) the box is a
+cube (all three sides set to the largest of the three margined dimensions);
+`pbc = :orthorhombic` instead sizes each side independently, and
+`pbc = :dodecahedral`/`pbc = :octahedral` build a rhombic dodecahedron/
+truncated octahedron cell of that same largest side (see [Running
+Packmol](@ref) above).
 
 Alternatively, the box size can be given explicitly with
 `box_sides = [a, b, c]` (in Å), instead of `margin`.
@@ -207,18 +224,17 @@ write_packmol_input(
     system;
     concentration = 0.5, # molar fraction of ethanol, by the density_table's default units
     margin = 20.0,
-    cubic = true,
     input = "box.inp",
     output = "system.pdb",
 )
 ```
 
-or, equivalently, pack it directly with `packmol(system; concentration=0.5, margin=20.0, cubic=true, output="system.pdb")`.
+or, equivalently, pack it directly with `packmol(system; concentration=0.5, margin=20.0, output="system.pdb")`.
 
 `concentration_units` can be passed to interpret `concentration` in units
 other than the density table's own (e.g. request a concentration in
 `"mol/L"` even though the table above is indexed by molar fraction).
-`margin`, `box_sides`, and `cubic` behave as in `SolutionBoxUS`.
+`margin`, `box_sides`, and `pbc` behave as in `SolutionBoxUS`.
 
 ## Solute-Water-Ions system
 
@@ -262,13 +278,12 @@ write_packmol_input(
     system;
     ionic_concentration = 0.15u"mol/L",
     margin = 20.0,
-    cubic = true,
     input = "box.inp",
     output = "system.pdb",
 )
 ```
 
-or, equivalently, pack it directly with `packmol(system; ionic_concentration=0.15u"mol/L", margin=20.0, cubic=true, output="system.pdb")`.
+or, equivalently, pack it directly with `packmol(system; ionic_concentration=0.15u"mol/L", margin=20.0, output="system.pdb")`.
 
 Enough cations or anions (of a single sign) are added on top of the bulk
 salt to exactly neutralize `system.solute_charge`; a `SolutionBoxUWI` with
@@ -276,4 +291,4 @@ default (monovalent) ions can neutralize any integer solute charge. An
 `ArgumentError` is raised if the requested charge cannot be exactly
 neutralized with the ions' charges (for instance, a solute charge of `-3`
 with only doubly-charged cations available). `margin`, `box_sides`, and
-`cubic` behave as in `SolutionBoxUS`.
+`pbc` behave as in `SolutionBoxUS`.

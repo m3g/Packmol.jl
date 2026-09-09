@@ -73,3 +73,29 @@ end
     @test Packmol.triclinic_to_dodecahedral(x, sys) == Packmol.triclinic_to_dodecahedral(x, uc, center)
     @test Packmol.dodecahedral_to_triclinic(x, sys) == Packmol.dodecahedral_to_triclinic(x, uc, center)
 end
+
+@testitem "triclinic_to_dodecahedral(::PackmolSystem) / dodecahedral_to_triclinic(::PackmolSystem)" begin
+    st = structure_type(
+        Packmol.src_dir * "/../test/structure_files/water.pdb";
+        number=2, constraints=[InsideBox([-10.0, -10.0, -10.0], [10.0, 10.0, 10.0])],
+    )
+
+    # No PBC: there is nothing to select a wrapping shape for.
+    sys_nopbc = PackmolSystem([st]; output="dodecahedron_style_test.pdb", tolerance=2.0)
+    @test sys_nopbc.periodic_boundary_style == :triclinic
+    @test_throws ArgumentError Packmol.triclinic_to_dodecahedral(sys_nopbc)
+
+    uc = Packmol.dodecahedral_unitcell(Float64, 100.0)
+    sys = PackmolSystem([st]; output="dodecahedron_style_test.pdb", tolerance=2.0,
+        unitcell=uc, unitcell_center=zeros(3),
+    )
+    @test sys.periodic_boundary_style == :triclinic
+
+    result = Packmol.triclinic_to_dodecahedral(sys)
+    @test result === sys
+    @test sys.periodic_boundary_style == :dodecahedral
+
+    result = Packmol.dodecahedral_to_triclinic(sys)
+    @test result === sys
+    @test sys.periodic_boundary_style == :triclinic
+end

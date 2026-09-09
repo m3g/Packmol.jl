@@ -104,7 +104,7 @@ function _setup(
     concentration_units::Union{Nothing,String},
     box_sides::Union{AbstractVector{<:Number},Nothing},
     margin::Union{Number,Nothing},
-    cubic::Bool,
+    pbc::Symbol,
 )
     (; solvent_pdbfile,
        cossolvent_pdbfile,
@@ -137,8 +137,8 @@ function _setup(
     # aliases for clearer formulas
     ρs = density_pure_solvent(system)
 
-    box_sides, solute_extrema = set_box_sides(system, box_sides, margin, cubic)
-    vbox = prod(box_sides)
+    unitcell, solute_extrema = set_unitcell(system, box_sides, margin, pbc)
+    vbox = det(unitcell) * u"Å^3"
 
     # Solution volume (vbox - vsolute) - vsolute is estimated
     # as if it had the same mass density of the solution
@@ -163,9 +163,6 @@ function _setup(
     # Final solvent concentration (mol/L)
     cs_f = uconvert(u"mol/L", (ns / Unitful.Na) / vs)
 
-    # Half of box sides, to center the solute at the origin
-    l = round.(typeof(1.0u"Å"), box_sides ./ 2; digits=3)
-
     summary = """
         ==================================================================
         Summary:
@@ -178,7 +175,7 @@ function _setup(
         Box volume = $vbox
         Solution volume = $vs
         Solute extrema = [ $(join(-0.5*solute_extrema, ", ")), $(join(0.5*solute_extrema, ", ")) ]
-        Periodic box = [ $(join( -1.0*l, ", ")), $(join( l, ", ")) ]
+        Periodic box (pbc = :$pbc) = $(_unitcell_description(unitcell))
 
         Density of solution = $ρ
         Solute molar mass = $Mu
@@ -195,11 +192,9 @@ function _setup(
 
         Final molar fraction = $(nc/(nc+ns))
 
-        Cubic box requested: $cubic
-
         ==================================================================
         """
-    return (; ns, nc, l, summary)
+    return (; ns, nc, unitcell, summary)
 end
 
 """
@@ -211,7 +206,7 @@ end
         # box size
         box_sides::AbstractVector{<:Number}, # or
         margin::Number,
-        cubic::Bool = false,
+        pbc::Symbol = :cubic,
     )
 
 Function that generates an input file for Packmol.
@@ -220,8 +215,11 @@ The box sides are given in Ångströms, and can be provided as a vector of 3 ele
 Alternatively, the margin can be provided, and the box sides will be calculated as
 the maximum and minimum coordinates of the solute plus the margin in all 3 dimensions.
 
-If `cubic` is set to true, the box will be cubic, and the box sides will be
-equal in all 3 dimensions, respecting the minimum margin provided.
+`pbc` selects the shape of the periodic cell: `:cubic` (the default) forces all 3
+sides to their maximum, `:orthorhombic` keeps `box_sides`/`margin` as given (possibly
+with unequal sides), and `:dodecahedral`/`:octahedral` build a rhombic
+dodecahedron/truncated octahedron cell (see [`dodecahedral_unitcell`](@ref)/
+[`octahedral_unitcell`](@ref)) of size equal to that same maximum side.
 
 """
 function write_packmol_input(
@@ -232,12 +230,12 @@ function write_packmol_input(
     output="system.pdb",
     box_sides::Union{AbstractVector{<:Number},Nothing} = nothing,
     margin::Union{Number,Nothing} = nothing,
-    cubic::Bool = false,
+    pbc::Symbol = :cubic,
     # testing option
     debug = false,
 )
     (; solute_pdbfile, solvent_pdbfile, cossolvent_pdbfile) = system
-    (; ns, nc, l, summary) = _setup(system, concentration, concentration_units, box_sides, margin, cubic)
+    (; ns, nc, unitcell, summary) = _setup(system, concentration, concentration_units, box_sides, margin, pbc)
     println(summary)
 
     open(input, "w") do io
@@ -253,6 +251,7 @@ function write_packmol_input(
         for line in split(summary, "\n")
             println(io, "# $line")
         end
+        a, b, c, α, β, γ = _unitcell_abc_angles(unitcell)
         println(io,
             """
             #
@@ -262,7 +261,7 @@ function write_packmol_input(
             filetype pdb
             seed -1
             packall
-            pbc $(join(-1.0*ustrip(l), " ")) $(join(ustrip(l), " "))
+            unitcell $a $b $c $α $β $γ
 
             structure $solute_pdbfile
                 number 1
@@ -289,9 +288,10 @@ function write_packmol_input(
 
         ==================================================================
         """))
-    
-    if debug 
-        return ns, nc, 2*l
+
+    if debug
+        a, b, c, = _unitcell_abc_angles(unitcell)
+        return ns, nc, [a, b, c] * u"Å"
     else
         return nothing
     end
@@ -306,7 +306,7 @@ end # function write_packmol_input
         # box size
         box_sides::AbstractVector{<:Number}, # or
         margin::Number,
-        cubic::Bool = false,
+        pbc::Symbol = :cubic,
         kwargs...,
     )
 
@@ -315,9 +315,12 @@ equivalent to calling
 [`write_packmol_input`](@ref write_packmol_input(::SolutionBoxUSC)) followed by `packmol`
 on the resulting file, except no `.inp` file is ever written.
 
-`concentration`, `concentration_units`, `output`, `box_sides`, `margin`, and `cubic`
+`concentration`, `concentration_units`, `output`, `box_sides`, `margin`, and `pbc`
 behave as in `write_packmol_input`. Any other keyword (`nloop`, `iprint`, `seed`,
 `optimizer`, ...) is forwarded to the packing engine — see `packmol(::PackmolSystem)`.
+
+Returns the built `PackmolSystem`, with the packing outcome in its `.status` field —
+see `packmol(::PackmolSystem)`.
 
 """
 function packmol(
@@ -327,18 +330,18 @@ function packmol(
     output="system.pdb",
     box_sides::Union{AbstractVector{<:Number},Nothing}=nothing,
     margin::Union{Number,Nothing}=nothing,
-    cubic::Bool=false,
+    pbc::Symbol=:cubic,
     kwargs...,
 )
     (; solute_pdbfile, solvent_pdbfile, cossolvent_pdbfile) = system
-    (; ns, nc, l) = _setup(system, concentration, concentration_units, box_sides, margin, cubic)
+    (; ns, nc, unitcell) = _setup(system, concentration, concentration_units, box_sides, margin, pbc)
     structure_types = [
         _fixed_solute_structure_type(solute_pdbfile),
         structure_type(solvent_pdbfile; number=ns),
     ]
     nc > 0 && push!(structure_types, structure_type(cossolvent_pdbfile; number=nc))
     packmol_system = PackmolSystem(structure_types;
-        output, tolerance=2.0, add_box_sides=true, seed=-1, _recipe_unitcell(l)...,
+        output, tolerance=2.0, add_box_sides=true, seed=-1, _recipe_unitcell(unitcell)...,
     )
     return packmol(packmol_system; kwargs...)
 end

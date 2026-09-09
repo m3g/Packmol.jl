@@ -12,6 +12,12 @@ using ProgressMeter: Progress, next!, finish!
 using SPGBox
 using Printf: @printf, @sprintf
 import CellListMap
+# `get_atoms` is a shared function name (see MolSimToolkitShared's own
+# docstring): imported, not defined here, so that it and other packages in
+# the M3G ecosystem (MolSimToolkit.jl, ...) can each add their own method to
+# the very same generic function instead of each declaring an unrelated one
+# that happens to share a name.
+import MolSimToolkitShared: get_atoms
 
 const src_dir = @__DIR__
 
@@ -22,6 +28,7 @@ export packmol
 export PackmolSystem
 export StructureType
 export structure_type
+export get_atoms
 
 # Constraints
 include("./constraints/constraints_base.jl")
@@ -36,7 +43,9 @@ include("./constraints/constraint_types.jl")
 include("./data_structures/atoms_and_molecules.jl")
 include("./data_structures/StructureType.jl")
 include("./data_structures/PackmolSystem.jl")
+include("./data_structures/periodic_cells.jl")
 include("./data_structures/dodecahedron.jl")
+include("./data_structures/octahedron.jl")
 include("./data_structures/FixedParticleSystem.jl")
 
 # Random number generation

@@ -49,10 +49,16 @@ end structure
 | `chkgrad` | Flag: check analytical vs. numerical gradients (development use). |
 | `check` | Write the initial approximation only, then stop (no packing). |
 | `pbc <a b c>` or `pbc <xmin ymin zmin xmax ymax zmax>` | Orthorhombic periodic box: either side lengths (centered at the origin) or explicit min/max corners. |
-| `pbc dodecahedral <cx cy cz d>` | Rhombic dodecahedron periodic box of size `d` centered at `(cx,cy,cz)` — stored (and written out) as the equivalent triclinic cell. See [Periodic boundary conditions](constraints.md) in Constraints. |
+| `pbc dodecahedral <cx cy cz d>` | Rhombic dodecahedron periodic box of size `d` centered at `(cx,cy,cz)` — stored (and written out) as the equivalent triclinic cell. |
+| `pbc octahedral <cx cy cz d>` | Truncated octahedron periodic box of size `d` centered at `(cx,cy,cz)` — likewise stored as the equivalent triclinic cell. |
 | `unitcell <a b c α β γ>` | Triclinic periodic box, CRYST1-style (centered at the origin). |
 | `restart_from <file>` | Skip initial placement for every free molecule and read their positions from `<file>` instead — see [Restarting a run](@ref) below. Also valid inside a `structure ... end structure` block, to restart only that structure type. |
 | `restart_to <file>` | Write every free molecule's position to `<file>` each time output is written (including intermediate `writeout` writes). Also valid per structure type. |
+
+See [Periodic boundary conditions](periodic_boundary_conditions.md) for the
+full `pbc`/`unitcell` syntax (including the dodecahedral/octahedral shapes)
+and how they interact with the [Constraints](constraints.md) declared
+inside `structure` blocks.
 
 A handful of Fortran Packmol keywords are recognized but not yet implemented
 (`movefrac`, `movebadrandom`, `use_short_tol` and friends, `nloop`, ...) —

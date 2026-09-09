@@ -9,8 +9,11 @@
     @test sys.nmols == 100
     @test length(sys.atoms) == 300
     @test sys.tolerance == 2.0
+    @test sys.status == :not_packed
 
-    Packmol.packmol(sys; nloop=200, maxit=20, iprint=10)
+    result = Packmol.packmol(sys; nloop=200, maxit=20, iprint=10)
+    @test result === sys
+    @test sys.status == :packing_ready
 
     # Compute final atom positions
     atom_positions = Vector{SVector{3,Float64}}(undef, length(sys.atoms))
@@ -58,8 +61,9 @@ end
         unitcell=Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0),
         unitcell_center=zeros(3),
     )
-    converged = packmol(sys; nloop=20, maxit=100, iprint=1000)
-    @test converged
+    result = packmol(sys; nloop=20, maxit=100, iprint=1000)
+    @test result === sys
+    @test sys.status == :packing_ready
     for mp in sys.molecule_positions
         for a in mp.angles
             @test -5.0 * pi / 180 <= a <= 5.0 * pi / 180
@@ -83,7 +87,7 @@ end
     sys1 = PackmolSystem([water, urea]; output=tempname() * ".pdb", tolerance=2.0,
         unitcell=uc, unitcell_center=zeros(3), restart_to=restart_all,
     )
-    @test packmol(sys1; nloop=20, maxit=100, iprint=1000, seed=1)
+    @test packmol(sys1; nloop=20, maxit=100, iprint=1000, seed=1).status == :packing_ready
     @test isfile(restart_all)
     @test isfile(restart_water)
     saved_water_cm = sys1.molecule_positions[1].cm
@@ -97,7 +101,7 @@ end
     sys2 = PackmolSystem([water2, urea2]; output=tempname() * ".pdb", tolerance=2.0,
         unitcell=uc, unitcell_center=zeros(3), restart_from=restart_all,
     )
-    @test packmol(sys2; nloop=20, maxit=100, iprint=1000, seed=2)
+    @test packmol(sys2; nloop=20, maxit=100, iprint=1000, seed=2).status == :packing_ready
     @test sys2.molecule_positions[1].cm ≈ saved_water_cm
     rm(sys2.output_file; force=true)
 
@@ -112,7 +116,7 @@ end
     )
     @test isnothing(sys3.restart_from)
     @test sys3.structure_types[1].restart_from == restart_water
-    @test packmol(sys3; nloop=20, maxit=100, iprint=1000, seed=3)
+    @test packmol(sys3; nloop=20, maxit=100, iprint=1000, seed=3).status == :packing_ready
     @test sys3.molecule_positions[1].cm ≈ saved_water_cm
     rm(sys3.output_file; force=true)
 
@@ -131,7 +135,7 @@ end
     # source anyway, since it's just atom positions like any other PDB.
     water1 = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
     sys1 = PackmolSystem([water1]; output=tempname() * ".pdb", tolerance=2.0, unitcell=uc, unitcell_center=zeros(3))
-    @test packmol(sys1; nloop=20, maxit=100, iprint=1000, seed=11)
+    @test packmol(sys1; nloop=20, maxit=100, iprint=1000, seed=11).status == :packing_ready
     source_pdb = sys1.output_file
 
     # Restarting from that PDB (file path, dispatched by its .pdb extension)
@@ -142,7 +146,7 @@ end
     sys2 = PackmolSystem([water2]; output=tempname() * ".pdb", tolerance=2.0, unitcell=uc, unitcell_center=zeros(3),
         restart_from=source_pdb,
     )
-    @test packmol(sys2; nloop=20, maxit=100, iprint=1000, seed=22)
+    @test packmol(sys2; nloop=20, maxit=100, iprint=1000, seed=22).status == :packing_ready
     for i in 1:4
         @test sys2.molecule_positions[i].cm ≈ sys1.molecule_positions[i].cm atol = 1e-2
     end
@@ -155,7 +159,7 @@ end
     sys3 = PackmolSystem([water3]; output=tempname() * ".pdb", tolerance=2.0, unitcell=uc, unitcell_center=zeros(3),
         restart_from=atoms,
     )
-    @test packmol(sys3; nloop=20, maxit=100, iprint=1000, seed=33)
+    @test packmol(sys3; nloop=20, maxit=100, iprint=1000, seed=33).status == :packing_ready
     for i in 1:4
         @test sys3.molecule_positions[i].cm ≈ sys1.molecule_positions[i].cm atol = 1e-2
     end
@@ -185,7 +189,7 @@ end
     sys1 = PackmolSystem([fixed_water, water1]; output=tempname() * ".pdb", tolerance=2.0,
         unitcell=uc, unitcell_center=zeros(3), restart_to=restart_all, avoid_overlap=false,
     )
-    @test packmol(sys1; nloop=20, maxit=100, iprint=1000, seed=41)
+    @test packmol(sys1; nloop=20, maxit=100, iprint=1000, seed=41).status == :packing_ready
     source_pdb = sys1.output_file
     saved_free_cm = [sys1.molecule_positions[i].cm for i in 2:5]
 
@@ -198,7 +202,7 @@ end
     sys2 = PackmolSystem([fixed_water2, water2]; output=tempname() * ".pdb", tolerance=2.0,
         unitcell=uc, unitcell_center=zeros(3), restart_from=source_pdb, avoid_overlap=false,
     )
-    @test packmol(sys2; nloop=20, maxit=100, iprint=1000, seed=42)
+    @test packmol(sys2; nloop=20, maxit=100, iprint=1000, seed=42).status == :packing_ready
     for i in 2:5
         @test sys2.molecule_positions[i].cm ≈ saved_free_cm[i-1] atol = 1e-2
     end
@@ -211,7 +215,7 @@ end
     sys3 = PackmolSystem([fixed_water3, water3]; output=tempname() * ".pdb", tolerance=2.0,
         unitcell=uc, unitcell_center=zeros(3), restart_from=restart_all, avoid_overlap=false,
     )
-    @test packmol(sys3; nloop=20, maxit=100, iprint=1000, seed=43)
+    @test packmol(sys3; nloop=20, maxit=100, iprint=1000, seed=43).status == :packing_ready
     for i in 2:5
         @test sys3.molecule_positions[i].cm ≈ saved_free_cm[i-1] atol = 1e-2
     end

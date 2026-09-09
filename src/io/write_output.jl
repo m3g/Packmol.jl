@@ -247,21 +247,85 @@ function _write_restart_files(packmol_system::PackmolSystem{D,T}) where {D,T}
     return nothing
 end
 
-"""
-    write_output(packmol_system::PackmolSystem)
+#
+# Per-molecule rigid CM shift applied to `atom_positions` in place, wrapping
+# each molecule's center of mass into the unit cell (centered at
+# `unitcell_center`) as a single rigid unit — every atom of that molecule
+# carried along by the same offset — rather than wrapping each atom's
+# absolute position independently. Wrapping atoms independently lets a
+# molecule straddling a periodic boundary be torn in two (part of it wrapped
+# to the opposite face while the rest stays put), which can land those
+# wrapped atoms on top of whatever else sits there — visible as overlapping
+# atoms in the output even though the packing itself converged. See the
+# analogous comment on `_constraint_fg!` in interatomic_distance_fg.jl for
+# the same fix applied during optimization.
+#
+# Which fundamental-domain shape to wrap into is `wrap`: `wrap_to_center`
+# (the ordinary skewed-parallelepiped shape) or `triclinic_to_dodecahedral`
+# (the rhombic-dodecahedron/Wigner-Seitz "compact" shape) — chosen by
+# `get_atoms` from `packmol_system.periodic_boundary_style`.
+#
+function _wrap_molecules!(
+    atom_positions::Vector{SVector{D,T}},
+    packmol_system::PackmolSystem{D,T},
+    unitcell::AbstractMatrix,
+    center::SVector{D,T},
+    wrap::F,
+) where {D,T,F}
+    imol_offset = 0
+    iat_offset = 0
+    for st in packmol_system.structure_types
+        natoms_st = st.natoms
+        nmols_st = st.number_of_molecules
+        for i in 1:nmols_st
+            imol = imol_offset + i
+            mp = packmol_system.molecule_positions[imol]
+            shift = wrap(mp.cm, unitcell, center) - mp.cm
+            if !iszero(shift)
+                iat_first = iat_offset + (i - 1) * natoms_st
+                for j in 1:natoms_st
+                    atom_positions[iat_first + j] += shift
+                end
+            end
+        end
+        imol_offset += nmols_st
+        iat_offset += nmols_st * natoms_st
+    end
+    return atom_positions
+end
 
-Write packed coordinates to the output file specified in `packmol_system.output_file`.
-Residue numbering follows each structure type's `residue_numbering` (`resnumbers`)
-setting, chain identifiers follow `chain`/`changechains`, and a `CRYST1` record is
-added when `add_box_sides` is set or the system has periodic boundary conditions.
-Also writes any configured `restart_to` file(s) from the current molecule positions.
-Returns the path of the file that was written.
 """
-function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_system.output_file) where {D,T}
-    _write_restart_files(packmol_system)
+    get_atoms(packmol_system::PackmolSystem)
+
+Compute the packed system's current atomic coordinates and return them as a
+`Vector{PDBTools.Atom}` — generated fresh from `packmol_system.molecule_positions`
+each call (never cached on `packmol_system` itself), the same way `write_output`
+computes what it writes to file. Residue numbering follows each structure
+type's `residue_numbering` (`resnumbers`) setting, and chain identifiers
+follow `chain`/`changechains`.
+
+When periodic boundary conditions are set (`packmol_system.unitcell`), each
+molecule's center of mass is wrapped into the unit cell as a rigid unit (a
+molecule straddling a periodic boundary is never torn in two across it), in
+the representation selected by `packmol_system.periodic_boundary_style`:
+the ordinary skewed-parallelepiped shape (`:triclinic`, the default), or,
+after [`triclinic_to_dodecahedral`](@ref)/[`triclinic_to_octahedral`](@ref)
+`(packmol_system)` has been called, the corresponding Wigner-Seitz "compact"
+shape (`:dodecahedral`/`:octahedral`) — see those functions and their
+`dodecahedral_to_triclinic`/`octahedral_to_triclinic` counterparts.
+"""
+function get_atoms(packmol_system::PackmolSystem{D,T}) where {D,T}
     natoms = length(packmol_system.atoms)
     atom_positions = Vector{SVector{D,T}}(undef, natoms)
     compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
+
+    if !isnothing(packmol_system.unitcell)
+        # `:dodecahedral`/`:octahedral` share the very same "nearest
+        # periodic image" search (see periodic_cells.jl) — only the
+        # `unitcell` matrix itself differs between the two box shapes.
+        wrap = packmol_system.periodic_boundary_style === :triclinic ? wrap_to_center : _nearest_periodic_image
+        _wrap_molecules!(atom_positions, packmol_system, packmol_system.unitcell, packmol_system.unitcell_center, wrap)
+    end
 
     output_atoms = Atom{Nothing}[]
     iat = 0
@@ -330,6 +394,37 @@ function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_sy
             end
         end
     end
+
+    return output_atoms
+end
+
+#
+# The same positions `get_atoms` just computed, repackaged as `SVector{D,T}`
+# from the `Atom`s it returned — cheap (O(natoms)), and avoids computing
+# atom positions a second time just for `_cryst1_lines`'s no-PBC bounding-box
+# fallback (its only use of them).
+#
+function _positions_from_atoms(atoms::Vector{Atom{Nothing}}, ::Val{D}, ::Type{T}) where {D,T}
+    D == 3 && return SVector{3,T}[SVector{3,T}(a.x, a.y, a.z) for a in atoms]
+    return SVector{2,T}[SVector{2,T}(a.x, a.y) for a in atoms]
+end
+
+"""
+    write_output(packmol_system::PackmolSystem)
+
+Write packed coordinates to the output file specified in `packmol_system.output_file`.
+Residue numbering follows each structure type's `residue_numbering` (`resnumbers`)
+setting, chain identifiers follow `chain`/`changechains`, and a `CRYST1` record is
+added when `add_box_sides` is set or the system has periodic boundary conditions.
+Also writes any configured `restart_to` file(s) from the current molecule positions.
+Returns the path of the file that was written. See [`get_atoms`](@ref) for how the
+written coordinates are computed (including PBC wrapping and
+`packmol_system.periodic_boundary_style`).
+"""
+function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_system.output_file) where {D,T}
+    _write_restart_files(packmol_system)
+    output_atoms = get_atoms(packmol_system)
+    atom_positions = _positions_from_atoms(output_atoms, Val(D), T)
 
     cryst1_lines = _cryst1_lines(packmol_system, atom_positions)
     header = join(vcat("HEADER", "REMARK   Packmol.jl generated PDB file", cryst1_lines), "\n")

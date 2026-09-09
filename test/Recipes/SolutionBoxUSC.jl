@@ -106,18 +106,25 @@
 
     tmp_input_file = tempname() * ".inp"
     rm(tmp_input_file, force=true)
-    r1 = write_packmol_input(system; concentration = 0.5, margin = 20.0, input = tmp_input_file, debug = true, cubic = true)
+    # :cubic is the default
+    r1 = write_packmol_input(system; concentration = 0.5, margin = 20.0, input = tmp_input_file, debug = true)
     @test isfile(tmp_input_file)
     @test r1[1] == 13527
     @test r1[2] == 13527
     @test r1[3] ≈ [118.81, 118.81, 118.81]u"Å"
 
     rm(tmp_input_file, force=true)
-    r1 = write_packmol_input(system; concentration = 0.5, margin = 20.0, input = tmp_input_file, debug = true)
+    r1 = write_packmol_input(system; concentration = 0.5, margin = 20.0, input = tmp_input_file, debug = true, pbc = :orthorhombic)
     @test isfile(tmp_input_file)
     @test r1[1] == 10075
     @test r1[2] == 10075
     @test r1[3] ≈ [117.37, 89.79, 118.81]u"Å"
+
+    rm(tmp_input_file, force=true)
+    r1 = write_packmol_input(system; concentration = 0.5, margin = 20.0, input = tmp_input_file, debug = true, pbc = :dodecahedral)
+    @test isfile(tmp_input_file)
+    @test r1[3] ≈ [118.81, 118.81, 118.81]u"Å"
+    @test r1[1] + r1[2] < 13527 + 13527
 
     # The generated input file must be valid Packmol syntax for the native engine
     # itself, not just the (more lenient) legacy Fortran binary — regression test

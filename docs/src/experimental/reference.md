@@ -15,6 +15,7 @@ CollapsedDocStrings = true
 packmol
 structure_type
 PackmolSystem
+get_atoms
 write_output
 ```
 
@@ -24,4 +25,12 @@ write_output
 dodecahedral_unitcell
 triclinic_to_dodecahedral
 dodecahedral_to_triclinic
+```
+
+## Octahedral periodic box
+
+```@docs
+octahedral_unitcell
+triclinic_to_octahedral
+octahedral_to_triclinic
 ```

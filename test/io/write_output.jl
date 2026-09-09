@@ -135,6 +135,65 @@ end
     rm(outfile; force=true)
 end
 
+@testitem "get_atoms / write_output: periodic_boundary_style" begin
+    using StaticArrays: SVector
+    using PDBTools: read_pdb, coor
+
+    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    water = structure_type(water_pdb; number=1)
+
+    d = 100.0
+    unitcell = Packmol.dodecahedral_unitcell(Float64, d)
+    center = SVector(0.0, 0.0, 0.0)
+    sys = PackmolSystem([water]; output=tempname() * ".pdb", tolerance=2.0,
+        unitcell=unitcell, unitcell_center=center,
+    )
+    @test sys.periodic_boundary_style == :triclinic
+
+    # Place the molecule's CM at a point whose triclinic and dodecahedral
+    # wraps disagree (see the round-trip test above for why: near a corner
+    # of the parallelepiped domain that isn't the true nearest image), so the
+    # two styles are actually distinguishable in what follows.
+    cm = SVector(95.0, 95.0, 60.0)
+    sys.molecule_positions[1] = Packmol.MoleculePosition(cm, zero(SVector{3,Float64}))
+    cm_tri = Packmol.wrap_to_center(cm, unitcell, center)
+    cm_dodeca = Packmol.triclinic_to_dodecahedral(cm, unitcell, center)
+    @test cm_tri != cm_dodeca
+
+    # Unwrapped Cartesian positions, independent of any PBC style — the
+    # baseline `get_atoms` is expected to rigidly shift by (wrapped_cm - cm).
+    natoms = length(sys.atoms)
+    unwrapped = Vector{SVector{3,Float64}}(undef, natoms)
+    Packmol.compute_atom_positions!(unwrapped, sys.molecule_positions, sys)
+
+    atoms_tri = Packmol.get_atoms(sys)
+    @test length(atoms_tri) == natoms
+    for (a, u) in zip(atoms_tri, unwrapped)
+        @test coor(a) ≈ u + (cm_tri - cm) atol = 1e-4
+    end
+
+    Packmol.triclinic_to_dodecahedral(sys)
+    @test sys.periodic_boundary_style == :dodecahedral
+    atoms_dodeca = Packmol.get_atoms(sys)
+    for (a, u) in zip(atoms_dodeca, unwrapped)
+        @test coor(a) ≈ u + (cm_dodeca - cm) atol = 1e-4
+    end
+    # the two styles actually produced different coordinates for this atom
+    @test !(coor(atoms_tri[1]) ≈ coor(atoms_dodeca[1]))
+
+    # write_output honors the same style (up to the PDB text format's own
+    # 3-decimal-place precision)
+    outfile = write_output(sys)
+    written = read_pdb(outfile)
+    for (a, w) in zip(atoms_dodeca, written)
+        @test coor(a) ≈ coor(w) atol = 1e-3
+    end
+    rm(outfile; force=true)
+
+    Packmol.dodecahedral_to_triclinic(sys)
+    @test sys.periodic_boundary_style == :triclinic
+end
+
 @testitem "restart file round-trip" begin
     using StaticArrays
 
@@ -173,7 +232,7 @@ end
         unitcell=Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0),
         unitcell_center=zeros(3),
     )
-    @test packmol(sys; nloop=20, maxit=100, iprint=1000, seed=7)
+    @test packmol(sys; nloop=20, maxit=100, iprint=1000, seed=7).status == :packing_ready
     source_pdb = write_output(sys)
 
     # `_align_molecule` recovers each molecule's (cm, angles) well enough

@@ -54,10 +54,27 @@
     unitcell::Union{Nothing, Matrix{T}} = nothing
     # Reference center for PBC wrapping (constraints evaluated relative to this point)
     unitcell_center::Union{Nothing, SVector{D,T}} = nothing
+    # Which fundamental-domain shape `get_atoms`/`write_output` wrap molecule
+    # positions into, when `unitcell` is set: `:triclinic` (the ordinary
+    # skewed-parallelepiped shape, e.g. what CRYST1/PDB output implies),
+    # `:dodecahedral` (the rhombic-dodecahedron/Wigner-Seitz "compact"
+    # shape), or `:octahedral` (the truncated-octahedron/Wigner-Seitz
+    # "compact" shape). Set via `triclinic_to_dodecahedral(::PackmolSystem)`/
+    # `dodecahedral_to_triclinic(::PackmolSystem)` (or their `octahedral`
+    # counterparts) rather than directly.
+    periodic_boundary_style::Symbol = :triclinic
     # Internal data for the optimization
     nmols::Int = 0
     atoms::Vector{AtomData{T}} = AtomData{T}[]
     molecule_positions::Vector{MoleculePosition{D,T}} = MoleculePosition{D,T}[]
+    # Outcome of the last `packmol(::PackmolSystem)` call on this system:
+    # `:not_packed` (never packed, e.g. freshly built, or only `check`-mode
+    # placement), `:packing_ready` (converged within `tolerance_precision`/
+    # `constraint_precision`), or `:failed_packing` (ran out of `nloop`
+    # loops short of that). `packmol` returns this same `PackmolSystem`
+    # (mutated in place) rather than a bare `Bool`, precisely so this field
+    # is how callers check the outcome — see `packmol(::PackmolSystem)`.
+    status::Symbol = :not_packed
 end
 
 #
@@ -409,6 +426,11 @@ function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
                 if !isempty(values) && values[1] == "dodecahedral"
                     input_data[:unitcell], input_data[:unitcell_center] =
                         parse_pbc_dodecahedral(T, values[2:end], D)
+                    continue
+                end
+                if !isempty(values) && values[1] == "octahedral"
+                    input_data[:unitcell], input_data[:unitcell_center] =
+                        parse_pbc_octahedral(T, values[2:end], D)
                     continue
                 end
                 vals = [_parse_value(T, "pbc", v) for v in values]
