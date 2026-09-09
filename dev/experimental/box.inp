@@ -13,7 +13,7 @@
 # Box volume = 1.677100110841e6 Å^3
 # Solution volume = 1.6677524931509653e6 Å^3
 # Solute extrema = [ -38.685 Å, -24.895 Å, -39.405 Å, 38.685 Å, 24.895 Å, 39.405 Å ]
-# Periodic box = [ -59.405 Å, -59.405 Å, -59.405 Å, 59.405 Å, 59.405 Å, 59.405 Å ]
+# Periodic box (pbc = :cubic) = a=118.81 Å, b=118.81 Å, c=118.81 Å, α=90.0°, β=90.0°, γ=90.0°
 # 
 # Solute molar mass = 5612.80078125 g mol^-1
 # Solute charge = 2
@@ -22,8 +22,6 @@
 # Number of cations (SOD.pdb, charge +1) = 151
 # Number of anions (CLA.pdb, charge -1) = 153
 # Total system charge (check) = 0
-# 
-# Cubic box requested: true
 # 
 # ==================================================================
 # 
@@ -34,7 +32,7 @@ add_box_sides 1.0
 filetype pdb
 seed -1
 packall
-pbc -59.405 -59.405 -59.405 59.405 59.405 59.405
+unitcell 118.81 118.81 118.81 90.0 90.0 90.0
 
 structure /home/runner/work/Packmol.jl/Packmol.jl/src/Recipes/test/data/poly_h.pdb
     number 1
@@ -42,15 +40,15 @@ structure /home/runner/work/Packmol.jl/Packmol.jl/src/Recipes/test/data/poly_h.p
     fixed 0. 0. 0. 0. 0. 0.
 end structure
 
-structure /tmp/jl_9mbIVwj27y/HOH.pdb
+structure /tmp/jl_wPuXoZqHGt/HOH.pdb
     number 55435
 end structure
 
-structure /tmp/jl_9mbIVwj27y/SOD.pdb
+structure /tmp/jl_wPuXoZqHGt/SOD.pdb
     number 151
 end structure
 
-structure /tmp/jl_9mbIVwj27y/CLA.pdb
+structure /tmp/jl_wPuXoZqHGt/CLA.pdb
     number 153
 end structure
 
