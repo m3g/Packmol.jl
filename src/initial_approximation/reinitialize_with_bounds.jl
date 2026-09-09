@@ -104,23 +104,24 @@ function reinitialize_with_bounds!(
                 mol_positions = Vector{SVector{D,T}}(undef, max_natoms)
                 for i in irange
                     imol = st_offset + i
-                    best_mp = packmol_system.molecule_positions[imol]
-
-                    # The step-2 position may already satisfy the geometric
-                    # constraint (e.g. "inside box") — that phase never looks at
-                    # fixed atoms at all, so it can just as easily land the
-                    # molecule *inside* the fixed structure. Only skip the trial
-                    # loop entirely — keeping step 2's position unmodified — if
-                    # it is *both* constraint-satisfying *and* overlap-free; a
-                    # constraint-satisfying-but-overlapping position must still
-                    # go through the loop below to find a way out.
-                    best_overlaps = packmol_system.avoid_overlap &&
-                        overlaps_fixed(best_mp, st.reference_coordinates, task_fixed_sys, mol_positions, fixed_lo, fixed_hi, tol)
-                    best_fx = best_overlaps ? typemax(T) : constraint_penalty_sum(best_mp, st)
-                    if !best_overlaps && best_fx < precision
-                        next!(progress_meter)
-                        continue
-                    end
+                    # Kept only as a last-resort fallback (below) if every
+                    # trial overlaps the fixed structure — never trusted as
+                    # an automatic "already good enough" bypass. Step 2's own
+                    # constraint-only fit pushes every out-of-region molecule
+                    # to the *nearest* feasible point, not a random one within
+                    # the feasible region: for a thin PBC slab bounded by two
+                    # one-sided plane constraints where one side coincides
+                    # with the periodic wrap seam (so it's essentially never
+                    # violated from a uniform start), that collapses most of
+                    # the type onto a single point hugging the other edge —
+                    # a real constraint-penalty-satisfying position, but a
+                    # badly clustered one, not the uniform-within-bounds
+                    # sample this step exists to produce. So every molecule
+                    # always gets a fresh random trial below regardless of
+                    # how good its inherited position already looks.
+                    inherited_mp = packmol_system.molecule_positions[imol]
+                    best_mp = inherited_mp
+                    best_fx = typemax(T)
 
                     for itry in 1:max_guess_try
                         # Random CM within per-type bounds
