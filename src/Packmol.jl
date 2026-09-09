@@ -37,6 +37,9 @@ include("./constraints/spheres.jl")
 include("./constraints/planes.jl")
 include("./constraints/cylinders.jl")
 include("./constraints/ellipsoids.jl")
+include("./constraints/gaussians.jl")
+include("./constraints/waves.jl")
+include("./constraints/exponentials.jl")
 include("./constraints/constraint_types.jl")
 
 # Data structures

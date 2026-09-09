@@ -131,6 +131,14 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] `Plane` (AbovePlane / BelowPlane) - point + normal vector; input keywords `above`/`over` (synonyms) and `below`, matching Fortran Packmol
 - [x] `Cylinder` (InsideCylinder / OutsideCylinder) - finite capped cylinder: one end center, axis direction, radius, length
 - [x] `Ellipsoid` (InsideEllipsoid / OutsideEllipsoid) - axis-aligned, center + 3 semi-axes + uniform scale factor
+- [x] `Gaussian`/`Wave`/`Exponential` (Above.../Below..., Packmol.jl-only, no Fortran equivalent) - curved
+      half-spaces `up·x = h(along·x)` generalizing `Plane` (degenerate to it at `amplitude=0`): a Gaussian
+      bump, sine/cosine wave (`cos` = `sin` with `phase+π/2`), or exponential ramp extruded along `along`;
+      see `src/constraints/gaussians.jl`, `waves.jl`, `exponentials.jl`
+- [x] `RadialGaussian`/`RadialWave`/`RadialExponential` (Above.../Below..., Packmol.jl-only) - radially
+      symmetric counterparts (`up·x = h(r)`, `r` = radial distance from the `up`-axis line through `center`,
+      as in `Cylinder`): a smooth dome, concentric ripples, or a cone-like spike (the latter two have a
+      genuine kink at `r=0`, handled by zeroing the gradient's radial component there)
 
 #### Missing Constraints
 - [ ] Combined constraints per structure (already supported by architecture, needs testing)

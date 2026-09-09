@@ -22,4 +22,10 @@ const AnyConstraint{T} = Union{
     Plane{Over,T}, Plane{Below,T},
     Cylinder{Inside,T}, Cylinder{Outside,T},
     Ellipsoid{Inside,T}, Ellipsoid{Outside,T},
+    Gaussian{Over,T}, Gaussian{Below,T},
+    RadialGaussian{Over,T}, RadialGaussian{Below,T},
+    Wave{Over,T}, Wave{Below,T},
+    RadialWave{Over,T}, RadialWave{Below,T},
+    Exponential{Over,T}, Exponential{Below,T},
+    RadialExponential{Over,T}, RadialExponential{Below,T},
 }
