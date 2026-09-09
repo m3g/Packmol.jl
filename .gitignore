@@ -12,4 +12,9 @@ test/output.pdb
 output.pdb
 water_box_small.pdb
 spherical.pdb
-*.pdb
+/*.pdb
+*scratch*
+test/input_files/bilayer.pdb
+test/input_files/mixture.pdb
+test/input_files/solvprotein.pdb
+test/run_packmol/ieee_signaling_box.pdb
