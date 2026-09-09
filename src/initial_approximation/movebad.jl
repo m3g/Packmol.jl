@@ -6,6 +6,14 @@
 # individually (e.g. packmol_main.jl fattens their atom radii back up).
 # Following the Fortran Packmol heuristic (heuristics.f90 movebad subroutine).
 #
+# On top of that per-candidate probabilistic selection, each structure type's
+# single worst-offending molecule is additionally force-moved about half the
+# time (one extra `rand()` draw per type, independent of the probabilistic
+# scan below) — insurance against a molecule (or a pair of molecules tangled
+# with each other) stuck at a persistent, but comparatively mild, violation
+# that would otherwise keep drawing an arbitrarily small move probability
+# (see the `fmol_max_type` comment below) call after call.
+#
 # Each moved molecule is placed by `_movebad_place_molecule!`: up to
 # `max_guess_try` trials, each drawing a fresh random center of mass/rotation
 # and then (when `fg_output`/`atom_positions`/`mol_iat_first` are supplied)
@@ -66,10 +74,14 @@ function movebad!(
 
         nbad_type = 0
         fmol_max_now = zero(T)
+        worst_imol = 0
         for imol in candidates
             if fmol[imol] > bad_threshold
                 nbad_type += 1
-                fmol_max_now = max(fmol_max_now, fmol[imol])
+                if fmol[imol] > fmol_max_now
+                    fmol_max_now = fmol[imol]
+                    worst_imol = imol
+                end
             end
         end
         nbad_type == 0 && continue
@@ -98,15 +110,38 @@ function movebad!(
             (nothing, nothing)
         end
 
+        # On top of the probabilistic selection below — which, for a type
+        # whose `fmol_max_type` was set by a since-resolved early spike, can
+        # go arbitrarily many calls without moving anything, since a
+        # persistently-stuck-but-comparatively-mild offender then gets an
+        # arbitrarily small move probability — force-move this type's single
+        # worst-offending molecule about half the time, unconditionally.
+        # This is cheap insurance against exactly that stuck case (e.g. two
+        # molecules genuinely tangled with each other, unable to separate on
+        # their own) without making every call deterministic.
+        n_moved_type = 0
+        forced_worst = rand(RNG, T) > T(0.5)
+        if forced_worst
+            _movebad_place_molecule!(
+                packmol_system, worst_imol, st, RNG;
+                cm_lo=lo, cm_hi=hi,
+                fixed_sys, fixed_lo, fixed_hi, overlap_tol,
+                fg_output, atom_positions, mol_structure_type, mol_iat_first,
+                precision, opt_nit, max_guess_try,
+            )
+            push!(moved, worst_imol)
+            n_moved_type += 1
+        end
+
         # Move molecules of this type randomly: probability of moving is
         # proportional to fmol value (worse molecules are more likely to be
         # moved). Scanned in a shuffled order (not `candidates`' own
         # molecule-index order) so that, within this type, the early-exit
         # once `nmove` is filled doesn't systematically favor whichever
         # molecules happen to sit first.
-        n_moved_type = 0
         for imol in Random.shuffle(RNG, candidates)
             n_moved_type >= nmove && break
+            forced_worst && imol == worst_imol && continue
             if fmol[imol] > bad_threshold
                 # Probability increases with fmol value: move the worst-ever
                 # molecule of this type with 0.5 probability, linearly
