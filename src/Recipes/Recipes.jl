@@ -12,10 +12,11 @@ const RecipesDirectory = @__DIR__
 
 # Recipes are higher-level, parameter-driven system setups (target densities/
 # concentrations instead of explicit molecule counts) built on top of the
-# packing engine: solvation boxes today (SolutionBoxUS/USC/UWI), with
-# membranes, vesicles, nanotubes, and special (octahedral/dodecahedral) box
-# shapes planned. Each recipe implements `write_packmol_input` (and,
-# generically below, `packmol`).
+# packing engine: solvation boxes today (SolutionBoxUS/USC/UWI), each with a
+# `pbc` keyword (`:cubic`/`:orthorhombic`/`:dodecahedral`/`:octahedral`)
+# selecting the periodic cell shape; membranes, vesicles, and nanotubes are
+# planned as future recipes. Each recipe implements `write_packmol_input`
+# (and, generically below, `packmol`).
 abstract type Recipe end
 
 #
@@ -35,12 +36,20 @@ _fixed_solute_structure_type(pdbfile::String; tolerance::Real=2.0) = structure_t
     pdbfile; number=1, tolerance, fixed=(zeros(3), zeros(3)), center=:geometric,
 )
 
-# An orthorhombic unit cell of side lengths `2l`, centered at the origin —
-# equivalent to the input file's `pbc -l1 -l2 -l3 l1 l2 l3` line.
-_recipe_unitcell(l::AbstractVector{<:Quantity}) = (
-    unitcell = Matrix{Float64}(Diagonal(2 .* ustrip.(u"Å", l))),
+# A recipe's periodic unit cell (built by `set_unitcell`, in Å), centered at
+# the origin (where the solute is fixed) — equivalent to the input file's
+# `unitcell a b c α β γ` line.
+_recipe_unitcell(unitcell::AbstractMatrix{Float64}) = (
+    unitcell = Matrix{Float64}(unitcell),
     unitcell_center = zero(SVector{3,Float64}),
 )
+
+# One-line human-readable description of a recipe's unit cell, for the
+# printed/written summary (`a=... Å, b=... Å, c=... Å, α=...°, β=...°, γ=...°`).
+function _unitcell_description(unitcell::AbstractMatrix{Float64})
+    a, b, c, α, β, γ = _unitcell_abc_angles(unitcell)
+    return "a=$a Å, b=$b Å, c=$c Å, α=$(α)°, β=$(β)°, γ=$(γ)°"
+end
 
 include("./DensityTable.jl")
 

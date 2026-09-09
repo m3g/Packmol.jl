@@ -213,7 +213,7 @@ end
         # box size
         box_sides::AbstractVector{<:Number}, # or
         margin::Number,
-        cubic::Bool = false,
+        pbc::Symbol = :cubic,
     )
 
 Function that generates an input file for Packmol for a Solute + Water + Ions system.
@@ -228,8 +228,11 @@ The box sides are given in Ångströms, and can be provided as a vector of 3 ele
 Alternatively, the margin can be provided, and the box sides will be calculated as
 the maximum and minimum coordinates of the solute plus the margin in all 3 dimensions.
 
-If `cubic` is set to true, the box will be cubic, and the box sides will be
-equal in all 3 dimensions, respecting the minimum margin provided.
+`pbc` selects the shape of the periodic cell: `:cubic` (the default) forces all 3
+sides to their maximum, `:orthorhombic` keeps `box_sides`/`margin` as given (possibly
+with unequal sides), and `:dodecahedral`/`:octahedral` build a rhombic
+dodecahedron/truncated octahedron cell (see [`dodecahedral_unitcell`](@ref)/
+[`octahedral_unitcell`](@ref)) of size equal to that same maximum side.
 
 """
 #
@@ -243,7 +246,7 @@ function _setup(
     ionic_concentration::Number,
     box_sides::Union{AbstractVector{<:Number},Nothing},
     margin::Union{<:Number,Nothing},
-    cubic::Bool,
+    pbc::Symbol,
 )
     (; solute_charge,
        water_pdbfile,
@@ -268,9 +271,9 @@ function _setup(
     # Molar mass of the (neutral) salt formula unit, e.g. NaCl
     Msalt = cation_molar_mass + anion_molar_mass
 
-    # Set box sides and volume (reuses the same logic as SolutionBoxUS/SolutionBoxUSC)
-    box_sides, solute_extrema = set_box_sides(system, box_sides, margin, cubic)
-    vbox = prod(box_sides)
+    # Set unit cell and volume (reuses the same logic as SolutionBoxUS/SolutionBoxUSC)
+    unitcell, solute_extrema = set_unitcell(system, box_sides, margin, pbc)
+    vbox = det(unitcell) * u"Å^3"
 
     # Solution volume (vbox - vsolute) - vsolute is estimated as if the solute
     # had the density of pure water
@@ -326,9 +329,6 @@ function _setup(
     ))
     nwater = round(Int, Unitful.Na * mwater / water_molar_mass)
 
-    # Half of box sides, to center the solute at the origin
-    l = round.(typeof(1.0u"Å"), box_sides ./ 2; digits=3)
-
     summary = """
         ==================================================================
         Summary:
@@ -340,7 +340,7 @@ function _setup(
         Box volume = $vbox
         Solution volume = $vs
         Solute extrema = [ $(join(-0.5*solute_extrema, ", ")), $(join(0.5*solute_extrema, ", ")) ]
-        Periodic box = [ $(join( -1.0*l, ", ")), $(join( l, ", ")) ]
+        Periodic box (pbc = :$pbc) = $(_unitcell_description(unitcell))
 
         Solute molar mass = $solute_molar_mass
         Solute charge = $solute_charge
@@ -350,11 +350,9 @@ function _setup(
         Number of anions ($(basename(anion_pdbfile)), charge $anion_charge) = $nanion
         Total system charge (check) = $total_charge
 
-        Cubic box requested: $cubic
-
         ==================================================================
         """
-    return (; nwater, ncation, nanion, l, summary)
+    return (; nwater, ncation, nanion, unitcell, summary)
 end
 
 """
@@ -366,7 +364,7 @@ end
         # box size
         box_sides::AbstractVector{<:Number}, # or
         margin::Number,
-        cubic::Bool = false,
+        pbc::Symbol = :cubic,
     )
 
 Function that generates an input file for Packmol for a Solute + Water + Ions system.
@@ -381,8 +379,11 @@ The box sides are given in Ångströms, and can be provided as a vector of 3 ele
 Alternatively, the margin can be provided, and the box sides will be calculated as
 the maximum and minimum coordinates of the solute plus the margin in all 3 dimensions.
 
-If `cubic` is set to true, the box will be cubic, and the box sides will be
-equal in all 3 dimensions, respecting the minimum margin provided.
+`pbc` selects the shape of the periodic cell: `:cubic` (the default) forces all 3
+sides to their maximum, `:orthorhombic` keeps `box_sides`/`margin` as given (possibly
+with unequal sides), and `:dodecahedral`/`:octahedral` build a rhombic
+dodecahedron/truncated octahedron cell (see [`dodecahedral_unitcell`](@ref)/
+[`octahedral_unitcell`](@ref)) of size equal to that same maximum side.
 
 """
 function write_packmol_input(
@@ -392,12 +393,12 @@ function write_packmol_input(
     output="system.pdb",
     box_sides::Union{AbstractVector{<:Number},Nothing}=nothing,
     margin::Union{<:Number,Nothing}=nothing,
-    cubic::Bool=false,
+    pbc::Symbol=:cubic,
     # testing option
     debug=false,
 )
     (; solute_pdbfile, water_pdbfile, cation_pdbfile, anion_pdbfile) = system
-    (; nwater, ncation, nanion, l, summary) = _setup(system, ionic_concentration, box_sides, margin, cubic)
+    (; nwater, ncation, nanion, unitcell, summary) = _setup(system, ionic_concentration, box_sides, margin, pbc)
     println(summary)
 
     open(input, "w") do io
@@ -413,6 +414,7 @@ function write_packmol_input(
         for line in split(summary, "\n")
             println(io, "# $line")
         end
+        a, b, c, α, β, γ = _unitcell_abc_angles(unitcell)
         println(io,
             """
             #
@@ -422,7 +424,7 @@ function write_packmol_input(
             filetype pdb
             seed -1
             packall
-            pbc $(join( -1.0*ustrip(l), " ")) $(join(ustrip(l), " "))
+            unitcell $a $b $c $α $β $γ
 
             structure $solute_pdbfile
                 number 1
@@ -459,7 +461,8 @@ function write_packmol_input(
         """))
 
     if debug
-        return nwater, ncation, nanion, 2*l
+        a, b, c, = _unitcell_abc_angles(unitcell)
+        return nwater, ncation, nanion, [a, b, c] * u"Å"
     else
         return nothing
     end
@@ -473,7 +476,7 @@ end # function write_packmol_input
         # box size
         box_sides::AbstractVector{<:Number}, # or
         margin::Number,
-        cubic::Bool = false,
+        pbc::Symbol = :cubic,
         kwargs...,
     )
 
@@ -481,9 +484,12 @@ Builds and packs a Solute + Water + Ions system directly, entirely in memory: eq
 to calling [`write_packmol_input`](@ref write_packmol_input(::SolutionBoxUWI)) followed by
 `packmol` on the resulting file, except no `.inp` file is ever written.
 
-`ionic_concentration`, `output`, `box_sides`, `margin`, and `cubic` behave as in
+`ionic_concentration`, `output`, `box_sides`, `margin`, and `pbc` behave as in
 `write_packmol_input`. Any other keyword (`nloop`, `iprint`, `seed`, `optimizer`, ...) is
 forwarded to the packing engine — see `packmol(::PackmolSystem)`.
+
+Returns the built `PackmolSystem`, with the packing outcome in its `.status` field —
+see `packmol(::PackmolSystem)`.
 
 """
 function packmol(
@@ -492,11 +498,11 @@ function packmol(
     output="system.pdb",
     box_sides::Union{AbstractVector{<:Number},Nothing}=nothing,
     margin::Union{<:Number,Nothing}=nothing,
-    cubic::Bool=false,
+    pbc::Symbol=:cubic,
     kwargs...,
 )
     (; solute_pdbfile, water_pdbfile, cation_pdbfile, anion_pdbfile) = system
-    (; nwater, ncation, nanion, l) = _setup(system, ionic_concentration, box_sides, margin, cubic)
+    (; nwater, ncation, nanion, unitcell) = _setup(system, ionic_concentration, box_sides, margin, pbc)
     structure_types = [
         _fixed_solute_structure_type(solute_pdbfile),
         structure_type(water_pdbfile; number=nwater),
@@ -504,7 +510,7 @@ function packmol(
     ncation > 0 && push!(structure_types, structure_type(cation_pdbfile; number=ncation))
     nanion > 0 && push!(structure_types, structure_type(anion_pdbfile; number=nanion))
     packmol_system = PackmolSystem(structure_types;
-        output, tolerance=2.0, add_box_sides=true, seed=-1, _recipe_unitcell(l)...,
+        output, tolerance=2.0, add_box_sides=true, seed=-1, _recipe_unitcell(unitcell)...,
     )
     return packmol(packmol_system; kwargs...)
 end

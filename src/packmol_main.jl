@@ -18,7 +18,7 @@ end
     packmol(input_file::String; kargs...)
 
 Read a Packmol input file, run the packing optimization, and write the output.
-Returns `true` if the packing converged within `nloop` loops, `false` otherwise.
+Returns the built `PackmolSystem` (see `packmol(::PackmolSystem)` for details).
 """
 function packmol(input_file::String; D::Int=3, T::DataType=Float64, kargs...)
     packmol_system = read_packmol_input(input_file; D, T)
@@ -28,8 +28,17 @@ end
 """
     packmol(packmol_system::PackmolSystem; kargs...)
 
-Run the packing optimization on a `PackmolSystem`.
-Returns `true` if the packing converged within `nloop` loops, `false` otherwise.
+Run the packing optimization on a `PackmolSystem`, mutating it in place (final
+`molecule_positions`, ...) and returning that same object — not a bare `Bool` —
+so callers can keep using it afterwards (e.g. to postprocess or re-`write_output`
+the packed coordinates, or to convert their representation, as with
+[`triclinic_to_dodecahedral`](@ref)).
+
+The packing outcome is recorded in `packmol_system.status`: `:packing_ready` if
+it converged within `nloop` loops (both `tolerance_precision` and
+`constraint_precision` satisfied), `:failed_packing` if it did not, or
+`:not_packed` if `packmol_system.check` was set (initial approximation written,
+no packing attempted).
 """
 function packmol(
     packmol_system::PackmolSystem{D,T};
@@ -145,7 +154,8 @@ function packmol(
         if !isempty(packmol_system.output_file)
             write_output(packmol_system)
         end
-        return false
+        packmol_system.status = :not_packed
+        return packmol_system
     end
 
     # Compute initial atom positions (reuse pre-allocated buffer)
@@ -619,31 +629,19 @@ function packmol(
         @printf("  WARNING: packing did not converge after %d loops (best f = %.4e)\n", nloop, bestf)
         println(hash_line)
     end
+    packmol_system.status = converged ? :packing_ready : :failed_packing
 
     # Restore best molecule positions
     copyto!(packmol_system.molecule_positions, best_positions)
 
-    # For PBC: wrap each molecule's CM into the unit cell centered at
-    # unitcell_center, and carry every atom of that molecule along by the
-    # same offset (rigidly, via its CM) rather than wrapping each atom's
-    # absolute position independently. Wrapping atoms independently lets a
-    # molecule straddling a periodic boundary be torn in two (part of it
-    # wrapped to the opposite face while the rest stays put), which can land
-    # those wrapped atoms on top of whatever else sits there — visible as
-    # overlapping atoms in the output even though the packing itself
-    # converged. `write_output` recomputes atom positions from
-    # `molecule_positions` below, so updating the CM here is what actually
-    # takes effect. See the analogous comment on `_constraint_fg!` in
-    # interatomic_distance_fg.jl for the same fix applied during optimization.
-    if has_pbc
-        center = packmol_system.unitcell_center
-        for imol in eachindex(packmol_system.molecule_positions)
-            mp = packmol_system.molecule_positions[imol]
-            packmol_system.molecule_positions[imol] = MoleculePosition(
-                wrap_to_center(mp.cm, packmol_system.unitcell, center), mp.angles
-            )
-        end
-    end
+    # Note: `packmol_system.molecule_positions` is left exactly as the
+    # optimizer produced it — under PBC, a molecule's center of mass may sit
+    # outside the unit cell (an unwrapped, but physically equivalent, periodic
+    # image), which is fine since every distance/constraint evaluation during
+    # optimization was already PBC-aware. Wrapping into the cell (rigidly, by
+    # CM, so a molecule is never torn in two across a boundary — see
+    # `get_atoms`) happens on demand instead, in `get_atoms`/`write_output`,
+    # not by mutating this array here.
 
     # Write output file if specified
     if !isempty(packmol_system.output_file)
@@ -659,7 +657,7 @@ function packmol(
     println(dash_line)
     println()
 
-    return converged
+    return packmol_system
 end
 
 #

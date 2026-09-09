@@ -15,6 +15,7 @@ makedocs(
             "Home" => "experimental/index.md",
             "Input files" => "experimental/input_files.md",
             "Constraints" => "experimental/constraints.md",
+            "Periodic boundary conditions" => "experimental/periodic_boundary_conditions.md",
             "Defining systems in Julia" => "experimental/julia_api.md",
             "Recipes" => "experimental/recipes.md",
             "Concentration units" => "concentration_units.md",

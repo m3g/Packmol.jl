@@ -48,7 +48,7 @@
     system = SolutionBoxUWI(solute_pdbfile = "$test_dir/data/poly_h.pdb", solute_charge = 0)
     tmp_input_file = tempname()*".inp"
     rm(tmp_input_file, force=true)
-    r = write_packmol_input(system; ionic_concentration = 0.0, margin = 20.0, cubic = true, input = tmp_input_file, debug = true)
+    r = write_packmol_input(system; ionic_concentration = 0.0, margin = 20.0, input = tmp_input_file, debug = true)
     @test isfile(tmp_input_file)
     @test r[1] > 0  # water
     @test r[2] == 0  # cations
@@ -61,7 +61,7 @@
 
     # Neutral solute, physiological ionic strength: equal numbers of cations and anions
     rm(tmp_input_file, force=true)
-    r = write_packmol_input(system; ionic_concentration = 0.15u"mol/L", margin = 20.0, cubic = true, input = tmp_input_file, debug = true)
+    r = write_packmol_input(system; ionic_concentration = 0.15u"mol/L", margin = 20.0, input = tmp_input_file, debug = true)
     @test isfile(tmp_input_file)
     @test r[2] == r[3]
     @test r[2] > 0
@@ -77,16 +77,29 @@
     @test psys.nmols == 1 + r[1] + r[2] + r[3]
     rm(tmp_input_file, force=true)
 
+    # pbc = :dodecahedral: same "size" as the (default) cubic case above, but a
+    # smaller volume (d³/√2 instead of d³), so fewer waters are needed to fill it
+    r_dodeca = write_packmol_input(
+        system; ionic_concentration = 0.15u"mol/L", margin = 20.0, pbc = :dodecahedral,
+        input = tmp_input_file, debug = true,
+    )
+    @test isfile(tmp_input_file)
+    @test r_dodeca[4] ≈ [118.81, 118.81, 118.81]u"Å"
+    @test r_dodeca[1] < r[1]
+    psys_dodeca = Packmol.read_packmol_input(tmp_input_file)
+    @test psys_dodeca.nmols == 1 + r_dodeca[1] + r_dodeca[2] + r_dodeca[3]
+    rm(tmp_input_file, force=true)
+
     # Charged solute (+5): extra anions neutralize it, on top of the bulk salt
     system_charged = SolutionBoxUWI(solute_pdbfile = "$test_dir/data/poly_h.pdb", solute_charge = 5)
     rm(tmp_input_file, force=true)
-    r_charged = write_packmol_input(system_charged; ionic_concentration = 0.15u"mol/L", margin = 20.0, cubic = true, input = tmp_input_file, debug = true)
+    r_charged = write_packmol_input(system_charged; ionic_concentration = 0.15u"mol/L", margin = 20.0, input = tmp_input_file, debug = true)
     @test r_charged[3] - r_charged[2] == 5  # 5 extra anions relative to cations
 
     # Negatively charged solute (-3): extra cations neutralize it
     system_neg = SolutionBoxUWI(solute_pdbfile = "$test_dir/data/poly_h.pdb", solute_charge = -3)
     rm(tmp_input_file, force=true)
-    r_neg = write_packmol_input(system_neg; ionic_concentration = 0.15u"mol/L", margin = 20.0, cubic = true, input = tmp_input_file, debug = true)
+    r_neg = write_packmol_input(system_neg; ionic_concentration = 0.15u"mol/L", margin = 20.0, input = tmp_input_file, debug = true)
     @test r_neg[2] - r_neg[3] == 3  # 3 extra cations relative to anions
 
     # Custom divalent cation (charge +2) neutralizing a negative solute charge: an odd
