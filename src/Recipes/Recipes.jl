@@ -7,6 +7,7 @@ export write_packmol_input
 export SolutionBoxUSC
 export SolutionBoxUS
 export SolutionBoxUWI
+export Membrane
 
 const RecipesDirectory = @__DIR__
 
@@ -60,3 +61,4 @@ include("./concentration_units.jl")
 include("./SolutionBoxUS.jl")
 include("./SolutionBoxUSC.jl")
 include("./SolutionBoxUWI.jl")
+include("./Membrane.jl")

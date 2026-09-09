@@ -10,12 +10,12 @@ better maintainability, and leveraging the Julia ecosystem.
 The package also includes:
 - A **legacy runner** (`run_packmol`) that wraps the Fortran binary via `Packmol_jll`.
 - **Recipes**: higher-level, parameter-driven system setups (target densities/
-  concentrations instead of molecule counts) — solute+solvent, cossolvent, water+ions
-  today, each with a `pbc` keyword (`:cubic`/`:orthorhombic`/`:dodecahedral`/
-  `:octahedral`) selecting the periodic cell shape; membranes, vesicles, and
-  nanotubes are planned. Each recipe supports both `write_packmol_input`
-  (generate a `.inp` file) and `packmol(recipe; ...)` (build and pack directly, no
-  file left behind).
+  concentrations instead of molecule counts) — solute+solvent, cossolvent, water+ions,
+  and membranes today, each solvation recipe with a `pbc` keyword
+  (`:cubic`/`:orthorhombic`/`:dodecahedral`/`:octahedral`) selecting the periodic cell
+  shape (`Membrane` is always orthorhombic); vesicles and nanotubes are planned. Each
+  recipe supports both `write_packmol_input` (generate a `.inp` file) and
+  `packmol(recipe; ...)` (build and pack directly, no file left behind).
 
 ## Project Structure
 
@@ -45,6 +45,7 @@ src/
     SolutionBoxUS.jl                  # Solute + Solvent
     SolutionBoxUSC.jl                 # Solute + Solvent + Cossolvent
     SolutionBoxUWI.jl                 # Solute + Water + Ions
+    Membrane.jl                       # Lipid bilayer/monolayer
     DensityTable.jl
     concentration_units.jl
 ```
@@ -262,14 +263,25 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 - [x] `SolutionBoxUS` - solute + solvent setup
 - [x] `SolutionBoxUSC` - solute + solvent + cossolvent setup
 - [x] `SolutionBoxUWI` - solute + water + ions setup (target ionic concentration, automatic solute charge neutralization)
+- [x] `Membrane` - lipid bilayer/monolayer setup, one or more lipids (`lipid_molar_ratio`) solvated by
+      one or more solvents (`solvent_molar_ratio`), always orthorhombic PBC with the membrane normal
+      along z. Each lipid's single head/tail atom indices give its intrinsic head-to-tail length (the
+      longest one sets the membrane's nominal thickness); each copy is packed with two whole-molecule
+      `plane` constraints bounding it to its leaflet's slab plus two per-atom `plane` constraints (via
+      `atoms <idx> ... end atoms`) pinning head/tail near their target planes within `flexibility` (a
+      fraction of that lipid's own length) for tilt/wobble. Box lateral size and lipid count are tied
+      together via `area_per_lipid` plus exactly one of `total_area`/`total_lipids` (mirroring
+      `box_sides`/`margin` elsewhere); solvent slab thickness/density/mixture are independent knobs.
+      Every parameter is given up front in the constructor (no separate box-sizing args at
+      `write_packmol_input`/`packmol` call time, unlike the solvation recipes below).
 - [x] `packmol(recipe; ...)` - build and pack a recipe directly, without an explicit input file
 - [x] Concentration unit conversions (Molarity, Molality, MoleFraction, etc.)
 - [x] DensityTable interpolation
 - [x] Documented on its own `experimental/recipes.md` docs page
 - [x] `pbc` keyword (`:cubic`/`:orthorhombic`/`:dodecahedral`/`:octahedral`) selecting the
-      periodic cell shape, shared by all three recipes; cell volume computed generally as
+      periodic cell shape, shared by the three solvation recipes; cell volume computed generally as
       `det(unitcell)` rather than assuming an orthorhombic box
-- [ ] Future recipes: membranes, vesicles, nanotubes
+- [ ] Future recipes: vesicles, nanotubes
 
 ---
 
