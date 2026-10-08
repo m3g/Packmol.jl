@@ -108,8 +108,40 @@ end
 Box{Placement}(; center, sides, weight=weight_default[:box]) where {Placement} =
     Box{Placement}(center, sides, weight)
 
-InsideBox(args...; kargs...) = Box{Inside}(args...; kargs...)
-OutsideBox(args...; kargs...) = Box{Outside}(args...; kargs...)
+"""
+    InsideBox(lo, hi; weight)
+    InsideBox(; center, sides, weight)
+
+Constrains the atoms to be inside an axis-aligned box. With positional arguments, the box spans the minimum
+(`lo`) and maximum (`hi`) corners, as in the `inside box xmin ymin zmin xmax ymax zmax`
+input file keyword. Alternatively, the box can be defined by its `center` and the
+lengths of its `sides`, given as keyword arguments.
+
+# Example
+
+```julia-repl
+julia> using Packmol
+
+julia> InsideBox([0.0, 0.0, 0.0], [40.0, 40.0, 40.0]) == InsideBox(center=[20.0, 20.0, 20.0], sides=[40.0, 40.0, 40.0])
+true
+```
+"""
+InsideBox(lo, hi; weight=weight_default[:box]) = _box_from_corners(Inside, lo, hi, weight)
+InsideBox(; kargs...) = Box{Inside}(; kargs...)
+
+"""
+    OutsideBox(lo, hi; weight)
+    OutsideBox(; center, sides, weight)
+
+Constrains the atoms to be outside an axis-aligned box, defined as in [`InsideBox`](@ref).
+"""
+OutsideBox(lo, hi; weight=weight_default[:box]) = _box_from_corners(Outside, lo, hi, weight)
+OutsideBox(; kargs...) = Box{Outside}(; kargs...)
+
+function _box_from_corners(Placement, lo, hi, weight)
+    all(lo .<= hi) || throw(ArgumentError("Box corners must satisfy lo <= hi in every dimension. Got lo = $lo, hi = $hi."))
+    return Box{Placement}((lo .+ hi) ./ 2, hi .- lo, weight)
+end
 
 constraint_penalty(c::Box{Placement}, x) where {Placement} =
     sum(orthogonal_wall(Placement, c.center[i], c.sides[i], c.weight, x[i]) for i in eachindex(x,c.center,c.sides))

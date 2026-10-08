@@ -227,7 +227,7 @@ end
     @test !Packmol._is_pdb_path("foo")
 
     water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
-    water = structure_type(water_pdb; number=3, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
+    water = structure_type(water_pdb; number=3, constraints=[InsideBox([-14, -14, -14], [14, 14, 14])])
     sys = PackmolSystem([water]; output=tempname() * ".pdb", tolerance=2.0,
         unitcell=Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0),
         unitcell_center=zeros(3),

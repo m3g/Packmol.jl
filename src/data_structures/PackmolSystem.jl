@@ -158,7 +158,7 @@ function _add_pbc_confinement_constraints!(
     is_orthorhombic = D == 3 && all(i == j || unitcell[i, j] == zero(T) for i in 1:D, j in 1:D)
     if is_orthorhombic
         sides = SVector{D,T}(ntuple(i -> unitcell[i, i] + tolerance, D))
-        confinement = (InsideBox(unitcell_center, sides),)
+        confinement = (InsideBox(center=unitcell_center, sides=sides),)
     else
         a = SVector{3,T}(unitcell[1, 1], unitcell[2, 1], unitcell[3, 1])
         b = SVector{3,T}(unitcell[1, 2], unitcell[2, 2], unitcell[3, 2])
@@ -206,6 +206,8 @@ function PackmolSystem(
         unitcell_center = SVector{D,T}(get(kargs, :unitcell_center, zero(SVector{D,T})))
         tolerance = T(get(kargs, :tolerance, T(2.0)))
         _add_pbc_confinement_constraints!(structure_types, unitcell, unitcell_center, tolerance)
+        # Store the (possibly defaulted) center, so that it is not left as `nothing`
+        kargs = (; kargs..., unitcell, unitcell_center)
     end
     atoms, molecule_positions, nmols = _atoms_and_molecule_positions(structure_types)
     return PackmolSystem{D,T}(;

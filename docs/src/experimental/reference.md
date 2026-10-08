@@ -19,6 +19,15 @@ get_atoms
 write_output
 ```
 
+## Constraints
+
+See [Constraints](constraints.md) for all constraint types.
+
+```@docs
+InsideBox
+OutsideBox
+```
+
 ## Dodecahedral periodic box
 
 ```@docs

@@ -54,7 +54,7 @@ end
 @testitem "constrain_rotation" begin
     water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
     water = structure_type(water_pdb; number=5,
-        constraints=[InsideBox([0, 0, 0], [28, 28, 28])],
+        constraints=[InsideBox([-14, -14, -14], [14, 14, 14])],
         constrain_rotation=Dict(:x => (0.0, 5.0), :y => (0.0, 5.0), :z => (0.0, 5.0)),
     )
     sys = PackmolSystem([water]; output=tempname() * ".pdb", tolerance=2.0,
@@ -82,8 +82,8 @@ end
 
     # First run: converge normally, writing whole-system and per-type restart files
     water = structure_type(water_pdb; number=4,
-        constraints=[InsideBox([0, 0, 0], [28, 28, 28])], restart_to=restart_water)
-    urea = structure_type(urea_pdb; number=2, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
+        constraints=[InsideBox([-14, -14, -14], [14, 14, 14])], restart_to=restart_water)
+    urea = structure_type(urea_pdb; number=2, constraints=[InsideBox([-14, -14, -14], [14, 14, 14])])
     sys1 = PackmolSystem([water, urea]; output=tempname() * ".pdb", tolerance=2.0,
         unitcell=uc, unitcell_center=zeros(3), restart_to=restart_all,
     )
@@ -96,8 +96,8 @@ end
     # Second run: whole-system restart_from should skip initial placement
     # entirely and reproduce the exact same (already-converged) positions —
     # converging immediately, in the very first loop.
-    water2 = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
-    urea2 = structure_type(urea_pdb; number=2, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
+    water2 = structure_type(water_pdb; number=4, constraints=[InsideBox([-14, -14, -14], [14, 14, 14])])
+    urea2 = structure_type(urea_pdb; number=2, constraints=[InsideBox([-14, -14, -14], [14, 14, 14])])
     sys2 = PackmolSystem([water2, urea2]; output=tempname() * ".pdb", tolerance=2.0,
         unitcell=uc, unitcell_center=zeros(3), restart_from=restart_all,
     )
@@ -109,8 +109,8 @@ end
     # and (regression test) must NOT leak into the whole-system setting —
     # the other structure type still gets a normal (non-restarted) placement.
     water3 = structure_type(water_pdb; number=4,
-        constraints=[InsideBox([0, 0, 0], [28, 28, 28])], restart_from=restart_water)
-    urea3 = structure_type(urea_pdb; number=2, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
+        constraints=[InsideBox([-14, -14, -14], [14, 14, 14])], restart_from=restart_water)
+    urea3 = structure_type(urea_pdb; number=2, constraints=[InsideBox([-14, -14, -14], [14, 14, 14])])
     sys3 = PackmolSystem([water3, urea3]; output=tempname() * ".pdb", tolerance=2.0,
         unitcell=uc, unitcell_center=zeros(3),
     )
@@ -133,7 +133,7 @@ end
     # First run: a normal PDB output file, no restart involved — it's not
     # Packmol's own restart format, but it should work as a restart_from
     # source anyway, since it's just atom positions like any other PDB.
-    water1 = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
+    water1 = structure_type(water_pdb; number=4, constraints=[InsideBox([-14, -14, -14], [14, 14, 14])])
     sys1 = PackmolSystem([water1]; output=tempname() * ".pdb", tolerance=2.0, unitcell=uc, unitcell_center=zeros(3))
     @test packmol(sys1; nloop=20, maxit=100, iprint=1000, seed=11).status == :packing_ready
     source_pdb = sys1.output_file
@@ -142,7 +142,7 @@ end
     # should reproduce essentially the same, already-converged positions —
     # converging immediately — using a different seed to rule out the run
     # just coincidentally reconverging to the same configuration on its own.
-    water2 = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
+    water2 = structure_type(water_pdb; number=4, constraints=[InsideBox([-14, -14, -14], [14, 14, 14])])
     sys2 = PackmolSystem([water2]; output=tempname() * ".pdb", tolerance=2.0, unitcell=uc, unitcell_center=zeros(3),
         restart_from=source_pdb,
     )
@@ -155,7 +155,7 @@ end
     # Same, but passing an already-loaded `Vector{<:Atom}` directly (the
     # Julia-API-only form) instead of a file path.
     atoms = read_pdb(source_pdb)
-    water3 = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
+    water3 = structure_type(water_pdb; number=4, constraints=[InsideBox([-14, -14, -14], [14, 14, 14])])
     sys3 = PackmolSystem([water3]; output=tempname() * ".pdb", tolerance=2.0, unitcell=uc, unitcell_center=zeros(3),
         restart_from=atoms,
     )
@@ -180,7 +180,7 @@ end
     # molecule's own atoms/lines (interleaved at the front of the restart
     # source) instead of assuming the source only ever lists free molecules.
     fixed_water = structure_type(water_pdb; number=1, fixed=(zeros(3), zeros(3)))
-    water1 = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
+    water1 = structure_type(water_pdb; number=4, constraints=[InsideBox([-14, -14, -14], [14, 14, 14])])
     # `avoid_overlap=false`: with only 3 fixed atoms, the fixed-particle
     # overlap-check system's own auto-sized cutoff (see
     # `_build_overlap_check_system`) can exceed half its own bounding box —
@@ -198,7 +198,7 @@ end
     # the free molecules' positions (the fixed one keeps its own `fixed`
     # position regardless of what the restart source contains for it).
     fixed_water2 = structure_type(water_pdb; number=1, fixed=(zeros(3), zeros(3)))
-    water2 = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
+    water2 = structure_type(water_pdb; number=4, constraints=[InsideBox([-14, -14, -14], [14, 14, 14])])
     sys2 = PackmolSystem([fixed_water2, water2]; output=tempname() * ".pdb", tolerance=2.0,
         unitcell=uc, unitcell_center=zeros(3), restart_from=source_pdb, avoid_overlap=false,
     )
@@ -211,7 +211,7 @@ end
     # Same, but restarting from the raw whole-system restart_to file (also
     # written for the entire system, fixed molecule included).
     fixed_water3 = structure_type(water_pdb; number=1, fixed=(zeros(3), zeros(3)))
-    water3 = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
+    water3 = structure_type(water_pdb; number=4, constraints=[InsideBox([-14, -14, -14], [14, 14, 14])])
     sys3 = PackmolSystem([fixed_water3, water3]; output=tempname() * ".pdb", tolerance=2.0,
         unitcell=uc, unitcell_center=zeros(3), restart_from=restart_all, avoid_overlap=false,
     )

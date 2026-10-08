@@ -23,20 +23,22 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
+[sources]
+PDBTools = {path = "/home/leandro/.julia/dev/PDBTools"}
+
 [compat]
 Aqua = "0.8"
 BenchmarkTools = "1.5"
 CellListMap = "0.10.3"
 ChunkSplitters = "3.2.0"
 Compat = "4"
-Documenter = "1"
 FiniteDifferences = "0.12.30"
 ForwardDiff = "1"
 LinearAlgebra = "1.9"
 MolSimToolkitShared = "1.6"
 NativeFileDialog = "0.2.1"
-OrderedCollections = "1.8.0"
-PDBTools = "3.33.2"
+OrderedCollections = "1.8.0, 2"
+PDBTools = "3.34.0"
 Packmol_jll = "21.0.1"
 Printf = "1.9"
 ProgressMeter = "1.11.0"
@@ -69,4 +71,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [targets]
-test = ["Aqua", "Test", "Random", "StaticArrays", "ForwardDiff", "FiniteDifferences", "TestItemRunner", "ShowMethodTesting", "CellListMap", "BenchmarkTools", "Documenter"]
+test = ["Aqua", "Test", "Random", "StaticArrays", "ForwardDiff", "FiniteDifferences", "TestItemRunner", "ShowMethodTesting", "CellListMap", "BenchmarkTools"]

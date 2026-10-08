@@ -24,6 +24,9 @@ input file, builds the packing problem, and solves it entirely in Julia.
 There are two ways to set up a system: a text input file, or Julia code
 calling the packing engine directly.
 
+- [Tutorials](tutorials.md): step-by-step construction of a water box, a
+  water/urea mixture, and a protein solvated by water and ions, with
+  interactive 3D views of the results.
 - [Input files](input_files.md): the global keywords and `structure ... end
   structure` block syntax.
 - [Constraints](constraints.md): the geometric regions (`box`, `sphere`,

@@ -8,7 +8,7 @@
     @test st.natoms == 3
     @test st.number_of_molecules == 1000
     @test st.fixed.fixed == false
-    @test st.constraints == [Box{Inside,Float64}([0.,0.,0.],[40.,40.,40.],5.0)]
+    @test st.constraints == [Box{Inside,Float64}([20.,20.,20.],[40.,40.,40.],5.0)]
     @test st.atom_constraints == [[1], [1], [1]]
     @test st.radii == [1.0, 1.0, 1.0]  # defaults to tolerance/2
 

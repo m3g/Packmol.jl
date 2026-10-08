@@ -22,6 +22,19 @@
     rm("julia_api_test.pdb"; force=true)
 end
 
+@testitem "PackmolSystem default unitcell_center" begin
+    file = Packmol.src_dir * "/../test/structure_files/water.pdb"
+    st = structure_type(file; number=10)
+    # unitcell given without unitcell_center: the cell is centered at the origin
+    sys = PackmolSystem([st]; output=tempname() * ".pdb", tolerance=2.0, unitcell=[20 0 0; 0 20 0; 0 0 20])
+    @test sys.unitcell == [20.0 0 0; 0 20.0 0; 0 0 20.0]
+    @test sys.unitcell_center == zeros(3)
+    @test packmol(sys; nloop=20, maxit=100, iprint=1000).status == :packing_ready
+    # no PBC: no center is set
+    sys = PackmolSystem([structure_type(file; number=10)]; output=tempname() * ".pdb", tolerance=2.0)
+    @test isnothing(sys.unitcell_center)
+end
+
 @testitem "_parse_value" begin
     using Packmol: _parse_value
     @test _parse_value(Int, "max_iter", "100") == 100

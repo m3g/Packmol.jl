@@ -40,7 +40,9 @@ inside box  xmin ymin zmin  xmax ymax zmax
 outside box xmin ymin zmin  xmax ymax zmax
 ```
 
-An axis-aligned rectangular box spanning the given corners.
+An axis-aligned rectangular box spanning the given corners. In Julia,
+`InsideBox([xmin, ymin, zmin], [xmax, ymax, zmax])` (or, equivalently,
+`InsideBox(center = ..., sides = ...)`).
 
 ## Cube
 
