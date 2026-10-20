@@ -43,22 +43,26 @@ _format_dmin(dmin, cutoff) = dmin >= cutoff ? "> " * @sprintf("%.6f", cutoff) : 
 
 #
 # Unit cell (sides of an orthorhombic box) of the periodic system used by CellListMap
-# for non-periodic systems: the region where atoms can be, inflated by 20%.
+# for non-periodic systems: the region where the atoms are, inflated by 20%. The
+# center-of-mass variables are not bounded in non-periodic systems, so molecules may
+# move beyond this region during the optimization; the 20% slack absorbs that (a
+# molecule would have to move about 10% of the box beyond the region before its atoms
+# interact with the periodic images of the atoms on the opposite side).
 #
 function _nonperiodic_unitcell(packmol_system::PackmolSystem{D,T}, atom_positions::Vector{SVector{D,T}}) where {D,T}
-    # Non-PBC mode: inflate bounding box so CellListMap treats it as a large box.
-    # Use constraint-derived CM bounds when available, to avoid a huge unitcell
-    # when initial constraint adjustment didn't fully converge (some molecules
-    # may still be at sidemax coordinates).
+    # Range of the current centers of the free molecules (`compute_cm_bounds` without
+    # a `precision`, so not filtered by constraint satisfaction: no molecule is
+    # projected onto its constraint region).
     cm_lo, cm_hi = compute_cm_bounds(packmol_system)
     # Overall bounds across all structure types
     all_lo = reduce((a,b) -> min.(a,b), cm_lo)
     all_hi = reduce((a,b) -> max.(a,b), cm_hi)
-    # Add margin for molecule extent (max radius of reference coordinates)
-    # of the free structure types, whose centers are bounded above. Fixed
-    # molecules are accounted for by the positions of their atoms: a large
-    # fixed molecule (e.g. a solvated capsid) would otherwise inflate the
-    # margin, and the cell volume, by its own radius.
+    # Margin: the greatest distance of an atom to the center of its molecule (the
+    # reference coordinates of free structure types are centered at their geometric
+    # center, the point the `cm` variables position), over the free structure types,
+    # plus the tolerance. Fixed molecules are accounted for by the positions of their
+    # atoms: a large fixed molecule (e.g. a solvated capsid) would otherwise inflate
+    # the margin, and the cell volume, by its own radius.
     max_extent = zero(T)
     for st in packmol_system.structure_types
         st.fixed.fixed && continue
