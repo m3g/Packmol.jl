@@ -31,7 +31,7 @@ Returns the built `PackmolSystem` (see `packmol(::PackmolSystem)` for details).
 # of pairs within the cutoff, not with the number of cells), so it is only
 # grown to keep the number of cells below `_MAX_CELLS_PER_ATOM * natoms`.
 #
-const _MAX_CELLS_PER_ATOM = 4
+const _MAX_CELLS_PER_ATOM = 2
 function _distance_cutoff(atom_radii::Vector{T}, atom_radii_floor::Vector{T}, tolerance::T, volume::T, D::Int) where {T}
     rmax = max(maximum(atom_radii), maximum(atom_radii_floor))
     return _capped_cutoff(volume, max(2 * rmax, tolerance), _MAX_CELLS_PER_ATOM * length(atom_radii), D)
