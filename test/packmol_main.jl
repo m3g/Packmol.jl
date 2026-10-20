@@ -269,3 +269,33 @@ end
     end
     @test worst >= -0.1
 end
+
+@testitem "non-periodic cell is not inflated by fixed molecules" begin
+    using StaticArrays
+    using LinearAlgebra: norm
+    # A large fixed molecule surrounded by free molecules: the cell must cover
+    # the region of the free molecules (plus their own extent) and the atoms of
+    # the fixed molecule, but must not be inflated by the radius of the fixed one.
+    protein_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "protein.pdb")
+    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    protein = structure_type(protein_pdb; number=1, fixed=(zeros(3), zeros(3)), center=:geometric)
+    water = structure_type(water_pdb; number=2)
+    sys = PackmolSystem([protein, water]; output="", tolerance=2.0)
+    Packmol._center_reference_coordinates!(sys)
+    rprot = maximum(norm, sys.structure_types[1].reference_coordinates)
+    rwat = maximum(norm, sys.structure_types[2].reference_coordinates)
+    x = Vector{SVector{3,Float64}}(undef, length(sys.atoms))
+    # Free molecules at opposite corners, beyond the fixed molecule
+    L = rprot + 5
+    sys.molecule_positions[2] = Packmol.MoleculePosition(SVector(-L, -L, -L), zero(SVector{3,Float64}))
+    sys.molecule_positions[3] = Packmol.MoleculePosition(SVector(L, L, L), zero(SVector{3,Float64}))
+    Packmol.compute_atom_positions!(x, sys.molecule_positions, sys)
+    @test all(Packmol._nonperiodic_unitcell(sys, x) .≈ 1.2 * (2L + 2 * (rwat + 2.0)))
+    # Free molecules close to each other: the cell covers the fixed atoms
+    sys.molecule_positions[2] = Packmol.MoleculePosition(SVector(-1.0, 0.0, 0.0), zero(SVector{3,Float64}))
+    sys.molecule_positions[3] = Packmol.MoleculePosition(SVector(1.0, 0.0, 0.0), zero(SVector{3,Float64}))
+    Packmol.compute_atom_positions!(x, sys.molecule_positions, sys)
+    natp = sys.structure_types[1].natoms
+    lo = minimum(v -> v[1], x[1:natp]); hi = maximum(v -> v[1], x[1:natp])
+    @test Packmol._nonperiodic_unitcell(sys, x)[1] ≈ 1.2 * (hi - lo + 2 * 2.0)
+end

@@ -41,6 +41,54 @@ end
 # cutoff only means that no pair is closer than it.
 _format_dmin(dmin, cutoff) = dmin >= cutoff ? "> " * @sprintf("%.6f", cutoff) : @sprintf("%.6f", dmin)
 
+#
+# Unit cell (sides of an orthorhombic box) of the periodic system used by CellListMap
+# for non-periodic systems: the region where atoms can be, inflated by 20%.
+#
+function _nonperiodic_unitcell(packmol_system::PackmolSystem{D,T}, atom_positions::Vector{SVector{D,T}}) where {D,T}
+    # Non-PBC mode: inflate bounding box so CellListMap treats it as a large box.
+    # Use constraint-derived CM bounds when available, to avoid a huge unitcell
+    # when initial constraint adjustment didn't fully converge (some molecules
+    # may still be at sidemax coordinates).
+    cm_lo, cm_hi = compute_cm_bounds(packmol_system)
+    # Overall bounds across all structure types
+    all_lo = reduce((a,b) -> min.(a,b), cm_lo)
+    all_hi = reduce((a,b) -> max.(a,b), cm_hi)
+    # Add margin for molecule extent (max radius of reference coordinates)
+    # of the free structure types, whose centers are bounded above. Fixed
+    # molecules are accounted for by the positions of their atoms: a large
+    # fixed molecule (e.g. a solvated capsid) would otherwise inflate the
+    # margin, and the cell volume, by its own radius.
+    max_extent = zero(T)
+    for st in packmol_system.structure_types
+        st.fixed.fixed && continue
+        for r in st.reference_coordinates
+            max_extent = max(max_extent, norm(r))
+        end
+    end
+    margin = max_extent + packmol_system.tolerance
+    lo = all_lo .- margin
+    hi = all_hi .+ margin
+    iat = 0
+    for st in packmol_system.structure_types
+        nat = st.number_of_molecules * st.natoms
+        if st.fixed.fixed
+            for x in @view(atom_positions[iat+1:iat+nat])
+                lo = min.(lo, x .- packmol_system.tolerance)
+                hi = max.(hi, x .+ packmol_system.tolerance)
+            end
+        end
+        iat += nat
+    end
+    box_size = hi - lo
+    # Guard: if bounds are degenerate, fall back to bounding box of atom positions
+    if any(box_size .≤ zero(T))
+        lo, hi = compute_bounding_box(atom_positions)
+        box_size = hi - lo
+    end
+    return T(1.2) * box_size
+end
+
 function packmol(input_file::String; D::Int=3, T::DataType=Float64, kargs...)
     packmol_system = read_packmol_input(input_file; D, T)
     return packmol(packmol_system; kargs...)
@@ -190,31 +238,7 @@ function packmol(
         # PBC mode: use the actual unit cell
         unitcell = packmol_system.unitcell
     else
-        # Non-PBC mode: inflate bounding box so CellListMap treats it as a large box.
-        # Use constraint-derived CM bounds when available, to avoid a huge unitcell
-        # when initial constraint adjustment didn't fully converge (some molecules
-        # may still be at sidemax coordinates).
-        cm_lo, cm_hi = compute_cm_bounds(packmol_system)
-        # Overall bounds across all structure types
-        all_lo = reduce((a,b) -> min.(a,b), cm_lo)
-        all_hi = reduce((a,b) -> max.(a,b), cm_hi)
-        # Add margin for molecule extent (max radius of reference coordinates)
-        max_extent = zero(T)
-        for st in packmol_system.structure_types
-            for r in st.reference_coordinates
-                max_extent = max(max_extent, norm(r))
-            end
-        end
-        margin = max_extent + packmol_system.tolerance
-        lo = all_lo .- margin
-        hi = all_hi .+ margin
-        box_size = hi - lo
-        # Guard: if bounds are degenerate, fall back to bounding box of atom positions
-        if any(box_size .≤ zero(T))
-            lo, hi = compute_bounding_box(atom_positions)
-            box_size = hi - lo
-        end
-        unitcell = T(1.2) * box_size
+        unitcell = _nonperiodic_unitcell(packmol_system, atom_positions)
     end
 
     # Start packing with a looser-than-required tolerance (matches the
