@@ -224,3 +224,48 @@ end
     rm(source_pdb; force=true)
     rm(restart_all; force=true)
 end
+
+@testitem "distance cutoff covers the radii in use" begin
+    # Every penalized pair (d < r_i + r_j) must be within the cutoff, for the
+    # working (radscale-inflated) radii and for the floor radii alike.
+    floor = [1.0, 1.0, 1.5]
+    @test Packmol._distance_cutoff(1.2 .* floor, floor, 2.0, 10.0, 3) ≈ 2 * 1.2 * 1.5
+    @test Packmol._distance_cutoff(0.9 .* floor, floor, 2.0, 10.0, 3) ≈ 2 * 1.5
+    # Never smaller than the tolerance, which `dmin` is compared with
+    @test Packmol._distance_cutoff(0.5 .* floor, 0.5 .* floor, 2.0, 10.0, 3) ≈ 2.0
+    # Grown when the box is so sparse that the cell count would exceed the cap
+    @test Packmol._distance_cutoff(floor, floor, 2.0, 1e9, 3) ≈ (1e9 / (Packmol._MAX_CELLS_PER_ATOM * 3))^(1 / 3)
+    # dmin is only known up to the cutoff
+    @test Packmol._format_dmin(1.95, 2.4) == "1.950000"
+    @test Packmol._format_dmin(2.4, 2.4) == "> 2.400000"
+end
+
+@testitem "structure radius larger than tolerance/2" begin
+    using StaticArrays
+    using LinearAlgebra: norm, Diagonal
+    # A minority structure with a larger radius in a dense system: pairs
+    # involving it must be kept at r_i + r_j > tolerance, which requires the
+    # cell-list cutoff to follow the radii rather than the global tolerance.
+    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    L = 33.0
+    water = structure_type(water_pdb; number=900)
+    big = structure_type(water_pdb; number=30, radius=1.5)
+    sys = PackmolSystem([water, big]; output=tempname() * ".pdb", tolerance=2.0, seed=1,
+        unitcell=Matrix(Diagonal([L, L, L])), unitcell_center=SVector(0.0, 0.0, 0.0),
+    )
+    packmol(sys)
+    @test sys.status == :packing_ready
+    x = Vector{SVector{3,Float64}}(undef, length(sys.atoms))
+    Packmol.compute_atom_positions!(x, sys.molecule_positions, sys)
+    worst = let worst = Inf
+        for i in eachindex(x), j in i+1:length(x)
+            ai, aj = sys.atoms[i], sys.atoms[j]
+            ai.molecule_index == aj.molecule_index && continue
+            d = x[j] - x[i]
+            d = d - L * round.(d / L)
+            worst = min(worst, norm(d) - (ai.radius + aj.radius))
+        end
+        worst
+    end
+    @test worst >= -0.1
+end

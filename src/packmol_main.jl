@@ -20,6 +20,27 @@ end
 Read a Packmol input file, run the packing optimization, and write the output.
 Returns the built `PackmolSystem` (see `packmol(::PackmolSystem)` for details).
 """
+#
+# CellListMap cutoff for the interatomic-distance term. Every pair that can be
+# penalized (d < r_i + r_j, under either the working radii `atom_radii` or the
+# `atom_radii_floor` used by the "true objective" evaluations) must be within
+# the cutoff. It is also at least `tolerance`, such that `dmin` (which is only
+# known up to the cutoff, see `_format_dmin`) can always be compared with the
+# tolerance in the convergence test. A larger cutoff only adds pairs that are
+# computed and discarded (the cost of the pairwise loop grows with the number
+# of pairs within the cutoff, not with the number of cells), so it is only
+# grown to keep the number of cells below `_MAX_CELLS_PER_ATOM * natoms`.
+#
+const _MAX_CELLS_PER_ATOM = 4
+function _distance_cutoff(atom_radii::Vector{T}, atom_radii_floor::Vector{T}, tolerance::T, volume::T, D::Int) where {T}
+    rmax = max(maximum(atom_radii), maximum(atom_radii_floor))
+    return _capped_cutoff(volume, max(2 * rmax, tolerance), _MAX_CELLS_PER_ATOM * length(atom_radii), D)
+end
+
+# Pairs farther than the cutoff are not computed, so a `dmin` equal to the
+# cutoff only means that no pair is closer than it.
+_format_dmin(dmin, cutoff) = dmin >= cutoff ? "> " * @sprintf("%.6f", cutoff) : @sprintf("%.6f", dmin)
+
 function packmol(input_file::String; D::Int=3, T::DataType=Float64, kargs...)
     packmol_system = read_packmol_input(input_file; D, T)
     return packmol(packmol_system; kargs...)
@@ -196,16 +217,38 @@ function packmol(
         unitcell = T(1.2) * box_size
     end
 
-    # CellListMap cutoff: at least the packing tolerance,
-    # adjusted so the number of cells doesn't vastly exceed the number of atoms
+    # Start packing with a looser-than-required tolerance (matches the
+    # original Fortran Packmol's `discale` heuristic, default 1.1): every
+    # atom's own radius is inflated by radscale in the optimization target,
+    # giving the optimizer an easier target while far from feasible.
+    # `atom_radii` is the mutable, per-atom working radius used by the
+    # optimizer — every atom follows the same loop-indexed `_radscale_at`
+    # schedule toward its own floor (`atom_radii_floor`, its user-specified
+    # or default radius), based on the packing loop counter alone: a
+    # molecule relocated by movebad! is not given its own separate,
+    # restarted schedule — it shares whatever radscale every other atom is
+    # currently at. True convergence checks (tol_ok, dmin) are unaffected
+    # since they measure the real, unscaled distances, and `atom_radii_floor`
+    # is what the "true objective" evaluations below (`f_true_loop_start`/
+    # `f_true_loop_end`) use.
+    atom_radii_floor = Vector{T}(undef, natoms)
+    for (iat, a) in enumerate(packmol_system.atoms)
+        atom_radii_floor[iat] = a.radius
+    end
+    # radscale decays from packmol_system.radscale (at loop == 0) to 1.0 by
+    # loop == radscale_decay_loops == nloop, the same for every atom.
+    radscale_decay_loops = T(nloop)
+    atom_radii = packmol_system.radscale .* atom_radii_floor
+
+    # CellListMap cutoff: set from the radii in use (see `_distance_cutoff`),
+    # and updated whenever `atom_radii` shrinks along the radscale schedule.
     tol = packmol_system.tolerance
-    packing_tol = tol + tol / 10
     if unitcell isa AbstractMatrix
         volume = abs(det(unitcell))
     else
         volume = prod(unitcell)
     end
-    cutoff = _capped_cutoff(volume, packing_tol, natoms, D)
+    cutoff = _distance_cutoff(atom_radii, atom_radii_floor, tol, volume, D)
 
     # Set up CellListMap
     fg_output = InteratomicDistanceFG{D,T}(packmol_system)
@@ -316,28 +359,6 @@ function packmol(
     println(dash_line)
     # Evaluate and print initial function value
     g0 = similar(x)
-    # Start packing with a looser-than-required tolerance (matches the
-    # original Fortran Packmol's `discale` heuristic, default 1.1): every
-    # atom's own radius is inflated by radscale in the optimization target,
-    # giving the optimizer an easier target while far from feasible.
-    # `atom_radii` is the mutable, per-atom working radius used by the
-    # optimizer — every atom follows the same loop-indexed `_radscale_at`
-    # schedule toward its own floor (`atom_radii_floor`, its user-specified
-    # or default radius), based on the packing loop counter alone: a
-    # molecule relocated by movebad! is not given its own separate,
-    # restarted schedule — it shares whatever radscale every other atom is
-    # currently at. True convergence checks (tol_ok, dmin) are unaffected
-    # since they measure the real, unscaled distances, and `atom_radii_floor`
-    # is what the "true objective" evaluations below (`f_true_loop_start`/
-    # `f_true_loop_end`) use.
-    atom_radii_floor = Vector{T}(undef, natoms)
-    for (iat, a) in enumerate(packmol_system.atoms)
-        atom_radii_floor[iat] = a.radius
-    end
-    # radscale decays from packmol_system.radscale (at loop == 0) to 1.0 by
-    # loop == radscale_decay_loops == nloop, the same for every atom.
-    radscale_decay_loops = T(nloop)
-    atom_radii = packmol_system.radscale .* atom_radii_floor
     # Objective function at the initial point, on the same unscaled
     # (radscale == 1.0) basis as every other cross-loop comparison below.
     f0_true = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
@@ -537,7 +558,7 @@ function packmol(
         @printf("  Best function value before: f = %10.5e\n", bestf_before_loop)
         @printf("  Improvement from best function value: %8.2f %%\n", fimprov)
         @printf("  Improvement within this loop: %8.2f %%\n", fimp_within_loop)
-        @printf("  Minimum distance: %12.6f\n", dmin)
+        println("  Minimum distance: ", lpad(_format_dmin(dmin, cl_system.cutoff), 12))
         @printf("  Maximum violation of the constraints: %10.5e\n", max_const)
 
         if tol_ok && const_ok
@@ -545,7 +566,7 @@ function packmol(
             println(hash_line)
             @printf("\n%s Success! \n", " "^32)
             @printf("%s Final objective function value: %10.5e\n", " "^13, f_true_loop_end)
-            @printf("%s Minimum distance: %10.6f\n", " "^13, dmin)
+            println(" "^13, " Minimum distance: ", lpad(_format_dmin(dmin, cl_system.cutoff), 10))
             @printf("%s Maximum violation of the constraints: %10.5e\n", " "^13, max_const)
             println()
             println(dash_line)
@@ -586,6 +607,7 @@ function packmol(
         for iat in eachindex(atom_radii)
             atom_radii[iat] = current_radscale * atom_radii_floor[iat]
         end
+        CellListMap.update!(cl_system; cutoff=_distance_cutoff(atom_radii, atom_radii_floor, tol, volume, D))
         # Whether to move bad molecules is decided purely at this outer-loop
         # granularity, on the true (radscale == 1.0) objective: if this
         # loop's own optimization improved `f_true_loop_end` over
@@ -758,7 +780,7 @@ function packmol_callback(
     # slow-converging landscape.
     next!(progress_meter; showvalues = [
         (" Function value", f),
-        (" Minimum distance", dmin),
+        (" Minimum distance", _format_dmin(dmin, cl_system.cutoff)),
         (" Maximum constraint violation", max_const),
         (" Function evaluations", isnothing(nfeval) ? nfeval : "$nfeval / $nfevalmax"),
         (" Projected gradient norm", gnorm),
