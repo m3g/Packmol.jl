@@ -12,10 +12,14 @@ using SPGBox: spgbox!
     fmol::Vector{T} # contribution of each molecule to the function value
     # Auxiliary array for gradient: carries the gradient relative to the cartesian coordinates of each atom
     gxcar::Vector{SVector{D,T}}
-    # Pre-allocated per-thread buffers for fmol accumulation (avoids allocation in @spawn)
-    fmol_threaded::Vector{Vector{T}}
     # Maximum constraint penalty over all atoms (for convergence checking)
     max_constraint_penalty::T = zero(T)
+    # Indices of the atoms (molecules) with a nonzero entry in `gxcar` (`fmol`),
+    # set by `cartesian_fg!`. Used by the threaded copies of the output, such that
+    # resetting and reducing them costs proportionally to the number of entries
+    # actually written, not to the number of atoms (see `reduce_output!` below).
+    touched_atoms::Vector{Int32} = Int32[]
+    touched_mols::Vector{Int32} = Int32[]
 end
 
 function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
@@ -26,33 +30,59 @@ function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
         dmin = typemax(T),
         fmol = zeros(T, packmol_system.nmols),
         gxcar = fill(zero(SVector{D,T}), natoms),
-        fmol_threaded = [zeros(T, packmol_system.nmols) for _ in 1:Threads.nthreads()],
         max_constraint_penalty = zero(T),
     )
 end
 
 # Custom copy, reset and reducer functions for CellListMap.
-# Note: `g` (molecule-level gradients) is excluded from copy/reduce — it is
-# only written by chain_rule! after pairwise computation, so copying it per
-# thread is wasted work (nmols × sizeof(MoleculePosition) per thread per call).
+#
+# The threaded copies (one per batch of the parallel pairwise computation) are
+# identified by an empty `g`: the molecule-level gradients are only written by
+# chain_rule! after the pairwise computation, so copying them per thread is
+# wasted work. The dense `fmol`/`gxcar` arrays of the copies are allocated once,
+# zeroed, and kept zeroed except at the entries listed in `touched_mols`/
+# `touched_atoms`: resetting a copy, and reducing it into the main output,
+# touches only those entries. Near convergence few pairs contribute, while
+# zeroing and summing the full arrays of every copy is a memory-bandwidth-bound
+# cost proportional to the number of threads times the number of atoms.
+_is_thread_copy(x::InteratomicDistanceFG) = isempty(x.g)
+
 function CellListMap.copy_output(x::InteratomicDistanceFG{D,T}) where {D,T}
     InteratomicDistanceFG(
         x.f,
         MoleculePosition{D,T}[],  # empty — not used during pairwise
         x.dmin,
-        copy(x.fmol),
-        copy(x.gxcar),
-        Vector{T}[],  # fmol_threaded — not used by CellListMap threads
+        zeros(T, length(x.fmol)),
+        fill(zero(SVector{D,T}), length(x.gxcar)),
         zero(T),  # max_constraint_penalty — not used by CellListMap threads
+        Int32[],
+        Int32[],
     )
 end
 function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,T}
     output.f = zero(T)
-    fill!(output.g, zero(MoleculePosition{D,T}))
     output.dmin = typemax(T)
-    fill!(output.fmol, zero(T))
-    fill!(output.gxcar, zero(SVector{D,T}))
     output.max_constraint_penalty = zero(T)
+    if _is_thread_copy(output)
+        _zero_touched!(output)
+    else
+        fill!(output.g, zero(MoleculePosition{D,T}))
+        fill!(output.fmol, zero(T))
+        fill!(output.gxcar, zero(SVector{D,T}))
+        empty!(output.touched_atoms)
+        empty!(output.touched_mols)
+    end
+    return output
+end
+function _zero_touched!(output::InteratomicDistanceFG{D,T}) where {D,T}
+    for i in output.touched_atoms
+        output.gxcar[i] = zero(SVector{D,T})
+    end
+    for i in output.touched_mols
+        output.fmol[i] = zero(T)
+    end
+    empty!(output.touched_atoms)
+    empty!(output.touched_mols)
     return output
 end
 function CellListMap.reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
@@ -63,36 +93,47 @@ function CellListMap.reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
     return x
 end
 
-# CellListMap's default reduce_output! (used by `reducer` above) merges the
-# per-batch outputs with a plain serial `for ibatch in output_threaded`
-# loop — for InteratomicDistanceFG that means a full O(nmols + natoms) vector
-# add repeated once per batch, entirely on a single thread, on *every*
-# pairwise! call (i.e. every fg! evaluation). At large scale (millions of
-# atoms, tens of batches) this serial merge can itself take tens of
-# milliseconds — measured at ~58ms for a 2.76M-atom/533K-molecule/10-batch
-# system, i.e. a hard single-threaded tax paid on every optimizer iteration
-# regardless of how many threads are available. This override instead
-# parallelizes the merge by splitting the *index range* of fmol/gxcar across
-# threads (each thread sums all batches' contributions for its own slice),
-# which both uses all available threads and is more cache-friendly than the
-# original batch-outer/index-inner loop order.
+# The threaded copies are merged into the main output (which was reset before
+# the pairwise computation) either sparsely, adding only the touched entries of
+# each copy and zeroing them, or densely, summing the full arrays of all copies
+# in parallel over index ranges and then zeroing the copies. The sparse merge is
+# serial, and is used while the number of touched entries is small relative to
+# the cost of the dense merge (number of copies times the number of atoms):
+# that is the case near convergence, when few pairs overlap, while early in the
+# packing (many overlapping pairs) the dense merge is used.
+const _SPARSE_REDUCE_FACTOR = 16
 function CellListMap.reduce_output!(
     output::InteratomicDistanceFG{D,T}, output_threaded::Vector{InteratomicDistanceFG{D,T}},
 ) where {D,T}
     output.f = zero(T)
     output.dmin = typemax(T)
+    ntouched = 0
     for ot in output_threaded
         output.f += ot.f
         output.dmin = min(output.dmin, ot.dmin)
+        ntouched += length(ot.touched_atoms) + length(ot.touched_mols)
     end
     nmols = length(output.fmol)
     natoms = length(output.gxcar)
+    if _SPARSE_REDUCE_FACTOR * ntouched <= length(output_threaded) * (natoms + nmols)
+        for ot in output_threaded
+            for i in ot.touched_atoms
+                output.gxcar[i] += ot.gxcar[i]
+            end
+            for i in ot.touched_mols
+                output.fmol[i] += ot.fmol[i]
+            end
+            _zero_touched!(ot)
+        end
+        return output
+    end
     @sync begin
         for (_, mrange) in enumerate(chunks(1:nmols; n=Threads.nthreads()))
             @spawn for i in mrange
                 s = zero(T)
                 for ot in output_threaded
                     s += ot.fmol[i]
+                    ot.fmol[i] = zero(T)
                 end
                 output.fmol[i] = s
             end
@@ -102,10 +143,15 @@ function CellListMap.reduce_output!(
                 s = zero(SVector{D,T})
                 for ot in output_threaded
                     s += ot.gxcar[i]
+                    ot.gxcar[i] = zero(SVector{D,T})
                 end
                 output.gxcar[i] = s
             end
         end
+    end
+    for ot in output_threaded
+        empty!(ot.touched_atoms)
+        empty!(ot.touched_mols)
     end
     return output
 end
@@ -140,14 +186,31 @@ function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_sy
         # molecular contributions
         fadd = (d - tol)^2
         fg.f += fadd
-        fg.fmol[iatom.molecule_index] += fadd
-        fg.fmol[jatom.molecule_index] += fadd
+        _add_fmol!(fg, iatom.molecule_index, fadd)
+        _add_fmol!(fg, jatom.molecule_index, fadd)
         # Gradient
         dv = y - x
         dvdd = 2 * (d - tol) * dv / d
-        fg.gxcar[i] -= dvdd
-        fg.gxcar[j] += dvdd
+        _add_gxcar!(fg, i, -dvdd)
+        _add_gxcar!(fg, j, dvdd)
     end
+    return fg
+end
+
+# Accumulate into `fmol`/`gxcar`, recording the indices of the entries that
+# become nonzero (see `touched_atoms`/`touched_mols`). An entry that returns to
+# exactly zero and is touched again is listed twice, which is harmless: the
+# reduction zeroes each entry of a copy after adding it to the main output.
+@inline function _add_fmol!(fg::InteratomicDistanceFG, imol, v)
+    fmol = fg.fmol[imol]
+    iszero(fmol) && push!(fg.touched_mols, imol)
+    fg.fmol[imol] = fmol + v
+    return fg
+end
+@inline function _add_gxcar!(fg::InteratomicDistanceFG, iat, v)
+    g = fg.gxcar[iat]
+    iszero(g) && push!(fg.touched_atoms, iat)
+    fg.gxcar[iat] = g + v
     return fg
 end
 
@@ -409,13 +472,22 @@ function _constraint_fg!(
     unitcell::Matrix{T},
     unitcell_center::SVector{D,T},
 ) where {D,T,HASPBC}
+    # The atoms are stored molecule by molecule, thus a chunk of atoms spans a
+    # contiguous range of molecules, and only the first and last molecules of the
+    # range can have atoms in other chunks. The penalties of the molecules
+    # strictly inside the range are added directly to `fmol`, and those of the
+    # first and last molecules are accumulated locally and added under the lock.
+    # More chunks than threads balance the load between threads of different speeds.
     lk_fg = ReentrantLock()
-    @sync for (ichunk, iat_range) in enumerate(index_chunks(packmol_system.atoms; n=Threads.nthreads()))
+    atoms = packmol_system.atoms
+    @sync for iat_range in index_chunks(atoms; n=4 * Threads.nthreads())
         @spawn begin
             fg_local = zero(fg_output.f)
             max_penalty_local = zero(T)
-            fmol_local = fg_output.fmol_threaded[ichunk]
-            fill!(fmol_local, zero(T))
+            imol_first = atoms[first(iat_range)].molecule_index
+            imol_last = atoms[last(iat_range)].molecule_index
+            fmol_first = zero(T)
+            fmol_last = zero(T)
             for iat in iat_range
                 atom = packmol_system.atoms[iat]
                 x = atom_positions[iat]
@@ -441,16 +513,26 @@ function _constraint_fg!(
                 for ic in atom.constraints
                     c = st.constraints[ic]
                     penalty::T = constraint_penalty(c, x)::T
-                    fg_local += penalty
-                    fmol_local[atom.molecule_index] += penalty
                     atom_penalty += penalty
                     fg_output.gxcar[iat]::SVector{D,T} += constraint_gradient(c, x)::SVector{D,T}
+                end
+                fg_local += atom_penalty
+                imol = atom.molecule_index
+                if imol == imol_first
+                    fmol_first += atom_penalty
+                elseif imol == imol_last
+                    fmol_last += atom_penalty
+                else
+                    fg_output.fmol[imol] += atom_penalty
                 end
                 max_penalty_local = max(max_penalty_local, atom_penalty)
             end
             @lock lk_fg begin
                 fg_output.f += fg_local
-                fg_output.fmol .+= fmol_local
+                fg_output.fmol[imol_first] += fmol_first
+                if imol_last != imol_first
+                    fg_output.fmol[imol_last] += fmol_last
+                end
                 fg_output.max_constraint_penalty = max(fg_output.max_constraint_penalty, max_penalty_local)
             end
         end
