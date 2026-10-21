@@ -39,13 +39,11 @@ jobs:
       - uses: julia-actions/cache@v3
       - run: |
           julia --project=docs -e '
-            import Pkg; Pkg.add("Documenter")
             using Pkg
             Pkg.develop(PackageSpec(path=pwd()))
             Pkg.instantiate()'
       - run: |
           julia --project=docs -e '
-            import Pkg; Pkg.add("Documenter")
             using Documenter: doctest
             using Packmol
             doctest(Packmol)'

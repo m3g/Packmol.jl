@@ -1,5 +1,3 @@
-import Pkg
-Pkg.add("Documenter")
 using Documenter
 using Packmol
 push!(LOAD_PATH, "../src/")
