@@ -48,7 +48,7 @@
     # file entirely). `restart_to` only ever writes the raw format.
     # See also `StructureType.restart_from`/`restart_to` for the
     # per-structure-type equivalents.
-    restart_from::Union{Nothing,String,Vector{<:Atom}} = nothing
+    restart_from::Union{Nothing,String,Vector{Atom{Nothing}}} = nothing
     restart_to::Union{Nothing,String} = nothing
     # Unit cell for periodic boundary conditions (nothing = no PBC)
     unitcell::Union{Nothing, Matrix{T}} = nothing
@@ -252,21 +252,20 @@ optional functions for different values. The function must return an error if th
 value is not valid for the given input keyword.
 
 =#
-function _parse_value(T::DataType, keyword::String, input_value; _val_check=x -> nothing)
-    input_value isa T && return input_value
-    (T == String && input_value isa AbstractString) && return string(input_value)
-    value = tryparse(T, input_value)
+function _parse_value(::Type{S}, keyword::String, input_value::AbstractString; _val_check=x -> nothing) where {S}
+    value = tryparse(S, input_value)
     if isnothing(value)
         throw(ArgumentError("""\n
-            Could not parse value $input_value for keyword $keyword. Expected type: $T.
+            Could not parse value $input_value for keyword $keyword. Expected type: $S.
 
         """))
     end
     _val_check(value)
     return value
 end
+_parse_value(::Type{String}, keyword::String, input_value::AbstractString) = String(input_value)
 
-function _parse_options(T, name::String, val, options::Tuple)
+function _parse_options(name::String, val::AbstractString, options::Tuple{Pair{String,V},Vararg{Pair{String,V}}}) where {V}
     for pair in options
         if first(pair) == val
             return last(pair)
@@ -278,37 +277,76 @@ function _parse_options(T, name::String, val, options::Tuple)
     """))
 end
 
-#! format: off
-packmol_input_keywords = Dict{String,Function}(
-    "filetype"                 => (T, val) -> (:filetype, _parse_value(String, "filetype", val)),
-    "output"                   => (T, val) -> (:output_file, _parse_value(String, "output", val)),
-    "tolerance"                => (T, val) -> (:tolerance, _parse_value(T, "tolerance", val)),
-    "radscale"                 => (T, val) -> (:radscale, _parse_value(T, "radscale", val)),
-    "discale"                  => (T, val) -> begin
-        @warn "discale is a legacy keyword name; use radscale instead." maxlog=1
-        (:radscale, _parse_value(T, "discale", val))
-    end,
-    "tolerance_precision"      => (T, val) -> (:tolerance_precision, _parse_value(T, "tolerance_precision", val)),
-    "constraint_precision"     => (T, val) -> (:constraint_precision, _parse_value(T, "constraint_precision", val)),
-    "stall_tolerance"          => (T, val) -> (:stall_tolerance, _parse_value(T, "stall_tolerance", val)),
-    "maxit"                    => (T, val) -> (:maxit, _parse_value(Int, "max_iter", val)),
-    "max_random_init"          => (T, val) -> (:max_random_init, _parse_value(Int, "max_random_init", val)),
-    "adjust_constraints_on_init" => (T, val) -> (:adjust_constraints_on_init, _parse_options(String, "adjust_constraints_on_init", val, ("yes" => true, "no" => false))),
-    "add_amber_ter"            => (T, val) -> (:add_amber_ter, _parse_value(Bool, "add_amber_ter", val)),
-    "amber_ter_preserve"       => (T, val) -> (:amber_ter_preserve, true),
-    "add_box_sides"            => (T, val) -> (:add_box_sides, true),
-    "connect"                  => (T, val) -> (:connect, _parse_options(String, "connect", val, ("yes" => true, "no" => false))),
-    "randominitialpoint"       => (T, val) -> (:random_initial_point, true),
-    "seed"                     => (T, val) -> (:seed, _parse_value(Int, "seed", val)),
-    "avoid_overlap"            => (T, val) -> (:avoid_overlap, _parse_options(String, "avoid_overlap", val, ("yes" => true, "no" => false))),
-    "writeout"                 => (T, val) -> (:writeout, _parse_value(Int, "writeout", val)),
-    "writebad"                 => (T, val) -> (:writebad, true),
-    "optimization_print_level" => (T, val) -> (:optimization_print_level, _parse_value(Int, "optim_print_level", val)),
-    "chkgrad"                  => (T, val) -> (:chkgrad, true),
-    "restart_from"             => (T, val) -> (:restart_from, _parse_value(String, "restart_from", val)),
-    "restart_to"               => (T, val) -> (:restart_to, _parse_value(String, "restart_to", val)),
-)
-#! format: on
+const _yes_no = ("yes" => true, "no" => false)
+
+# Warnings of the input file parser: printed directly, rather than through the
+# logging macros, to keep the parser compilable with `juliac --trim`.
+_warn(msg::AbstractString) = _with_stderr(io -> println(io, "Warning: ", msg))
+
+#
+# Set the field of `sys` corresponding to a global keyword of the input file,
+# with value `val` (an empty string for the value-less flag keywords, e.g.
+# `randominitialpoint`). Returns `false` if `keyword` is not one of them. An
+# explicit chain of comparisons, rather than a dictionary of closures, so
+# that each field is set with a value of its own (inferred) type.
+#
+function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, val::AbstractString) where {D,T}
+    if keyword == "filetype"
+        sys.filetype = _parse_value(String, "filetype", val)
+    elseif keyword == "output"
+        sys.output_file = _parse_value(String, "output", val)
+    elseif keyword == "tolerance"
+        sys.tolerance = _parse_value(T, "tolerance", val)
+    elseif keyword == "radscale"
+        sys.radscale = _parse_value(T, "radscale", val)
+    elseif keyword == "discale"
+        _warn("discale is a legacy keyword name; use radscale instead.")
+        sys.radscale = _parse_value(T, "discale", val)
+    elseif keyword == "tolerance_precision"
+        sys.tolerance_precision = _parse_value(T, "tolerance_precision", val)
+    elseif keyword == "constraint_precision"
+        sys.constraint_precision = _parse_value(T, "constraint_precision", val)
+    elseif keyword == "stall_tolerance"
+        sys.stall_tolerance = _parse_value(T, "stall_tolerance", val)
+    elseif keyword == "maxit"
+        sys.max_iter = _parse_value(Int, "maxit", val)
+    elseif keyword == "max_random_init"
+        sys.max_random_init = _parse_value(Int, "max_random_init", val)
+    elseif keyword == "adjust_constraints_on_init"
+        sys.adjust_constraints_on_init = _parse_options("adjust_constraints_on_init", val, _yes_no)
+    elseif keyword == "add_amber_ter"
+        sys.add_amber_ter = true
+    elseif keyword == "amber_ter_preserve"
+        sys.amber_ter_preserve = true
+    elseif keyword == "add_box_sides"
+        sys.add_box_sides = true
+    elseif keyword == "connect"
+        sys.connect = _parse_options("connect", val, _yes_no)
+    elseif keyword == "randominitialpoint"
+        sys.random_initial_point = true
+    elseif keyword == "seed"
+        sys.seed = _parse_value(Int, "seed", val)
+    elseif keyword == "avoid_overlap"
+        sys.avoid_overlap = _parse_options("avoid_overlap", val, _yes_no)
+    elseif keyword == "writeout"
+        sys.writeout = _parse_value(Int, "writeout", val)
+    elseif keyword == "writebad"
+        sys.writebad = true
+    elseif keyword == "optimization_print_level"
+        sys.optim_print_level = _parse_value(Int, "optimization_print_level", val)
+    elseif keyword == "chkgrad"
+        sys.chkgrad = true
+    elseif keyword == "check"
+        sys.check = true
+    elseif keyword == "restart_from"
+        sys.restart_from = _parse_value(String, "restart_from", val)
+    elseif keyword == "restart_to"
+        sys.restart_to = _parse_value(String, "restart_to", val)
+    else
+        return false
+    end
+    return true
+end
 
 #=
     unitcell_matrix(a, b, c, α, β, γ)
@@ -334,7 +372,7 @@ function unitcell_matrix(::Type{T}, a, b, c, α_deg, β_deg, γ_deg) where {T}
     ]
 end
 
-packmol_legacy_keywords = Dict{String,String}(
+const packmol_legacy_keywords = Dict{String,String}(
     "fscale" => "fscale legacy keyword was ignored.",
     "fbins" => "fbins legacy keyword was ignored.",
     "iprint1" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
@@ -346,9 +384,9 @@ packmol_legacy_keywords = Dict{String,String}(
 
 # Keywords recognized by Fortran Packmol but not yet wired into Packmol.jl
 # (see the Phase 1 "Missing keyword parsing" checklist in CLAUDE.md). Listed
-# here, rather than in packmol_input_keywords, so that using them produces a
+# here, rather than in `_set_input_keyword!`, so that using them produces a
 # clear warning instead of a crash while they remain unimplemented.
-packmol_unimplemented_keywords = Dict{String,String}(
+const packmol_unimplemented_keywords = Dict{String,String}(
     "movefrac" => "movefrac keyword is not yet implemented in Packmol.jl and was ignored.",
     "movebadrandom" => "movebadrandom keyword is not yet implemented in Packmol.jl and was ignored.",
     "use_short_tol" => "use_short_tol keyword is not yet implemented in Packmol.jl and was ignored.",
@@ -366,148 +404,143 @@ packmol_unimplemented_keywords = Dict{String,String}(
 Reads the packmol input file to create a `PackmolSystem` object.
 
 =#
-function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
-    input_data = Dict{Symbol,Any}(
-        :input_file => input_file,
-        :structure_types => StructureType{D,T}[],
-    )
+read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64) =
+    read_packmol_input(input_file, Val(D), T)
+
+function read_packmol_input(input_file::String, ::Val{D}, ::Type{T}) where {D,T}
+    sys = PackmolSystem{D,T}(; input_file, output_file="")
+    stall_tolerance_set = false
     structure_section = false
-    open(input_file) do io
-        for line in eachline(io)
-            line = strip(line)
-            (startswith(line, "#") || isempty(line)) && continue
-            keyword, values... = split(line)
-            # `structure`/`end structure` must be recognized regardless of
-            # section state (to track it in the first place); everything
-            # else inside a structure block is skipped here unconditionally
-            # and left entirely to the second pass (`read_structure_data`
-            # below) — otherwise a keyword name valid both globally and
-            # per-structure (e.g. `restart_from`) would be wrongly applied
-            # system-wide from inside a `structure ... end structure` block.
-            if keyword == "structure"
-                structure_section = true
-                continue
-            end
-            if keyword == "end" && !isempty(values) && values[1] == "structure"
-                structure_section = false
-                continue
-            end
-            if structure_section
-                continue
-            end
-            # Handle no-value keywords first
-            if keyword == "check"
-                input_data[:check] = true
-                continue
-            end
-            if haskey(packmol_input_keywords, keyword)
-                # Value-less flag keywords (e.g. `randominitialpoint`, `add_box_sides`)
-                # appear on their own line with nothing after them; their closures
-                # ignore `val`, so an empty string is passed through for those.
-                val = isempty(values) ? "" : first(values)
-                field_name, field_value = packmol_input_keywords[keyword](T, val)
-                input_data[field_name] = field_value
-                continue
-            elseif haskey(packmol_legacy_keywords, keyword)
-                @warn begin
-                    packmol_legacy_keywords[keyword]
-                end _line = line _file = input_file
-                continue
-            elseif haskey(packmol_unimplemented_keywords, keyword)
-                @warn begin
-                    packmol_unimplemented_keywords[keyword]
-                end _line = line _file = input_file
-                continue
-            end
-            # pbc: orthorhombic PBC keyword
-            #   3 values (side lengths): center at origin
-            #   6 values (xmin ymin zmin xmax ymax zmax): center at midpoint
-            if keyword == "pbc"
-                if !isempty(values) && values[1] == "dodecahedral"
-                    input_data[:unitcell], input_data[:unitcell_center] =
-                        parse_pbc_dodecahedral(T, values[2:end], D)
-                    continue
-                end
-                if !isempty(values) && values[1] == "octahedral"
-                    input_data[:unitcell], input_data[:unitcell_center] =
-                        parse_pbc_octahedral(T, values[2:end], D)
-                    continue
-                end
-                vals = [_parse_value(T, "pbc", v) for v in values]
-                if length(vals) == D
-                    # 3 values: side lengths, center at origin
-                    input_data[:unitcell] = Matrix{T}(Diagonal(vals))
-                    input_data[:unitcell_center] = zero(SVector{D,T})
-                elseif length(vals) == 2 * D
-                    # 6 values: xmin ymin zmin xmax ymax zmax
-                    lo = SVector{D,T}(vals[1:D]...)
-                    hi = SVector{D,T}(vals[D+1:2*D]...)
-                    sides = hi - lo
-                    input_data[:unitcell] = Matrix{T}(Diagonal(Vector(sides)))
-                    input_data[:unitcell_center] = (lo + hi) / 2
-                else
-                    throw(ArgumentError("pbc keyword requires $D (side lengths) or $(2*D) (min/max coords) values, got $(length(vals))"))
-                end
-                continue
-            end
-            # unitcell: general PBC keyword (6 values: a b c α β γ in CRYST1 convention)
-            # Center at origin.
-            if keyword == "unitcell"
-                if length(values) != 2 * D
-                    throw(ArgumentError("unitcell keyword requires $(2*D) values (a b [c] α β [γ]), got $(length(values))"))
-                end
-                params = [_parse_value(T, "unitcell", v) for v in values]
-                input_data[:unitcell] = Matrix{T}(unitcell_matrix(T, params...))
-                input_data[:unitcell_center] = zero(SVector{D,T})
-                continue
-            end
-            throw(ArgumentError("Keyword $keyword not recognized"))
+    for line in eachline(input_file)
+        line = strip(line)
+        (startswith(line, "#") || isempty(line)) && continue
+        words = split(line)
+        keyword, values = words[1], @view(words[2:end])
+        # `structure`/`end structure` must be recognized regardless of
+        # section state (to track it in the first place); everything
+        # else inside a structure block is skipped here unconditionally
+        # and left entirely to the second pass (`read_structure_data`
+        # below) — otherwise a keyword name valid both globally and
+        # per-structure (e.g. `restart_from`) would be wrongly applied
+        # system-wide from inside a `structure ... end structure` block.
+        if keyword == "structure"
+            structure_section = true
+            continue
         end
+        if keyword == "end" && !isempty(values) && values[1] == "structure"
+            structure_section = false
+            continue
+        end
+        if structure_section
+            continue
+        end
+        # Value-less flag keywords (e.g. `randominitialpoint`, `add_box_sides`)
+        # appear on their own line with nothing after them; an empty string
+        # is passed through for those.
+        if _set_input_keyword!(sys, keyword, isempty(values) ? "" : first(values))
+            stall_tolerance_set |= keyword == "stall_tolerance"
+            continue
+        elseif haskey(packmol_legacy_keywords, keyword)
+            _warn(packmol_legacy_keywords[keyword])
+            continue
+        elseif haskey(packmol_unimplemented_keywords, keyword)
+            _warn(packmol_unimplemented_keywords[keyword])
+            continue
+        end
+        # pbc: orthorhombic PBC keyword
+        #   3 values (side lengths): center at origin
+        #   6 values (xmin ymin zmin xmax ymax zmax): center at midpoint
+        if keyword == "pbc"
+            if !isempty(values) && values[1] == "dodecahedral"
+                unitcell, unitcell_center = parse_pbc_dodecahedral(T, values[2:end], Val(D))
+                sys.unitcell, sys.unitcell_center = unitcell, unitcell_center
+                continue
+            end
+            if !isempty(values) && values[1] == "octahedral"
+                unitcell, unitcell_center = parse_pbc_octahedral(T, values[2:end], Val(D))
+                sys.unitcell, sys.unitcell_center = unitcell, unitcell_center
+                continue
+            end
+            vals = [_parse_value(T, "pbc", v) for v in values]
+            if length(vals) == D
+                # 3 values: side lengths, center at origin
+                sys.unitcell = Matrix{T}(Diagonal(vals))
+                sys.unitcell_center = zero(SVector{D,T})
+            elseif length(vals) == 2 * D
+                # 6 values: xmin ymin zmin xmax ymax zmax
+                lo = SVector{D,T}(@view(vals[1:D]))
+                hi = SVector{D,T}(@view(vals[D+1:2*D]))
+                sides = hi - lo
+                sys.unitcell = Matrix{T}(Diagonal(Vector(sides)))
+                sys.unitcell_center = (lo + hi) / 2
+            else
+                throw(ArgumentError("pbc keyword requires $D (side lengths) or $(2*D) (min/max coords) values, got $(length(vals))"))
+            end
+            continue
+        end
+        # unitcell: general PBC keyword (6 values: a b c α β γ in CRYST1 convention)
+        # Center at origin.
+        if keyword == "unitcell"
+            if D != 3 || length(values) != 6
+                throw(ArgumentError("unitcell keyword requires 6 values (a b c α β γ), got $(length(values))"))
+            end
+            p = [_parse_value(T, "unitcell", v) for v in values]
+            sys.unitcell = Matrix{T}(unitcell_matrix(T, p[1], p[2], p[3], p[4], p[5], p[6]))
+            sys.unitcell_center = zero(SVector{D,T})
+            continue
+        end
+        throw(ArgumentError("Keyword $keyword not recognized"))
     end
     if structure_section
         throw(ArgumentError("Structure block not closed with 'end structure'"))
     end
+    # The default stall tolerance is relative to the tolerance precision, which
+    # might have been set in the input file.
+    if !stall_tolerance_set
+        sys.stall_tolerance = T(1e-3) * sys.tolerance_precision
+    end
+    # As the structure files, the other files named in the input file are
+    # relative to its directory (an absolute path is kept as is by `joinpath`).
+    input_dir = dirname(input_file)
+    isempty(sys.output_file) || (sys.output_file = joinpath(input_dir, sys.output_file))
+    restart_from = sys.restart_from
+    restart_from isa String && (sys.restart_from = joinpath(input_dir, restart_from))
+    restart_to = sys.restart_to
+    restart_to isa String && (sys.restart_to = joinpath(input_dir, restart_to))
     # Read structure data
-    open(input_file) do io
-        local structure_input
-        for line in eachline(io)
-            line = strip(line)
-            (startswith(line, "#") || isempty(line)) && continue
-            keyword, values... = split(line)
-            if keyword == "structure"
-                structure_section = true
-                structure_input = IOBuffer()
-                print(structure_input, line, "\n")
-                continue
-            end
-            if keyword == "end" && values[1] == "structure"
-                print(structure_input, line, "\n")
-                push!(input_data[:structure_types], 
-                    read_structure_data(structure_input, input_data[:tolerance]; D, T, path=dirname(input_file))
-                )
-                continue
-            end
-            if structure_section
-                print(structure_input, line, "\n")
-                continue
-            end
+    structure_input = IOBuffer()
+    for line in eachline(input_file)
+        line = strip(line)
+        (startswith(line, "#") || isempty(line)) && continue
+        words = split(line)
+        if words[1] == "structure"
+            structure_section = true
+            structure_input = IOBuffer()
+            print(structure_input, line, "\n")
+            continue
+        end
+        if words[1] == "end" && length(words) > 1 && words[2] == "structure"
+            print(structure_input, line, "\n")
+            push!(sys.structure_types, 
+                read_structure_data(structure_input, sys.tolerance, Val(D), T; path=input_dir)
+            )
+            continue
+        end
+        if structure_section
+            print(structure_input, line, "\n")
+            continue
         end
     end
     # Implicitly confine every free structure type to (a slightly inflated
     # version of) the PBC cell, when PBC is active — see
     # `_add_pbc_confinement_constraints!`'s own docstring for why.
-    if haskey(input_data, :unitcell)
-        _add_pbc_confinement_constraints!(
-            input_data[:structure_types], input_data[:unitcell], input_data[:unitcell_center], input_data[:tolerance],
-        )
+    unitcell, unitcell_center = sys.unitcell, sys.unitcell_center
+    if !isnothing(unitcell) && !isnothing(unitcell_center)
+        _add_pbc_confinement_constraints!(sys.structure_types, unitcell, unitcell_center, sys.tolerance)
     end
     #
     # Initialize atom data and molecule position arrays
     #
-    atoms, molecule_positions, nmols = _atoms_and_molecule_positions(input_data[:structure_types])
-    input_data[:atoms] = atoms
-    input_data[:molecule_positions] = molecule_positions
-    input_data[:nmols] = nmols
-
-    return PackmolSystem{D,T}(; input_data...)
+    sys.atoms, sys.molecule_positions, sys.nmols = _atoms_and_molecule_positions(sys.structure_types)
+    return sys
 end

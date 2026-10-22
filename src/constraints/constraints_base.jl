@@ -25,12 +25,13 @@ end
 # Default weights
 const weight_default = Dict{Symbol,Float64}()
 
-# 
-# Dictionary containing the functions required for parsing each type
-# of constraint. The functions for parsing each constraint are defined
-# in the corresponding files, and appended to this dictionary.
 #
-const parse_constraint = Dict{String,Function}()
+# Parses the data of a constraint line of the input file, returning the
+# constraint. Each input file keyword (e.g. "inside box") has its own method,
+# `parse_constraint(::Val{Symbol(keyword)}, data, ::Type{T}, filename)`, defined
+# in the corresponding file (see also `constraint_keywords` in constraint_types.jl).
+#
+function parse_constraint end
 
 
 

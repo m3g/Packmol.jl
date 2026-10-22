@@ -7,8 +7,7 @@ using Statistics: mean
 using Base: @kwdef
 using Base.Threads: @spawn
 using ChunkSplitters: chunks, index_chunks
-using PDBTools: Atom, read_pdb, write_pdb, coor, center_of_mass
-using ProgressMeter: Progress, next!, finish!
+using PDBTools: Atom, center_of_mass
 using SPGBox
 using Printf: @printf, @sprintf
 import CellListMap
@@ -29,6 +28,11 @@ export PackmolSystem
 export StructureType
 export structure_type
 export get_atoms
+
+# Terminal input/output, progress bar and task synchronization (compatible with `juliac --trim`)
+include("./io/terminal.jl")
+include("./io/progress_bar.jl")
+include("./threads.jl")
 
 # Constraints
 include("./constraints/constraints_base.jl")
@@ -64,17 +68,17 @@ include("./function_and_gradient/interatomic_distance_fg.jl")
 # Initial approximation: placement, constraint pre-optimization
 include("./initial_approximation/initial_approximation.jl")
 
-# Output
+# Input and output
+include("./io/pick_file.jl")
+include("./io/pdb.jl")
 include("./io/write_output.jl")
 
 # Packing functions
 include("./packmol_main.jl")
 
-# Runner for the legacy packmol 
+# Runner for the legacy packmol (methods in the PackmolJLLExt extension)
 include("./packmol_runner.jl")
-@static if VERSION >= v"1.12" 
-    include("./CLI.jl")
-end
+include("./CLI.jl")
 
 # Packmol input file creator
 include("./Recipes/Recipes.jl")

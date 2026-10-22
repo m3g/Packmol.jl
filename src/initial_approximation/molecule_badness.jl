@@ -27,9 +27,17 @@ function molecule_badness(
     ntasks = Threads.nthreads()
 
     # Phase 1: constraint penalties (parallel over molecule ranges)
-    _molecule_badness_constraints!(
-        badness, packmol_system, atom_positions, Val(has_pbc), unitcell, unitcell_center, ntasks,
-    )
+    # (`Val(true)`/`Val(false)` in separate branches, rather than `Val(has_pbc)`, for the call
+    # to be resolved at compile time.)
+    if has_pbc
+        _molecule_badness_constraints!(
+            badness, packmol_system, atom_positions, Val(true), unitcell, unitcell_center, ntasks,
+        )
+    else
+        _molecule_badness_constraints!(
+            badness, packmol_system, atom_positions, Val(false), unitcell, unitcell_center, ntasks,
+        )
+    end
 
     # Phase 2: fixed-atom overlaps — single pairwise! call over all free atoms.
     # xpositions is updated once with all free-atom positions; the fixed-atom
@@ -70,13 +78,17 @@ function molecule_badness(
         # pairs it finds aren't necessarily real violations; filter explicitly
         # rather than assuming every found pair has pair.d < tol.
         CellListMap.update!(fixed_sys; xpositions=free_atoms)
-        pairwise!(
-            (pair, out) -> begin
-                pair.d < tol && (out.molecule_badness.value[free_atom_mol[pair.i]] += (pair.d - tol)^2)
-                out
-            end,
-            fixed_sys,
-        )
+        # (`let`, because `free_atom_mol` is assigned in two branches above, and the
+        # closure would otherwise capture it boxed.)
+        let free_atom_mol = free_atom_mol
+            pairwise!(
+                (pair, out) -> begin
+                    pair.d < tol && (out.molecule_badness.value[free_atom_mol[pair.i]] += (pair.d - tol)^2)
+                    out
+                end,
+                fixed_sys,
+            )
+        end
         badness .+= fixed_sys.output.molecule_badness.value
     end
 
@@ -97,7 +109,7 @@ function _molecule_badness_constraints!(
 ) where {D,T,HASPBC}
     imol_offset = 0
     atom_offset = 0
-    @sync for st in packmol_system.structure_types
+    @_sync for st in packmol_system.structure_types
         st_mol_offset = imol_offset
         st_atom_offset = atom_offset
         for (_, irange) in enumerate(chunks(1:st.number_of_molecules; n=ntasks))
@@ -128,7 +140,7 @@ function _molecule_badness_constraints!(
                         end
                         for ic in packmol_system.atoms[iat].constraints
                             c = st.constraints[ic]
-                            badness[imol] += constraint_penalty(c, x)
+                            badness[imol] += _constraint_dispatch(constraint_penalty, c, x)
                         end
                     end
                 end
@@ -167,10 +179,17 @@ function molecule_badness_for_mols!(
     free_atom_mol::Vector{Int},
 ) where {D,T}
     has_pbc, unitcell, unitcell_center = _typed_unitcell(packmol_system)
-    _molecule_badness_constraints_for_mols!(
-        badness, packmol_system, atom_positions, mol_list, mol_structure_type, mol_iat_first,
-        Val(has_pbc), unitcell, unitcell_center,
-    )
+    if has_pbc
+        _molecule_badness_constraints_for_mols!(
+            badness, packmol_system, atom_positions, mol_list, mol_structure_type, mol_iat_first,
+            Val(true), unitcell, unitcell_center,
+        )
+    else
+        _molecule_badness_constraints_for_mols!(
+            badness, packmol_system, atom_positions, mol_list, mol_structure_type, mol_iat_first,
+            Val(false), unitcell, unitcell_center,
+        )
+    end
 
     # Phase 2: fixed-atom overlaps, only for mol_list's atoms
     if !isnothing(fixed_sys)
@@ -222,7 +241,7 @@ function _molecule_badness_constraints_for_mols!(
     unitcell::Matrix{T},
     unitcell_center::SVector{D,T},
 ) where {D,T,HASPBC}
-    @sync for (_, mrange) in enumerate(chunks(1:length(mol_list); n=Threads.nthreads()))
+    @_sync for (_, mrange) in enumerate(chunks(1:length(mol_list); n=Threads.nthreads()))
         @spawn for k in mrange
             imol = mol_list[k]
             st = packmol_system.structure_types[mol_structure_type[imol]]
@@ -245,7 +264,7 @@ function _molecule_badness_constraints_for_mols!(
                     end
                     for ic in packmol_system.atoms[iat].constraints
                         c = st.constraints[ic]
-                        b += constraint_penalty(c, x)
+                        b += _constraint_dispatch(constraint_penalty, c, x)
                     end
                 end
             end

@@ -1,68 +1,32 @@
-import Packmol_jll
-
-const packmol_runner = Packmol_jll.packmol()
-export run_packmol
+export run_packmol_legacy
 
 """
-    run_packmol()
-    run_packmol(input_file::String)
+    run_packmol_legacy()
+    run_packmol_legacy(input_file::String)
 
 Runs the packmol executable with the input file `input_file`. This will run
 the classical `http://m3g.iqm.unicamp.br/packmol` program, which is a
 pre-compiled binary. The input file is a text file with the same syntax as
 the packmol input files.
 
-If no input file is provided, a file explorer will be opened to choose the 
-input file. 
+The binary is provided by the `Packmol_jll` package, which must be installed
+and loaded (`using Packmol_jll`) for `run_packmol_legacy` to be available.
+
+If no input file is provided, a file explorer will be opened to choose the
+input file (see [`Packmol.pick_file`](@ref)).
 
 To disable the file explorer, set the environment variable `PACKMOL_GUI="false"`.
 
 """
-function run_packmol end
+function run_packmol_legacy end
 
-@doc (@doc run_packmol)
-function run_packmol(input_file::String)
-    isfile(input_file) || error("Input file not found: $input_file")
-    current_dir = pwd()
-    println("Current directory: $current_dir")
-    input_file_dir = dirname(abspath(input_file))
-    println("Input file directory: $input_file_dir")
-    output_file_name = normpath(joinpath(input_file_dir,
-        open(input_file) do io
-            for line in eachline(io)
-                if occursin("output", line)
-                    _, output_file = split(line)
-                    return output_file
-                end
-            end
-        end
-    ))
-    println("Output file: $output_file_name")
-    # Run packmol  
-    try 
-        cd(input_file_dir)
-        run(pipeline(`$packmol_runner`, stdin=input_file))
-        println("Wrote output to: ", output_file_name)
-        cd(current_dir)
-    catch 
-        cd(current_dir)
-        @error "Error running packmol" _file=nothing _line=nothing
-    end
-    return nothing
-end
+# Fallback for when the `PackmolJLLExt` extension is not loaded: its own
+# `run_packmol_legacy()`/`run_packmol_legacy(::String)` methods are more
+# specific than this one.
+function run_packmol_legacy(args...)
+    throw(ArgumentError("""\n
+        `run_packmol_legacy` runs the legacy Fortran packmol binary, provided by the Packmol_jll package.
+        Install it with `import Pkg; Pkg.add("Packmol_jll")` and load it with `using Packmol_jll`.
 
-@static if haskey(ENV, "PACKMOL_GUI") && ENV["PACKMOL_GUI"] == "false"
-    function run_packmol()
-        throw(ArgumentError("""\n
-            Environment variable PACKMOL_GUI is set to false. Set it to true to use the file dialog.
-            
-        """))
-    end
-else
-    import NativeFileDialog
-    @doc (@doc run_packmol)
-    function run_packmol()
-        input_file = NativeFileDialog.pick_file() 
-        run_packmol(input_file)
-    end
+    """))
 end

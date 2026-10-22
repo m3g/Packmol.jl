@@ -20,9 +20,9 @@ function reinitialize_with_bounds!(
     nfree == 0 && return packmol_system
 
     # Use provided CM bounds, or compute from current molecule positions
-    if isnothing(cm_min) || isnothing(cm_max)
-        cm_min, cm_max = compute_cm_bounds(packmol_system)
-    end
+    # (`something`, for the bounds to have concrete types)
+    cm_lo_type, cm_hi_type = (isnothing(cm_min) || isnothing(cm_max)) ?
+        compute_cm_bounds(packmol_system) : (something(cm_min), something(cm_max))
 
     # Avoid fixed-atom overlaps against the same (loose) distance the main
     # packing loop's own first iteration actually enforces — `radscale *
@@ -32,12 +32,12 @@ function reinitialize_with_bounds!(
     # that first, loosest loop, which just pushes the problem into the
     # (slower) main optimization instead of avoiding it here where it's cheap.
     tol = packmol_system.radscale * packmol_system.tolerance
-    has_pbc = !isnothing(packmol_system.unitcell)
+    has_pbc, uc, center = _typed_unitcell(packmol_system)
     max_natoms = maximum(st.natoms for st in packmol_system.structure_types if !st.fixed.fixed; init=0)
     ntasks = Threads.nthreads()
 
-    # Build the fixed-atom overlap-check system once, and deep-copy it once per
-    # thread — not once per structure type, and not once per trial molecule.
+    # Build the fixed-atom overlap-check system once per thread (see
+    # `_task_overlap_check_systems`) — not once per structure type, and not once per trial molecule.
     #
     # Two things used to make this step slow and memory-hungry on systems
     # with a large fixed structure (e.g. a membrane/capsid) and a free-molecule
@@ -60,12 +60,26 @@ function reinitialize_with_bounds!(
     #    rejects trial molecules whose bounding box can't possibly reach the
     #    fixed atoms *before* calling into CellListMap at all — see there.
     fixed_sys, fixed_lo, fixed_hi = _build_overlap_check_system(packmol_system, tol)
-    task_fixed_syss = isnothing(fixed_sys) ? nothing : [deepcopy(fixed_sys) for _ in 1:ntasks]
+    task_fixed_syss = _task_overlap_check_systems(fixed_sys, packmol_system, tol, ntasks)
 
-    println("  Setting initial trial coordinates (best of $max_guess_try per molecule)...")
-    progress_meter = Progress(nfree; desc="  Molecules placed: ", barlen=40)
+    # (A function barrier: `task_fixed_syss` is `nothing` or a vector of systems, and the
+    # closures of the tasks spawned there must have concrete types for `juliac --trim`.)
+    _place_molecules!(
+        packmol_system, RNG, task_fixed_syss, fixed_lo, fixed_hi, cm_lo_type, cm_hi_type,
+        has_pbc, uc, center, tol, precision, max_guess_try, max_natoms, ntasks, nfree,
+    )
+    return packmol_system
+end
 
-    # Structure types are processed sequentially, each under its own @sync, so
+# Best-of-`max_guess_try` placement of the free molecules (see `reinitialize_with_bounds!`).
+function _place_molecules!(
+    packmol_system::PackmolSystem{D,T}, RNG, task_fixed_syss, fixed_lo, fixed_hi, cm_min, cm_max,
+    has_pbc, uc, center, tol, precision, max_guess_try, max_natoms, ntasks, nfree,
+) where {D,T}
+    _println("  Setting initial trial coordinates (best of $max_guess_try per molecule)...")
+    progress_meter = ProgressBar(nfree; desc="  Molecules placed: ", barlen=40)
+
+    # Structure types are processed sequentially, each under its own @_sync, so
     # that reusing task_fixed_syss[ichunk] across structure types is race-free:
     # all of type A's tasks finish before type B's tasks — which touch the
     # same objects — are spawned.
@@ -84,19 +98,17 @@ function reinitialize_with_bounds!(
 
         # Fallback: if bounds are degenerate (single molecule or all at same CM),
         # use PBC unit cell or sidemax box
-        if any(extent .≤ zero(T))
-            if has_pbc
-                uc = packmol_system.unitcell
-                center = packmol_system.unitcell_center
-            else
-                sidemax = T(DEFAULT_SIDEMAX)
-                lo = SVector{D,T}(ntuple(_ -> -sidemax, D))
-                hi = SVector{D,T}(ntuple(_ -> sidemax, D))
-                extent = hi - lo
-            end
+        if any(extent .≤ zero(T)) && !has_pbc
+            sidemax = T(DEFAULT_SIDEMAX)
+            lo = SVector{D,T}(ntuple(_ -> -sidemax, D))
+            hi = SVector{D,T}(ntuple(_ -> sidemax, D))
+            extent = hi - lo
         end
+        # (New names, assigned once, for the tasks below: capturing `lo`/`extent`,
+        # which are reassigned above, would box them.)
+        cm_lo, cm_extent = lo, extent
 
-        @sync for (ichunk, irange) in enumerate(chunks(1:st.number_of_molecules; n=ntasks))
+        @_sync for (ichunk, irange) in enumerate(chunks(1:st.number_of_molecules; n=ntasks))
             task_seed = rand(RNG, UInt64)
             task_fixed_sys = isnothing(task_fixed_syss) ? nothing : task_fixed_syss[ichunk]
             @spawn begin
@@ -125,12 +137,12 @@ function reinitialize_with_bounds!(
 
                     for itry in 1:max_guess_try
                         # Random CM within per-type bounds
-                        if has_pbc && any(extent .≤ zero(T))
+                        if has_pbc && any(cm_extent .≤ zero(T))
                             # PBC fallback: random within unit cell
                             frac = SVector{D,T}(ntuple(_ -> rand(task_rng, T) - T(0.5), D))
                             cm = SVector{D,T}(uc * frac) + center
                         else
-                            cm = lo + SVector{D,T}(ntuple(d -> rand(task_rng, T) * extent[d], D))
+                            cm = cm_lo + SVector{D,T}(ntuple(d -> rand(task_rng, T) * cm_extent[d], D))
                         end
                         angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(task_rng, T), D))
                         mp = MoleculePosition(cm, angles)
@@ -167,6 +179,20 @@ function reinitialize_with_bounds!(
         imol_offset += st.number_of_molecules
     end
     finish!(progress_meter)
-
     return packmol_system
+end
+
+#
+# One overlap-check system per task: `fixed_sys` itself, and new ones built
+# like it for the other tasks (rather than deep copies of it, because
+# `deepcopy` does not compile with `juliac --trim`).
+#
+_task_overlap_check_systems(::Nothing, packmol_system, tol, ntasks) = nothing
+function _task_overlap_check_systems(fixed_sys::S, packmol_system, tol, ntasks) where {S}
+    task_fixed_syss = S[fixed_sys]
+    for _ in 2:ntasks
+        new_sys = first(_build_overlap_check_system(packmol_system, tol))
+        new_sys isa S && push!(task_fixed_syss, new_sys)
+    end
+    return task_fixed_syss
 end

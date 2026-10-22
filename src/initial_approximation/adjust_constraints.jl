@@ -59,8 +59,11 @@ function adjust_constraints!(
     # cell list sized however large that turns out to be. Sizing the box up
     # front from the known CM bounds avoids that surprise growth/rebuild.
     fixed_sys = if domovebad
-        fixed_unitcell = if !isnothing(packmol_system.unitcell)
-            packmol_system.unitcell
+        # (A static matrix in both cases, diagonal without PBC, for `fixed_sys` to have
+        # a single concrete type.)
+        pbc_unitcell = packmol_system.unitcell
+        fixed_unitcell = if !isnothing(pbc_unitcell)
+            SMatrix{D,D,T}(pbc_unitcell)
         else
             lo, hi = if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
                 cm_lo_type, cm_hi_type
@@ -83,7 +86,7 @@ function adjust_constraints!(
                 end
             end
             margin = max_extent + packmol_system.tolerance
-            T(1.2) * ((region_hi .+ margin) - (region_lo .- margin))
+            SMatrix{D,D,T}(Diagonal(T(1.2) * ((region_hi .+ margin) - (region_lo .- margin))))
         end
         # Cell count scales as box volume / cutoff^D. This box's volume is set
         # by where free molecules *could* be (the whole placement region),
@@ -94,7 +97,7 @@ function adjust_constraints!(
         # serial construction, which is what actually blows up memory here.
         # Cap it at (fixed + free) atom count, matching packmol_main.jl's own
         # cl_system cutoff cap.
-        volume = fixed_unitcell isa AbstractMatrix ? abs(det(fixed_unitcell)) : prod(fixed_unitcell)
+        volume = abs(det(fixed_unitcell))
         max_particles = natoms
         cutoff = _capped_cutoff(volume, packmol_system.tolerance, max_particles, D)
         # parallel=false: CellListMap's *parallel* cell-list construction (not
@@ -165,7 +168,7 @@ function adjust_constraints!(
     # looks like the same problem. Say so up front so the two phases don't
     # read as inconsistent.
     checking_str = isnothing(fixed_sys) ? "constraints" : "constraints + fixed overlap"
-    println("  Adjusting initial point to fit $checking_str")
+    _println("  Adjusting initial point to fit $checking_str")
 
     # The active set starts as every free molecule (all need their first
     # evaluation); it only shrinks from here — a molecule leaves it as soon
@@ -254,7 +257,7 @@ function adjust_constraints!(
         # Check if all constraints are satisfied and no overlaps with fixed
         total_badness = sum(badness[imol] for imol in free_mol_indices)
         if total_badness < precision
-            @printf("  Adjustment for %s converged at loop %d (f = %.2e)\n", checking_str, iloop, total_badness)
+            @_printf("  Adjustment for %s converged at loop %d (f = %.2e)\n", checking_str, iloop, total_badness)
             return packmol_system
         end
 
@@ -271,7 +274,7 @@ function adjust_constraints!(
         nbad = length(bad_mols)
 
         if nbad == 0
-            @printf("  All molecules satisfy %s at loop %d\n", checking_str, iloop)
+            @_printf("  All molecules satisfy %s at loop %d\n", checking_str, iloop)
             return packmol_system
         end
 
@@ -282,30 +285,21 @@ function adjust_constraints!(
         # Move a fraction of the bad molecules to new random positions
         nmove = domovebad ? max(1, min(nbad, round(Int, movefrac * nfree))) : 0
         if iloop % iprint == 0 || iloop == 1
-            @printf("  Loop %4d: f = %10.4e  bad molecules: %d/%d  moving: %d\n",
+            @_printf("  Loop %4d: f = %10.4e  bad molecules: %d/%d  moving: %d\n",
                 iloop, spgresult.f, nbad, nfree, nmove)
         end
         for i in 1:nmove
             ist = mol_structure_type[bad_mols[i]]
             st = packmol_system.structure_types[ist]
-            if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
-                lo = cm_lo_type[ist]
-                hi = cm_hi_type[ist]
-                has_valid_bounds = all(lo .< hi)
-                randomize_molecule!(packmol_system, bad_mols[i], st, RNG;
-                    cm_lo = has_valid_bounds ? lo : nothing,
-                    cm_hi = has_valid_bounds ? hi : nothing,
-                    fixed_sys = randomize_fixed_sys,
-                    fixed_lo = randomize_fixed_lo,
-                    fixed_hi = randomize_fixed_hi,
-                    tol = overlap_tol,
+            # (Positional `_randomize_molecule!`, with the CM bounds given or not in
+            # separate calls, for each call to be resolved at compile time.)
+            if !isnothing(cm_lo_type) && !isnothing(cm_hi_type) && all(cm_lo_type[ist] .< cm_hi_type[ist])
+                _randomize_molecule!(packmol_system, bad_mols[i], st, RNG, cm_lo_type[ist], cm_hi_type[ist],
+                    randomize_fixed_sys, randomize_fixed_lo, randomize_fixed_hi, overlap_tol,
                 )
             else
-                randomize_molecule!(packmol_system, bad_mols[i], st, RNG;
-                    fixed_sys = randomize_fixed_sys,
-                    fixed_lo = randomize_fixed_lo,
-                    fixed_hi = randomize_fixed_hi,
-                    tol = overlap_tol,
+                _randomize_molecule!(packmol_system, bad_mols[i], st, RNG, nothing, nothing,
+                    randomize_fixed_sys, randomize_fixed_lo, randomize_fixed_hi, overlap_tol,
                 )
             end
         end
@@ -313,7 +307,8 @@ function adjust_constraints!(
         # Next loop's active set: every molecule still in violation (whether
         # just randomized or left as-is because movefrac capped how many
         # could move) — everything else is now known-good and stays excluded.
-        active_mols = bad_mols
+        # (Updated in place: `active_mols` is captured by the closure given to `spgbox!`.)
+        copy!(active_mols, bad_mols)
     end
 
     # Final evaluation (full system, for an accurate warning message). fixed_sys's
@@ -324,8 +319,8 @@ function adjust_constraints!(
         CellListMap.resize_output!(fixed_sys, packmol_system.nmols)
     end
     compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
-    badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol; buffers)
-    total_badness = sum(badness[imol] for imol in free_mol_indices)
-    @printf("  WARNING: adjustment for %s did not fully converge after %d loops (f = %.2e)\n", checking_str, nloop, total_badness)
+    final_badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol; buffers)
+    total_badness = sum(final_badness[imol] for imol in free_mol_indices)
+    @_printf("  WARNING: adjustment for %s did not fully converge after %d loops (f = %.2e)\n", checking_str, nloop, total_badness)
     return packmol_system
 end

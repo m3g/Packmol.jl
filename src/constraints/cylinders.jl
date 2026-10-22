@@ -91,22 +91,23 @@ function constraint_gradient(c::Cylinder{Outside}, x)
 end
 
 #
-# Input parsing functions: must be appended to the "parse_constraint" dictionary:
+# Input parsing functions: methods of `parse_constraint`, whose keywords must also be
+# listed in `constraint_keywords` (constraint_types.jl):
 #
-parse_constraint["inside cylinder"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("inside cylinder")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     center, axis, radius, length = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8])
     catch
-        error("Error parsing 'inside cylinder' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'inside cylinder' constraint data for $filename.")
     end
     return Cylinder{Inside,T}(; center, axis, radius, length)
 end
 
-parse_constraint["outside cylinder"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("outside cylinder")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     center, axis, radius, length = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8])
     catch
-        error("Error parsing 'outside cylinder' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'outside cylinder' constraint data for $filename.")
     end
     return Cylinder{Outside,T}(; center, axis, radius, length)
 end

@@ -46,21 +46,20 @@ end
 end
 
 @testitem "Wave input file parsing" begin
-    structure_data = Dict{Symbol,Any}(:filename => "dummy.pdb")
     data = split("0. 0. 1.  1. 0. 0.  5.0 2.0 4.0 0.3")
-    @test Packmol.parse_constraint["above sin"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("above sin")), data, Float64, "dummy.pdb") ==
           AboveSin([0, 0, 1], [1, 0, 0], 5.0, 2.0, 4.0, 0.3)
-    @test Packmol.parse_constraint["below sin"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("below sin")), data, Float64, "dummy.pdb") ==
           BelowSin([0, 0, 1], [1, 0, 0], 5.0, 2.0, 4.0, 0.3)
-    @test Packmol.parse_constraint["above cos"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("above cos")), data, Float64, "dummy.pdb") ==
           AboveCos([0, 0, 1], [1, 0, 0], 5.0, 2.0, 4.0, 0.3)
-    @test Packmol.parse_constraint["below cos"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("below cos")), data, Float64, "dummy.pdb") ==
           BelowCos([0, 0, 1], [1, 0, 0], 5.0, 2.0, 4.0, 0.3)
 
     data = split("0. 0. 1.  0. 0. 0.  5.0 2.0 4.0 0.3")
-    @test Packmol.parse_constraint["above radial_sin"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("above radial_sin")), data, Float64, "dummy.pdb") ==
           AboveRadialSin([0, 0, 1], [0, 0, 0], 5.0, 2.0, 4.0, 0.3)
-    @test Packmol.parse_constraint["above radial_cos"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("above radial_cos")), data, Float64, "dummy.pdb") ==
           AboveRadialCos([0, 0, 1], [0, 0, 0], 5.0, 2.0, 4.0, 0.3)
 end
 

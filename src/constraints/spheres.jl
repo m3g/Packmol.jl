@@ -72,22 +72,23 @@ function constraint_gradient(c::Sphere{Outside}, x)
 end
 
 #
-# Input parsing functions: must be appended to the "parse_constraint" dictionary:
+# Input parsing functions: methods of `parse_constraint`, whose keywords must also be
+# listed in `constraint_keywords` (constraint_types.jl):
 #
-parse_constraint["inside sphere"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("inside sphere")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     center, radius = try
         parse.(T, data[1:3]), parse.(T, data[4])
     catch
-        error("Error parsing 'inside sphere' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'inside sphere' constraint data for $filename.")
     end
     return Sphere{Inside,T}(;center, radius)
 end
 
-parse_constraint["outside sphere"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("outside sphere")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     center, radius = try
         parse.(T, data[1:3]), parse.(T, data[4])
     catch
-        error("Error parsing 'outside sphere' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'outside sphere' constraint data for $filename.")
     end
     return Sphere{Outside,T}(;center, radius)
 end

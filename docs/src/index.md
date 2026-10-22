@@ -1,7 +1,7 @@
 # Packmol.jl
 
-Currently this Julia package serves as a multi-platform runner for [packmol](http://github.com/m3g/packmol). In the future this will be an 
-independent package with a faster and improved version of the Packmol package.
+This Julia package is a new implementation of [packmol](http://github.com/m3g/packmol),
+which can also run the classical Fortran program (see [Legacy (Fortran) Packmol](@ref)).
 
 ## Installation
 
@@ -20,7 +20,7 @@ Run packmol in your input file with:
 ```julia-repl
 julia> using Packmol
 
-julia> run_packmol()
+julia> packmol()
 ```
 
 This will open a file browser, from which you can choose the input file for `packmol`. 
@@ -29,7 +29,21 @@ Packmol will run immediately once the file is open.
 Alternatively, you can provide the path to the file explicitly, with:
 
 ```julia-repl
-julia> run_packmol(raw"C:\users\my_user\my_files\my_input_file.inp")
+julia> packmol(raw"C:\users\my_user\my_files\my_input_file.inp")
+```
+
+### Legacy (Fortran) Packmol
+
+`packmol` runs the new Julia implementation of Packmol. The classical Fortran
+program can still be run, with `run_packmol_legacy`, which works in the same way.
+It requires the `Packmol_jll` package, which provides the Fortran binary:
+
+```julia-repl
+julia> import Pkg; Pkg.add("Packmol_jll")
+
+julia> using Packmol, Packmol_jll
+
+julia> run_packmol_legacy()
 ```
 
 ### Command line interface
@@ -41,9 +55,10 @@ julia -e 'import Pkg; Pkg.Apps.add("Packmol")'
 
 Add the directory of julia binaries (`$HOME/.julia/bin`) to your path, and use packmol with:
 ```
-packmol -i input.inp
+packmol input.inp
 ```
-as a standalone application.
+(or `packmol -i input.inp`) as a standalone application. Without an input file, a file
+browser is opened to choose it.
 
 ### Updating
 
@@ -54,9 +69,11 @@ julia> import Pkg; Pkg.update()
 
 (or type `] up`, at the `julia>` prompt). 
 
-Additionally, it is possible to disable the loading of the file-dialog machinery
-by setting the system environment variable `PACKMOL_GUI="false"`. This might be
-important to run packmol through this interface in computers without a GUI. 
+Additionally, it is possible to disable the file browser by setting the system
+environment variable `PACKMOL_GUI="false"`. The file browser uses tools that come with
+the operating system (`osascript` on macOS, PowerShell on Windows, and `zenity` or
+`kdialog` on Linux); if none of them is available, the input file is asked for in the
+terminal.
 
 ## See also
 
@@ -64,7 +81,10 @@ important to run packmol through this interface in computers without a GUI.
 
 # Reference
 
+See [`packmol`](@ref) for the Julia implementation.
+
 ```@docs
-run_packmol
+run_packmol_legacy
+Packmol.pick_file
 ```
 

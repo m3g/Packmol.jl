@@ -8,7 +8,15 @@ The goal is to achieve feature parity with the Fortran version while enabling ne
 better maintainability, and leveraging the Julia ecosystem.
 
 The package also includes:
-- A **legacy runner** (`run_packmol`) that wraps the Fortran binary via `Packmol_jll`.
+- `packmol(input_file)` / `packmol()` (file dialog): the simple user-facing entry point, running
+  the native engine. All paths in an input file (structures, `output`, `restart_from`/`restart_to`)
+  are relative to its directory. (`run_packmol`, which used to run the Fortran binary, was removed.)
+- A **legacy runner** (`run_packmol_legacy`) that wraps the Fortran binary via `Packmol_jll`, a weak
+  dependency: the methods live in the `PackmolJLLExt` extension (`ext/`), so it requires
+  `using Packmol_jll`. Packmol_jll will be dropped once the native engine replaces it.
+- A **command line app** (`packmol`, via `Pkg.Apps`; `src/CLI.jl`) running the native engine.
+  Not bundling a GUI toolkit is deliberate (it would dominate the size of a `juliac`-built
+  binary): the file dialog (`pick_file`) shells out to OS tools instead.
 - **Recipes**: higher-level, parameter-driven system setups (target densities/
   concentrations instead of molecule counts) — solute+solvent, cossolvent, water+ions,
   and membranes today, each solvation recipe with a `pbc` keyword
@@ -22,8 +30,15 @@ The package also includes:
 ```
 src/
   Packmol.jl                          # Main module
-  packmol_runner.jl                   # Legacy Fortran binary runner
-  CLI.jl                              # Command-line interface (Julia 1.12+)
+  packmol_runner.jl                   # run_packmol_legacy stub (methods in ext/)
+  CLI.jl                              # Command-line interface, native engine
+  threads.jl                          # `@_sync`: trim-safe `@sync`
+  io/
+    terminal.jl                       # Trim-safe stdout/stderr printing (`_print`, `_println`, `@_printf`)
+    progress_bar.jl                   # Minimal progress bar (replaces ProgressMeter.jl)
+    pick_file.jl                      # File dialog via OS tools (osascript/PowerShell/zenity/kdialog), run with libc `popen`
+    pdb.jl                            # Type-stable PDB reading/writing (adapted from PDBTools.jl)
+    write_output.jl                   # Output writing
   random.jl                           # Random number generation
   interatomic_distance_fg.jl          # Distance function & gradient computation
   data_structures/
@@ -48,6 +63,8 @@ src/
     Membrane.jl                       # Lipid bilayer/monolayer
     DensityTable.jl
     concentration_units.jl
+ext/
+  PackmolJLLExt.jl                    # run_packmol_legacy methods (loaded with Packmol_jll)
 ```
 
 ## Key Dependencies
@@ -313,6 +330,29 @@ Penalties are quadratic: `weight * (violation)^2` with default weight 5.0.
 Distance computation uses `CellListMap.jl` which provides efficient O(N) pairwise
 computation with automatic cell list construction. This replaces the custom cell list
 implementation in the Fortran version.
+
+## `juliac --trim` compatibility
+
+The CLI (`src/CLI.jl`) compiles with `juliac --trim=safe` (Julia 1.13+: with 1.12 the
+bodies of spawned tasks are not compiled into the executable), which requires every call
+reachable from it to be resolved at compile time. In the engine code:
+- print with `_print`/`_println`/`@_printf` (`src/io/terminal.jl`), never `println`/`@printf`
+  to `stdout`/`stderr` (non-constant globals of abstract type `IO`, and not even initialized
+  in a trimmed executable: the CLI sets `_use_core_streams[] = true`); progress with `ProgressBar`;
+- use `@_sync` (`src/threads.jl`) instead of `@sync`, and no `deepcopy`;
+- read/write PDB files with `read_pdb_atoms`/`write_pdb_atoms` (`src/io/pdb.jl`), not PDBTools;
+- call functions on constraints taken from a `Vector{AnyConstraint{T}}` through
+  `_constraint_dispatch(f, c, args...)` (the union is too large for automatic union splitting);
+- don't capture in closures (incl. `do` blocks, generators, `@spawn`) variables that are
+  reassigned (they get boxed); variables captured by `@spawn` must have concrete types
+  (not `Union{Nothing,...}`: use a function barrier or a flag); don't call with
+  `Val(runtime_value)`, keyword calls with `Union`-typed arguments, or a `Matrix` unit cell
+  where the dimension must be static (use `SMatrix{D,D,T}`).
+To check (`juliac` is a `Pkg.Apps` app; `JULIA_APPS_JULIA_CMD` selects the Julia it runs with):
+`JULIA_APPS_JULIA_CMD=$(which julia) juliac --output-exe packmol --project . --experimental --trim=safe --bundle build app.jl`,
+with `app.jl` defining `(@main)(ARGS) = Packmol.CLI.main(ARGS)`. Requires the trim-compatible
+versions of CellListMap (`show_progress = nothing` default, typed task waits) and SPGBox
+(`iprint = nothing` default).
 
 ## Conventions
 - Dimensions are parameterized: `D=2` or `D=3` (though 3D is the primary target)

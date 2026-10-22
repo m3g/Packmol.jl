@@ -127,7 +127,7 @@ function CellListMap.reduce_output!(
         end
         return output
     end
-    @sync begin
+    @_sync begin
         for (_, mrange) in enumerate(chunks(1:nmols; n=Threads.nthreads()))
             @spawn for i in mrange
                 s = zero(T)
@@ -231,7 +231,7 @@ function compute_atom_positions!(
         nmols_st = st.number_of_molecules
         st_imol_offset = imol_offset
         st_iat_offset = iat_offset
-        @sync for (_, mol_range) in enumerate(chunks(1:nmols_st; n=Threads.nthreads()))
+        @_sync for (_, mol_range) in enumerate(chunks(1:nmols_st; n=Threads.nthreads()))
             @spawn begin
                 for i in mol_range
                     imol = st_imol_offset + i
@@ -277,10 +277,19 @@ function compute_positions_and_constraints_for_mols!(
     mol_iat_first::Vector{Int},
 ) where {D,T}
     has_pbc, unitcell, unitcell_center = _typed_unitcell(packmol_system)
-    return _compute_positions_and_constraints_for_mols!(
-        atom_positions, fg_output, packmol_system, mol_list, mol_structure_type, mol_iat_first,
-        Val(has_pbc), unitcell, unitcell_center,
-    )
+    # (`Val(true)`/`Val(false)` in separate branches, rather than `Val(has_pbc)`, for the call
+    # to be resolved at compile time.)
+    if has_pbc
+        return _compute_positions_and_constraints_for_mols!(
+            atom_positions, fg_output, packmol_system, mol_list, mol_structure_type, mol_iat_first,
+            Val(true), unitcell, unitcell_center,
+        )
+    else
+        return _compute_positions_and_constraints_for_mols!(
+            atom_positions, fg_output, packmol_system, mol_list, mol_structure_type, mol_iat_first,
+            Val(false), unitcell, unitcell_center,
+        )
+    end
 end
 
 # `HASPBC` is a type parameter (via Val), not a runtime Bool: `if HASPBC` below is
@@ -307,7 +316,7 @@ function _compute_positions_and_constraints_for_mols!(
     fg_output.f = zero(T)
     fg_output.max_constraint_penalty = zero(T)
     lk = ReentrantLock()
-    @sync for (_, mrange) in enumerate(chunks(1:length(mol_list); n=Threads.nthreads()))
+    @_sync for (_, mrange) in enumerate(chunks(1:length(mol_list); n=Threads.nthreads()))
         @spawn begin
             f_local = zero(T)
             max_penalty_local = zero(T)
@@ -337,10 +346,10 @@ function _compute_positions_and_constraints_for_mols!(
                         atom = packmol_system.atoms[iat]
                         for ic in atom.constraints
                             c = st.constraints[ic]
-                            penalty::T = constraint_penalty(c, x)::T
+                            penalty::T = _constraint_dispatch(constraint_penalty, c, x)::T
                             f_local += penalty
                             fmol_local += penalty
-                            gxc += constraint_gradient(c, x)::SVector{D,T}
+                            gxc += _constraint_dispatch(constraint_gradient, c, x)::SVector{D,T}
                         end
                     end
                     fg_output.gxcar[iat] = gxc
@@ -362,10 +371,14 @@ end
 # CellListMap.wrap_to_first maps to the cell with one corner at the origin;
 # we shift so the cell is centered at `center` instead.
 #
+# The cell is converted to a static matrix, for the wrapping to be type-stable
+# (its dimension is not known from the type of a `Matrix`).
+#
 function wrap_to_center(x::SVector{D,T}, unitcell::AbstractMatrix, center::SVector{D,T}) where {D,T}
+    uc = SMatrix{D,D,T}(unitcell)
     half = SVector{D,T}(ntuple(_ -> T(0.5), D))
-    offset = SVector{D,T}(unitcell * half)
-    return SVector{D,T}(CellListMap.wrap_to_first(x - center + offset, unitcell)) + center - offset
+    offset = uc * half
+    return CellListMap.wrap_to_first(x - center + offset, uc) + center - offset
 end
 
 #
@@ -432,7 +445,7 @@ function _update_cl_positions!(
     unitcell::Matrix{T},
     unitcell_center::SVector{D,T},
 ) where {D,T,HASPBC}
-    @sync for (_, iatrange) in enumerate(chunks(eachindex(atom_positions); n=Threads.nthreads()))
+    @_sync for (_, iatrange) in enumerate(chunks(eachindex(atom_positions); n=Threads.nthreads()))
         @spawn for iat in iatrange
             if HASPBC
                 imol = packmol_system.atoms[iat].molecule_index
@@ -458,7 +471,13 @@ function constraint_fg!(
     packmol_system::PackmolSystem{D,T},
 ) where {D,T}
     has_pbc, unitcell, unitcell_center = _typed_unitcell(packmol_system)
-    return _constraint_fg!(fg_output, atom_positions, packmol_system, Val(has_pbc), unitcell, unitcell_center)
+    # (`Val(true)`/`Val(false)` in separate branches, rather than `Val(has_pbc)`, for the call
+    # to be resolved at compile time.)
+    if has_pbc
+        return _constraint_fg!(fg_output, atom_positions, packmol_system, Val(true), unitcell, unitcell_center)
+    else
+        return _constraint_fg!(fg_output, atom_positions, packmol_system, Val(false), unitcell, unitcell_center)
+    end
 end
 
 # See the comment on _compute_positions_and_constraints_for_mols! above: HASPBC
@@ -480,7 +499,7 @@ function _constraint_fg!(
     # More chunks than threads balance the load between threads of different speeds.
     lk_fg = ReentrantLock()
     atoms = packmol_system.atoms
-    @sync for iat_range in index_chunks(atoms; n=4 * Threads.nthreads())
+    @_sync for iat_range in index_chunks(atoms; n=4 * Threads.nthreads())
         @spawn begin
             fg_local = zero(fg_output.f)
             max_penalty_local = zero(T)
@@ -512,9 +531,9 @@ function _constraint_fg!(
                 atom_penalty = zero(T)
                 for ic in atom.constraints
                     c = st.constraints[ic]
-                    penalty::T = constraint_penalty(c, x)::T
+                    penalty::T = _constraint_dispatch(constraint_penalty, c, x)::T
                     atom_penalty += penalty
-                    fg_output.gxcar[iat]::SVector{D,T} += constraint_gradient(c, x)::SVector{D,T}
+                    fg_output.gxcar[iat]::SVector{D,T} += _constraint_dispatch(constraint_gradient, c, x)::SVector{D,T}
                 end
                 fg_local += atom_penalty
                 imol = atom.molecule_index
@@ -554,7 +573,7 @@ function fg!(g, x,
 ) where {D,T}
     # Unpack optimizer variables into free molecule slots
     x_mol = reinterpret(MoleculePosition{D,T}, x)
-    @sync for (_, krange) in enumerate(chunks(1:length(free_mol_indices); n=Threads.nthreads()))
+    @_sync for (_, krange) in enumerate(chunks(1:length(free_mol_indices); n=Threads.nthreads()))
         @spawn for k in krange
             packmol_system.molecule_positions[free_mol_indices[k]] = x_mol[k]
         end
@@ -564,7 +583,11 @@ function fg!(g, x,
     # Update CellListMap positions (wrapped into the canonical cell under
     # PBC — see `_update_cl_positions!` below for why).
     has_pbc, unitcell, unitcell_center = _typed_unitcell(packmol_system)
-    _update_cl_positions!(cl_system.xpositions, atom_positions, packmol_system, Val(has_pbc), unitcell, unitcell_center)
+    if has_pbc
+        _update_cl_positions!(cl_system.xpositions, atom_positions, packmol_system, Val(true), unitcell, unitcell_center)
+    else
+        _update_cl_positions!(cl_system.xpositions, atom_positions, packmol_system, Val(false), unitcell, unitcell_center)
+    end
     # Compute pairwise distance penalties and Cartesian gradients
     pairwise!((pair, output) -> cartesian_fg!(pair, output, packmol_system, atom_radii), cl_system,)
     # Add constraint penalties and gradients
@@ -575,7 +598,7 @@ function fg!(g, x,
     chain_rule!(cl_system.fg, packmol_system)
     # Pack only free molecule gradients into optimizer gradient vector
     g_mol = reinterpret(MoleculePosition{D,T}, g)
-    @sync for (_, krange) in enumerate(chunks(1:length(free_mol_indices); n=Threads.nthreads()))
+    @_sync for (_, krange) in enumerate(chunks(1:length(free_mol_indices); n=Threads.nthreads()))
         @spawn for k in krange
             g_mol[k] = cl_system.fg.g[free_mol_indices[k]]
         end

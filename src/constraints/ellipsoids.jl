@@ -81,22 +81,23 @@ function constraint_gradient(c::Ellipsoid{Outside}, x)
 end
 
 #
-# Input parsing functions: must be appended to the "parse_constraint" dictionary:
+# Input parsing functions: methods of `parse_constraint`, whose keywords must also be
+# listed in `constraint_keywords` (constraint_types.jl):
 #
-parse_constraint["inside ellipsoid"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("inside ellipsoid")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     center, a, b, c, scale = try
         parse.(T, data[1:3]), parse(T, data[4]), parse(T, data[5]), parse(T, data[6]), parse(T, data[7])
     catch
-        error("Error parsing 'inside ellipsoid' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'inside ellipsoid' constraint data for $filename.")
     end
     return Ellipsoid{Inside,T}(; center, a, b, c, scale)
 end
 
-parse_constraint["outside ellipsoid"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("outside ellipsoid")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     center, a, b, c, scale = try
         parse.(T, data[1:3]), parse(T, data[4]), parse(T, data[5]), parse(T, data[6]), parse(T, data[7])
     catch
-        error("Error parsing 'outside ellipsoid' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'outside ellipsoid' constraint data for $filename.")
     end
     return Ellipsoid{Outside,T}(; center, a, b, c, scale)
 end
