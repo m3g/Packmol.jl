@@ -13,7 +13,7 @@ function constraint_penalty_sum(
         x = R * r + mp.cm
         for ic in st.atom_constraints[j]
             c = st.constraints[ic]
-            fx += constraint_penalty(c, x)
+            fx += _constraint_dispatch(constraint_penalty, c, x)
         end
     end
     return fx

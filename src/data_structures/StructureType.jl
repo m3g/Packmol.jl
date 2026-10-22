@@ -8,7 +8,7 @@ Structure that contains the input data for a structure block in the input file.
 @kwdef struct StructureType{D,T}
     filename::String
     natoms::Int
-    atoms::Vector{Atom}
+    atoms::Vector{Atom{Nothing}}
     number_of_molecules::Int
     fixed::FixedMoleculeData{D,T} = zero(FixedMoleculeData{D,T})
     reference_coordinates::Vector{SVector{D,T}}
@@ -39,7 +39,7 @@ Structure that contains the input data for a structure block in the input file.
     # inside a `structure ... end structure` block): `nothing` means unset.
     # See `PackmolSystem.restart_from`/`restart_to` for the whole-system
     # version, and its docstring for the accepted `restart_from` sources.
-    restart_from::Union{Nothing,String,Vector{<:Atom}} = nothing
+    restart_from::Union{Nothing,String,Vector{Atom{Nothing}}} = nothing
     restart_to::Union{Nothing,String} = nothing
     connect::Vector{Vector{Int}} = Vector{Int}[]
     # AnyConstraint{T} (a closed Union of every concrete constraint type, not
@@ -82,7 +82,8 @@ function _apply_fixed_center!(
     if fixed.fixed
         if center == :mass
             # centerofmass: use mass-weighted center of mass from PDBTools
-            cm_vec = SVector{D,T}(center_of_mass(atoms)[1:D]...)
+            com = center_of_mass(atoms)
+            cm_vec = SVector{D,T}(ntuple(i -> com[i], D))
             reference_coordinates .-= Ref(cm_vec)
             R = eulermat(fixed.position.angles)
             for i in eachindex(reference_coordinates)
@@ -147,9 +148,9 @@ function structure_type(filename::String;
 )
     changechains && !isnothing(chain) &&
         error("'changechains' and 'chain' are not compatible for a single structure.")
-    atoms = read_pdb(filename)
+    atoms = read_pdb_atoms(filename)
     natoms = length(atoms)
-    reference_coordinates = [SVector{D,T}(c[1:D]...) for c in coor(atoms)]
+    reference_coordinates = [_atom_position(at, Val(D), T) for at in atoms]
     radii = fill(T(something(radius, tolerance / 2)), natoms)
     atom_constraints = [collect(1:length(constraints)) for _ in 1:natoms]
 
@@ -183,27 +184,32 @@ end
 read_structure_data(input_file_block::AbstractString, args...; kargs...) = 
     read_structure_data(IOBuffer(input_file_block), args...; kargs...)
 
-function read_structure_data(input_file_block::IOBuffer, tolerance; 
-    D::Int=3, T::DataType=Float64, path::String="",
-)
-    constraint_placements = first.(split.(keys(parse_constraint)))
-    structure_data = Dict{Symbol,Any}(
-        :filename => nothing,
-        :natoms => nothing,
-        :atoms => nothing,
-        :number_of_molecules => nothing,
-        :reference_coordinates => nothing,
-        :constraints => Constraint[],
-        :fixed => zero(FixedMoleculeData{D,T}),
-        :center => :none,  # :none, :geometric, or :mass
-    )
+read_structure_data(input_file_block::IOBuffer, tolerance; D::Int=3, T::DataType=Float64, path::String="") =
+    read_structure_data(input_file_block, tolerance, Val(D), T; path)
+
+function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::Type{T}; path::String="") where {D,T}
+    filename = ""
+    atoms = Atom{Nothing}[]
+    number_of_molecules = 0
+    reference_coordinates = SVector{D,T}[]
+    radii = T[]
+    atom_constraints = Vector{Int}[]
+    constraints = AnyConstraint{T}[]
+    fixed = zero(FixedMoleculeData{D,T})
+    center = :none # :none, :geometric, or :mass
+    residue_numbering = -1
+    chain = nothing
+    changechains = false
+    rotation_bounds = Union{Nothing,Tuple{T,T}}[nothing for _ in 1:D]
+    restart_from = nothing
+    restart_to = nothing
     # Read basic structure data first
-    seekstart(input_file_block)
     atoms_block = false
     iconstraint = 0
     seekstart(input_file_block)
     for line in eachline(input_file_block)
-        keyword, values... = split(line)
+        words = split(line)
+        keyword, values = words[1], @view(words[2:end])
         if keyword == "atoms"
             atoms_block = true
         end
@@ -211,95 +217,89 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
             atoms_block = false
         end
         if keyword == "structure"
-            filename = joinpath(path, string(values[1]))
-            atoms = read_pdb(filename)
-            structure_data[:filename] = filename
-            structure_data[:natoms] = length(atoms)
-            structure_data[:atoms] = atoms
-            structure_data[:reference_coordinates] = [SVector{D,T}(c[1:D]...) for c in coor(atoms)]
-            structure_data[:radii] = fill(T(tolerance/2), structure_data[:natoms])
-            structure_data[:atom_constraints] = [Int[] for _ in 1:structure_data[:natoms]]
+            filename = joinpath(path, String(values[1]))
+            atoms = read_pdb_atoms(filename)
+            reference_coordinates = [_atom_position(at, Val(D), T) for at in atoms]
+            radii = fill(T(tolerance / 2), length(atoms))
+            atom_constraints = [Int[] for _ in eachindex(atoms)]
         elseif keyword == "number"
-            structure_data[:number_of_molecules] = parse(Int, values[1]) 
+            number_of_molecules = parse(Int, values[1]) 
         elseif keyword == "fixed"
-            vals = parse.(T, values)
-            cm = SVector{D,T}(vals[1:D]...)
-            angles = SVector{D,T}(vals[D+1:2*D]...)
-            structure_data[:fixed] = FixedMoleculeData(true, MoleculePosition(cm, angles))
+            vals = [parse(T, v) for v in values]
+            cm = SVector{D,T}(ntuple(i -> vals[i], D))
+            angles = SVector{D,T}(ntuple(i -> vals[D+i], D))
+            fixed = FixedMoleculeData(true, MoleculePosition(cm, angles))
         elseif keyword == "center"
-            structure_data[:center] = :geometric
+            center = :geometric
         elseif keyword == "centerofmass"
-            structure_data[:center] = :mass
+            center = :mass
         elseif keyword == "resnumbers"
-            structure_data[:residue_numbering] = parse(Int, values[1])
+            residue_numbering = parse(Int, values[1])
         elseif keyword == "chain"
-            structure_data[:chain] = only(values[1])
+            chain = only(values[1])
         elseif keyword == "changechains"
-            structure_data[:changechains] = true
+            changechains = true
         elseif keyword == "constrain_rotation"
             axis, center_str, halfwidth_str = values[1], values[2], values[3]
             idx = axis == "x" ? 1 : axis == "y" ? 2 : axis == "z" ? 3 :
                 error("constrain_rotation axis must be x, y, or z, got '$axis'")
             idx > D && error("constrain_rotation axis '$axis' is out of range for D=$D")
-            if !haskey(structure_data, :rotation_bounds)
-                structure_data[:rotation_bounds] = Union{Nothing,Tuple{T,T}}[nothing for _ in 1:D]
-            end
             hw = abs(parse(T, halfwidth_str)) * T(π) / 180
             c = parse(T, center_str) * T(π) / 180
-            structure_data[:rotation_bounds][idx] = (c - hw, c + hw)
+            rotation_bounds[idx] = (c - hw, c + hw)
         elseif keyword == "restart_from"
-            structure_data[:restart_from] = string(values[1])
+            restart_from = joinpath(path, String(values[1]))
         elseif keyword == "restart_to"
-            structure_data[:restart_to] = string(values[1])
+            restart_to = joinpath(path, String(values[1]))
         elseif keyword in constraint_placements
             iconstraint += 1
-            push!(structure_data[:constraints], parse_constraint["$keyword $(values[1])"](structure_data, values[2:end]; T=T))
+            push_parsed_constraint!(constraints, "$keyword $(values[1])", @view(values[2:end]), filename)
             if !atoms_block
-                for iatom in 1:structure_data[:natoms]
-                    push!(structure_data[:atom_constraints][iatom], iconstraint)
+                for iatom in eachindex(atoms)
+                    push!(atom_constraints[iatom], iconstraint)
                 end
             end
         elseif !atoms_block && keyword == "radius"
-            structure_data[:radii] .= parse(T, values[1])
+            radii .= parse(T, values[1])
         end
     end
     # If molecule is fixed, apply transformation to obtain the reference coordinates
-    _apply_fixed_center!(
-        structure_data[:reference_coordinates], structure_data[:atoms],
-        structure_data[:fixed], structure_data[:center],
-    )
-    pop!(structure_data, :center)
+    _apply_fixed_center!(reference_coordinates, atoms, fixed, center)
     #
     # Read custom atom radii and set constraints, according to atom blocks
     #
     atoms_block = false
     iconstraint = 0
+    atoms_in_block = Int[]
     seekstart(input_file_block)
-    local atoms_in_block
     for line in eachline(input_file_block)
-        keyword, values... = split(line)
+        words = split(line)
+        keyword, values = words[1], @view(words[2:end])
         if keyword == "atoms" 
             atoms_block = true
-            atoms_in_block = parse.(Int, values)
+            atoms_in_block = [parse(Int, v) for v in values]
         end
         if keyword == "end" && atoms_block
             atoms_block = false
         end
         if atoms_block && keyword == "radius"
-            radius = parse(T, values[1])
-            structure_data[:radii][atoms_in_block] .= radius
+            radii[atoms_in_block] .= parse(T, values[1])
         end
         if keyword in constraint_placements
             iconstraint += 1
-            if atoms_block 
+            if atoms_block
                 for iatom in atoms_in_block
-                    push!(structure_data[:atom_constraints][iatom], iconstraint)
+                    push!(atom_constraints[iatom], iconstraint)
                 end
             end
         end
     end
-    if get(structure_data, :changechains, false) && !isnothing(get(structure_data, :chain, nothing))
+    if changechains && !isnothing(chain)
         error("'changechains' and 'chain' input parameters are not compatible for a single structure.")
     end
-    return StructureType{D,T}(;structure_data...)
+    return StructureType{D,T}(;
+        filename, natoms=length(atoms), atoms, number_of_molecules, fixed, reference_coordinates, radii,
+        residue_numbering, chain, changechains, rotation_bounds, restart_from, restart_to,
+        constraints, atom_constraints,
+    )
 end

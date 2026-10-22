@@ -2,8 +2,9 @@
 
 !!! warning "Experimental"
     This section documents an in-development, pure-Julia reimplementation of
-    Packmol that lives alongside the stable [`run_packmol`](@ref) wrapper
-    described in the main documentation. The API and behavior described here
+    Packmol, which [`packmol`](@ref) runs, and that lives alongside the stable
+    [`run_packmol_legacy`](@ref) wrapper of the Fortran program described in the
+    main documentation. The API and behavior described here
     can change at any time and are not yet covered by the same stability
     guarantees as the rest of the package.
 

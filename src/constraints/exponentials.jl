@@ -153,38 +153,39 @@ function constraint_gradient(c::RadialExponential, x)
 end
 
 #
-# Input parsing functions: must be appended to the "parse_constraint" dictionary:
+# Input parsing functions: methods of `parse_constraint`, whose keywords must also be
+# listed in `constraint_keywords` (constraint_types.jl):
 #
-parse_constraint["above exponential"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("above exponential")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     up, along, d0, amplitude, center, rate = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8]), parse(T, data[9]), parse(T, data[10])
     catch
-        error("Error parsing 'above exponential' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'above exponential' constraint data for $filename.")
     end
     return Exponential{Over,T}(; up, along, d0, amplitude, center, rate)
 end
-parse_constraint["below exponential"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("below exponential")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     up, along, d0, amplitude, center, rate = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8]), parse(T, data[9]), parse(T, data[10])
     catch
-        error("Error parsing 'below exponential' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'below exponential' constraint data for $filename.")
     end
     return Exponential{Below,T}(; up, along, d0, amplitude, center, rate)
 end
 
-parse_constraint["above radial_exponential"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("above radial_exponential")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     up, center, d0, amplitude, rate = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8]), parse(T, data[9])
     catch
-        error("Error parsing 'above radial_exponential' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'above radial_exponential' constraint data for $filename.")
     end
     return RadialExponential{Over,T}(; up, center, d0, amplitude, rate)
 end
-parse_constraint["below radial_exponential"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("below radial_exponential")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     up, center, d0, amplitude, rate = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8]), parse(T, data[9])
     catch
-        error("Error parsing 'below radial_exponential' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'below radial_exponential' constraint data for $filename.")
     end
     return RadialExponential{Below,T}(; up, center, d0, amplitude, rate)
 end

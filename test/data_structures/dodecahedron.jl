@@ -11,11 +11,11 @@ end
 
 @testitem "parse_pbc_dodecahedral" begin
     using StaticArrays: SVector
-    uc, center = Packmol.parse_pbc_dodecahedral(Float64, ["1.0", "2.0", "3.0", "100.0"], 3)
+    uc, center = Packmol.parse_pbc_dodecahedral(Float64, ["1.0", "2.0", "3.0", "100.0"], Val(3))
     @test uc ≈ Packmol.dodecahedral_unitcell(Float64, 100.0)
     @test center ≈ SVector(1.0, 2.0, 3.0)
-    @test_throws ArgumentError Packmol.parse_pbc_dodecahedral(Float64, ["1.0", "2.0", "3.0", "100.0"], 2)
-    @test_throws ArgumentError Packmol.parse_pbc_dodecahedral(Float64, ["1.0", "2.0", "3.0"], 3)
+    @test_throws ArgumentError Packmol.parse_pbc_dodecahedral(Float64, ["1.0", "2.0", "3.0", "100.0"], Val(2))
+    @test_throws ArgumentError Packmol.parse_pbc_dodecahedral(Float64, ["1.0", "2.0", "3.0"], Val(3))
 end
 
 @testitem "pbc dodecahedral input keyword" begin

@@ -107,7 +107,7 @@ end
 # instead of re-deriving a starting point.
 #
 function _write_restart(filename::AbstractString, positions::AbstractVector{MoleculePosition{D,T}}) where {D,T}
-    open(filename, "w") do io
+    open(filename; write=true) do io
         for mp in positions
             for v in mp.cm
                 @printf(io, " %23.16e", v)
@@ -183,7 +183,7 @@ function _restart_positions_from_atoms(
     for (nmols, natoms, refcoords, extract) in segments
         for _ in 1:nmols
             if extract
-                observed = SVector{D,T}[SVector{D,T}(coor(atoms[iat+j])[1:D]) for j in 1:natoms]
+                observed = SVector{D,T}[_atom_position(atoms[iat+j], Val(D), T) for j in 1:natoms]
                 push!(positions, _align_molecule(refcoords, observed))
             end
             iat += natoms
@@ -209,12 +209,16 @@ _is_pdb_path(path::AbstractString) = lowercase(splitext(path)[2]) == ".pdb"
 # `sum(nmols)` lines are read and only the `extract`-flagged segments'
 # positions are kept.
 #
+# How a restart source is reported in the output.
+_restart_source_name(source::AbstractString) = source
+_restart_source_name(source::Vector{<:Atom}) = "atom vector ($(length(source)) atoms)"
+
 function _restart_positions(source::Vector{<:Atom}, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}},Bool}}, ::Type{MoleculePosition{D,T}}) where {D,T}
     _restart_positions_from_atoms(source, segments)
 end
 function _restart_positions(source::AbstractString, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}},Bool}}, ::Type{MoleculePosition{D,T}}) where {D,T}
     if _is_pdb_path(source)
-        _restart_positions_from_atoms(read_pdb(source), segments)
+        _restart_positions_from_atoms(read_pdb_atoms(source), segments)
     else
         total = sum(nmols for (nmols, _, _, _) in segments)
         all_positions = _read_restart(source, total, MoleculePosition{D,T})
@@ -319,12 +323,16 @@ function get_atoms(packmol_system::PackmolSystem{D,T}) where {D,T}
     atom_positions = Vector{SVector{D,T}}(undef, natoms)
     compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
 
-    if !isnothing(packmol_system.unitcell)
+    unitcell, unitcell_center = packmol_system.unitcell, packmol_system.unitcell_center
+    if !isnothing(unitcell) && !isnothing(unitcell_center)
         # `:dodecahedral`/`:octahedral` share the very same "nearest
         # periodic image" search (see periodic_cells.jl) — only the
         # `unitcell` matrix itself differs between the two box shapes.
-        wrap = packmol_system.periodic_boundary_style === :triclinic ? wrap_to_center : _nearest_periodic_image
-        _wrap_molecules!(atom_positions, packmol_system, packmol_system.unitcell, packmol_system.unitcell_center, wrap)
+        if packmol_system.periodic_boundary_style === :triclinic
+            _wrap_molecules!(atom_positions, packmol_system, unitcell, unitcell_center, wrap_to_center)
+        else
+            _wrap_molecules!(atom_positions, packmol_system, unitcell, unitcell_center, _nearest_periodic_image)
+        end
     end
 
     output_atoms = Atom{Nothing}[]
@@ -428,6 +436,6 @@ function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_sy
 
     cryst1_lines = _cryst1_lines(packmol_system, atom_positions)
     header = join(vcat("HEADER", "REMARK   Packmol.jl generated PDB file", cryst1_lines), "\n")
-    write_pdb(output_file, output_atoms; header)
+    write_pdb_atoms(output_file, output_atoms; header)
     return output_file
 end
