@@ -34,7 +34,6 @@ BenchmarkTools = "1.5"
 CellListMap = "0.10.9"
 ChunkSplitters = "3.2.0"
 Compat = "4"
-Documenter = "1"
 FiniteDifferences = "0.12.30"
 ForwardDiff = "1"
 LinearAlgebra = "1.9"
@@ -61,7 +60,6 @@ submodule = "CLI"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
-Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Packmol_jll = "eb89d173-8f78-57a0-9e6e-c2e8c44a5e61"
@@ -72,4 +70,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [targets]
-test = ["Aqua", "Test", "Random", "StaticArrays", "ForwardDiff", "FiniteDifferences", "TestItemRunner", "ShowMethodTesting", "CellListMap", "BenchmarkTools", "Documenter", "Packmol_jll"]
+test = ["Aqua", "Test", "Random", "StaticArrays", "ForwardDiff", "FiniteDifferences", "TestItemRunner", "ShowMethodTesting", "CellListMap", "BenchmarkTools", "Packmol_jll"]
