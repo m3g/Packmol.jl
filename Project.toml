@@ -8,9 +8,8 @@ CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
 ChunkSplitters = "ae650224-84b6-46f8-82ea-d812ca08434e"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-MolSimToolkitShared = "aea21201-7910-416e-b888-414710bebccb"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-PDBTools = "e29189f1-7114-4dbd-93d0-c5673a921a58"
+PDBToolsBase = "c8914394-62c2-4233-bff1-d1ad7c5159d7"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SPGBox = "bf97046b-3e66-4aa0-9aed-26efb7fac769"
@@ -22,6 +21,9 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [weakdeps]
 Packmol_jll = "eb89d173-8f78-57a0-9e6e-c2e8c44a5e61"
+
+[sources]
+PDBToolsBase = {rev = "main", url = "https://github.com/m3g/PDBToolsBase.jl"}
 
 [extensions]
 PackmolJLLExt = "Packmol_jll"
@@ -36,9 +38,8 @@ Documenter = "1"
 FiniteDifferences = "0.12.30"
 ForwardDiff = "1"
 LinearAlgebra = "1.9"
-MolSimToolkitShared = "1.6"
 OrderedCollections = "1.8.0"
-PDBTools = "3.33.2"
+PDBToolsBase = "1"
 Packmol_jll = "21.0.1"
 Printf = "1.9"
 Random = "1.9"

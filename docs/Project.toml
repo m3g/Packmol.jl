@@ -2,9 +2,12 @@
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
 Packmol = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
+PDBToolsBase = "c8914394-62c2-4233-bff1-d1ad7c5159d7"
 
 # Pinned to a fork branch for the `top_menu` HTML option (multi-section docs
 # with a top navigation bar), used to split "Stable" and "Experimental" docs.
 # Switch back to the registered Documenter once that feature is upstreamed.
 [sources]
 Documenter = {url = "https://github.com/lmiq/Documenter.jl", rev = "top_menu_from_pages"}
+# Until PDBToolsBase is registered (https://github.com/JuliaRegistries/General/pull/173108)
+PDBToolsBase = {url = "https://github.com/m3g/PDBToolsBase.jl", rev = "main"}

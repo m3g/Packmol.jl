@@ -8,7 +8,7 @@
 #
 
 @testitem "example: mixture (water + urea)" begin
-    using PDBTools: read_pdb
+    using PDBToolsBase: read_pdb
 
     input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "mixture.inp")
     sys = Packmol.read_packmol_input(input_file)
@@ -25,7 +25,7 @@
 end
 
 @testitem "example: spherical (double-layered vesicle)" begin
-    using PDBTools: read_pdb
+    using PDBToolsBase: read_pdb
 
     input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "spherical.inp")
     sys = Packmol.read_packmol_input(input_file)
@@ -42,7 +42,7 @@ end
 end
 
 @testitem "example: solvprotein (protein + water + ions)" begin
-    using PDBTools: read_pdb
+    using PDBToolsBase: read_pdb
 
     input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "solvprotein.inp")
     sys = Packmol.read_packmol_input(input_file)
@@ -59,7 +59,7 @@ end
 end
 
 @testitem "example: bilayer (lipid double layer)" begin
-    using PDBTools: read_pdb
+    using PDBToolsBase: read_pdb
 
     input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "bilayer.inp")
     sys = Packmol.read_packmol_input(input_file)
