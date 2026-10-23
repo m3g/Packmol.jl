@@ -116,7 +116,7 @@ packmol(sys2)
 ```
 
 The Julia API additionally accepts `restart_from` as an already-loaded
-`Vector{<:Atom}` (from `PDBTools.read_pdb`, or built up any other way)
+`Vector{<:Atom}` (from `PDBTools.read_pdb` (PDBTools ≥ 4), or built up any other way)
 instead of a file path, skipping the file entirely:
 
 ```julia

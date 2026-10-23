@@ -226,7 +226,7 @@ end
 
 @testitem "Membrane packmol (bilayer)" begin
     using Packmol
-    using PDBTools
+    using PDBToolsBase: read_pdb, positions
     using Unitful
 
     lipid = joinpath(Packmol.src_dir, "..", "test", "structure_files", "palmitoil.pdb")
@@ -263,7 +263,7 @@ end
 
 @testitem "Membrane packmol (monolayer)" begin
     using Packmol
-    using PDBTools
+    using PDBToolsBase: read_pdb, positions
     using Unitful
 
     lipid = joinpath(Packmol.src_dir, "..", "test", "structure_files", "palmitoil.pdb")

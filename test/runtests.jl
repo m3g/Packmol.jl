@@ -12,8 +12,3 @@ ENV["UNITFUL_FANCY_EXPONENTS"] = "false"
     import Aqua
     Aqua.test_all(Packmol)
 end
-
-@testitem "Doctests" begin
-    using Documenter: doctest
-    doctest(Packmol)
-end

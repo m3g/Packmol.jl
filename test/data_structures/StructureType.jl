@@ -43,7 +43,7 @@ The type `T` defines the number type (Float32, Float64, etc.) and `D` the number
 
 @testitem "read_structure_data" setup=[RigidBody] begin
     using Packmol
-    using PDBTools
+    using PDBToolsBase: read_pdb, positions
 
     file = Packmol.src_dir*"/../test/structure_files/water.pdb"
     tolerance = 2.0
@@ -111,7 +111,8 @@ The type `T` defines the number type (Float32, Float64, etc.) and `D` the number
 end
 
 @testitem "fixed molecules" setup=[RigidBody] begin
-    using Packmol, PDBTools
+    using Packmol
+    using PDBToolsBase: positions
     file = Packmol.src_dir*"/../test/structure_files/diatomic.pdb"
     tolerance = 2.0
 
@@ -124,7 +125,7 @@ end
     """
     s = Packmol.read_structure_data(input_file_block, tolerance)
     @test s.fixed.fixed == true
-    @test coor(s.atoms) ≈ s.reference_coordinates
+    @test positions(s.atoms) ≈ s.reference_coordinates
 
     # Fixed molecule without rotation: center of mass at origin
     input_file_block = """

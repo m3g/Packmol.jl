@@ -209,11 +209,16 @@ _is_pdb_path(path::AbstractString) = lowercase(splitext(path)[2]) == ".pdb"
 # `sum(nmols)` lines are read and only the `extract`-flagged segments'
 # positions are kept.
 #
+# A restart source given as atoms (e.g. the `Structure` returned by `read_pdb`) is
+# stored as a `Vector{Atom{Nothing}}`.
+_restart_source(source) = source
+_restart_source(source::AbstractVector{<:Atom}) = Vector{Atom{Nothing}}(source)
+
 # How a restart source is reported in the output.
 _restart_source_name(source::AbstractString) = source
-_restart_source_name(source::Vector{<:Atom}) = "atom vector ($(length(source)) atoms)"
+_restart_source_name(source::AbstractVector{<:Atom}) = "atom vector ($(length(source)) atoms)"
 
-function _restart_positions(source::Vector{<:Atom}, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}},Bool}}, ::Type{MoleculePosition{D,T}}) where {D,T}
+function _restart_positions(source::AbstractVector{<:Atom}, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}},Bool}}, ::Type{MoleculePosition{D,T}}) where {D,T}
     _restart_positions_from_atoms(source, segments)
 end
 function _restart_positions(source::AbstractString, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}},Bool}}, ::Type{MoleculePosition{D,T}}) where {D,T}
@@ -302,7 +307,7 @@ end
     get_atoms(packmol_system::PackmolSystem)
 
 Compute the packed system's current atomic coordinates and return them as a
-`Vector{PDBTools.Atom}` — generated fresh from `packmol_system.molecule_positions`
+`Vector{PDBToolsBase.Atom}` — generated fresh from `packmol_system.molecule_positions`
 each call (never cached on `packmol_system` itself), the same way `write_output`
 computes what it writes to file. Residue numbering follows each structure
 type's `residue_numbering` (`resnumbers`) setting, and chain identifiers

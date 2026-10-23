@@ -71,13 +71,15 @@ ext/
 
 - `CellListMap.jl`: Efficient pairwise distance computation with cell lists
 - `SPGBox.jl`: Spectral projected gradient optimizer (replaces GENCAN from Fortran)
-- `PDBTools.jl`: PDB and mmCIF (which will be a new feature) file reading/writing
+- `PDBToolsBase.jl`: the core data structures of PDBTools.jl (`Atom`, ...), PDB and mmCIF
+  reading/writing, and the shared function names of the M3G package ecosystem
+  (`get_atoms`, ...). It is compatible with `juliac --trim`, and its types are the ones
+  of PDBTools.jl (≥ 4), which re-exports them. Packmol `import`s and extends `get_atoms`
+  from it rather than defining its own, so the other packages of the ecosystem
+  (MolSimToolkit.jl, ComplexMixtures.jl, ...) can call `get_atoms` on a `PackmolSystem`
+  too, and vice versa
 - `StaticArrays.jl`: Fixed-size vectors/matrices for performance
 - `Unitful.jl`: Physical unit handling (in Recipes)
-- `MolSimToolkitShared.jl`: shared function-name stubs across the M3G package ecosystem
-  (MolSimToolkit.jl, ComplexMixtures.jl, ...) — Packmol `import`s and extends `get_atoms`
-  from it rather than defining its own, so packages that already `using MolSimToolkitShared`
-  can call `get_atoms` on a `PackmolSystem` too, and vice versa
 
 ## Running Tests
 
@@ -210,7 +212,7 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 - [x] `get_atoms(::PackmolSystem)` - packed atomic coordinates as `Vector{Atom}`, generated
       fresh from `molecule_positions` on every call (never cached on the system); `write_output`
       is now a thin wrapper around it. `get_atoms` itself is `import`ed (not defined) from
-      `MolSimToolkitShared.jl` (a shared dependency across the M3G package ecosystem — see its
+      `PDBToolsBase.jl` (a shared dependency across the M3G package ecosystem — see its
       own `function get_atoms end` stub) and extended here with a `PackmolSystem` method,
       rather than declared as an unrelated function of the same name; also `export`ed from
       Packmol for direct use after `using Packmol`. Under PBC, wraps each molecule rigidly by
@@ -340,7 +342,7 @@ reachable from it to be resolved at compile time. In the engine code:
   to `stdout`/`stderr` (non-constant globals of abstract type `IO`, and not even initialized
   in a trimmed executable: the CLI sets `_use_core_streams[] = true`); progress with `ProgressBar`;
 - use `@_sync` (`src/threads.jl`) instead of `@sync`, and no `deepcopy`;
-- read/write PDB files with `read_pdb_atoms`/`write_pdb_atoms` (`src/io/pdb.jl`), not PDBTools;
+- read/write PDB files with `read_pdb_atoms`/`write_pdb_atoms` (`src/io/pdb.jl`), not PDBToolsBase;
 - call functions on constraints taken from a `Vector{AnyConstraint{T}}` through
   `_constraint_dispatch(f, c, args...)` (the union is too large for automatic union splitting);
 - don't capture in closures (incl. `do` blocks, generators, `@spawn`) variables that are

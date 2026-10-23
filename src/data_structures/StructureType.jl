@@ -81,7 +81,7 @@ function _apply_fixed_center!(
 ) where {D,T}
     if fixed.fixed
         if center == :mass
-            # centerofmass: use mass-weighted center of mass from PDBTools
+            # centerofmass: use mass-weighted center of mass from PDBToolsBase
             com = center_of_mass(atoms)
             cm_vec = SVector{D,T}(ntuple(i -> com[i], D))
             reference_coordinates .-= Ref(cm_vec)
@@ -141,7 +141,7 @@ function structure_type(filename::String;
     # e.g. `constrain_rotation=Dict(:x => (45, 10))` bounds the x-axis
     # rotation angle to 45° ± 10°; see `StructureType.rotation_bounds`.
     constrain_rotation::AbstractDict{Symbol} = Dict{Symbol,Tuple{Float64,Float64}}(),
-    restart_from::Union{Nothing,String,Vector{<:Atom}} = nothing,
+    restart_from::Union{Nothing,String,AbstractVector{<:Atom}} = nothing,
     restart_to::Union{Nothing,String} = nothing,
     D::Int = 3,
     T::DataType = Float64,
@@ -175,7 +175,7 @@ function structure_type(filename::String;
     end
 
     return StructureType{D,T}(;
-        filename, natoms, atoms, number_of_molecules=number, rotation_bounds, restart_from, restart_to,
+        filename, natoms, atoms, number_of_molecules=number, rotation_bounds, restart_from=_restart_source(restart_from), restart_to,
         fixed=fixed_data, reference_coordinates, radii,
         residue_numbering, chain, changechains, constraints, atom_constraints,
     )

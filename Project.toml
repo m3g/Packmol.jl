@@ -8,9 +8,8 @@ CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
 ChunkSplitters = "ae650224-84b6-46f8-82ea-d812ca08434e"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-MolSimToolkitShared = "aea21201-7910-416e-b888-414710bebccb"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-PDBTools = "e29189f1-7114-4dbd-93d0-c5673a921a58"
+PDBToolsBase = "c8914394-62c2-4233-bff1-d1ad7c5159d7"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SPGBox = "bf97046b-3e66-4aa0-9aed-26efb7fac769"
@@ -23,6 +22,9 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [weakdeps]
 Packmol_jll = "eb89d173-8f78-57a0-9e6e-c2e8c44a5e61"
 
+[sources]
+PDBToolsBase = {rev = "main", url = "https://github.com/m3g/PDBToolsBase.jl"}
+
 [extensions]
 PackmolJLLExt = "Packmol_jll"
 
@@ -32,13 +34,11 @@ BenchmarkTools = "1.5"
 CellListMap = "0.10.9"
 ChunkSplitters = "3.2.0"
 Compat = "4"
-Documenter = "1"
 FiniteDifferences = "0.12.30"
 ForwardDiff = "1"
 LinearAlgebra = "1.9"
-MolSimToolkitShared = "1.6"
 OrderedCollections = "1.8.0"
-PDBTools = "3.33.2"
+PDBToolsBase = "1"
 Packmol_jll = "21.0.1"
 Printf = "1.9"
 Random = "1.9"
@@ -60,7 +60,6 @@ submodule = "CLI"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
-Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Packmol_jll = "eb89d173-8f78-57a0-9e6e-c2e8c44a5e61"
@@ -71,4 +70,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [targets]
-test = ["Aqua", "Test", "Random", "StaticArrays", "ForwardDiff", "FiniteDifferences", "TestItemRunner", "ShowMethodTesting", "CellListMap", "BenchmarkTools", "Documenter", "Packmol_jll"]
+test = ["Aqua", "Test", "Random", "StaticArrays", "ForwardDiff", "FiniteDifferences", "TestItemRunner", "ShowMethodTesting", "CellListMap", "BenchmarkTools", "Packmol_jll"]
