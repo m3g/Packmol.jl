@@ -119,26 +119,29 @@ a density table).
 Molar masses are computed from the atom types in the PDB files if not provided.
 
 """
+_mandatory_keywords(::Type{Membrane}) = (:lipids, :lipid_head, :lipid_tail, :lipid_molar_ratio, :area_per_lipid, :solvent, :solvent_layer_width, :solvent_density)
+
 function Membrane(;
     type::Symbol=:bilayer,
-    lipids::Union{String,Vector{String}},
-    lipid_head::Vector{<:Integer},
-    lipid_tail::Vector{<:Integer},
-    lipid_molar_ratio::Vector{<:Real},
+    lipids::Union{String,Vector{String}} = _missing_keyword(Membrane, :lipids),
+    lipid_head::Vector{<:Integer} = _missing_keyword(Membrane, :lipid_head),
+    lipid_tail::Vector{<:Integer} = _missing_keyword(Membrane, :lipid_tail),
+    lipid_molar_ratio::Vector{<:Real} = _missing_keyword(Membrane, :lipid_molar_ratio),
     lipid_molar_mass::Union{Nothing,Vector{<:Number}}=nothing,
-    area_per_lipid::Number,
+    area_per_lipid::Number = _missing_keyword(Membrane, :area_per_lipid),
     total_area::Union{Nothing,Number}=nothing,
     total_lipids::Union{Nothing,Integer}=nothing,
     flexibility::Real=0.25,
-    solvent::Union{String,Vector{String}},
+    solvent::Union{String,Vector{String}} = _missing_keyword(Membrane, :solvent),
     solvent_molar_ratio::Union{Nothing,Vector{<:Real}}=nothing,
     solvent_molar_mass::Union{Nothing,Vector{<:Number}}=nothing,
-    solvent_layer_width::Number,
-    solvent_density::Number,
+    solvent_layer_width::Number = _missing_keyword(Membrane, :solvent_layer_width),
+    solvent_density::Number = _missing_keyword(Membrane, :solvent_density),
 )
     type in (:bilayer, :monolayer) || throw(ArgumentError("type must be :bilayer or :monolayer, got :$type"))
 
     lipids isa String && (lipids = [lipids])
+    lipids = expanduser.(lipids)
     nlip = length(lipids)
     (length(lipid_head) == nlip && length(lipid_tail) == nlip && length(lipid_molar_ratio) == nlip) ||
         throw(ArgumentError("lipids, lipid_head, lipid_tail, and lipid_molar_ratio must all have the same length."))
@@ -179,6 +182,7 @@ function Membrane(;
     !isnothing(total_area) && (total_area = _ensure_unit(total_area, u"Å^2"))
 
     solvent isa String && (solvent = [solvent])
+    solvent = expanduser.(solvent)
     nsolv = length(solvent)
     solvent_molar_ratio = isnothing(solvent_molar_ratio) ? fill(1.0, nsolv) : solvent_molar_ratio
     length(solvent_molar_ratio) == nsolv ||
@@ -354,6 +358,7 @@ function write_packmol_input(
     # testing option
     debug=false,
 )
+    input, output = expanduser(input), expanduser(output)
     (; lipid_placements, solvent_placements, unitcell, summary) = _setup(system)
     println(summary)
 

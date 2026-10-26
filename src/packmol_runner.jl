@@ -22,6 +22,7 @@ function run_packmol end
 
 @doc (@doc run_packmol)
 function run_packmol(input_file::String)
+    input_file = expanduser(input_file)
     isfile(input_file) || error("Input file not found: $input_file")
     current_dir = pwd()
     println("Current directory: $current_dir")

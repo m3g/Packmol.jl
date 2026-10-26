@@ -281,7 +281,7 @@ end
 #! format: off
 packmol_input_keywords = Dict{String,Function}(
     "filetype"                 => (T, val) -> (:filetype, _parse_value(String, "filetype", val)),
-    "output"                   => (T, val) -> (:output_file, _parse_value(String, "output", val)),
+    "output"                   => (T, val) -> (:output_file, expanduser(_parse_value(String, "output", val))),
     "tolerance"                => (T, val) -> (:tolerance, _parse_value(T, "tolerance", val)),
     "radscale"                 => (T, val) -> (:radscale, _parse_value(T, "radscale", val)),
     "discale"                  => (T, val) -> begin
@@ -305,8 +305,8 @@ packmol_input_keywords = Dict{String,Function}(
     "writebad"                 => (T, val) -> (:writebad, true),
     "optimization_print_level" => (T, val) -> (:optimization_print_level, _parse_value(Int, "optim_print_level", val)),
     "chkgrad"                  => (T, val) -> (:chkgrad, true),
-    "restart_from"             => (T, val) -> (:restart_from, _parse_value(String, "restart_from", val)),
-    "restart_to"               => (T, val) -> (:restart_to, _parse_value(String, "restart_to", val)),
+    "restart_from"             => (T, val) -> (:restart_from, expanduser(_parse_value(String, "restart_from", val))),
+    "restart_to"               => (T, val) -> (:restart_to, expanduser(_parse_value(String, "restart_to", val))),
 )
 #! format: on
 
@@ -367,6 +367,7 @@ Reads the packmol input file to create a `PackmolSystem` object.
 
 =#
 function read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64)
+    input_file = expanduser(input_file)
     input_data = Dict{Symbol,Any}(
         :input_file => input_file,
         :structure_types => StructureType{D,T}[],

@@ -77,8 +77,10 @@ provided (as a `concentration_units => density` matrix, with `density_table_unit
 accordingly) if custom ions are used and an accurate solution density is required.
 
 """
+_mandatory_keywords(::Type{SolutionBoxUWI}) = (:solute_pdbfile,)
+
 function SolutionBoxUWI(;
-    solute_pdbfile::String,
+    solute_pdbfile::String = _missing_keyword(SolutionBoxUWI, :solute_pdbfile),
     solute_charge::Union{Nothing,Integer}=nothing,
     water_pdbfile::Union{Nothing,String}=nothing,
     cation_pdbfile::Union{Nothing,String}=nothing,
@@ -93,6 +95,10 @@ function SolutionBoxUWI(;
     density_table_units::String="mol/kg",
 )
     custom_ions = !isnothing(cation_pdbfile) || !isnothing(anion_pdbfile)
+    solute_pdbfile = expanduser(solute_pdbfile)
+    !isnothing(water_pdbfile) && (water_pdbfile = expanduser(water_pdbfile))
+    !isnothing(cation_pdbfile) && (cation_pdbfile = expanduser(cation_pdbfile))
+    !isnothing(anion_pdbfile) && (anion_pdbfile = expanduser(anion_pdbfile))
     scratch_dir = tempname()
     mkdir(scratch_dir)
 
@@ -397,6 +403,7 @@ function write_packmol_input(
     # testing option
     debug=false,
 )
+    input, output = expanduser(input), expanduser(output)
     (; solute_pdbfile, water_pdbfile, cation_pdbfile, anion_pdbfile) = system
     (; nwater, ncation, nanion, unitcell, summary) = _setup(system, ionic_concentration, box_sides, margin, pbc)
     println(summary)
