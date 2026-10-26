@@ -103,6 +103,9 @@ function _apply_fixed_center!(
     return reference_coordinates
 end
 
+# The position of an atom, as an `SVector{D,T}`
+_atom_position(atom::Atom, ::Val{D}, ::Type{T}) where {D,T} = SVector{D,T}(ntuple(i -> (atom.x, atom.y, atom.z)[i], D))
+
 """
     structure_type(filename; number, constraints=Constraint[], tolerance=2.0, radius=nothing,
                     fixed=nothing, center=:none, residue_numbering=-1, D=3, T=Float64)
@@ -148,7 +151,7 @@ function structure_type(filename::String;
 )
     changechains && !isnothing(chain) &&
         error("'changechains' and 'chain' are not compatible for a single structure.")
-    atoms = read_pdb_atoms(filename)
+    atoms = Vector{Atom{Nothing}}(read_pdb(filename))
     natoms = length(atoms)
     reference_coordinates = [_atom_position(at, Val(D), T) for at in atoms]
     radii = fill(T(something(radius, tolerance / 2)), natoms)
@@ -218,7 +221,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
         end
         if keyword == "structure"
             filename = joinpath(path, expanduser(String(values[1])))
-            atoms = read_pdb_atoms(filename)
+            atoms = Vector{Atom{Nothing}}(read_pdb(filename))
             reference_coordinates = [_atom_position(at, Val(D), T) for at in atoms]
             radii = fill(T(tolerance / 2), length(atoms))
             atom_constraints = [Int[] for _ in eachindex(atoms)]

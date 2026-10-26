@@ -223,7 +223,7 @@ function _restart_positions(source::AbstractVector{<:Atom}, segments::Vector{Tup
 end
 function _restart_positions(source::AbstractString, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}},Bool}}, ::Type{MoleculePosition{D,T}}) where {D,T}
     if _is_pdb_path(source)
-        _restart_positions_from_atoms(read_pdb_atoms(source), segments)
+        _restart_positions_from_atoms(Vector{Atom{Nothing}}(read_pdb(source)), segments)
     else
         total = sum(nmols for (nmols, _, _, _) in segments)
         all_positions = _read_restart(source, total, MoleculePosition{D,T})
@@ -441,6 +441,6 @@ function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_sy
 
     cryst1_lines = _cryst1_lines(packmol_system, atom_positions)
     header = join(vcat("HEADER", "REMARK   Packmol.jl generated PDB file", cryst1_lines), "\n")
-    write_pdb_atoms(output_file, output_atoms; header)
+    write_pdb(output_file, output_atoms; header)
     return output_file
 end

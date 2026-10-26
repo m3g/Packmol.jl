@@ -49,6 +49,8 @@ function set_unitcell(system, box_sides, margin, pbc::Symbol)
     return unitcell, solute_extrema
 end
 
+_mandatory_keywords(::Type{SolutionBoxUS}) = (:solute_pdbfile, :solvent_pdbfile, :density)
+
 """
     SolutionBoxUS(; 
         solute_pdbfile::String, 
@@ -65,8 +67,6 @@ The mass or molar density can be provided. If unitless specified, the density wi
 If the molar masses are not provided, they will be computed from the atom types in the PDB file.
 
 """
-_mandatory_keywords(::Type{SolutionBoxUS}) = (:solute_pdbfile, :solvent_pdbfile, :density)
-
 function SolutionBoxUS(;
         solute_pdbfile::String = _missing_keyword(SolutionBoxUS, :solute_pdbfile), 
         solvent_pdbfile::String = _missing_keyword(SolutionBoxUS, :solvent_pdbfile),

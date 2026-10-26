@@ -7,7 +7,7 @@ using Statistics: mean
 using Base: @kwdef
 using Base.Threads: @spawn
 using ChunkSplitters: chunks, index_chunks
-using PDBToolsBase: Atom, center_of_mass
+using PDBToolsBase: Atom, center_of_mass, read_pdb, write_pdb
 using SPGBox
 using Printf: @printf, @sprintf
 import CellListMap
@@ -70,7 +70,6 @@ include("./initial_approximation/initial_approximation.jl")
 
 # Input and output
 include("./io/pick_file.jl")
-include("./io/pdb.jl")
 include("./io/write_output.jl")
 
 # Packing functions

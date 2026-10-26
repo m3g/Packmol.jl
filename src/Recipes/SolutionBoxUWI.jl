@@ -48,6 +48,8 @@ mutable struct SolutionBoxUWI <: Recipe
     density_table::DensityTable
 end
 
+_mandatory_keywords(::Type{SolutionBoxUWI}) = (:solute_pdbfile,)
+
 """
     SolutionBoxUWI(;
         solute_pdbfile::String,
@@ -77,8 +79,6 @@ provided (as a `concentration_units => density` matrix, with `density_table_unit
 accordingly) if custom ions are used and an accurate solution density is required.
 
 """
-_mandatory_keywords(::Type{SolutionBoxUWI}) = (:solute_pdbfile,)
-
 function SolutionBoxUWI(;
     solute_pdbfile::String = _missing_keyword(SolutionBoxUWI, :solute_pdbfile),
     solute_charge::Union{Nothing,Integer}=nothing,

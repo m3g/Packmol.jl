@@ -37,7 +37,6 @@ src/
     terminal.jl                       # Trim-safe stdout/stderr printing (`_print`, `_println`, `@_printf`)
     progress_bar.jl                   # Minimal progress bar (replaces ProgressMeter.jl)
     pick_file.jl                      # File dialog via OS tools (osascript/PowerShell/zenity/kdialog), run with libc `popen`
-    pdb.jl                            # Type-stable PDB reading/writing (adapted from PDBTools.jl)
     write_output.jl                   # Output writing
   random.jl                           # Random number generation
   interatomic_distance_fg.jl          # Distance function & gradient computation
@@ -342,7 +341,7 @@ reachable from it to be resolved at compile time. In the engine code:
   to `stdout`/`stderr` (non-constant globals of abstract type `IO`, and not even initialized
   in a trimmed executable: the CLI sets `_use_core_streams[] = true`); progress with `ProgressBar`;
 - use `@_sync` (`src/threads.jl`) instead of `@sync`, and no `deepcopy`;
-- read/write PDB files with `read_pdb_atoms`/`write_pdb_atoms` (`src/io/pdb.jl`), not PDBToolsBase;
+- read/write PDB files with PDBToolsBase's `read_pdb`/`write_pdb` (trim-compatible);
 - call functions on constraints taken from a `Vector{AnyConstraint{T}}` through
   `_constraint_dispatch(f, c, args...)` (the union is too large for automatic union splitting);
 - don't capture in closures (incl. `do` blocks, generators, `@spawn`) variables that are
