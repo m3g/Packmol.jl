@@ -4,6 +4,7 @@ import Packmol
 import Packmol_jll
 
 function Packmol.run_packmol_legacy(input_file::String)
+    input_file = expanduser(input_file)
     isfile(input_file) || error("Input file not found: $input_file")
     current_dir = pwd()
     println("Current directory: $current_dir")

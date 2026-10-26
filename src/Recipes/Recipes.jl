@@ -21,6 +21,48 @@ const RecipesDirectory = @__DIR__
 abstract type Recipe end
 
 #
+# Recipes are constructed with keyword arguments only. The two most common
+# misuses — a positional call (e.g. `SolutionBoxUWI("protein.pdb")`) and a
+# missing mandatory keyword — would otherwise surface as a bare MethodError or
+# UndefKeywordError; these turn them into an error listing the recipe's
+# keywords. Each recipe declares its mandatory keywords via
+# `_mandatory_keywords`, and uses `_missing_keyword` as their default value
+# (evaluated only when the keyword is not given).
+#
+function _keywords(::Type{R}) where {R<:Recipe}
+    mandatory = _mandatory_keywords(R)
+    kw_constructor = only(m for m in methods(R) if m.nargs == 1)
+    optional = filter(∉(mandatory), Base.kwarg_decl(kw_constructor))
+    return join(mandatory, ", "), join(optional, ", ")
+end
+
+function _missing_keyword(::Type{R}, kw::Symbol) where {R<:Recipe}
+    mandatory, optional = _keywords(R)
+    throw(ArgumentError("""\n
+        Keyword argument `$kw` is mandatory for $(nameof(R)).
+
+        Mandatory keyword arguments: $mandatory
+        Optional keyword arguments: $optional
+        See `?$(nameof(R))` for details.
+
+    """))
+end
+
+function (::Type{R})(args...; kwargs...) where {R<:Recipe}
+    mandatory, optional = _keywords(R)
+    value = first(args) isa AbstractString ? repr(first(args)) : "..."
+    throw(ArgumentError("""\n
+        $(nameof(R)) takes keyword arguments only, but was called with $(length(args)) positional argument(s).
+        For example: $(nameof(R))(; $(first(_mandatory_keywords(R)))=$value, ...)
+
+        Mandatory keyword arguments: $mandatory
+        Optional keyword arguments: $optional
+        See `?$(nameof(R))` for details.
+
+    """))
+end
+
+#
 # Shared machinery for the `packmol(system::Recipe; ...)` methods (one per
 # concrete recipe type, defined alongside each type's `write_packmol_input`
 # method): both build a `PackmolSystem` directly in memory — reusing the same
