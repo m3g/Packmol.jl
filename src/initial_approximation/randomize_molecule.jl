@@ -78,6 +78,25 @@ function randomize_molecule!(
     tol::T = packmol_system.tolerance,
     max_guess_try::Int = 20,
 ) where {D,T}
+    return _randomize_molecule!(packmol_system, imol, st, RNG, cm_lo, cm_hi, fixed_sys, fixed_lo, fixed_hi, tol, max_guess_try)
+end
+
+# Positional version of `randomize_molecule!`: a keyword call whose arguments are not
+# all of concrete types (e.g. `fixed_sys::Union{Nothing,ParticleSystem2}`) cannot be
+# resolved at compile time, as `juliac --trim` requires.
+function _randomize_molecule!(
+    packmol_system::PackmolSystem{D,T},
+    imol::Int,
+    st::StructureType{D,T},
+    RNG,
+    cm_lo::Union{Nothing,SVector{D,T}},
+    cm_hi::Union{Nothing,SVector{D,T}},
+    fixed_sys,
+    fixed_lo::SVector{D,T},
+    fixed_hi::SVector{D,T},
+    tol::T,
+    max_guess_try::Int=20,
+) where {D,T}
     mol_positions = isnothing(fixed_sys) ? SVector{D,T}[] : Vector{SVector{D,T}}(undef, st.natoms)
     mp = MoleculePosition(zero(SVector{D,T}), zero(SVector{D,T}))
     for _ in 1:max_guess_try

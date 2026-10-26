@@ -14,7 +14,7 @@ function satisfies_constraints(
         mol_positions[j] = x
         for ic in st.atom_constraints[j]
             c = st.constraints[ic]
-            if constraint_penalty(c, x) > zero(T)
+            if _constraint_dispatch(constraint_penalty, c, x) > zero(T)
                 return false
             end
         end

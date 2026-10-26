@@ -94,11 +94,11 @@ using Packmol
 packmol("box.inp")
 ```
 
-or with the legacy Fortran binary, wrapped by [`run_packmol`](@ref):
+or with the legacy Fortran binary, wrapped by [`run_packmol_legacy`](@ref):
 
 ```julia
-using Packmol
-run_packmol("box.inp")
+using Packmol, Packmol_jll
+run_packmol_legacy("box.inp")
 ```
 
 ## Solute-Solvent system

@@ -42,17 +42,16 @@ end
 end
 
 @testitem "Gaussian input file parsing" begin
-    structure_data = Dict{Symbol,Any}(:filename => "dummy.pdb")
     data = split("0. 0. 1.  1. 0. 0.  5.0 2.0 0.0 1.0")
-    @test Packmol.parse_constraint["above gaussian"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("above gaussian")), data, Float64, "dummy.pdb") ==
           AboveGaussian([0, 0, 1], [1, 0, 0], 5.0, 2.0, 0.0, 1.0)
-    @test Packmol.parse_constraint["below gaussian"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("below gaussian")), data, Float64, "dummy.pdb") ==
           BelowGaussian([0, 0, 1], [1, 0, 0], 5.0, 2.0, 0.0, 1.0)
 
     data = split("0. 0. 1.  0. 0. 0.  5.0 2.0 1.0")
-    @test Packmol.parse_constraint["above radial_gaussian"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("above radial_gaussian")), data, Float64, "dummy.pdb") ==
           AboveRadialGaussian([0, 0, 1], [0, 0, 0], 5.0, 2.0, 1.0)
-    @test Packmol.parse_constraint["below radial_gaussian"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("below radial_gaussian")), data, Float64, "dummy.pdb") ==
           BelowRadialGaussian([0, 0, 1], [0, 0, 0], 5.0, 2.0, 1.0)
 end
 

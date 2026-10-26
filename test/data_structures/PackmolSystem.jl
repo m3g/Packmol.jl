@@ -32,9 +32,9 @@ end
 
 @testitem "_parse_options" begin
     using Packmol: _parse_options
-    @test _parse_options(String, "connect", "yes", ("yes" => true, "no" => false)) == true
-    @test _parse_options(String, "connect", "no", ("yes" => true, "no" => false)) == false
-    @test_throws ArgumentError _parse_options(String, "connect", "nop", ("yes" => true, "no" => false))
+    @test _parse_options("connect", "yes", ("yes" => true, "no" => false)) == true
+    @test _parse_options("connect", "no", ("yes" => true, "no" => false)) == false
+    @test_throws ArgumentError _parse_options("connect", "nop", ("yes" => true, "no" => false))
 end
 
 @testitem "read_packmol_input" begin
@@ -42,7 +42,7 @@ end
     file = Packmol.src_dir * "/../test/input_files/water_box.inp"
     sys = read_packmol_input(file)
     @test sys.filetype == "pdb"
-    @test sys.output_file == "water_box.pdb"
+    @test sys.output_file == joinpath(dirname(file), "water_box.pdb")
     @test sys.nmols == 1000
     @test length(sys.atoms) == 3000
     @test all(at.molecule_index == 1 for at in sys.atoms[1:3])
@@ -76,7 +76,7 @@ end
 
         discale_file = joinpath(tmp, "discale.inp")
         write(discale_file, original * "\ndiscale 1.3\n")
-        sys = @test_logs (:warn, r"discale") read_packmol_input(discale_file)
+        sys = @test_warn r"discale" read_packmol_input(discale_file)
         @test sys.radscale == 1.3
     end
 end

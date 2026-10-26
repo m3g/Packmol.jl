@@ -40,17 +40,16 @@ end
 end
 
 @testitem "Exponential input file parsing" begin
-    structure_data = Dict{Symbol,Any}(:filename => "dummy.pdb")
     data = split("0. 0. 1.  1. 0. 0.  5.0 2.0 0.0 0.5")
-    @test Packmol.parse_constraint["above exponential"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("above exponential")), data, Float64, "dummy.pdb") ==
           AboveExponential([0, 0, 1], [1, 0, 0], 5.0, 2.0, 0.0, 0.5)
-    @test Packmol.parse_constraint["below exponential"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("below exponential")), data, Float64, "dummy.pdb") ==
           BelowExponential([0, 0, 1], [1, 0, 0], 5.0, 2.0, 0.0, 0.5)
 
     data = split("0. 0. 1.  0. 0. 0.  5.0 2.0 0.5")
-    @test Packmol.parse_constraint["above radial_exponential"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("above radial_exponential")), data, Float64, "dummy.pdb") ==
           AboveRadialExponential([0, 0, 1], [0, 0, 0], 5.0, 2.0, 0.5)
-    @test Packmol.parse_constraint["below radial_exponential"](structure_data, data) ==
+    @test Packmol.parse_constraint(Val(Symbol("below radial_exponential")), data, Float64, "dummy.pdb") ==
           BelowRadialExponential([0, 0, 1], [0, 0, 0], 5.0, 2.0, 0.5)
 end
 

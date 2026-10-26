@@ -299,3 +299,20 @@ end
     lo = minimum(v -> v[1], x[1:natp]); hi = maximum(v -> v[1], x[1:natp])
     @test Packmol._nonperiodic_unitcell(sys, x)[1] ≈ 1.2 * (hi - lo + 2 * 2.0)
 end
+
+@testitem "packmol(input_file): paths relative to the input file" begin
+    using Packmol
+    # Run from another directory and check where the output lands.
+    input_dir = mktempdir()
+    for file in ("water_box_small.inp", "water.pdb")
+        cp(joinpath(Packmol.src_dir, "..", "test", "input_files", file), joinpath(input_dir, file))
+    end
+    current_dir = pwd()
+    system = cd(mktempdir()) do
+        packmol(joinpath(input_dir, "water_box_small.inp"); iprint=1000)
+    end
+    @test system.status == :packing_ready
+    @test system.output_file == joinpath(input_dir, "water_box_small.pdb")
+    @test isfile(system.output_file)
+    @test pwd() == current_dir
+end

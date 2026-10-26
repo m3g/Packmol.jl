@@ -61,24 +61,25 @@ function constraint_gradient(c::Plane, x)
 end
 
 #
-# Input parsing functions: must be appended to the "parse_constraint" dictionary:
+# Input parsing functions: methods of `parse_constraint`, whose keywords must also be
+# listed in `constraint_keywords` (constraint_types.jl):
 #
-parse_constraint["above plane"] = (structure_data, data::Vector{<:AbstractString}; T = Float64) -> begin
+function parse_constraint(::Val{Symbol("above plane")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     normal, d = try
         parse.(T, data[1:3]), parse(T, data[4])
     catch
-        error("Error parsing 'above plane' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'above plane' constraint data for $filename.")
     end
     return Plane{Over,T}(; normal, d)
 end
 # "over" is the original Fortran Packmol keyword; "above" is a Packmol.jl-only synonym.
-parse_constraint["over plane"] = parse_constraint["above plane"]
+parse_constraint(::Val{Symbol("over plane")}, args...) = parse_constraint(Val(Symbol("above plane")), args...)
 
-parse_constraint["below plane"] = (structure_data, data::Vector{<:AbstractString}; T = Float64) -> begin
+function parse_constraint(::Val{Symbol("below plane")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     normal, d = try
         parse.(T, data[1:3]), parse(T, data[4])
     catch
-        error("Error parsing 'below plane' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'below plane' constraint data for $filename.")
     end
     return Plane{Below,T}(; normal, d)
 end

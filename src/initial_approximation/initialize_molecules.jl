@@ -59,7 +59,7 @@ function _direct_cm_region(st::StructureType{D,T}, max_extent::T) where {D,T}
     hi = SVector{3,T}(ntuple(_ -> T(Inf), 3))
     has_inside = false
     for c in st.constraints
-        bounds = _inside_bound(c, max_extent)
+        bounds = _constraint_dispatch(_inside_bound, c, max_extent)
         bounds === nothing && continue
         clo, chi = bounds
         lo, hi = max.(lo, clo), min.(hi, chi)
@@ -67,6 +67,23 @@ function _direct_cm_region(st::StructureType{D,T}, max_extent::T) where {D,T}
     end
     (has_inside && all(lo .<= hi)) || return nothing
     return lo, hi
+end
+
+#
+# The direct CM sampling region of a structure type (see `_direct_cm_region`), and the
+# margin-adjusted constraints to sample within it (see `_margin_adjust`). Concretely
+# typed, with a flag rather than `nothing` when there is no such region, because the
+# closures of the tasks that use them must have concrete types for `juliac --trim`.
+#
+function _direct_placement(st::StructureType{D,T}, has_pbc::Bool) where {D,T}
+    if !has_pbc && !st.fixed.fixed
+        max_extent = isempty(st.reference_coordinates) ? zero(T) : maximum(norm, st.reference_coordinates)
+        region = _direct_cm_region(st, max_extent)
+        if !isnothing(region)
+            return true, region, AnyConstraint{T}[_constraint_dispatch(_margin_adjust, c, max_extent) for c in st.constraints]
+        end
+    end
+    return false, (zero(SVector{3,T}), zero(SVector{3,T})), AnyConstraint{T}[]
 end
 
 #
@@ -91,17 +108,26 @@ _margin_adjust(c::Cube{Outside,T}, margin::T) where {T} =
     Cube{Outside,T}(center=c.center, side=c.side + 2margin, weight=c.weight)
 _margin_adjust(c::Constraint, margin) = c
 
+# Total penalty of the point `x` against `constraints`.
+function _penalty_sum(constraints::Vector{AnyConstraint{T}}, x::SVector{3,T}) where {T}
+    pen = zero(T)
+    for c in constraints
+        pen += _constraint_dispatch(constraint_penalty, c, x)
+    end
+    return pen
+end
+
 # Best-of-`max_tries` uniform sample within the AABB [lo, hi], scored by total
 # penalty against `constraints`; returns as soon as a zero-penalty sample is found.
 function _sample_in_region(rng, lo::SVector{3,T}, hi::SVector{3,T}, constraints, max_tries::Int) where {T}
     extent = hi .- lo
     draw() = SVector{3,T}(ntuple(d -> lo[d] + rand(rng, T) * extent[d], 3))
     best = draw()
-    best_pen = sum(c -> constraint_penalty(c, best), constraints; init=zero(T))
+    best_pen = _penalty_sum(constraints, best)
     tries = 1
     while best_pen > zero(T) && tries < max_tries
         cm = draw()
-        pen = sum(c -> constraint_penalty(c, cm), constraints; init=zero(T))
+        pen = _penalty_sum(constraints, cm)
         if pen < best_pen
             best_pen, best = pen, cm
         end
@@ -135,11 +161,7 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
     _center_reference_coordinates!(packmol_system)
 
     # Determine the placement region
-    has_pbc = !isnothing(packmol_system.unitcell)
-    if has_pbc
-        uc = packmol_system.unitcell
-        center = packmol_system.unitcell_center
-    end
+    has_pbc, uc, center = _typed_unitcell(packmol_system)
 
     # Initial placement: use a large box centered at origin (following Fortran
     # Packmol's sidemax approach) as a fallback for structure types whose
@@ -152,19 +174,9 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
     # Compute molecule index offset for each structure type so threads
     # can determine the correct slot without a shared counter.
     imol_offset = 0
-    @sync for st in packmol_system.structure_types
+    @_sync for st in packmol_system.structure_types
         st_offset = imol_offset
-        direct_region, direct_constraints = if !has_pbc && !st.fixed.fixed
-            max_extent = isempty(st.reference_coordinates) ? zero(T) : maximum(norm, st.reference_coordinates)
-            region = _direct_cm_region(st, max_extent)
-            if region === nothing
-                nothing, nothing
-            else
-                region, [_margin_adjust(c, max_extent) for c in st.constraints]
-            end
-        else
-            nothing, nothing
-        end
+        has_direct_region, direct_region, direct_constraints = _direct_placement(st, has_pbc)
         for (_, irange) in enumerate(chunks(1:st.number_of_molecules; n=Threads.nthreads()))
             task_seed = rand(RNG, UInt64)
             @spawn begin
@@ -177,7 +189,7 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
                         if has_pbc
                             frac = SVector{D,T}(ntuple(_ -> rand(task_rng, T) - T(0.5), D))
                             cm = SVector{D,T}(uc * frac) + center
-                        elseif direct_region !== nothing
+                        elseif has_direct_region
                             lo, hi = direct_region
                             cm3 = _sample_in_region(task_rng, lo, hi, direct_constraints, max_region_tries)
                             cm = SVector{D,T}(ntuple(d -> cm3[d], D))
@@ -189,8 +201,8 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
                             if isnothing(bounds)
                                 T(2π) * rand(task_rng, T)
                             else
-                                lo, hi = bounds
-                                lo + rand(task_rng, T) * (hi - lo)
+                                angle_lo, angle_hi = bounds
+                                angle_lo + rand(task_rng, T) * (angle_hi - angle_lo)
                             end
                         end)
                         packmol_system.molecule_positions[imol_local] = MoleculePosition(cm, angles)

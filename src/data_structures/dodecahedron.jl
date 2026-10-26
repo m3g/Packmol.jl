@@ -45,17 +45,17 @@ Use as `PackmolSystem(structure_types; unitcell=dodecahedral_unitcell(Float64, d
 dodecahedral_unitcell(::Type{T}, d) where {T} = Matrix{T}(unitcell_matrix(T, d, d, d, T(60), T(60), T(90)))
 
 #=
-    parse_pbc_dodecahedral(::Type{T}, values, D::Int) where {T}
+    parse_pbc_dodecahedral(::Type{T}, values, ::Val{D}) where {T,D}
 
 Parses the `cx cy cz d` tail of a `pbc dodecahedral cx cy cz d` input file
 line into `(unitcell, unitcell_center)`, as consumed by `read_packmol_input`.
 =#
-function parse_pbc_dodecahedral(::Type{T}, values, D::Int) where {T}
+function parse_pbc_dodecahedral(::Type{T}, values, ::Val{D}) where {T,D}
     D == 3 || throw(ArgumentError("pbc dodecahedral is only supported for D=3, got D=$D"))
     length(values) == 4 || throw(ArgumentError(
         "pbc dodecahedral requires 4 values (cx cy cz d), got $(length(values))"
     ))
-    cx, cy, cz, d = (_parse_value(T, "pbc", v) for v in values)
+    cx, cy, cz, d = (_parse_value(T, "pbc", values[i]) for i in 1:4)
     unitcell = dodecahedral_unitcell(T, d)
     unitcell_center = SVector{D,T}(cx, cy, cz)
     return unitcell, unitcell_center

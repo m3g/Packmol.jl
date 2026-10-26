@@ -14,12 +14,6 @@ function _radscale_at(elapsed::Int, radscale_start::T, radscale_decay_loops::T) 
     return one(T) + (radscale_start - one(T)) * exp(-k * elapsed)
 end
 
-"""
-    packmol(input_file::String; kargs...)
-
-Read a Packmol input file, run the packing optimization, and write the output.
-Returns the built `PackmolSystem` (see `packmol(::PackmolSystem)` for details).
-"""
 #
 # CellListMap cutoff for the interatomic-distance term. Every pair that can be
 # penalized (d < r_i + r_j, under either the working radii `atom_radii` or the
@@ -93,10 +87,24 @@ function _nonperiodic_unitcell(packmol_system::PackmolSystem{D,T}, atom_position
     return T(1.2) * box_size
 end
 
+"""
+    packmol(input_file::String; kargs...)
+    packmol(; kargs...)
+
+Read a Packmol input file, run the packing optimization, and write the output.
+Returns the built `PackmolSystem` (see `packmol(::PackmolSystem)` for details).
+
+Paths in the input file (structure files, `output`, `restart_from`, `restart_to`)
+are relative to the directory of the input file.
+
+With no input file, a file explorer is opened to choose it (see [`Packmol.pick_file`](@ref)).
+To disable the file explorer, set the environment variable `PACKMOL_GUI="false"`.
+"""
 function packmol(input_file::String; D::Int=3, T::DataType=Float64, kargs...)
     packmol_system = read_packmol_input(input_file; D, T)
     return packmol(packmol_system; kargs...)
 end
+packmol(; kargs...) = packmol(pick_file(); kargs...)
 
 """
     packmol(packmol_system::PackmolSystem; kargs...)
@@ -137,15 +145,14 @@ function packmol(
     tstart = time()    
 
     # Print title
-    _version = pkgversion(Packmol)
-    println()
-    println(hash_line)
-    println("  PACKMOL - Packing optimization for the automated generation of")
-    println("  starting configurations for molecular dynamics simulations.")
-    println()
-    @printf("%62s\n", "Version $_version ")
-    println(hash_line)
-    println()
+    _println()
+    _println(hash_line)
+    _println("  PACKMOL - Packing optimization for the automated generation of")
+    _println("  starting configurations for molecular dynamics simulations.")
+    _println()
+    @_printf("%62s\n", "Version $_packmol_version ")
+    _println(hash_line)
+    _println()
 
     # Build index of free (non-fixed) molecules
     free_mol_indices = Int[]
@@ -190,13 +197,14 @@ function packmol(
     # `_restart_positions_from_atoms`/`_restart_positions`), even though its
     # own position is discarded.
     _center_reference_coordinates!(packmol_system)
-    if !isnothing(packmol_system.restart_from)
-        println("  Restarting all free molecules from: ", packmol_system.restart_from)
+    restart_from = packmol_system.restart_from
+    if !isnothing(restart_from)
+        _println("  Restarting all free molecules from: ", _restart_source_name(restart_from))
         segments = Tuple{Int,Int,Vector{SVector{D,T}},Bool}[
             (st.number_of_molecules, st.natoms, st.reference_coordinates, !st.fixed.fixed)
             for st in packmol_system.structure_types
         ]
-        positions = _restart_positions(packmol_system.restart_from, segments, MoleculePosition{D,T})
+        positions = _restart_positions(restart_from, segments, MoleculePosition{D,T})
         for (k, imol) in enumerate(free_mol_indices)
             packmol_system.molecule_positions[imol] = positions[k]
         end
@@ -208,14 +216,15 @@ function packmol(
 
     imol_offset = 0
     for st in packmol_system.structure_types
-        if !st.fixed.fixed && !isnothing(st.restart_from)
-            println("  Restarting structure type '", basename(st.filename), "' from: ", st.restart_from)
+        st_restart_from = st.restart_from
+        if !st.fixed.fixed && !isnothing(st_restart_from)
+            _println("  Restarting structure type '", basename(st.filename), "' from: ", _restart_source_name(st_restart_from))
             # A per-structure-type restart source only ever contains this
             # one type's own molecules (e.g. its own `restart_to` file from
             # an earlier run), so its segment list is just itself — always
             # extracted, nothing to skip.
             segments = [(st.number_of_molecules, st.natoms, st.reference_coordinates, true)]
-            positions = _restart_positions(st.restart_from, segments, MoleculePosition{D,T})
+            positions = _restart_positions(st_restart_from, segments, MoleculePosition{D,T})
             packmol_system.molecule_positions[imol_offset+1:imol_offset+st.number_of_molecules] .= positions
         end
         imol_offset += st.number_of_molecules
@@ -223,7 +232,7 @@ function packmol(
 
     # check mode: write the initial approximation and return
     if packmol_system.check
-        println("  Check mode: writing initial approximation to $(packmol_system.output_file)")
+        _println("  Check mode: writing initial approximation to $(packmol_system.output_file)")
         if !isempty(packmol_system.output_file)
             write_output(packmol_system)
         end
@@ -236,13 +245,14 @@ function packmol(
     atom_positions = buffers.atom_positions
     compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
 
-    # Determine unit cell for CellListMap
+    # Determine unit cell for CellListMap: a static matrix in both cases (diagonal
+    # without PBC), so that the type of `cl_system` does not depend on `has_pbc`.
     has_pbc = !isnothing(packmol_system.unitcell)
     if has_pbc
         # PBC mode: use the actual unit cell
-        unitcell = packmol_system.unitcell
+        unitcell = SMatrix{D,D,T}(packmol_system.unitcell)
     else
-        unitcell = _nonperiodic_unitcell(packmol_system, atom_positions)
+        unitcell = SMatrix{D,D,T}(Diagonal(_nonperiodic_unitcell(packmol_system, atom_positions)))
     end
 
     # Start packing with a looser-than-required tolerance (matches the
@@ -271,25 +281,22 @@ function packmol(
     # CellListMap cutoff: set from the radii in use (see `_distance_cutoff`),
     # and updated whenever `atom_radii` shrinks along the radscale schedule.
     tol = packmol_system.tolerance
-    if unitcell isa AbstractMatrix
-        volume = abs(det(unitcell))
-    else
-        volume = prod(unitcell)
-    end
+    volume = abs(det(unitcell))
     cutoff = _distance_cutoff(atom_radii, atom_radii_floor, tol, volume, D)
 
     # Set up CellListMap
     fg_output = InteratomicDistanceFG{D,T}(packmol_system)
-    println("  Total number of atoms: ", natoms)
-    println("  Number of free molecules: ", nfree)
-    println("  Number of variables: ", nfree * 2 * D)
+    _println("  Total number of atoms: ", natoms)
+    _println("  Number of free molecules: ", nfree)
+    _println("  Number of variables: ", nfree * 2 * D)
     cl_system = ParticleSystem(
         xpositions=atom_positions,
         unitcell=unitcell,
         cutoff=cutoff,
         output=fg_output,
-        output_name=:fg,
+        output_name=Val(:fg),
         parallel=parallel,
+        validate_coordinates=_validate_positions,
     )
 
     # Set up optimization variables: only free molecule DOFs (reuse pre-allocated buffer)
@@ -381,16 +388,16 @@ function packmol(
     # Outer packing loop (following Fortran Packmol gencanloop):
     # Each iteration runs a short optimization, evaluates per-molecule
     # contributions, and randomly re-places the worst molecules.
-    println()
-    println(dash_line)
-    println("  Packing $nfree free molecules ($(packmol_system.nmols) total)...")
-    println(dash_line)
+    _println()
+    _println(dash_line)
+    _println("  Packing $nfree free molecules ($(packmol_system.nmols) total)...")
+    _println(dash_line)
     # Evaluate and print initial function value
     g0 = similar(x)
     # Objective function at the initial point, on the same unscaled
     # (radscale == 1.0) basis as every other cross-loop comparison below.
     f0_true = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
-    @printf("  Objective function at initial point: %10.5e\n", f0_true)
+    @_printf("  Objective function at initial point: %10.5e\n", f0_true)
     # `bestf` starts at the true initial-point value (not a typemax
     # sentinel): loop 0's own `f_true_loop_start` is evaluated at this exact
     # same position, so `fimprov` (vs. `bestf`) and `fimp_within_loop` (vs.
@@ -404,12 +411,12 @@ function packmol(
     best_positions = copy(packmol_system.molecule_positions)
     for loop in 0:nloop
 
-        println()
-        println(dash_line)
-        @printf("  Starting packing loop: %8d\n", loop)
+        _println()
+        _println(dash_line)
+        @_printf("  Starting packing loop: %8d\n", loop)
         atom_radii_lo, atom_radii_hi = extrema(atom_radii)
-        @printf("  Atom radii in this loop: [ %8.4f - %8.4f ]\n", atom_radii_lo, atom_radii_hi)
-        println()
+        @_printf("  Atom radii in this loop: [ %8.4f - %8.4f ]\n", atom_radii_lo, atom_radii_hi)
+        _println()
 
         # True (floor) objective value at the position this loop starts
         # from — always evaluated at each atom's own floor radius
@@ -427,7 +434,7 @@ function packmol(
         f_true_loop_start = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
 
         # Run a short optimization (maxit iterations per loop)
-        progress_meter = Progress(maxit; desc=" Iterations: ", barlen=47)
+        progress_meter = ProgressBar(maxit; desc=" Iterations: ", barlen=47)
         fg_closure = (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
         # Fresh stall detectors per chunk: plateau state from the *previous*
         # chunk isn't meaningful here, since movebad! (or the initial
@@ -573,47 +580,47 @@ function packmol(
             # readings they need to fire, even though nothing is actually
             # still improving.
             "optimizer converged internally (small gradient), short of " *
-                join(filter(!isnothing, [!tol_ok ? "the distance tolerance" : nothing,
-                    !const_ok ? "the constraints" : nothing]), " and ")
+                (!tol_ok && !const_ok ? "the distance tolerance and the constraints" :
+                    !tol_ok ? "the distance tolerance" : "the constraints")
         elseif optresult.ierr == 2
             "chunk function-evaluation budget (nfevalmax) reached"
         else
             "chunk iteration budget (maxit) reached"
         end
 
-        @printf("\n  Packing loop ended: %s\n", loop_end_reason)
-        @printf("  Function value from last loop: f = %10.5e\n", f_true_loop_end)
-        @printf("  Best function value before: f = %10.5e\n", bestf_before_loop)
-        @printf("  Improvement from best function value: %8.2f %%\n", fimprov)
-        @printf("  Improvement within this loop: %8.2f %%\n", fimp_within_loop)
-        println("  Minimum distance: ", lpad(_format_dmin(dmin, cl_system.cutoff), 12))
-        @printf("  Maximum violation of the constraints: %10.5e\n", max_const)
+        @_printf("\n  Packing loop ended: %s\n", loop_end_reason)
+        @_printf("  Function value from last loop: f = %10.5e\n", f_true_loop_end)
+        @_printf("  Best function value before: f = %10.5e\n", bestf_before_loop)
+        @_printf("  Improvement from best function value: %8.2f %%\n", fimprov)
+        @_printf("  Improvement within this loop: %8.2f %%\n", fimp_within_loop)
+        @_printf("  Minimum distance: %12s\n", _format_dmin(dmin, cl_system.cutoff))
+        @_printf("  Maximum violation of the constraints: %10.5e\n", max_const)
 
         if tol_ok && const_ok
-            println()
-            println(hash_line)
-            @printf("\n%s Success! \n", " "^32)
-            @printf("%s Final objective function value: %10.5e\n", " "^13, f_true_loop_end)
-            println(" "^13, " Minimum distance: ", lpad(_format_dmin(dmin, cl_system.cutoff), 10))
-            @printf("%s Maximum violation of the constraints: %10.5e\n", " "^13, max_const)
-            println()
-            println(dash_line)
-            println()
-            println("$(repeat(" ", 13)) Please cite this work if Packmol was useful: ")
-            println()
-            println("$(repeat(" ", 10))  L. Martinez, R. Andrade, E. G. Birgin, J. M. Martinez, ")
-            println("$(repeat(" ", 8))  PACKMOL: A package for building initial configurations for")
-            println("$(repeat(" ", 18)) molecular dynamics simulations. ")
-            println("$(repeat(" ", 7))  Journal of Computational Chemistry, 30(13) pp. 2157-2164, 2009.")
-            println("$(repeat(" ", 17)) https://doi.org/10.1002/jcc.21224")
-            println()
-            println(hash_line)
+            _println()
+            _println(hash_line)
+            @_printf("\n%32s Success! \n", "")
+            @_printf("%13s Final objective function value: %10.5e\n", "", f_true_loop_end)
+            @_printf("%13s Minimum distance: %10s\n", "", _format_dmin(dmin, cl_system.cutoff))
+            @_printf("%13s Maximum violation of the constraints: %10.5e\n", "", max_const)
+            _println()
+            _println(dash_line)
+            _println()
+            _println("              Please cite this work if Packmol was useful: ")
+            _println()
+            _println("            L. Martinez, R. Andrade, E. G. Birgin, J. M. Martinez, ")
+            _println("          PACKMOL: A package for building initial configurations for")
+            _println("                   molecular dynamics simulations. ")
+            _println("         Journal of Computational Chemistry, 30(13) pp. 2157-2164, 2009.")
+            _println("                  https://doi.org/10.1002/jcc.21224")
+            _println()
+            _println(hash_line)
             converged = true
             break
         end
 
-        println()
-        println(dash_line)
+        _println()
+        _println(dash_line)
 
         # Write best solution so far to output file
         if improved && !isempty(packmol_system.output_file)
@@ -621,8 +628,8 @@ function packmol(
             packmol_system.molecule_positions = best_positions
             write_output(packmol_system)
             packmol_system.molecule_positions = saved_positions
-            println()
-            println("  Current solution written to file: ", packmol_system.output_file)
+            _println()
+            _println("  Current solution written to file: ", packmol_system.output_file)
         end
 
         # Every atom's working radius always follows the same loop-indexed
@@ -663,7 +670,7 @@ function packmol(
                 fg_output=movebad_fg_output, atom_positions=buffers.atom_positions, mol_iat_first,
             )
             if !isempty(moved)
-                println("  Moved $(length(moved)) bad molecules randomly to new positions.")
+                _println("  Moved $(length(moved)) bad molecules randomly to new positions.")
             end
         end
         # Re-pack optimizer variables from (possibly moved) molecule positions
@@ -674,10 +681,10 @@ function packmol(
     end
 
     if !converged
-        println()
-        println(hash_line)
-        @printf("  WARNING: packing did not converge after %d loops (best f = %.4e)\n", nloop, bestf)
-        println(hash_line)
+        _println()
+        _println(hash_line)
+        @_printf("  WARNING: packing did not converge after %d loops (best f = %.4e)\n", nloop, bestf)
+        _println(hash_line)
     end
     packmol_system.status = converged ? :packing_ready : :failed_packing
 
@@ -696,16 +703,16 @@ function packmol(
     # Write output file if specified
     if !isempty(packmol_system.output_file)
         write_output(packmol_system)
-        println()
-        println("  Solution written to file: ", packmol_system.output_file)
+        _println()
+        _println("  Solution written to file: ", packmol_system.output_file)
     end
 
-    println()
-    println(dash_line)
+    _println()
+    _println(dash_line)
     tend = time()
-    @printf("  Running time: %12.4f seconds.\n", tend - tstart)
-    println(dash_line)
-    println()
+    @_printf("  Running time: %12.4f seconds.\n", tend - tstart)
+    _println(dash_line)
+    _println()
 
     return packmol_system
 end
@@ -715,6 +722,7 @@ end
 #
 const dash_line = repeat('-', 80)
 const hash_line = repeat('#', 80)
+const _packmol_version = string(pkgversion(@__MODULE__))
 
 #
 # Tracks whether a scalar convergence metric has stopped meaningfully
@@ -806,13 +814,13 @@ function packmol_callback(
     # blown-up or NaN gnorm points instead to a genuine numerical problem
     # (e.g. a degenerate/coincident atom pair) rather than just a hard,
     # slow-converging landscape.
-    next!(progress_meter; showvalues = [
+    next!(progress_meter; showvalues = (
         (" Function value", f),
         (" Minimum distance", _format_dmin(dmin, cl_system.cutoff)),
         (" Maximum constraint violation", max_const),
         (" Function evaluations", isnothing(nfeval) ? nfeval : "$nfeval / $nfevalmax"),
         (" Projected gradient norm", gnorm),
-    ])
+    ))
     tol_ok = tol - dmin < tolerance_precision
     const_ok = max_const < constraint_precision
     if tol_ok && const_ok

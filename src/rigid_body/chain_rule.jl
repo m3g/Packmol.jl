@@ -17,7 +17,7 @@ function chain_rule!(fg, packmol_system::PackmolSystem{D,T}) where {D,T}
         nmols_st = structure_type.number_of_molecules
         st_imol_offset = imol_offset
         st_iat_offset = iat_offset
-        @sync for irange in chunks(1:nmols_st; n=Threads.nthreads())
+        @_sync for irange in chunks(1:nmols_st; n=Threads.nthreads())
             @spawn for i in irange
                 imol = st_imol_offset + i
                 ifmol = st_iat_offset + (i - 1) * natoms_st + 1
@@ -53,7 +53,7 @@ function chain_rule_for_mols!(
     fg, packmol_system::PackmolSystem{D,T},
     mol_list::Vector{Int}, mol_structure_type::Vector{Int}, mol_iat_first::Vector{Int},
 ) where {D,T}
-    @sync for (_, mrange) in enumerate(chunks(1:length(mol_list); n=Threads.nthreads()))
+    @_sync for (_, mrange) in enumerate(chunks(1:length(mol_list); n=Threads.nthreads()))
         @spawn for k in mrange
             imol = mol_list[k]
             structure_type = packmol_system.structure_types[mol_structure_type[imol]]

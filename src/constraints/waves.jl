@@ -176,72 +176,73 @@ function constraint_gradient(c::RadialWave, x)
 end
 
 #
-# Input parsing functions: must be appended to the "parse_constraint" dictionary:
+# Input parsing functions: methods of `parse_constraint`, whose keywords must also be
+# listed in `constraint_keywords` (constraint_types.jl):
 #
-parse_constraint["above sin"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("above sin")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     up, along, d0, amplitude, wavelength, phase = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8]), parse(T, data[9]), parse(T, data[10])
     catch
-        error("Error parsing 'above sin' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'above sin' constraint data for $filename.")
     end
     return Wave{Over,T}(; up, along, d0, amplitude, wavelength, phase)
 end
-parse_constraint["below sin"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("below sin")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     up, along, d0, amplitude, wavelength, phase = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8]), parse(T, data[9]), parse(T, data[10])
     catch
-        error("Error parsing 'below sin' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'below sin' constraint data for $filename.")
     end
     return Wave{Below,T}(; up, along, d0, amplitude, wavelength, phase)
 end
 
-parse_constraint["above cos"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("above cos")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     up, along, d0, amplitude, wavelength, phase = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8]), parse(T, data[9]), parse(T, data[10])
     catch
-        error("Error parsing 'above cos' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'above cos' constraint data for $filename.")
     end
     return Wave{Over}(up, along, d0, amplitude, wavelength, phase + T(pi) / 2)
 end
-parse_constraint["below cos"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("below cos")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     up, along, d0, amplitude, wavelength, phase = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8]), parse(T, data[9]), parse(T, data[10])
     catch
-        error("Error parsing 'below cos' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'below cos' constraint data for $filename.")
     end
     return Wave{Below}(up, along, d0, amplitude, wavelength, phase + T(pi) / 2)
 end
 
-parse_constraint["above radial_sin"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("above radial_sin")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     up, center, d0, amplitude, wavelength, phase = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8]), parse(T, data[9]), parse(T, data[10])
     catch
-        error("Error parsing 'above radial_sin' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'above radial_sin' constraint data for $filename.")
     end
     return RadialWave{Over,T}(; up, center, d0, amplitude, wavelength, phase)
 end
-parse_constraint["below radial_sin"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("below radial_sin")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     up, center, d0, amplitude, wavelength, phase = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8]), parse(T, data[9]), parse(T, data[10])
     catch
-        error("Error parsing 'below radial_sin' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'below radial_sin' constraint data for $filename.")
     end
     return RadialWave{Below,T}(; up, center, d0, amplitude, wavelength, phase)
 end
 
-parse_constraint["above radial_cos"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("above radial_cos")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     up, center, d0, amplitude, wavelength, phase = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8]), parse(T, data[9]), parse(T, data[10])
     catch
-        error("Error parsing 'above radial_cos' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'above radial_cos' constraint data for $filename.")
     end
     return RadialWave{Over}(up, center, d0, amplitude, wavelength, phase + T(pi) / 2)
 end
-parse_constraint["below radial_cos"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("below radial_cos")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     up, center, d0, amplitude, wavelength, phase = try
         parse.(T, data[1:3]), parse.(T, data[4:6]), parse(T, data[7]), parse(T, data[8]), parse(T, data[9]), parse(T, data[10])
     catch
-        error("Error parsing 'below radial_cos' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'below radial_cos' constraint data for $filename.")
     end
     return RadialWave{Below}(up, center, d0, amplitude, wavelength, phase + T(pi) / 2)
 end

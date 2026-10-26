@@ -7,10 +7,9 @@ concurrency:
 jobs:
   test-app:
     # This exercises `Pkg.Apps`-installing and running the `packmol` command
-    # line app, which currently wraps the legacy Fortran packmol binary
-    # (see src/CLI.jl). Kept in its own workflow, separate from CI.yml, since
-    # it tests the legacy wrapper rather than the native Julia implementation
-    # that the rest of the test suite is increasingly focused on.
+    # line app, which runs the native Julia implementation (see src/CLI.jl).
+    # Kept in its own workflow, separate from CI.yml, since it is slow (the app
+    # environment is instantiated and precompiled from scratch).
     name: packmol app - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:

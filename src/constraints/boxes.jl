@@ -117,44 +117,45 @@ constraint_gradient(c::Box{Placement}, x) where {Placement} =
     orthogonal_wall_derivative.(Placement, c.center, c.sides, c.weight, x)
 
 #
-# Input parsing functions: must be appended to the "parse_constraint" dictionary:
+# Input parsing functions: methods of `parse_constraint`, whose keywords must also be
+# listed in `constraint_keywords` (constraint_types.jl):
 #
-parse_constraint["inside box"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("inside box")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     lo, hi = try
         parse.(T, data[1:3]), parse.(T, data[4:6])
     catch
-        error("Error parsing 'inside box' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'inside box' constraint data for $filename.")
     end
     center = (lo .+ hi) ./ 2
     sides = hi .- lo
     return Box{Inside,T}(;center, sides)
 end
 
-parse_constraint["outside box"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("outside box")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     lo, hi = try
         parse.(T, data[1:3]), parse.(T, data[4:6])
     catch
-        error("Error parsing 'outside box' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'outside box' constraint data for $filename.")
     end
     center = (lo .+ hi) ./ 2
     sides = hi .- lo
     return Box{Outside,T}(;center, sides)
 end
 
-parse_constraint["inside cube"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("inside cube")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     center, side = try
         parse.(T, data[1:3]), parse.(T, data[4])
     catch
-        error("Error parsing 'inside cube' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'inside cube' constraint data for $filename.")
     end
     return Cube{Inside,T}(;center, side)
 end
 
-parse_constraint["outside cube"] = (structure_data, data::Vector{<:AbstractString}; T=Float64) -> begin
+function parse_constraint(::Val{Symbol("outside cube")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
     center, side = try
         parse.(T, data[1:3]), parse.(T, data[4])
     catch
-        error("Error parsing 'outside cube' constraint data for $(structure_data[:filename]).")
+        error("Error parsing 'outside cube' constraint data for $filename.")
     end
     return Cube{Outside,T}(;center, side)
 end

@@ -103,7 +103,20 @@ function _build_fixed_particle_system(
         output=output,
         parallel=parallel,
         unitcell=unitcell,
+        validate_coordinates=_validate_positions,
     )
+end
+
+#
+# Coordinate validation for CellListMap's `ParticleSystem`s: as CellListMap's
+# default, but with an error message that does not print the coordinates
+# themselves (which does not compile with `juliac --trim`).
+#
+function _validate_positions(x)
+    for (i, v) in enumerate(x)
+        any(isnan, v) && throw(ArgumentError("Invalid (NaN) coordinates found for particle of index $i."))
+    end
+    return nothing
 end
 
 #
@@ -113,12 +126,12 @@ end
 # `nmols` sizes the per-molecule `molecule_badness` output buffer: callers that
 # index a whole system's worth of molecules (e.g. molecule_badness.jl, which
 # uses a single shared instance) need `packmol_system.nmols`; callers that
-# deep-copy one instance per thread/task to check a single trial molecule at a
+# build one instance per thread/task to check a single trial molecule at a
 # time (overlaps_fixed.jl) only ever touch index 1, so pass `nmols=1` there —
 # CellListMap replicates the output buffer once per internal batch, and again
-# for every deep copy, so an oversized buffer here is multiplied by both
+# for every per-task instance, so an oversized buffer here is multiplied by both
 # factors and can blow up memory on large systems.
-# `parallel` similarly should be `false` for per-task deep copies (they already
+# `parallel` similarly should be `false` for per-task instances (they already
 # run inside a caller-managed thread), to avoid CellListMap allocating its own
 # internal per-batch output copies on top of that.
 #
