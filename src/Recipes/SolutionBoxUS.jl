@@ -65,10 +65,12 @@ The mass or molar density can be provided. If unitless specified, the density wi
 If the molar masses are not provided, they will be computed from the atom types in the PDB file.
 
 """
+_mandatory_keywords(::Type{SolutionBoxUS}) = (:solute_pdbfile, :solvent_pdbfile, :density)
+
 function SolutionBoxUS(;
-        solute_pdbfile::String, 
-        solvent_pdbfile::String,
-        density::Number, # density, using Unitful units, or assumed to be g/mL
+        solute_pdbfile::String = _missing_keyword(SolutionBoxUS, :solute_pdbfile), 
+        solvent_pdbfile::String = _missing_keyword(SolutionBoxUS, :solvent_pdbfile),
+        density::Number = _missing_keyword(SolutionBoxUS, :density), # density, using Unitful units, or assumed to be g/mL
         solute_molar_mass::Union{Nothing,Number} = nothing,
         solvent_molar_mass::Union{Nothing,Number} = nothing,
     )
@@ -77,6 +79,7 @@ function SolutionBoxUS(;
         density = density * 1.0u"g/mL"
     end
     ustrip(density) <= 0.0 && throw(ArgumentError("Density must be positive."))
+    solute_pdbfile, solvent_pdbfile = expanduser(solute_pdbfile), expanduser(solvent_pdbfile)
     isnothing(solute_molar_mass) && (solute_molar_mass = mass(read_pdb(solute_pdbfile)) * 1.0u"g/mol")
     solute_molar_mass = _ensure_unit(solute_molar_mass, u"g/mol")
     isnothing(solvent_molar_mass) && (solvent_molar_mass = mass(read_pdb(solvent_pdbfile)) * 1.0u"g/mol")
@@ -208,6 +211,7 @@ function write_packmol_input(
     # testing option
     debug = false,
 )
+    input, output = expanduser(input), expanduser(output)
     (; solute_pdbfile, solvent_pdbfile) = system
     (; ns, unitcell, summary) = _setup(system, box_sides, margin, pbc)
     println(summary)

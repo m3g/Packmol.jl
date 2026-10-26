@@ -123,3 +123,40 @@
     rm(tmp_output_file, force=true)
 
 end
+
+@testitem "SolutionBoxUS tilde paths" begin
+    using Packmol
+    test_dir = Packmol.RecipesDirectory*"/test"
+    if startswith(test_dir, homedir())
+        tilde_dir = "~" * test_dir[length(homedir())+1:end]
+        system = SolutionBoxUS(
+            solute_pdbfile = "$tilde_dir/data/poly_h.pdb",
+            solvent_pdbfile = "$tilde_dir/data/water.pdb",
+            density=1.0,
+        )
+        @test system.solute_pdbfile == "$test_dir/data/poly_h.pdb"
+        @test system.solvent_pdbfile == "$test_dir/data/water.pdb"
+        input = tempname() * ".inp"
+        redirect_stdout(devnull) do
+            write_packmol_input(system; input, margin=5.0)
+        end
+        @test !any(contains("~"), readlines(input))
+        @test Packmol.read_packmol_input(input).structure_types[1].filename == "$test_dir/data/poly_h.pdb"
+    end
+end
+
+@testitem "Recipe keyword-only constructors" begin
+    using Packmol
+    # positional calls and missing mandatory keywords give an ArgumentError
+    # listing the recipe's keywords, not a bare MethodError/UndefKeywordError
+    for R in (SolutionBoxUS, SolutionBoxUSC, SolutionBoxUWI, Membrane)
+        err = try R("protein.pdb") catch e e end
+        @test err isa ArgumentError
+        @test contains(err.msg, "keyword arguments only")
+        @test contains(err.msg, "(; $(first(Packmol._mandatory_keywords(R)))=\"protein.pdb\", ...)")
+        err = try R() catch e e end
+        @test err isa ArgumentError
+        @test contains(err.msg, "`$(first(Packmol._mandatory_keywords(R)))` is mandatory")
+        @test contains(err.msg, "Optional keyword arguments:")
+    end
+end

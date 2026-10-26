@@ -211,7 +211,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
             atoms_block = false
         end
         if keyword == "structure"
-            filename = joinpath(path, string(values[1]))
+            filename = joinpath(path, expanduser(string(values[1])))
             atoms = read_pdb(filename)
             structure_data[:filename] = filename
             structure_data[:natoms] = length(atoms)
@@ -248,9 +248,9 @@ function read_structure_data(input_file_block::IOBuffer, tolerance;
             c = parse(T, center_str) * T(π) / 180
             structure_data[:rotation_bounds][idx] = (c - hw, c + hw)
         elseif keyword == "restart_from"
-            structure_data[:restart_from] = string(values[1])
+            structure_data[:restart_from] = expanduser(string(values[1]))
         elseif keyword == "restart_to"
-            structure_data[:restart_to] = string(values[1])
+            structure_data[:restart_to] = expanduser(string(values[1]))
         elseif keyword in constraint_placements
             iconstraint += 1
             push!(structure_data[:constraints], parse_constraint["$keyword $(values[1])"](structure_data, values[2:end]; T=T))
