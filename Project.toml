@@ -22,9 +22,6 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [weakdeps]
 Packmol_jll = "eb89d173-8f78-57a0-9e6e-c2e8c44a5e61"
 
-[sources]
-PDBToolsBase = {rev = "main", url = "https://github.com/m3g/PDBToolsBase.jl"}
-
 [extensions]
 PackmolJLLExt = "Packmol_jll"
 
