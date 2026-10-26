@@ -107,7 +107,7 @@ end
 # instead of re-deriving a starting point.
 #
 function _write_restart(filename::AbstractString, positions::AbstractVector{MoleculePosition{D,T}}) where {D,T}
-    open(filename; write=true) do io
+    open(expanduser(filename); write=true) do io
         for mp in positions
             for v in mp.cm
                 @printf(io, " %23.16e", v)
@@ -123,7 +123,7 @@ end
 
 function _read_restart(filename::AbstractString, n::Int, ::Type{MoleculePosition{D,T}}) where {D,T}
     positions = Vector{MoleculePosition{D,T}}(undef, n)
-    open(filename) do io
+    open(expanduser(filename)) do io
         for i in 1:n
             eof(io) && error("Restart file '$filename' has fewer than the expected $n molecule lines.")
             vals = parse.(T, split(readline(io)))

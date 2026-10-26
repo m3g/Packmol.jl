@@ -31,11 +31,13 @@ The molar masses of the solute, solvent, and cossolvent can be provided manually
 not, they will be computed from the atom types in the PDB file.
 
 """
+_mandatory_keywords(::Type{SolutionBoxUSC}) = (:solute_pdbfile, :solvent_pdbfile, :cossolvent_pdbfile, :density_table)
+
 function SolutionBoxUSC(;
-        solute_pdbfile::String, 
-        solvent_pdbfile::String,
-        cossolvent_pdbfile::String,
-        density_table::Matrix{<:Number},
+        solute_pdbfile::String = _missing_keyword(SolutionBoxUSC, :solute_pdbfile), 
+        solvent_pdbfile::String = _missing_keyword(SolutionBoxUSC, :solvent_pdbfile),
+        cossolvent_pdbfile::String = _missing_keyword(SolutionBoxUSC, :cossolvent_pdbfile),
+        density_table::Matrix{<:Number} = _missing_keyword(SolutionBoxUSC, :density_table),
         concentration_units::Union{Nothing,String} = nothing,
         solute_molar_mass::Union{Nothing,<:Number} = nothing,
         solvent_molar_mass::Union{Nothing,<:Number} = nothing,
@@ -48,6 +50,8 @@ function SolutionBoxUSC(;
     if unit(density_table[begin, 2]) == NoUnits
         @warn "Density units not provided, assuming g/mL." _file=nothing _line=nothing
     end
+    solute_pdbfile, solvent_pdbfile, cossolvent_pdbfile =
+        expanduser(solute_pdbfile), expanduser(solvent_pdbfile), expanduser(cossolvent_pdbfile)
     isnothing(solute_molar_mass) && (solute_molar_mass = mass(read_pdb(solute_pdbfile)))
     solute_molar_mass = _ensure_unit(solute_molar_mass, u"g/mol")
     isnothing(solvent_molar_mass) && (solvent_molar_mass = mass(read_pdb(solvent_pdbfile)))
@@ -234,6 +238,7 @@ function write_packmol_input(
     # testing option
     debug = false,
 )
+    input, output = expanduser(input), expanduser(output)
     (; solute_pdbfile, solvent_pdbfile, cossolvent_pdbfile) = system
     (; ns, nc, unitcell, summary) = _setup(system, concentration, concentration_units, box_sides, margin, pbc)
     println(summary)

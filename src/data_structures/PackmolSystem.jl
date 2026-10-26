@@ -294,7 +294,7 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
     if keyword == "filetype"
         sys.filetype = _parse_value(String, "filetype", val)
     elseif keyword == "output"
-        sys.output_file = _parse_value(String, "output", val)
+        sys.output_file = expanduser(_parse_value(String, "output", val))
     elseif keyword == "tolerance"
         sys.tolerance = _parse_value(T, "tolerance", val)
     elseif keyword == "radscale"
@@ -339,9 +339,9 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
     elseif keyword == "check"
         sys.check = true
     elseif keyword == "restart_from"
-        sys.restart_from = _parse_value(String, "restart_from", val)
+        sys.restart_from = expanduser(_parse_value(String, "restart_from", val))
     elseif keyword == "restart_to"
-        sys.restart_to = _parse_value(String, "restart_to", val)
+        sys.restart_to = expanduser(_parse_value(String, "restart_to", val))
     else
         return false
     end
@@ -408,6 +408,7 @@ read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64) =
     read_packmol_input(input_file, Val(D), T)
 
 function read_packmol_input(input_file::String, ::Val{D}, ::Type{T}) where {D,T}
+    input_file = expanduser(input_file)
     sys = PackmolSystem{D,T}(; input_file, output_file="")
     stall_tolerance_set = false
     structure_section = false

@@ -217,7 +217,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
             atoms_block = false
         end
         if keyword == "structure"
-            filename = joinpath(path, String(values[1]))
+            filename = joinpath(path, expanduser(String(values[1])))
             atoms = read_pdb_atoms(filename)
             reference_coordinates = [_atom_position(at, Val(D), T) for at in atoms]
             radii = fill(T(tolerance / 2), length(atoms))
@@ -248,9 +248,9 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
             c = parse(T, center_str) * T(π) / 180
             rotation_bounds[idx] = (c - hw, c + hw)
         elseif keyword == "restart_from"
-            restart_from = joinpath(path, String(values[1]))
+            restart_from = joinpath(path, expanduser(String(values[1])))
         elseif keyword == "restart_to"
-            restart_to = joinpath(path, String(values[1]))
+            restart_to = joinpath(path, expanduser(String(values[1])))
         elseif keyword in constraint_placements
             iconstraint += 1
             push_parsed_constraint!(constraints, "$keyword $(values[1])", @view(values[2:end]), filename)
