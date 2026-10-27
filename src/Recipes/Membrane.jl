@@ -58,6 +58,8 @@ mutable struct Membrane <: Recipe
     solvent_density::typeof(1.0u"g/mL")
 end
 
+_mandatory_keywords(::Type{Membrane}) = (:lipids, :lipid_head, :lipid_tail, :lipid_molar_ratio, :area_per_lipid, :solvent, :solvent_layer_width, :solvent_density)
+
 """
     Membrane(;
         type::Symbol = :bilayer, # or :monolayer
@@ -119,8 +121,6 @@ a density table).
 Molar masses are computed from the atom types in the PDB files if not provided.
 
 """
-_mandatory_keywords(::Type{Membrane}) = (:lipids, :lipid_head, :lipid_tail, :lipid_molar_ratio, :area_per_lipid, :solvent, :solvent_layer_width, :solvent_density)
-
 function Membrane(;
     type::Symbol=:bilayer,
     lipids::Union{String,Vector{String}} = _missing_keyword(Membrane, :lipids),

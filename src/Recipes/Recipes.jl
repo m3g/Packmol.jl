@@ -1,6 +1,6 @@
 
 using Unitful
-using PDBTools: read_pdb, write_pdb, Atom, mass, charge, maxmin, eachresidue
+using PDBToolsBase: read_pdb, write_pdb, Atom, mass, charge, maxmin, eachresidue
 
 export density_pure_solvent, density_pure_cossolvent
 export write_packmol_input

@@ -208,9 +208,13 @@ function PackmolSystem(
         _add_pbc_confinement_constraints!(structure_types, unitcell, unitcell_center, tolerance)
     end
     atoms, molecule_positions, nmols = _atoms_and_molecule_positions(structure_types)
+    kw = values(kargs)
+    if haskey(kw, :restart_from)
+        kw = merge(kw, (; restart_from=_restart_source(kw.restart_from)))
+    end
     return PackmolSystem{D,T}(;
         structure_types, atoms, molecule_positions, nmols,
-        input_file, output_file=output, kargs...,
+        input_file, output_file=output, kw...,
     )
 end
 

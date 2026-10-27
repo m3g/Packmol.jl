@@ -7,16 +7,16 @@ using Statistics: mean
 using Base: @kwdef
 using Base.Threads: @spawn
 using ChunkSplitters: chunks, index_chunks
-using PDBTools: Atom, center_of_mass
+using PDBToolsBase: Atom, center_of_mass, read_pdb, write_pdb
 using SPGBox
 using Printf: @printf, @sprintf
 import CellListMap
-# `get_atoms` is a shared function name (see MolSimToolkitShared's own
-# docstring): imported, not defined here, so that it and other packages in
-# the M3G ecosystem (MolSimToolkit.jl, ...) can each add their own method to
-# the very same generic function instead of each declaring an unrelated one
-# that happens to share a name.
-import MolSimToolkitShared: get_atoms
+# `get_atoms` is a shared function name (defined in PDBToolsBase): imported,
+# not defined here, so that it and other packages in the M3G ecosystem
+# (MolSimToolkit.jl, ...) can each add their own method to the very same
+# generic function instead of each declaring an unrelated one that happens
+# to share a name.
+import PDBToolsBase: get_atoms
 
 const src_dir = @__DIR__
 
@@ -70,7 +70,6 @@ include("./initial_approximation/initial_approximation.jl")
 
 # Input and output
 include("./io/pick_file.jl")
-include("./io/pdb.jl")
 include("./io/write_output.jl")
 
 # Packing functions

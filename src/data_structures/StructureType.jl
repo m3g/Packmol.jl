@@ -81,7 +81,7 @@ function _apply_fixed_center!(
 ) where {D,T}
     if fixed.fixed
         if center == :mass
-            # centerofmass: use mass-weighted center of mass from PDBTools
+            # centerofmass: use mass-weighted center of mass from PDBToolsBase
             com = center_of_mass(atoms)
             cm_vec = SVector{D,T}(ntuple(i -> com[i], D))
             reference_coordinates .-= Ref(cm_vec)
@@ -102,6 +102,9 @@ function _apply_fixed_center!(
     end
     return reference_coordinates
 end
+
+# The position of an atom, as an `SVector{D,T}`
+_atom_position(atom::Atom, ::Val{D}, ::Type{T}) where {D,T} = SVector{D,T}(ntuple(i -> (atom.x, atom.y, atom.z)[i], D))
 
 """
     structure_type(filename; number, constraints=Constraint[], tolerance=2.0, radius=nothing,
@@ -141,14 +144,14 @@ function structure_type(filename::String;
     # e.g. `constrain_rotation=Dict(:x => (45, 10))` bounds the x-axis
     # rotation angle to 45° ± 10°; see `StructureType.rotation_bounds`.
     constrain_rotation::AbstractDict{Symbol} = Dict{Symbol,Tuple{Float64,Float64}}(),
-    restart_from::Union{Nothing,String,Vector{<:Atom}} = nothing,
+    restart_from::Union{Nothing,String,AbstractVector{<:Atom}} = nothing,
     restart_to::Union{Nothing,String} = nothing,
     D::Int = 3,
     T::DataType = Float64,
 )
     changechains && !isnothing(chain) &&
         error("'changechains' and 'chain' are not compatible for a single structure.")
-    atoms = read_pdb_atoms(filename)
+    atoms = Vector{Atom{Nothing}}(read_pdb(filename))
     natoms = length(atoms)
     reference_coordinates = [_atom_position(at, Val(D), T) for at in atoms]
     radii = fill(T(something(radius, tolerance / 2)), natoms)
@@ -175,7 +178,7 @@ function structure_type(filename::String;
     end
 
     return StructureType{D,T}(;
-        filename, natoms, atoms, number_of_molecules=number, rotation_bounds, restart_from, restart_to,
+        filename, natoms, atoms, number_of_molecules=number, rotation_bounds, restart_from=_restart_source(restart_from), restart_to,
         fixed=fixed_data, reference_coordinates, radii,
         residue_numbering, chain, changechains, constraints, atom_constraints,
     )
@@ -218,7 +221,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
         end
         if keyword == "structure"
             filename = joinpath(path, expanduser(String(values[1])))
-            atoms = read_pdb_atoms(filename)
+            atoms = Vector{Atom{Nothing}}(read_pdb(filename))
             reference_coordinates = [_atom_position(at, Val(D), T) for at in atoms]
             radii = fill(T(tolerance / 2), length(atoms))
             atom_constraints = [Int[] for _ in eachindex(atoms)]

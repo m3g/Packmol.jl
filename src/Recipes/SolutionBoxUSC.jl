@@ -8,6 +8,8 @@ mutable struct SolutionBoxUSC <: Recipe
     cossolvent_molar_mass::Number
 end
 
+_mandatory_keywords(::Type{SolutionBoxUSC}) = (:solute_pdbfile, :solvent_pdbfile, :cossolvent_pdbfile, :density_table)
+
 """
     SolutionBoxUSC(; 
         solute_pdbfile::String, 
@@ -31,8 +33,6 @@ The molar masses of the solute, solvent, and cossolvent can be provided manually
 not, they will be computed from the atom types in the PDB file.
 
 """
-_mandatory_keywords(::Type{SolutionBoxUSC}) = (:solute_pdbfile, :solvent_pdbfile, :cossolvent_pdbfile, :density_table)
-
 function SolutionBoxUSC(;
         solute_pdbfile::String = _missing_keyword(SolutionBoxUSC, :solute_pdbfile), 
         solvent_pdbfile::String = _missing_keyword(SolutionBoxUSC, :solvent_pdbfile),

@@ -1,6 +1,6 @@
 @testitem "water box packing" begin
     using Packmol
-    using PDBTools: read_pdb
+    using PDBToolsBase: read_pdb
     using StaticArrays
     using LinearAlgebra: norm
 
@@ -125,7 +125,7 @@ end
 end
 
 @testitem "restart_from a PDB file" begin
-    using PDBTools: read_pdb
+    using PDBToolsBase: read_pdb
 
     water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
     uc = Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0)

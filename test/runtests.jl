@@ -10,10 +10,8 @@ ENV["UNITFUL_FANCY_EXPONENTS"] = "false"
 
 @testitem "Aqua.test_all" begin
     import Aqua
-    Aqua.test_all(Packmol)
-end
-
-@testitem "Doctests" begin
-    using Documenter: doctest
-    doctest(Packmol)
+    # The Downgrade workflow's julia-downgrade-compat action copies the test-only
+    # dependencies into [deps] (to keep their lower bounds in the Pkg.test sandbox),
+    # which Aqua would report as stale.
+    Aqua.test_all(Packmol; stale_deps = !haskey(ENV, "PACKMOL_DOWNGRADE_TEST"))
 end

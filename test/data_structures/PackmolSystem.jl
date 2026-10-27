@@ -1,5 +1,5 @@
 @testitem "PackmolSystem from Julia code" begin
-    using PDBTools: read_pdb
+    using PDBToolsBase: read_pdb
     file = Packmol.src_dir * "/../test/structure_files/water.pdb"
 
     st = structure_type(file; number=100, constraints=[InsideBox([0.,0.,0.],[40.,40.,40.])])

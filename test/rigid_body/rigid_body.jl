@@ -113,7 +113,7 @@ end
 end
 
 @testitem "set_reference_coordinates!" setup=[RigidBody] begin
-    using PDBTools
+    using PDBToolsBase: read_pdb, positions
     using StaticArrays
     using BenchmarkTools
     using Statistics: mean
@@ -128,7 +128,7 @@ end
     Packmol.set_reference_coordinates!(x; fixed=not_fixed)
     @test x[1] ≈ SVector(0.0, 0.0, 0.5)
     @test x[2] ≈ SVector(0.0, 0.0, -0.5)
-    water = coor(read_pdb(joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")))
+    water = positions(read_pdb(joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")))
     water_save = copy(water)
     not_fixed_water = (false, "", zeros(eltype(eltype(water)), 0))
     a = @ballocated Packmol.set_reference_coordinates!($water; fixed=$not_fixed_water) samples=1 evals=1

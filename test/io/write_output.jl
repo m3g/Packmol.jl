@@ -48,7 +48,7 @@ end
 end
 
 @testitem "write_output: residue numbering and chains" begin
-    using PDBTools: read_pdb
+    using PDBToolsBase: read_pdb
 
     water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
 
@@ -103,7 +103,7 @@ end
 end
 
 @testitem "write_output: CRYST1" begin
-    using PDBTools: read_pdb
+    using PDBToolsBase: read_pdb
 
     water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
     water = structure_type(water_pdb; number=2, constraints=[InsideBox([0, 0, 0], [10, 10, 10])])
@@ -137,7 +137,7 @@ end
 
 @testitem "get_atoms / write_output: periodic_boundary_style" begin
     using StaticArrays: SVector
-    using PDBTools: read_pdb, coor
+    using PDBToolsBase: read_pdb, position
 
     water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
     water = structure_type(water_pdb; number=1)
@@ -169,24 +169,24 @@ end
     atoms_tri = Packmol.get_atoms(sys)
     @test length(atoms_tri) == natoms
     for (a, u) in zip(atoms_tri, unwrapped)
-        @test coor(a) ≈ u + (cm_tri - cm) atol = 1e-4
+        @test position(a) ≈ u + (cm_tri - cm) atol = 1e-4
     end
 
     Packmol.triclinic_to_dodecahedral(sys)
     @test sys.periodic_boundary_style == :dodecahedral
     atoms_dodeca = Packmol.get_atoms(sys)
     for (a, u) in zip(atoms_dodeca, unwrapped)
-        @test coor(a) ≈ u + (cm_dodeca - cm) atol = 1e-4
+        @test position(a) ≈ u + (cm_dodeca - cm) atol = 1e-4
     end
     # the two styles actually produced different coordinates for this atom
-    @test !(coor(atoms_tri[1]) ≈ coor(atoms_dodeca[1]))
+    @test !(position(atoms_tri[1]) ≈ position(atoms_dodeca[1]))
 
     # write_output honors the same style (up to the PDB text format's own
     # 3-decimal-place precision)
     outfile = write_output(sys)
     written = read_pdb(outfile)
     for (a, w) in zip(atoms_dodeca, written)
-        @test coor(a) ≈ coor(w) atol = 1e-3
+        @test position(a) ≈ position(w) atol = 1e-3
     end
     rm(outfile; force=true)
 
@@ -216,7 +216,7 @@ end
 end
 
 @testitem "PDB-based restart" begin
-    using PDBTools: read_pdb, coor
+    using PDBToolsBase: read_pdb, position
     using StaticArrays
     using LinearAlgebra: norm
 
@@ -242,7 +242,7 @@ end
     natoms = water.natoms
     atoms = read_pdb(source_pdb)
     for i in 1:water.number_of_molecules
-        observed = SVector{3,Float64}[SVector{3,Float64}(coor(atoms[(i-1)*natoms+j])[1:3]) for j in 1:natoms]
+        observed = SVector{3,Float64}[SVector{3,Float64}(position(atoms[(i-1)*natoms+j])[1:3]) for j in 1:natoms]
         mp = Packmol._align_molecule(refcoords, observed)
         reconstructed = [Packmol.eulermat(mp.angles) * refcoords[j] + mp.cm for j in 1:natoms]
         @test maximum(norm(reconstructed[j] - observed[j]) for j in 1:natoms) < 1e-2
