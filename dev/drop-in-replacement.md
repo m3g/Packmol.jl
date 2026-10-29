@@ -53,9 +53,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
   66 no input, 70 software error), which is no real standard either, so we keep Fortran's
   codes for drop-in compatibility.
 - **D9 (2026-10-29): `segid` is written to PDB columns 73–76** for every atom of the type.
-  Fortran used it only in CRD output, and inherited it into the next types; here it is
-  not inherited.
-- **D10 (2026-10-29): `movebadrandom` is an accepted no-op.** Julia's `movebad!` always
+  Fortran used it only in CRD output (which won't be supported). Fortran also copied the
+  `segid` of the previous structure block into a block that has none (with a warning).
+  Here a block without `segid` keeps the segment names of its own PDB file.
+- **D10 (2026-10-29): `movebadrandom` is deprecated** (warned and ignored). Julia's `movebad!` always
   places bad molecules at random positions (within the per-type center-of-mass bounds,
   with a short constraint fit), which is Fortran's `movebadrandom` behavior. Fortran's
   default instead places them next to a randomly chosen good molecule. That mode is not
@@ -142,7 +143,7 @@ coordinate file formats.
   the `AboveGaussian`/`BelowGaussian` constraints (check that the parameterization is
   equivalent).
 - [x] **A3.5** `movefrac` is read into `sys.movefrac` (the `packmol()` keyword argument
-  takes precedence). `movebadrandom` is a no-op (D10).
+  takes precedence). `movebadrandom` is deprecated (D10).
 
 ### A4. Validation
 - [ ] **A4.1** Port Fortran's `testing/` suite (runtests.jl validates outputs with

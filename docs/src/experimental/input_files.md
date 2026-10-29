@@ -32,7 +32,6 @@ end structure
 | `filetype <type>` | Output file type (default `pdb`). |
 | `seed <int>` | Random number generator seed (default `1234567`). |
 | `movefrac <value>` | Maximum fraction of the molecules of each type moved by the bad-molecule heuristic in each loop (default `0.05`). The `movefrac` keyword argument of [`packmol`](@ref) takes precedence. |
-| `movebadrandom` | Accepted for compatibility: in Packmol.jl, bad molecules are always moved to random positions. |
 | `nloop <int>` | Maximum number of packing loops (default `200`). The `nloop` keyword argument of [`packmol`](@ref) takes precedence. |
 | `maxit <int>` | Optimizer iterations per packing loop (default `800`). The `maxit` keyword argument of [`packmol`](@ref) takes precedence. |
 | `radscale <value>` | Loose-start radius scale factor (see [`packmol`](@ref)); `discale` is accepted as a legacy alias. |
@@ -64,7 +63,7 @@ and how they interact with the [Constraints](constraints.md) declared
 inside `structure` blocks.
 
 Fortran Packmol keywords that have no use in Packmol.jl (`fscale`, `sidemax`,
-`maxmove`, `nloop0`, `use_short_tol` and the other short-tolerance keywords,
+`maxmove`, `nloop0`, `movebadrandom`, `use_short_tol` and the other short-tolerance keywords,
 ...) are accepted with a deprecation warning and ignored, so that old input
 files still run. A few others are recognized but not yet implemented
 (the `CONECT`-related keywords): using one
@@ -102,7 +101,7 @@ end structure
 | `resnumbers <n>` | Residue numbering scheme for the output — see [Residue numbering](@ref) below. |
 | `chain <c>` | Fix every molecule of this type to chain identifier `<c>` in the output, instead of the default auto-assigned one. |
 | `changechains` | Alternate between two auto-assigned chain identifiers every other molecule, instead of one chain for the whole type. Not compatible with `chain`. |
-| `segid <id>` | Segment identifier (at most 4 characters) for every atom of this type, in columns 73-76 of the output PDB file. Unlike Fortran Packmol, where `segid` is used only in CRD output, it is not inherited by the next structure types. |
+| `segid <id>` | Segment identifier (at most 4 characters) for every atom of this type, in columns 73-76 of the output PDB file. Unlike in Fortran Packmol, a structure without `segid` keeps the segment identifiers of its own PDB file, rather than taking the `segid` of the previous structure. |
 | `constrain_rotation <axis> <center_deg> <halfwidth_deg>` | Restrict this molecule's rotation about `<axis>` (`x`, `y`, or `z`) to `<center_deg> ± halfwidth_deg` degrees, as a hard bound on the optimizer's own rotation-angle variable — not a soft penalty. Repeat once per constrained axis. |
 | `restart_from <file>` | Restart only this structure type's molecules — see [Restarting a run](@ref). |
 | `restart_to <file>` | Write only this structure type's molecules to a restart file — see [Restarting a run](@ref). |

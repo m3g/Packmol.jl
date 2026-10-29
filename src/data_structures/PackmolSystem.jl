@@ -407,7 +407,7 @@ const packmol_legacy_keywords = Dict{String,String}(
     "nloop0" => "nloop0 is a deprecated keyword and was ignored.",
     "disable_movebad" => "disable_movebad is a deprecated keyword and was ignored.",
     "writecrd" => "writecrd is a deprecated keyword and was ignored (CHARMM CRD output is not supported).",
-    "movebadrandom" => "movebadrandom was ignored: in Packmol.jl bad molecules are always moved to random positions.",
+    "movebadrandom" => "movebadrandom is a deprecated keyword and was ignored (bad molecules are always moved to random positions).",
 )
 
 # Keywords recognized by Fortran Packmol but not yet wired into Packmol.jl

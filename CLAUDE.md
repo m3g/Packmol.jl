@@ -145,7 +145,7 @@ These are the building blocks everything else depends on.
 - [x] Inline `#` comments stripped (as Fortran)
 - [x] Deprecated Fortran keywords (`fscale`, `fbins`, `precision`, `sidemax`, `maxmove`, `nloop0`,
       `disable_movebad`, `writecrd`, `use_short_tol`/`short_*`, `iprint*`) accepted with a warning
-- [x] `movefrac` (`packmol(sys; movefrac)` takes precedence), `movebadrandom` (no-op: bad molecules
+- [x] `movefrac` (`packmol(sys; movefrac)` takes precedence), `movebadrandom` (deprecated: bad molecules
       are always moved randomly), `segid` (written to PDB columns 73-76)
 - [ ] CONECT options (`ignore_conect`, `non_standard_conect`, `hexadecimal_indices`): warned, ignored
 
