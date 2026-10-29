@@ -1,10 +1,10 @@
-@testitem "threaded outputs: sparse and dense reduction" begin
+@testitem "threaded outputs: sparse and dense reduction" setup=[TestFiles] begin
     using Packmol: InteratomicDistanceFG, read_packmol_input, _add_gxcar!, _add_fmol!
     import CellListMap
     using StaticArrays
     using Random
 
-    input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "water_box_small.inp")
+    input_file = TestFiles.test_file("input_files/water_box_small.inp")
     ps = read_packmol_input(input_file)
     natoms, nmols = length(ps.atoms), ps.nmols
     main = InteratomicDistanceFG{3,Float64}(ps)
@@ -42,13 +42,13 @@
     @test isempty(c.touched_atoms) && isempty(c.touched_mols)
 end
 
-@testitem "constraint penalties per molecule" begin
+@testitem "constraint penalties per molecule" setup=[TestFiles] begin
     using Packmol: InteratomicDistanceFG, compute_atom_positions!, constraint_fg!, constraint_penalty
     using StaticArrays
     using Random
     # 101 waters (303 atoms): the chunks of atoms of the constraint computation
     # start and end in the middle of molecules
-    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    water_pdb = TestFiles.test_file("structure_files/water.pdb")
     water = structure_type(water_pdb; number=101, constraints=[InsideBox([0, 0, 0], [10, 10, 10])])
     ps = PackmolSystem([water]; output="", tolerance=2.0)
     Packmol._center_reference_coordinates!(ps)
@@ -71,14 +71,14 @@ end
     @test fg.f ≈ sum(fmol_ref)
 end
 
-@testitem "parallel and serial fg! agree" begin
+@testitem "parallel and serial fg! agree" setup=[TestFiles] begin
     using Packmol: InteratomicDistanceFG, compute_bounding_box, compute_atom_positions!,
         initialize_molecules!, fg!, read_packmol_input
     using StaticArrays
     using CellListMap: ParticleSystem
     using Random
 
-    input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "water_box_small.inp")
+    input_file = TestFiles.test_file("input_files/water_box_small.inp")
     ps = read_packmol_input(input_file)
     initialize_molecules!(ps, Random.MersenneTwister(42))
     atom_positions = Vector{SVector{3,Float64}}(undef, length(ps.atoms))

@@ -23,7 +23,7 @@
     end
 end
 
-@testitem "gradient chain rule 3D" begin
+@testitem "gradient chain rule 3D" setup=[TestFiles] begin
     using Packmol
     using Packmol: InteratomicDistanceFG, compute_bounding_box, compute_atom_positions!,
         initialize_molecules!, fg!, read_packmol_input, MoleculePosition, adjust_constraints!
@@ -33,7 +33,7 @@ end
     using CellListMap: ParticleSystem
     using Random
 
-    input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "water_box_small.inp")
+    input_file = TestFiles.test_file("input_files/water_box_small.inp")
     ps = read_packmol_input(input_file; D=3, T=Float64)
 
     rng = Random.MersenneTwister(42)

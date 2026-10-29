@@ -1,6 +1,6 @@
-@testitem "structure_type" begin
+@testitem "structure_type" setup=[TestFiles] begin
     using StaticArrays
-    file = Packmol.src_dir * "/../test/structure_files/water.pdb"
+    file = TestFiles.test_file("structure_files/water.pdb")
     tolerance = 2.0
 
     st = structure_type(file; number=1000, constraints=[InsideBox([0.,0.,0.],[40.,40.,40.])])
@@ -41,11 +41,11 @@ The type `T` defines the number type (Float32, Float64, etc.) and `D` the number
 
 =#
 
-@testitem "read_structure_data" setup=[RigidBody] begin
+@testitem "read_structure_data" setup=[RigidBody, TestFiles] begin
     using Packmol
     using PDBToolsBase: read_pdb, positions
 
-    file = Packmol.src_dir*"/../test/structure_files/water.pdb"
+    file = TestFiles.test_file("structure_files/water.pdb")
     tolerance = 2.0
 
     input_file_block = """
@@ -110,10 +110,10 @@ The type `T` defines the number type (Float32, Float64, etc.) and `D` the number
 
 end
 
-@testitem "fixed molecules" setup=[RigidBody] begin
+@testitem "fixed molecules" setup=[RigidBody, TestFiles] begin
     using Packmol
     using PDBToolsBase: positions
-    file = Packmol.src_dir*"/../test/structure_files/diatomic.pdb"
+    file = TestFiles.test_file("structure_files/diatomic.pdb")
     tolerance = 2.0
 
     # Fixed molecule: do not move

@@ -1,4 +1,4 @@
-@testitem "reinitialize_with_bounds! doesn't inherit Step 2's edge-pileup" begin
+@testitem "reinitialize_with_bounds! doesn't inherit Step 2's edge-pileup" setup=[TestFiles] begin
     # Regression test for a real bug: a structure type confined to a thin PBC
     # slab by two one-sided `plane` constraints, where one of the two planes
     # coincides with the periodic wrap seam (so it's essentially never
@@ -17,7 +17,7 @@
     using StaticArrays
     using LinearAlgebra
 
-    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    water = TestFiles.test_file("structure_files/water.pdb")
 
     Lx, Ly, Lz = 20.0, 20.0, 60.0
     w = 15.0 # slab width

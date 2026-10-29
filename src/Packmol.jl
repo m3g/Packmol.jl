@@ -22,6 +22,11 @@ import PDBToolsBase: get_atoms
 
 const src_dir = @__DIR__
 
+# test_file(name): path of the test file `name` (e.g. "structure_files/water.pdb"). The
+# test files are a lazy artifact (see Artifacts.toml), downloaded on the first call. The
+# method is defined in the TestFilesExt extension, available after `using LazyArtifacts`.
+function test_file end
+
 # API: exported functions
 export read_packmol_input
 export write_output

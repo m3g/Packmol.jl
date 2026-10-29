@@ -98,6 +98,14 @@ Individual test items are defined with `@testitem` in `test/`, mirroring the `sr
 is `src/Recipes/test/`, which holds data files (and doctested paths) for the Recipes docs
 examples, not test code.
 
+Test data files are not in this repository: they are the `packmol` set of
+[MolSimTestFiles](https://github.com/m3g/MolSimTestFiles) (`structure_files/`, `input_files/`,
+`fortran_examples/`, `fortran_reference/`), a lazy artifact (`Artifacts.toml`) accessed with
+`Packmol.test_file(name)` (defined in the `TestFilesExt` extension, loaded with `using LazyArtifacts`).
+Tests use `setup=[TestFiles]` and `TestFiles.test_file(name)` (`test/test_files.jl`), a writable
+copy of the set, since tests write output files next to their inputs. To add or change files,
+publish a new release of the set (see the MolSimTestFiles README) and update `Artifacts.toml`.
+
 ---
 
 ## Development Roadmap

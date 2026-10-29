@@ -1,6 +1,6 @@
-@testitem "CLI" begin
+@testitem "CLI" setup=[TestFiles] begin
     import Packmol.CLI
-    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    water = TestFiles.test_file("structure_files/water.pdb")
     dir = mktempdir()
     input = joinpath(dir, "box.inp")
     output = joinpath(dir, "other.pdb")

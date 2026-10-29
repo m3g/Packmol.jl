@@ -1,6 +1,6 @@
-@testitem "PackmolSystem from Julia code" begin
+@testitem "PackmolSystem from Julia code" setup=[TestFiles] begin
     using PDBToolsBase: read_pdb
-    file = Packmol.src_dir * "/../test/structure_files/water.pdb"
+    file = TestFiles.test_file("structure_files/water.pdb")
 
     st = structure_type(file; number=100, constraints=[InsideBox([0.,0.,0.],[40.,40.,40.])])
     sys = PackmolSystem([st]; output="julia_api_test.pdb", tolerance=2.0, seed=42)
@@ -37,9 +37,9 @@ end
     @test_throws ArgumentError _parse_options("connect", "nop", ("yes" => true, "no" => false))
 end
 
-@testitem "read_packmol_input" begin
+@testitem "read_packmol_input" setup=[TestFiles] begin
     using Packmol: read_packmol_input
-    file = Packmol.src_dir * "/../test/input_files/water_box.inp"
+    file = TestFiles.test_file("input_files/water_box.inp")
     sys = read_packmol_input(file)
     @test sys.filetype == "pdb"
     @test sys.output_file == joinpath(dirname(file), "water_box.pdb")
@@ -61,10 +61,10 @@ end
     # sys = read_packmol_input(file; D=2)
 end
 
-@testitem "radscale / discale keyword" begin
+@testitem "radscale / discale keyword" setup=[TestFiles] begin
     using Packmol: read_packmol_input
-    dir = dirname(Packmol.src_dir * "/../test/input_files/water_box.inp")
-    original = read(Packmol.src_dir * "/../test/input_files/water_box.inp", String)
+    dir = dirname(TestFiles.test_file("input_files/water_box.inp"))
+    original = read(TestFiles.test_file("input_files/water_box.inp"), String)
 
     mktempdir() do tmp
         cp(joinpath(dir, "water.pdb"), joinpath(tmp, "water.pdb"))
@@ -81,7 +81,7 @@ end
     end
 end
 
-@testitem "per-structure keyword does not leak into the global setting" begin
+@testitem "per-structure keyword does not leak into the global setting" setup=[TestFiles] begin
     using Packmol: read_packmol_input
     # `restart_from`/`restart_to` are valid both as a global keyword and as a
     # per-structure one (inside `structure ... end structure`); a
@@ -90,8 +90,8 @@ end
     # regression test for a parser bug where the global-keyword dispatch
     # table was consulted unconditionally, before checking whether the
     # current line was inside a structure block.
-    dir = dirname(Packmol.src_dir * "/../test/input_files/water_box.inp")
-    original = read(Packmol.src_dir * "/../test/input_files/water_box.inp", String)
+    dir = dirname(TestFiles.test_file("input_files/water_box.inp"))
+    original = read(TestFiles.test_file("input_files/water_box.inp"), String)
 
     mktempdir() do tmp
         cp(joinpath(dir, "water.pdb"), joinpath(tmp, "water.pdb"))
@@ -107,9 +107,9 @@ end
     end
 end
 
-@testitem "read_packmol_input: comments, legacy keywords, nloop" begin
+@testitem "read_packmol_input: comments, legacy keywords, nloop" setup=[TestFiles] begin
     using Packmol: read_packmol_input
-    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    water = TestFiles.test_file("structure_files/water.pdb")
     dir = mktempdir()
     input = joinpath(dir, "test.inp")
     write(input, """
@@ -141,7 +141,7 @@ end
     @test sys.nmols == 10
     @test length(sys.structure_types[1].constraints) == 1
     # Not set in the input file: the `packmol` defaults apply
-    sys = read_packmol_input(joinpath(Packmol.src_dir, "..", "test", "input_files", "water_box.inp"))
+    sys = read_packmol_input(TestFiles.test_file("input_files/water_box.inp"))
     @test isnothing(sys.nloop)
     @test isnothing(sys.max_iter)
     @test isnothing(sys.movefrac)
@@ -151,10 +151,10 @@ end
     @test_throws ArgumentError read_packmol_input(input)
 end
 
-@testitem "read_packmol_input from IO" begin
+@testitem "read_packmol_input from IO" setup=[TestFiles] begin
     using Packmol: read_packmol_input
     # Paths are relative to the current directory
-    dir = joinpath(Packmol.src_dir, "..", "test", "structure_files")
+    dir = TestFiles.test_file("structure_files")
     input = "tolerance 2.0\noutput out.pdb\nstructure water.pdb\n  number 10\n  inside box 0. 0. 0. 20. 20. 20.\nend structure\n"
     sys = cd(dir) do
         read_packmol_input(IOBuffer(input))
@@ -165,9 +165,9 @@ end
     @test sys.structure_types[1].filename == "water.pdb"
 end
 
-@testitem "fixed structure without number" begin
+@testitem "fixed structure without number" setup=[TestFiles] begin
     using Packmol: read_packmol_input
-    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    water = TestFiles.test_file("structure_files/water.pdb")
     input = tempname() * ".inp"
     write(input, """
     tolerance 2.0

@@ -162,9 +162,23 @@ coordinate file formats.
   takes precedence). `movebadrandom` is deprecated (D10).
 
 ### A4. Validation
-- [ ] **A4.1** Port Fortran's `testing/` suite (runtests.jl validates outputs with
+- [~] **A4.1** Port Fortran's `testing/` suite (runtests.jl validates outputs with
   CellListMap; test.sh, test_cli.sh, test_failed.sh) to run **against the compiled
   binary**, with the inputs adapted for D1. This is the drop-in acceptance test.
+  - Status (2026-10-29): the test files are now the `packmol` set of MolSimTestFiles
+    (`packmol-v1`). It holds Fortran's test inputs (adapted to D1), its examples and
+    the reference outputs of its connectivity test.
+  - Done: `benzene2` (bond orders preserved, which needed the PDBToolsBase fix in
+    m3g/PDBToolsBase.jl#7) and `examples/interface.inp` run as tests.
+  - The compiled binary converges on every input except three:
+    - `bilayer_pbc.inp` and `water_box_pbc2.inp` don't converge (exit 173, after 50 s
+      and 110 s), while Fortran's `test.sh` expects them to converge. These are
+      packing-quality gaps to investigate.
+    - `protein_outside_pbc_error.inp`: Fortran expects an early error saying the
+      fixed protein is "outside" the PBC box. Packmol.jl packs for 23 s and then
+      fails. A check for fixed molecules outside the periodic cell is missing.
+  - Still to do: run the inputs through the binary in CI, and add the `runtests.jl`
+    validation (minimum distances and constraints) to the outputs.
 - [ ] **A4.2** Benchmark the binary against Fortran on the larger examples (solvprotein is
   slower single-threaded), and record the results here.
 
@@ -274,3 +288,12 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   where a fixed structure without `number` had 0 molecules. Another trim gotcha: build
   `Structure` metadata with the positional `MetaData(unitcell, connectivity, title)`,
   because a keyword call with the `Union`-typed connectivity is unresolved.
+- **2026-10-29** (Claude, same session):
+  - Output is always written with `write_pdb`, and TER records are added in a second
+    pass.
+  - Fortran's benzene2 test showed that PDBToolsBase dropped repeated CONECT bonds
+    (bond orders). Fixed in m3g/PDBToolsBase.jl#7, folded into the pending 1.1.0
+    registration.
+  - Test files moved to MolSimTestFiles (`packmol-v1`, lazy artifact, `TestFiles`
+    test module).
+  - The binary was run on all inputs of the set (see A4.1 for the 3 gaps).
