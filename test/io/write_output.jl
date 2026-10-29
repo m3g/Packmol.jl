@@ -205,7 +205,9 @@ end
     Packmol._write_restart(file, positions)
     @test isfile(file)
     read_back = Packmol._read_restart(file, 2, Packmol.MoleculePosition{3,Float64})
-    @test read_back == positions
+    # The angles are converted to and from those of Fortran Packmol: the same rotations
+    @test all(r.cm == p.cm for (r, p) in zip(read_back, positions))
+    @test all(isapprox(Packmol.eulermat(r.angles), Packmol.eulermat(p.angles); atol=1e-12) for (r, p) in zip(read_back, positions))
     rm(file; force=true)
 
     # Too few lines for the requested molecule count
@@ -432,4 +434,35 @@ end
     @test sort.(output.connectivity) == sort.(reference.connectivity)
     # The 6 carbons of each benzene have a repeated bond (double bond)
     @test count(c -> length(c) != length(unique(c)), output.connectivity) == 12
+end
+
+@testitem "restart files: Euler angles of Fortran Packmol" begin
+    using StaticArrays: SVector, SMatrix
+    using Random: Xoshiro
+    # Fortran Packmol's eulerrmat (polartocart.f90): the angles of the restart files
+    function eulerrmat(b, g, t)
+        cb, sb, cg, sg, ct, st = cos(b), sin(b), cos(g), sin(g), cos(t), sin(t)
+        v1 = SVector(-sb * sg * ct + cb * cg, -sb * cg * ct - cb * sg, sb * st)
+        v2 = SVector(cb * sg * ct + sb * cg, cb * cg * ct - sb * sg, -cb * st)
+        v3 = SVector(sg * st, cg * st, ct)
+        return hcat(v1, v2, v3) # x = xcm + R * xref
+    end
+    # A restart file written by Fortran Packmol is read with the same rotations
+    rng = Xoshiro(1)
+    fortran_angles = [SVector{3}((rand(rng, 3) .- 0.5) .* 2pi) for _ in 1:100]
+    push!(fortran_angles, SVector(0.3, 0.2, 0.0), SVector(0.3, 0.2, Float64(pi)))
+    file = tempname()
+    open(file, "w") do io
+        for (i, a) in enumerate(fortran_angles)
+            println(io, " 1.0 2.0 $(Float64(i)) $(a[1]) $(a[2]) $(a[3])")
+        end
+    end
+    positions = Packmol._read_restart(file, length(fortran_angles), Packmol.MoleculePosition{3,Float64})
+    @test all(isapprox(Packmol.eulermat(p.angles), eulerrmat(a...); atol=1e-10) for (p, a) in zip(positions, fortran_angles))
+    @test all(p.cm == SVector(1.0, 2.0, Float64(i)) for (i, p) in enumerate(positions))
+    # and written back with angles that Fortran Packmol reads as the same rotations
+    Packmol._write_restart(file, positions)
+    written = [parse.(Float64, split(l)) for l in readlines(file)]
+    @test all(isapprox(eulerrmat(w[4:6]...), Packmol.eulermat(p.angles); atol=1e-10) for (w, p) in zip(written, positions))
+    rm(file)
 end

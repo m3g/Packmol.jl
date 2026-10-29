@@ -184,7 +184,9 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
                 for i in irange
                     imol_local = st_offset + i
                     if st.fixed.fixed
-                        packmol_system.molecule_positions[imol_local] = st.fixed.position
+                        # The reference coordinates of a fixed molecule already are its atom
+                        # positions (see `_apply_fixed_center!`): its position is the identity
+                        packmol_system.molecule_positions[imol_local] = zero(MoleculePosition{D,T})
                     else
                         if has_pbc
                             frac = SVector{D,T}(ntuple(_ -> rand(task_rng, T) - T(0.5), D))

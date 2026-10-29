@@ -106,13 +106,45 @@ end
 # restart resumes packing from exactly where the previous run left off
 # instead of re-deriving a starting point.
 #
+#
+# The angles of restart files are those of Fortran Packmol, so that restart files can be
+# exchanged with it: Fortran rotates free molecules with its `eulerrmat` (z-x-z Euler
+# angles), not with the convention of the `fixed` keyword (`eulerfixed`), which is the one
+# of `eulermat`. The angles are converted when restart files are read and written.
+#
+function _restart_rotation(b::T, g::T, t::T) where {T}
+    cb, sb, cg, sg, ct, st = cos(b), sin(b), cos(g), sin(g), cos(t), sin(t)
+    # Columns: the v1, v2, v3 vectors of Fortran's eulerrmat (x = xcm + R * xref)
+    return SMatrix{3,3,T}(
+        -sb * sg * ct + cb * cg, -sb * cg * ct - cb * sg, sb * st,
+        cb * sg * ct + sb * cg, cb * cg * ct - sb * sg, -cb * st,
+        sg * st, cg * st, ct,
+    )
+end
+function _restart_angles(R::AbstractMatrix{T}) where {T}
+    ct = clamp(R[3, 3], -one(T), one(T))
+    t = acos(ct)
+    if sin(t) > sqrt(eps(T))
+        b = atan(R[3, 1], -R[3, 2])
+        g = atan(R[1, 3], R[2, 3])
+    else # rotation about z only: b + g (t = 0) or b - g (t = π) is defined, set g = 0
+        g = zero(T)
+        b = atan(R[1, 2], R[1, 1])
+    end
+    return SVector{3,T}(b, g, t)
+end
+_angles_to_restart(angles::SVector{3}) = _restart_angles(eulermat(angles))
+_angles_to_restart(angles::SVector) = angles
+_angles_from_restart(angles::SVector{3}) = euler_angles(_restart_rotation(angles...))
+_angles_from_restart(angles::SVector) = angles
+
 function _write_restart(filename::AbstractString, positions::AbstractVector{MoleculePosition{D,T}}) where {D,T}
     open(expanduser(filename); write=true) do io
         for mp in positions
             for v in mp.cm
                 @printf(io, " %23.16e", v)
             end
-            for v in mp.angles
+            for v in _angles_to_restart(mp.angles)
                 @printf(io, " %23.16e", v)
             end
             println(io)
@@ -128,7 +160,7 @@ function _read_restart(filename::AbstractString, n::Int, ::Type{MoleculePosition
             eof(io) && error("Restart file '$filename' has fewer than the expected $n molecule lines.")
             vals = parse.(T, split(readline(io)))
             length(vals) < 2D && error("Restart file '$filename' line $i has fewer than $(2D) values.")
-            positions[i] = MoleculePosition(SVector{D,T}(vals[1:D]), SVector{D,T}(vals[D+1:2D]))
+            positions[i] = MoleculePosition(SVector{D,T}(vals[1:D]), _angles_from_restart(SVector{D,T}(vals[D+1:2D])))
         end
     end
     return positions
@@ -286,6 +318,12 @@ function _wrap_molecules!(
     for st in packmol_system.structure_types
         natoms_st = st.natoms
         nmols_st = st.number_of_molecules
+        # Fixed molecules are written where they were placed (they are inside the cell)
+        if st.fixed.fixed
+            imol_offset += nmols_st
+            iat_offset += nmols_st * natoms_st
+            continue
+        end
         for i in 1:nmols_st
             imol = imol_offset + i
             mp = packmol_system.molecule_positions[imol]

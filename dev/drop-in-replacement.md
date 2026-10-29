@@ -207,6 +207,57 @@ coordinate file formats.
 
 ---
 
+### A5. Audit round 2 (2026-10-29): Fortran and Packmol.jl run side by side
+
+This round compared outputs of the two binaries on the same inputs, not just keyword lists.
+
+Fixed (branch `fixed-molecules-compat`):
+- [x] **A5.1 Fixed molecules were placed twice.** `_apply_fixed_center!` already puts the
+  placed atoms in `reference_coordinates`, but initialization also set the molecule
+  position to `fixed.position`. The position and rotation were therefore applied a second
+  time, in both the packing objective and the output, for any fixed molecule not at the
+  origin with zero rotation (e.g. `fixed 5 -3 2 0 0 0` was written 5 Å off).
+  - Fixed molecules now have the identity position, and their reference coordinates are
+    their atoms.
+  - The output does not wrap fixed molecules (they must be inside the cell).
+  - `_collect_fixed_positions` (overlap checks) uses the same positions.
+- [x] **A5.2 `fixed` without `center`** rotated about the geometric center; Fortran
+  rotates about the origin of the coordinates (x = R·r + t). Now the same as Fortran.
+  The Euler-angle convention of `fixed` (Fortran's `eulerfixed`) already matched.
+- [x] **A5.3 Restart files** used Packmol.jl's angles. Fortran's restart angles are
+  those of its free molecules, its `eulerrmat` (z–x–z) convention. They are now
+  converted when read and written (`_restart_rotation`/`_restart_angles`), and
+  exchanging restart files reproduces the configurations exactly in both directions.
+  Restart files written by older Packmol.jl versions are read incorrectly.
+- [x] **A5.4 Misspelled keywords in structure blocks** (`numbr 10`) were silently ignored
+  (0 molecules). They are now errors. Deprecated and global keywords inside structure
+  blocks are ignored with a warning (Fortran accepts them there).
+
+Open:
+- [?] **A5.5 `constrain_rotation` semantics differ.** Fortran bounds the angles of its
+  z–x–z `eulerrmat` convention (x → θ, y → β, z → γ, `app/packmol.f90`), so for example
+  `constrain_rotation x 0 10` alone restricts the tilt of the molecule's z axis to 10°.
+  Packmol.jl bounds rotations about the x, y and z axes (`eulermat`). Measured on 30
+  lipids: with x and y both constrained, the z axis tilts at most 10° (Fortran) vs 14°
+  (Packmol.jl); with x alone, 10° vs free. The Fortran region is not a box in Packmol.jl's
+  angles, so exact compatibility requires parameterizing free molecules with `eulerrmat`
+  (including the gradient chain rule), which would also make restart files native.
+  **Decision needed.**
+- [ ] **A5.6 `over/below xygauss`** constraint (= A3.4).
+- [ ] **A5.7 `writeout`/`writebad`.** In Fortran, `writeout` is a time interval in
+  seconds (default 10) for writing the best solution so far, and `writebad` also writes
+  worse points. Packmol.jl parses both but writes after every improved loop, which is
+  costly for large systems.
+- [ ] **A5.8 Parsed but without effect:** `randominitialpoint` (Fortran skips the
+  constraint fit of the initial point), `optimization_print_level`, `chkgrad`.
+  Implement them or deprecate them.
+- [?] **A5.9 `centerofmass` of fixed molecules:** Fortran sets all masses to 1, so its
+  "center of mass" is the geometric center. Packmol.jl uses atomic masses (0.05 Å
+  difference for the protein test). Keep Packmol.jl's behavior as a documented difference?
+- [ ] **A5.10 Performance:** `mixture_pbc.inp` takes 0.68 s with Fortran, 12.3 s with
+  the Packmol.jl binary on 1 thread, and 19.6 s on 4 threads (slower with more threads).
+  Profile it (A4.2).
+
 ## Workstream B: standalone executable build (and CI)
 
 - [x] **B1** Trim-safe build works locally on Linux (see Baseline).

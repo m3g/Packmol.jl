@@ -423,6 +423,15 @@ const packmol_legacy_keywords = Dict{String,String}(
 const packmol_unimplemented_keywords = Dict{String,String}(
 )
 
+# Global keywords (see `_set_input_keyword!` and `_read_packmol_input`)
+const _global_keywords = (
+    "filetype", "output", "tolerance", "radscale", "discale", "tolerance_precision",
+    "constraint_precision", "stall_tolerance", "maxit", "nloop", "movefrac", "max_random_init",
+    "adjust_constraints_on_init", "add_amber_ter", "amber_ter_preserve", "add_box_sides",
+    "ignore_conect", "randominitialpoint", "seed", "avoid_overlap", "writeout", "writebad",
+    "optimization_print_level", "chkgrad", "check", "pbc", "unitcell",
+)
+
 # Keywords of a `structure ... end structure` block with no use in Packmol.jl
 # (accepted with a warning, as `packmol_legacy_keywords`).
 const packmol_legacy_structure_keywords = Dict{String,String}(

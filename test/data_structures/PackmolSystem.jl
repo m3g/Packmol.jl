@@ -149,6 +149,15 @@ end
     # segid has at most 4 characters
     write(input, "tolerance 2.0\nstructure $water\n  number 1\n  segid TOOLONG\nend structure\n")
     @test_throws ArgumentError read_packmol_input(input)
+    # Misspelled keywords in structure blocks are errors; deprecated and global keywords
+    # are ignored there (with a warning)
+    write(input, "tolerance 2.0\nstructure $water\n  numbr 10\nend structure\n")
+    @test_throws ArgumentError read_packmol_input(input)
+    write(input, "tolerance 2.0\nstructure $water\n  number 10\n  seed 1\n  fscale 1.0\n  inside box 0. 0. 0. 20. 20. 20.\nend structure\n")
+    sys = redirect_stderr(devnull) do
+        read_packmol_input(input)
+    end
+    @test sys.nmols == 10
 end
 
 @testitem "read_packmol_input from IO" setup=[TestFiles] begin
@@ -187,19 +196,33 @@ end
 
 @testitem "fixed molecules: positions and periodic cell" setup=[TestFiles] begin
     using Packmol: read_packmol_input
-    using PDBToolsBase: position
+    using PDBToolsBase: position, read_pdb
     using StaticArrays: SVector, SMatrix
-    # The positions of the fixed atoms used for the overlap checks are those of the output
-    # (a new input file: the test files are shared by the test items)
-    input = TestFiles.test_file("input_files/solvprotein_moved_protein.inp")
-    original = read(TestFiles.test_file("input_files/solvprotein.inp"), String)
-    write(input, replace(original, "fixed 0. 0. 0. 0. 0. 0." => "fixed 10. 3. 19. 0.5 0.3 0.2"))
-    sys = redirect_stderr(devnull) do
-        read_packmol_input(input)
+    using Statistics: mean
+    # Fixed molecules are placed as in Fortran Packmol: rotated by the Euler angles
+    # (`eulerfixed` of Fortran, `eulermat` here) about their geometric center with
+    # `center`, or about the origin of their coordinates otherwise, and then translated.
+    # The positions are the same in the output, in the packing, and in the overlap checks.
+    water = TestFiles.test_file("structure_files/water.pdb")
+    template = [SVector{3,Float64}(position(at)) for at in read_pdb(water)]
+    cm, angles = SVector(5.0, -3.0, 2.0), SVector(0.7, 1.1, -0.4)
+    R = Packmol.eulermat(angles)
+    for (center, expected) in (
+        (:geometric, [R * (x - mean(template)) + cm for x in template]),
+        (:none, [R * x + cm for x in template]),
+    )
+        constraints = [InsideBox([-15.0, -15.0, -15.0], [15.0, 15.0, 15.0])]
+        sys = PackmolSystem([
+                structure_type(water; number=1, fixed=(cm, angles), center),
+                structure_type(water; number=5, constraints),
+            ]; output="", tolerance=2.0)
+        redirect_stdout(devnull) do
+            packmol(sys; iprint=1000)
+        end
+        @test sys.status == :packing_ready
+        @test all(isapprox(position(at), x; atol=1e-3) for (at, x) in zip(get_atoms(sys)[1:3], expected))
+        @test all(isapprox(x, y; atol=1e-10) for (x, y) in zip(Packmol._collect_fixed_positions(sys), expected))
     end
-    fixed_positions = Packmol._collect_fixed_positions(sys)
-    @test length(fixed_positions) == sys.structure_types[1].natoms
-    @test all(isapprox(x, position(at); atol=1e-3) for (x, at) in zip(fixed_positions, get_atoms(sys)))
     # Fixed molecules outside the periodic cell are an error (as Fortran Packmol's
     # testing/input_files/protein_outside_pbc_error.inp)
     @test_throws ArgumentError read_packmol_input(TestFiles.test_file("input_files/protein_outside_pbc_error.inp"))
