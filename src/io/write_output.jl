@@ -452,12 +452,11 @@ function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_sy
     cryst1_lines = _cryst1_lines(packmol_system, atom_positions)
     header = join(vcat("HEADER", "REMARK   Packmol.jl generated PDB file", cryst1_lines), "\n")
     connectivity = _system_connectivity(packmol_system)
+    # Positional `MetaData` (unit cell, connectivity, title): a keyword call with the
+    # `Union`-typed connectivity is not compatible with `juliac --trim`
+    write_pdb(output_file, Structure(output_atoms, PDBToolsBase.MetaData(nothing, connectivity, nothing)); header)
     if packmol_system.add_amber_ter || packmol_system.amber_ter_preserve
-        _write_pdb_with_ter(output_file, output_atoms, connectivity, packmol_system, header)
-    else
-        # Positional `MetaData` (unit cell, connectivity, title): a keyword call with the
-        # `Union`-typed connectivity is not compatible with `juliac --trim`
-        write_pdb(output_file, Structure(output_atoms, PDBToolsBase.MetaData(nothing, connectivity, nothing)); header)
+        _add_ter_records(output_file, packmol_system)
     end
     return output_file
 end
@@ -508,38 +507,43 @@ function _ter_positions(filename::AbstractString)
 end
 
 #
-# Write the output PDB file with `TER` records, as Fortran Packmol: after
-# every molecule with `add_amber_ter`, and where the structure's own PDB file
-# has them with `amber_ter_preserve`.
+# Add `TER` records, as Fortran Packmol, to the PDB file written by `write_pdb`:
+# after every molecule with `add_amber_ter`, and where the structure's own PDB
+# file has them with `amber_ter_preserve`.
 #
-function _write_pdb_with_ter(
-    output_file::AbstractString, atoms::Vector{Atom{Nothing}},
-    connectivity::Union{Nothing,Vector{Vector{Int32}}}, packmol_system::PackmolSystem, header::AbstractString,
-)
-    io = open(expanduser(output_file), "w")
+function _add_ter_records(output_file::AbstractString, packmol_system::PackmolSystem)
+    # nter[k+1]: number of TER records after the k-th atom of the file
+    nter = zeros(Int, sum(st -> st.natoms * _ncopies(st), packmol_system.structure_types; init=0) + 1)
+    offset = 0
+    for st in packmol_system.structure_types
+        ter_positions = packmol_system.amber_ter_preserve ? _ter_positions(st.filename) : Int[]
+        for _ in 1:_ncopies(st)
+            for k in ter_positions
+                k <= st.natoms && (nter[offset+k+1] += 1)
+            end
+            offset += st.natoms
+            packmol_system.add_amber_ter && (nter[offset+1] += 1)
+        end
+    end
+    lines = open(_read_lines, output_file)
+    io = open(output_file, "w")
     try
-        println(io, header)
         iat = 0
-        for st in packmol_system.structure_types
-            ter_positions = packmol_system.amber_ter_preserve ? _ter_positions(st.filename) : Int[]
-            for _ in 1:_ncopies(st)
-                for _ in 1:count(==(0), ter_positions)
+        for line in lines
+            is_atom = startswith(line, "ATOM") || startswith(line, "HETATM")
+            if is_atom && iat == 0
+                for _ in 1:nter[1]
                     println(io, "TER")
                 end
-                for jat in 1:st.natoms
-                    println(io, write_pdb_atom(atoms[iat+jat]))
-                    for _ in 1:count(==(jat), ter_positions)
-                        println(io, "TER")
-                    end
+            end
+            println(io, line)
+            if is_atom
+                iat += 1
+                for _ in 1:nter[iat+1]
+                    println(io, "TER")
                 end
-                iat += st.natoms
-                packmol_system.add_amber_ter && println(io, "TER")
             end
         end
-        # The atoms are numbered sequentially, so the serials are their indices
-        isnothing(connectivity) ||
-            PDBToolsBase._write_pdb_conect(io, connectivity, Int32.(1:length(atoms)), atoms, PDBToolsBase.all)
-        println(io, "END")
     finally
         close(io)
     end

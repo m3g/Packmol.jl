@@ -7,7 +7,7 @@ using Statistics: mean
 using Base: @kwdef
 using Base.Threads: @spawn
 using ChunkSplitters: chunks, index_chunks
-using PDBToolsBase: Atom, Structure, center_of_mass, read_pdb, write_pdb, write_pdb_atom
+using PDBToolsBase: Atom, Structure, center_of_mass, read_pdb, write_pdb
 using PDBToolsBase: read_xyz, write_xyz, read_mmcif
 using SPGBox
 using Printf: @printf, @sprintf

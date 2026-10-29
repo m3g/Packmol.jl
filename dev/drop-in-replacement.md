@@ -133,12 +133,13 @@ coordinate file formats.
     above 99999.
   - `non_standard_conect` is deprecated: CONECT parsing follows the PDB standard
     columns in PDBToolsBase.
-  - The TER writer calls the internal `PDBToolsBase._write_pdb_conect`. Making it
-    public, or adding TER support to `write_pdb`, would be cleaner.
+  - Output is always written with the PDBToolsBase writers (`write_pdb`/`write_xyz`).
+    When TER records are requested, a second pass over the written file inserts them
+    after the right atom records (`_add_ter_records`), as the maintainer asked.
   - **Requires PDBToolsBase 1.1 to be released** (compat bumped to `1.1`).
 - [x] **A2.5** AMBER TER (`add_amber_ter`: a TER after every molecule; `amber_ter_preserve`:
   the template's TER records are repeated in every copy), as in Fortran `output.f90`.
-  Done 2026-10-29 (`_write_pdb_with_ter` in `src/io/write_output.jl`).
+  Done 2026-10-29 (`_add_ter_records` in `src/io/write_output.jl`).
 
 ### A3. Input keywords
 - [x] **A3.1** Strip inline comments (`inside box 0 0 0 10 10 10  # solvent`), as Fortran does.
