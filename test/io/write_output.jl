@@ -278,7 +278,8 @@ end
     write_output(sys)
     @test nter(output) == 3
     @test length(read_pdb(output)) == 9
-    @test startswith(readlines(output)[end-1], "TER")
+    out_lines = readlines(output)
+    @test startswith(out_lines[findlast(l -> startswith(l, "ATOM") || startswith(l, "HETATM"), out_lines)+1], "TER")
     # TER records preserved from the template, and both options together
     sys = PackmolSystem([st]; output, tolerance=2.0, amber_ter_preserve=true)
     write_output(sys)
@@ -333,4 +334,85 @@ end
     @test isfile(output)
     @test !isfile(output * "_FORCED")
     rm(output; force=true)
+end
+
+@testitem "CONECT records" begin
+    using PDBToolsBase: read_pdb
+    files = joinpath(Packmol.src_dir, "..", "test", "structure_files")
+    ethanol = joinpath(files, "ethanol.pdb")
+    water = joinpath(files, "water.pdb")
+    constraints = [InsideBox([0.0, 0.0, 0.0], [20.0, 20.0, 20.0])]
+    output = tempname() * ".pdb"
+    nconect(file) = count(startswith("CONECT"), readlines(file))
+    # The connectivity of the template is repeated for every copy of the molecule
+    st_water = structure_type(water; number=2, constraints)
+    st_ethanol = structure_type(ethanol; number=3, constraints)
+    @test length(st_ethanol.connectivity) == 9
+    @test st_water.connectivity == [[3], [3], [1, 2]]
+    sys = PackmolSystem([st_water, st_ethanol]; output, tolerance=2.0)
+    write_output(sys)
+    @test nconect(output) == 33
+    s = read_pdb(output)
+    @test length(s.connectivity) == 33
+    @test s.connectivity[1:6] == [[3], [3], [1, 2], [6], [6], [4, 5]]
+    @test s.connectivity[7] == [8, 10, 11, 12]
+    @test s.connectivity[16] == [17, 19, 20, 21]
+    @test s.connectivity[33] == [27]
+    # Also written with TER records
+    sys = PackmolSystem([st_water, st_ethanol]; output, tolerance=2.0, add_amber_ter=true)
+    write_output(sys)
+    @test nconect(output) == 33
+    @test read_pdb(output).connectivity == s.connectivity
+    # Disabled for the whole system, or for a structure type
+    sys = PackmolSystem([st_water, st_ethanol]; output, tolerance=2.0, connect=false)
+    write_output(sys)
+    @test nconect(output) == 0
+    sys = PackmolSystem([st_water, structure_type(ethanol; number=3, constraints, connect=false)]; output, tolerance=2.0)
+    write_output(sys)
+    @test nconect(output) == 6
+    rm(output; force=true)
+end
+
+@testitem "xyz files" begin
+    using PDBToolsBase: read_xyz, read_pdb
+    using Packmol: read_packmol_input
+    files = joinpath(Packmol.src_dir, "..", "test", "structure_files")
+    dir = mktempdir()
+    input = joinpath(dir, "test.inp")
+    # filetype xyz: the output is an xyz file, whatever its extension
+    write(input, """
+    tolerance 2.0
+    filetype xyz
+    output out.xyz
+    structure $(joinpath(files, "ethanol.xyz"))
+      number 3
+      inside box 0. 0. 0. 20. 20. 20.
+    end structure
+    structure $(joinpath(files, "ethanol.pdb"))
+      number 2
+      connect no
+      inside box 0. 0. 0. 20. 20. 20.
+    end structure
+    """)
+    sys = read_packmol_input(input)
+    @test sys.filetype == "xyz"
+    @test sys.structure_types[1].natoms == 9
+    @test isnothing(sys.structure_types[1].connectivity)
+    @test isnothing(sys.structure_types[2].connectivity)
+    write_output(sys)
+    s = read_xyz(joinpath(dir, "out.xyz"))
+    @test length(s) == 45
+    @test s.title == "Built with Packmol"
+    # filetype pdb: xyz structure files are recognized by the extension
+    sys.filetype = "pdb"
+    sys.output_file = joinpath(dir, "out.pdb")
+    write_output(sys)
+    @test length(read_pdb(joinpath(dir, "out.pdb"))) == 45
+    # Unsupported file types
+    write(input, "tolerance 2.0\nfiletype tinker\n")
+    @test_throws ArgumentError read_packmol_input(input)
+    @test_throws ArgumentError Packmol._file_format("water.txyz", "tinker")
+    @test Packmol._file_format("water.txyz", "xyz") == "xyz"
+    @test Packmol._file_format("water.XYZ", "pdb") == "xyz"
+    @test Packmol._file_format("water.cif", "pdb") == "mmcif"
 end

@@ -7,7 +7,8 @@ using Statistics: mean
 using Base: @kwdef
 using Base.Threads: @spawn
 using ChunkSplitters: chunks, index_chunks
-using PDBToolsBase: Atom, center_of_mass, read_pdb, write_pdb, write_pdb_atom
+using PDBToolsBase: Atom, Structure, center_of_mass, read_pdb, write_pdb, write_pdb_atom
+using PDBToolsBase: read_xyz, write_xyz, read_mmcif
 using SPGBox
 using Printf: @printf, @sprintf
 import CellListMap
@@ -16,6 +17,7 @@ import CellListMap
 # (MolSimToolkit.jl, ...) can each add their own method to the very same
 # generic function instead of each declaring an unrelated one that happens
 # to share a name.
+import PDBToolsBase
 import PDBToolsBase: get_atoms
 
 const src_dir = @__DIR__

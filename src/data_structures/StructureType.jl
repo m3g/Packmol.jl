@@ -44,7 +44,10 @@ Structure that contains the input data for a structure block in the input file.
     # version, and its docstring for the accepted `restart_from` sources.
     restart_from::Union{Nothing,String,Vector{Atom{Nothing}}} = nothing
     restart_to::Union{Nothing,String} = nothing
-    connect::Vector{Vector{Int}} = Vector{Int}[]
+    # Bonds of the template (from the CONECT records of the structure file, read by
+    # PDBToolsBase): `connectivity[i]` are the indices of the atoms bonded to atom
+    # `i`. `nothing` if not available, or disabled with `connect no`.
+    connectivity::Union{Nothing,Vector{Vector{Int32}}} = nothing
     # AnyConstraint{T} (a closed Union of every concrete constraint type, not
     # the abstract Constraint) so constraint dispatch in the hot packing loop
     # is allocation-free — see constraints/constraint_types.jl.
@@ -150,12 +153,15 @@ function structure_type(filename::String;
     constrain_rotation::AbstractDict{Symbol} = Dict{Symbol,Tuple{Float64,Float64}}(),
     restart_from::Union{Nothing,String,AbstractVector{<:Atom}} = nothing,
     restart_to::Union{Nothing,String} = nothing,
+    connect::Bool = true,
+    filetype::String = "pdb",
     D::Int = 3,
     T::DataType = Float64,
 )
     changechains && !isnothing(chain) &&
         error("'changechains' and 'chain' are not compatible for a single structure.")
-    atoms = Vector{Atom{Nothing}}(read_pdb(filename))
+    atoms, connectivity = _read_structure_file(filename, filetype)
+    connect || (connectivity = nothing)
     natoms = length(atoms)
     reference_coordinates = [_atom_position(at, Val(D), T) for at in atoms]
     radii = fill(T(something(radius, tolerance / 2)), natoms)
@@ -184,15 +190,43 @@ function structure_type(filename::String;
     return StructureType{D,T}(;
         filename, natoms, atoms, number_of_molecules=number, rotation_bounds, restart_from=_restart_source(restart_from), restart_to,
         fixed=fixed_data, reference_coordinates, radii,
-        residue_numbering, chain, changechains, segid=_check_segid(segid), constraints, atom_constraints,
+        residue_numbering, chain, changechains, segid=_check_segid(segid), connectivity, constraints, atom_constraints,
     )
 end
 
 read_structure_data(input_file_block::AbstractString, args...; kargs...) = 
     read_structure_data(IOBuffer(input_file_block), args...; kargs...)
 
-read_structure_data(input_file_block::IOBuffer, tolerance; D::Int=3, T::DataType=Float64, path::String="") =
-    read_structure_data(input_file_block, tolerance, Val(D), T; path)
+read_structure_data(input_file_block::IOBuffer, tolerance; D::Int=3, T::DataType=Float64, path::String="", filetype::String="pdb") =
+    read_structure_data(input_file_block, tolerance, Val(D), T; path, filetype)
+
+#
+# Atoms and connectivity of a structure file. The format follows the extension
+# of the file (`.pdb`, `.xyz`, `.cif`/`.mmcif`) or, for other extensions, the
+# `filetype` of the input (`pdb` or `xyz`, as in Fortran Packmol).
+#
+function _read_structure_file(filename::String, filetype::String)
+    structure = if _file_format(filename, filetype) == "xyz"
+        read_xyz(filename)
+    elseif _file_format(filename, filetype) == "mmcif"
+        read_mmcif(filename)
+    else
+        read_pdb(filename)
+    end
+    return Vector{Atom{Nothing}}(structure.atoms), structure.connectivity
+end
+
+function _file_format(filename::AbstractString, filetype::String)
+    ext = lowercase(splitext(filename)[2])
+    ext == ".pdb" && return "pdb"
+    ext == ".xyz" && return "xyz"
+    (ext == ".cif" || ext == ".mmcif") && return "mmcif"
+    (filetype == "pdb" || filetype == "xyz") && return filetype
+    throw(ArgumentError("""\n
+        filetype $filetype is not supported: use pdb or xyz.
+
+    """))
+end
 
 # The segment identifier of the PDB format has at most 4 characters
 _check_segid(::Nothing) = nothing
@@ -206,9 +240,11 @@ function _check_segid(segid::String)
     return segid
 end
 
-function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::Type{T}; path::String="") where {D,T}
+function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::Type{T}; path::String="", filetype::String="pdb") where {D,T}
     filename = ""
     atoms = Atom{Nothing}[]
+    connectivity = nothing
+    connect = true
     number_of_molecules = 0
     reference_coordinates = SVector{D,T}[]
     radii = T[]
@@ -243,7 +279,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
         end
         if keyword == "structure"
             filename = joinpath(path, expanduser(String(values[1])))
-            atoms = Vector{Atom{Nothing}}(read_pdb(filename))
+            atoms, connectivity = _read_structure_file(filename, filetype)
             reference_coordinates = [_atom_position(at, Val(D), T) for at in atoms]
             radii = fill(T(tolerance / 2), length(atoms))
             atom_constraints = [Int[] for _ in eachindex(atoms)]
@@ -264,6 +300,8 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
             chain = only(values[1])
         elseif keyword == "changechains"
             changechains = true
+        elseif keyword == "connect"
+            connect = _parse_options("connect", isempty(values) ? "" : values[1], _yes_no)
         elseif keyword == "segid"
             segid = _check_segid(String(values[1]))
         elseif keyword == "constrain_rotation"
@@ -292,6 +330,8 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
     end
     # If molecule is fixed, apply transformation to obtain the reference coordinates
     _apply_fixed_center!(reference_coordinates, atoms, fixed, center)
+    # A fixed structure is a single molecule (`number` is optional, as in Fortran Packmol)
+    fixed.fixed && number_of_molecules == 0 && (number_of_molecules = 1)
     #
     # Read custom atom radii and set constraints, according to atom blocks
     #
@@ -328,6 +368,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
     return StructureType{D,T}(;
         filename, natoms=length(atoms), atoms, number_of_molecules, fixed, reference_coordinates, radii,
         residue_numbering, chain, changechains, segid, rotation_bounds, restart_from, restart_to,
+        connectivity=connect ? connectivity : nothing,
         constraints, atom_constraints,
     )
 end

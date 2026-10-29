@@ -164,3 +164,23 @@ end
     @test sys.nmols == 10
     @test sys.structure_types[1].filename == "water.pdb"
 end
+
+@testitem "fixed structure without number" begin
+    using Packmol: read_packmol_input
+    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    input = tempname() * ".inp"
+    write(input, """
+    tolerance 2.0
+    structure $water
+      number 5
+      inside box 0. 0. 0. 20. 20. 20.
+    end structure
+    structure $water
+      fixed 10. 10. 10. 0. 0. 0.
+    end structure
+    """)
+    sys = read_packmol_input(input)
+    @test sys.structure_types[2].number_of_molecules == 1
+    @test sys.nmols == 6
+    @test length(get_atoms(sys)) == 18
+end

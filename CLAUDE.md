@@ -147,7 +147,8 @@ These are the building blocks everything else depends on.
       `disable_movebad`, `writecrd`, `use_short_tol`/`short_*`, `iprint*`) accepted with a warning
 - [x] `movefrac` (`packmol(sys; movefrac)` takes precedence), `movebadrandom` (deprecated: bad molecules
       are always moved randomly), `segid` (written to PDB columns 73-76)
-- [ ] CONECT options (`ignore_conect`, `non_standard_conect`, `hexadecimal_indices`): warned, ignored
+- [x] CONECT options: `connect yes|no` (global and per structure), `ignore_conect`; `non_standard_conect`,
+      `hexadecimal_indices` deprecated
 
 ---
 
@@ -237,12 +238,13 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 - [x] Chain identifier control (`changechains`, `chain`, per structure type, with Fortran's
       auto-cycling A-Z/1-9/0 default when unset)
 - [x] AMBER TER records (`add_amber_ter`, `amber_ter_preserve`)
-- [ ] CONECT record preservation (`connect`) - requires PDBTools.jl to support connectivity first.
+- [x] CONECT record preservation: template connectivity (PDBToolsBase ≥ 1.1 `Structure.connectivity`)
+      repeated for every molecule, written by `write_pdb`
 - [x] CRYST1 record with box dimensions (`add_box_sides`, or automatically when PBC is set)
 
 #### Other Output Formats
 - [ ] Tinker XYZ format (won't be supported)
-- [ ] XYZ format
+- [x] XYZ format (`filetype xyz`, or by file extension; also mmCIF structure files), via PDBToolsBase ≥ 1.1
 - [ ] Moldy format (won't be supported)
 
 ---

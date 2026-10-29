@@ -29,7 +29,7 @@ end structure
 |:--|:--|
 | `tolerance <value>` | Minimum distance between atoms of different molecules (required). |
 | `output <file>` | Path of the output structure file. |
-| `filetype <type>` | Output file type (default `pdb`). |
+| `filetype pdb\|xyz` | Format of the structure and output files (default `pdb`). Files with the extensions `.pdb`, `.xyz`, `.cif` or `.mmcif` (mmCIF, structure files only) are read and written in that format, whatever the `filetype`. |
 | `seed <int>` | Random number generator seed (default `1234567`). |
 | `movefrac <value>` | Maximum fraction of the molecules of each type moved by the bad-molecule heuristic in each loop (default `0.05`). The `movefrac` keyword argument of [`packmol`](@ref) takes precedence. |
 | `nloop <int>` | Maximum number of packing loops (default `200`). The `nloop` keyword argument of [`packmol`](@ref) takes precedence. |
@@ -40,7 +40,7 @@ end structure
 | `max_random_init <int>` | Best-of-`N` random placements tried per molecule during initialization. |
 | `adjust_constraints_on_init yes\|no` | Whether to run constraint-only pre-optimization before packing. |
 | `avoid_overlap yes\|no` | Whether trial placements are rejected if they overlap fixed atoms. |
-| `connect yes\|no` | Whether to look for `CONECT` records (not yet implemented — see below). |
+| `connect yes\|no` | Whether to write the connectivity of the structure files (their `CONECT` records) to the output, for every molecule (default `yes`). `ignore_conect` (no value) is the same as `connect no`. |
 | `writeout <int>` | Write intermediate output every `N` loops. |
 | `writebad` | Flag (no value): also write output if packing did not converge. |
 | `randominitialpoint` | Flag: force a fully random initial point instead of the direct-sampling shortcut. |
@@ -64,10 +64,10 @@ inside `structure` blocks.
 
 Fortran Packmol keywords that have no use in Packmol.jl (`fscale`, `sidemax`,
 `maxmove`, `nloop0`, `movebadrandom`, `use_short_tol` and the other short-tolerance keywords,
-...) are accepted with a deprecation warning and ignored, so that old input
-files still run. A few others are recognized but not yet implemented
-(the `CONECT`-related keywords): using one
-prints a warning and it is ignored. See
+`hexadecimal_indices`, `non_standard_conect`, ...) are accepted with a
+deprecation warning and ignored, so that old input files still run. The other
+file formats of Fortran Packmol (`filetype tinker`, `filetype moldy`) are not
+supported. See
 [`dev/drop-in-replacement.md`](https://github.com/m3g/Packmol.jl/blob/main/dev/drop-in-replacement.md)
 for the current status.
 
@@ -77,6 +77,7 @@ for the current status.
 structure <pdb file>
     number <n>
     [fixed x y z beta gamma theta]
+    [connect no]
     [center | centerofmass]
     [radius <value>]
     [resnumbers <0|1|2|3>]
@@ -95,7 +96,8 @@ end structure
 | Keyword | Meaning |
 |:--|:--|
 | `number <n>` | Number of copies of this molecule to pack (required). |
-| `fixed x y z beta gamma theta` | Don't pack this molecule — place it once at this position and (Euler angle) orientation and leave it fixed. |
+| `fixed x y z beta gamma theta` | Don't pack this molecule — place it once at this position and (Euler angle) orientation and leave it fixed. `number` is optional for a fixed structure (it is a single molecule). |
+| `connect no` | Don't write the connectivity (`CONECT` records) of this structure to the output. |
 | `center` / `centerofmass` | Only valid together with `fixed`: re-center the molecule (geometric center or mass-weighted center of mass) before applying the fixed position/orientation. |
 | `radius <value>` | Atom radius for every atom of this structure, overriding the default of `tolerance/2`. |
 | `resnumbers <n>` | Residue numbering scheme for the output — see [Residue numbering](@ref) below. |

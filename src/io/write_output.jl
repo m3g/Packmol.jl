@@ -445,14 +445,48 @@ function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_sy
     output_atoms = get_atoms(packmol_system)
     atom_positions = _positions_from_atoms(output_atoms, Val(D), T)
 
+    if _file_format(output_file, packmol_system.filetype) == "xyz"
+        write_xyz(output_file, Structure(output_atoms; title="Built with Packmol"))
+        return output_file
+    end
     cryst1_lines = _cryst1_lines(packmol_system, atom_positions)
     header = join(vcat("HEADER", "REMARK   Packmol.jl generated PDB file", cryst1_lines), "\n")
+    connectivity = _system_connectivity(packmol_system)
     if packmol_system.add_amber_ter || packmol_system.amber_ter_preserve
-        _write_pdb_with_ter(output_file, output_atoms, packmol_system, header)
+        _write_pdb_with_ter(output_file, output_atoms, connectivity, packmol_system, header)
     else
-        write_pdb(output_file, output_atoms; header)
+        # Positional `MetaData` (unit cell, connectivity, title): a keyword call with the
+        # `Union`-typed connectivity is not compatible with `juliac --trim`
+        write_pdb(output_file, Structure(output_atoms, PDBToolsBase.MetaData(nothing, connectivity, nothing)); header)
     end
     return output_file
+end
+
+# Number of copies of a structure type in the output
+_ncopies(st::StructureType) = st.fixed.fixed ? 1 : st.number_of_molecules
+
+#
+# Connectivity of the packed system (in the order of the atoms of `get_atoms`):
+# the connectivity of the template of each structure type, repeated for every
+# copy of the molecule, with the indices shifted to the atoms of the copy.
+# `nothing` if no structure type has connectivity, or if `connect` is disabled.
+#
+function _system_connectivity(packmol_system::PackmolSystem)
+    packmol_system.connect || return nothing
+    any(st -> !isnothing(st.connectivity), packmol_system.structure_types) || return nothing
+    connectivity = Vector{Int32}[]
+    offset = Int32(0)
+    for st in packmol_system.structure_types
+        template = st.connectivity
+        for _ in 1:_ncopies(st)
+            for iat in 1:st.natoms
+                bonded = isnothing(template) || iat > length(template) ? Int32[] : template[iat] .+ offset
+                push!(connectivity, bonded)
+            end
+            offset += Int32(st.natoms)
+        end
+    end
+    return connectivity
 end
 
 #
@@ -478,14 +512,17 @@ end
 # every molecule with `add_amber_ter`, and where the structure's own PDB file
 # has them with `amber_ter_preserve`.
 #
-function _write_pdb_with_ter(output_file::AbstractString, atoms::Vector{Atom{Nothing}}, packmol_system::PackmolSystem, header::AbstractString)
+function _write_pdb_with_ter(
+    output_file::AbstractString, atoms::Vector{Atom{Nothing}},
+    connectivity::Union{Nothing,Vector{Vector{Int32}}}, packmol_system::PackmolSystem, header::AbstractString,
+)
     io = open(expanduser(output_file), "w")
     try
         println(io, header)
         iat = 0
         for st in packmol_system.structure_types
             ter_positions = packmol_system.amber_ter_preserve ? _ter_positions(st.filename) : Int[]
-            for _ in 1:st.number_of_molecules
+            for _ in 1:_ncopies(st)
                 for _ in 1:count(==(0), ter_positions)
                     println(io, "TER")
                 end
@@ -499,6 +536,9 @@ function _write_pdb_with_ter(output_file::AbstractString, atoms::Vector{Atom{Not
                 packmol_system.add_amber_ter && println(io, "TER")
             end
         end
+        # The atoms are numbered sequentially, so the serials are their indices
+        isnothing(connectivity) ||
+            PDBToolsBase._write_pdb_conect(io, connectivity, Int32.(1:length(atoms)), atoms, PDBToolsBase.all)
         println(io, "END")
     finally
         close(io)

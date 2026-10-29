@@ -112,16 +112,30 @@ coordinate file formats.
 - [x] **A1.5** `--version` / `-h` flags (useful to package managers and to their tests).
 
 ### A2. File formats
-- [ ] **A2.1** `filetype xyz`: XYZ structure input and XYZ output (used in
-  `examples/interface.inp`). It is implemented in PDBToolsBase first (D5), then wired here.
+- [x] **A2.1** `filetype xyz` (2026-10-29), with `read_xyz`/`write_xyz` from PDBToolsBase 1.1.
+  The format of each file follows its extension (`.pdb`, `.xyz`, `.cif`/`.mmcif`), and
+  `filetype` applies otherwise. The XYZ comment line is "Built with Packmol".
+  `examples/interface.inp` runs. It also exposed a bug, now fixed: a `fixed` structure
+  without `number` had 0 molecules (Fortran treats it as one molecule).
 - [?] **A2.2** `filetype tinker` (and `moldy`): marked "won't be supported" in CLAUDE.md.
   Today `filetype` is parsed and silently ignored, so a Tinker input would be read as PDB.
   At least fail with a clear error for any `filetype` other than pdb (and xyz once A2.1
   lands).
 - [ ] **A2.3** `writecrd` (CHARMM CRD output, Fortran-only today). Decide: implement or reject clearly.
-- [ ] **A2.4** CONECT (`connect`, `ignore_conect`, `non_standard_conect`, `hexadecimal_indices`):
-  needs PDBToolsBase support first (D6). The three option keywords are warned and ignored
-  for now.
+- [x] **A2.4** CONECT (2026-10-29), with PDBToolsBase 1.1 `Structure.connectivity`.
+  - Each template's connectivity is stored in `StructureType.connectivity`, repeated
+    with offset indices for every copy (`_system_connectivity`), and written by
+    `write_pdb` (or after the TER records).
+  - The default is on, as in Fortran. It can be turned off for one type with
+    `connect no` inside its structure block, or globally with `ignore_conect` (or
+    `connect no` at the top level).
+  - `hexadecimal_indices` is deprecated: PDBToolsBase always writes hexadecimal serials
+    above 99999.
+  - `non_standard_conect` is deprecated: CONECT parsing follows the PDB standard
+    columns in PDBToolsBase.
+  - The TER writer calls the internal `PDBToolsBase._write_pdb_conect`. Making it
+    public, or adding TER support to `write_pdb`, would be cleaner.
+  - **Requires PDBToolsBase 1.1 to be released** (compat bumped to `1.1`).
 - [x] **A2.5** AMBER TER (`add_amber_ter`: a TER after every molecule; `amber_ter_preserve`:
   the template's TER records are repeated in every copy), as in Fortran `output.f90`.
   Done 2026-10-29 (`_write_pdb_with_ter` in `src/io/write_output.jl`).
@@ -254,3 +268,8 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
       libc `read`.
   - Windows paths (`_isatty`/`_read` from msvcrt) are untested (B4).
   - All of this went into one PR.
+- **2026-10-29** (Claude, same session): XYZ (A2.1) and CONECT (A2.4), using the
+  PDBToolsBase `connectivity-title-xyz` branch (1.1.0-DEV, not yet released). Fixed a bug
+  where a fixed structure without `number` had 0 molecules. Another trim gotcha: build
+  `Structure` metadata with the positional `MetaData(unitcell, connectivity, title)`,
+  because a keyword call with the `Union`-typed connectivity is unresolved.

@@ -31,7 +31,9 @@
     add_amber_ter::Bool = false
     amber_ter_preserve::Bool = false
     add_box_sides::Bool = false
-    connect::Bool = false
+    # Write the connectivity of the structure files (CONECT records) to the output;
+    # disabled with `ignore_conect` (or `connect no`).
+    connect::Bool = true
     random_initial_point::Bool = false
     seed::Int = 1234567
     avoid_overlap::Bool = true
@@ -303,7 +305,7 @@ _warn(msg::AbstractString) = _with_stderr(io -> println(io, "Warning: ", msg))
 #
 function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, val::AbstractString) where {D,T}
     if keyword == "filetype"
-        sys.filetype = _parse_value(String, "filetype", val)
+        sys.filetype = _parse_options("filetype", val, ("pdb" => "pdb", "xyz" => "xyz"))
     elseif keyword == "output"
         sys.output_file = expanduser(_parse_value(String, "output", val))
     elseif keyword == "tolerance"
@@ -337,6 +339,8 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.add_box_sides = true
     elseif keyword == "connect"
         sys.connect = _parse_options("connect", val, _yes_no)
+    elseif keyword == "ignore_conect"
+        sys.connect = false
     elseif keyword == "randominitialpoint"
         sys.random_initial_point = true
     elseif keyword == "seed"
@@ -407,6 +411,8 @@ const packmol_legacy_keywords = Dict{String,String}(
     "nloop0" => "nloop0 is a deprecated keyword and was ignored.",
     "disable_movebad" => "disable_movebad is a deprecated keyword and was ignored.",
     "writecrd" => "writecrd is a deprecated keyword and was ignored (CHARMM CRD output is not supported).",
+    "non_standard_conect" => "non_standard_conect is a deprecated keyword and was ignored (CONECT records are read in the standard PDB format).",
+    "hexadecimal_indices" => "hexadecimal_indices is a deprecated keyword and was ignored (atom indices above 99999 are always written in hexadecimal).",
     "movebadrandom" => "movebadrandom is a deprecated keyword and was ignored (bad molecules are always moved to random positions).",
 )
 
@@ -415,9 +421,6 @@ const packmol_legacy_keywords = Dict{String,String}(
 # `_set_input_keyword!`, so that using them produces a clear warning instead
 # of a crash while they remain unimplemented.
 const packmol_unimplemented_keywords = Dict{String,String}(
-    "ignore_conect" => "ignore_conect keyword is not yet implemented in Packmol.jl and was ignored.",
-    "non_standard_conect" => "non_standard_conect keyword is not yet implemented in Packmol.jl and was ignored.",
-    "hexadecimal_indices" => "hexadecimal_indices keyword is not yet implemented in Packmol.jl and was ignored.",
 )
 
 # Keywords of a `structure ... end structure` block with no use in Packmol.jl
@@ -575,7 +578,7 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
         if words[1] == "end" && length(words) > 1 && words[2] == "structure"
             print(structure_input, line, "\n")
             push!(sys.structure_types, 
-                read_structure_data(structure_input, sys.tolerance, Val(D), T; path=input_dir)
+                read_structure_data(structure_input, sys.tolerance, Val(D), T; path=input_dir, filetype=sys.filetype)
             )
             continue
         end
