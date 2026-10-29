@@ -101,7 +101,7 @@ end structure
 | `resnumbers <n>` | Residue numbering scheme for the output — see [Residue numbering](@ref) below. |
 | `chain <c>` | Fix every molecule of this type to chain identifier `<c>` in the output, instead of the default auto-assigned one. |
 | `changechains` | Alternate between two auto-assigned chain identifiers every other molecule, instead of one chain for the whole type. Not compatible with `chain`. |
-| `segid <id>` | Segment identifier (at most 4 characters) for every atom of this type, in columns 73-76 of the output PDB file. Unlike in Fortran Packmol, a structure without `segid` keeps the segment identifiers of its own PDB file, rather than taking the `segid` of the previous structure. |
+| `segid <id>` | Segment identifier (at most 4 characters) for every atom of this type, in columns 73-76 of the output PDB file. Without `segid`, the segment identifiers of the structure's own PDB file are kept (blank if it has none). |
 | `constrain_rotation <axis> <center_deg> <halfwidth_deg>` | Restrict this molecule's rotation about `<axis>` (`x`, `y`, or `z`) to `<center_deg> ± halfwidth_deg` degrees, as a hard bound on the optimizer's own rotation-angle variable — not a soft penalty. Repeat once per constrained axis. |
 | `restart_from <file>` | Restart only this structure type's molecules — see [Restarting a run](@ref). |
 | `restart_to <file>` | Write only this structure type's molecules to a restart file — see [Restarting a run](@ref). |

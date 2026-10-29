@@ -55,7 +55,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
 - **D9 (2026-10-29): `segid` is written to PDB columns 73–76** for every atom of the type.
   Fortran used it only in CRD output (which won't be supported). Fortran also copied the
   `segid` of the previous structure block into a block that has none (with a warning).
-  Here a block without `segid` keeps the segment names of its own PDB file.
+  That was a bug in Fortran (maintainer, 2026-10-29). Here a block without `segid` keeps the
+  segment names of its own PDB file, or blank if it has none.
 - **D10 (2026-10-29): `movebadrandom` is deprecated** (warned and ignored). Julia's `movebad!` always
   places bad molecules at random positions (within the per-type center-of-mass bounds,
   with a short constraint fit), which is Fortran's `movebadrandom` behavior. Fortran's
