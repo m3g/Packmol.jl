@@ -162,6 +162,7 @@ function packmol(
     @_printf("%62s\n", "Version $_packmol_version ")
     _println(hash_line)
     _println()
+    _check_fixed_inside_cell(packmol_system)
 
     # Build index of free (non-fixed) molecules
     free_mol_indices = Int[]

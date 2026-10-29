@@ -594,6 +594,7 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
     if !isnothing(unitcell) && !isnothing(unitcell_center)
         _add_pbc_confinement_constraints!(sys.structure_types, unitcell, unitcell_center, sys.tolerance)
     end
+    _check_fixed_inside_cell(sys)
     #
     # Initialize atom data and molecule position arrays
     #

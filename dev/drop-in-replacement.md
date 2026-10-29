@@ -174,9 +174,18 @@ coordinate file formats.
     - `bilayer_pbc.inp` and `water_box_pbc2.inp` don't converge (exit 173, after 50 s
       and 110 s), while Fortran's `test.sh` expects them to converge. These are
       packing-quality gaps to investigate.
-    - `protein_outside_pbc_error.inp`: Fortran expects an early error saying the
-      fixed protein is "outside" the PBC box. Packmol.jl packs for 23 s and then
-      fails. A check for fixed molecules outside the periodic cell is missing.
+    - `protein_outside_pbc_error.inp`: fixed (2026-10-29). A fixed molecule with an
+      atom outside the periodic cell is now an input error (exit 171), checked when
+      the input is read and when `packmol()` starts. An atom is accepted if it lies
+      in the parallelepiped of the cell vectors around the cell center, or in the
+      nearest-image region (dodecahedral and octahedral cells); for orthorhombic
+      cells both are the same box, as in Fortran.
+      - This also exposed a bug, now fixed: `_collect_fixed_positions` applied the
+        fixed rotation and translation to `reference_coordinates` a second time,
+        although they already hold the placed atoms. The fixed atoms used by the
+        overlap checks (initial placement, `adjust_constraints!`, `movebad!`) were
+        therefore misplaced for any fixed molecule not at the origin with zero
+        rotation. The packing objective itself was not affected.
   - Still to do: run the inputs through the binary in CI, and add the `runtests.jl`
     validation (minimum distances and constraints) to the outputs.
 - [ ] **A4.2** Benchmark the binary against Fortran on the larger examples (solvprotein is

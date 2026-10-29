@@ -184,3 +184,35 @@ end
     @test sys.nmols == 6
     @test length(get_atoms(sys)) == 18
 end
+
+@testitem "fixed molecules: positions and periodic cell" setup=[TestFiles] begin
+    using Packmol: read_packmol_input
+    using PDBToolsBase: position
+    using StaticArrays: SVector, SMatrix
+    # The positions of the fixed atoms used for the overlap checks are those of the output
+    # (a new input file: the test files are shared by the test items)
+    input = TestFiles.test_file("input_files/solvprotein_moved_protein.inp")
+    original = read(TestFiles.test_file("input_files/solvprotein.inp"), String)
+    write(input, replace(original, "fixed 0. 0. 0. 0. 0. 0." => "fixed 10. 3. 19. 0.5 0.3 0.2"))
+    sys = redirect_stderr(devnull) do
+        read_packmol_input(input)
+    end
+    fixed_positions = Packmol._collect_fixed_positions(sys)
+    @test length(fixed_positions) == sys.structure_types[1].natoms
+    @test all(isapprox(x, position(at); atol=1e-3) for (x, at) in zip(fixed_positions, get_atoms(sys)))
+    # Fixed molecules outside the periodic cell are an error (as Fortran Packmol's
+    # testing/input_files/protein_outside_pbc_error.inp)
+    @test_throws ArgumentError read_packmol_input(TestFiles.test_file("input_files/protein_outside_pbc_error.inp"))
+    sys = read_packmol_input(TestFiles.test_file("input_files/solvprotein_pbc.inp"))
+    @test isnothing(Packmol._check_fixed_inside_cell(sys))
+    sys.structure_types[1].reference_coordinates .+= Ref(SVector(100.0, 0.0, 0.0))
+    @test_throws ArgumentError packmol(sys)
+    # Dodecahedral cells: the molecule may be outside the parallelepiped of the cell
+    # vectors, but inside the dodecahedron
+    ucell = SMatrix{3,3}(Packmol.dodecahedral_unitcell(Float64, 30.0))
+    center = SVector(0.0, 0.0, 0.0)
+    x = SVector(0.0, 0.0, 20.0)
+    @test any(f -> abs(f) > 0.5, inv(ucell) * x)
+    @test Packmol._inside_cell(x, ucell, inv(ucell), center)
+    @test !Packmol._inside_cell(SVector(16.0, 0.0, 0.0), ucell, inv(ucell), center)
+end
