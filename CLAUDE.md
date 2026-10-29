@@ -25,6 +25,13 @@ The package also includes:
   recipe supports both `write_packmol_input` (generate a `.inp` file) and
   `packmol(recipe; ...)` (build and pack directly, no file left behind).
 
+## Drop-in replacement project (ongoing)
+
+Replacing the Fortran `packmol` executable with a `juliac`-compiled Packmol.jl (feature parity,
+CI builds for Linux/macOS/Windows, pip/uvx and standalone distribution) is tracked in
+`dev/drop-in-replacement.md`. Read it before working on the CLI, the build or packaging, and
+update its task list and session log when you stop.
+
 ## Project Structure
 
 ```
@@ -91,6 +98,14 @@ Individual test items are defined with `@testitem` in `test/`, mirroring the `sr
 is `src/Recipes/test/`, which holds data files (and doctested paths) for the Recipes docs
 examples, not test code.
 
+Test data files are not in this repository: they are the `packmol` set of
+[MolSimTestFiles](https://github.com/m3g/MolSimTestFiles) (`structure_files/`, `input_files/`,
+`fortran_examples/`, `fortran_reference/`), a lazy artifact (`Artifacts.toml`) accessed with
+`Packmol.test_file(name)` (defined in the `TestFilesExt` extension, loaded with `using LazyArtifacts`).
+Tests use `setup=[TestFiles]` and `TestFiles.test_file(name)` (`test/test_files.jl`), a writable
+copy of the set, since tests write output files next to their inputs. To add or change files,
+publish a new release of the set (see the MolSimTestFiles README) and update `Artifacts.toml`.
+
 ---
 
 ## Development Roadmap
@@ -134,8 +149,14 @@ These are the building blocks everything else depends on.
 - [x] `radscale` (with legacy `discale` mapped to it)
 - [x] Julia-native construction API (no input file needed): `structure_type(pdbfile; number, constraints, ...)`
       + `PackmolSystem(structure_types; output, ...)`, documented in `docs/src/experimental/julia_api.md`
-- [ ] Missing keyword parsing: `movefrac`, `movebadrandom`, `sidemax` (won't be supported),
-      `precision`, `fbins` (won´t be supported), `fscale`, `use_short_tol`, `short_tol_dist`, `short_tol_scale`, `short_radius`, `short_radius_scale`, `nloop`
+- [x] `nloop`, `maxit` (stored in `PackmolSystem.nloop`/`max_iter`; `packmol(sys; nloop, maxit)` takes precedence)
+- [x] Inline `#` comments stripped (as Fortran)
+- [x] Deprecated Fortran keywords (`fscale`, `fbins`, `precision`, `sidemax`, `maxmove`, `nloop0`,
+      `disable_movebad`, `writecrd`, `use_short_tol`/`short_*`, `iprint*`) accepted with a warning
+- [x] `movefrac` (`packmol(sys; movefrac)` takes precedence), `movebadrandom` (deprecated: bad molecules
+      are always moved randomly), `segid` (written to PDB columns 73-76)
+- [x] CONECT options: `connect yes|no` (global and per structure), `ignore_conect`; `non_standard_conect`,
+      `hexadecimal_indices` deprecated
 
 ---
 
@@ -164,7 +185,7 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 
 
 #### Periodic boundary conditions
-- [x] Orthorhombic boxes (`pbc` keyword: 3 values = side lengths centered at origin; 6 values = xmin/xmax with center at midpoint)
+- [x] Orthorhombic boxes (`pbc` keyword: 3 values = box from the origin to (a, b, c), as in Fortran; 6 values = xmin/xmax; center at the midpoint)
 - [x] Triclinic systems (`unitcell` keyword with CRYST1-style a b c α β γ, centered at origin)
 - [x] Reference center for PBC: constraints evaluated on atoms wrapped to cell centered at `unitcell_center`
 - [x] Rhombic dodecahedron box (`pbc dodecahedral cx cy cz d` keyword, `dodecahedral_unitcell`
@@ -191,9 +212,9 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 
 #### Optimization Loop
 - [x] SPGBox-based optimization (`packmol()` function)
-- [ ] Multi-start strategy: initial placement + iterative repositioning of bad molecules
-- [ ] `movebadrandom` heuristic: randomly reposition molecules with worst overlaps
-- [ ] `movefrac` control: fraction of bad molecules moved per iteration
+- [x] Multi-start strategy: initial placement + iterative repositioning of bad molecules (`movebad!`)
+- [x] `movefrac` control: fraction of bad molecules moved per iteration
+- [x] `<output>_FORCED`: constraint-only adjustment of the best solution, written when packing fails
 - [ ] Convergence criteria based on `tolerance_precision` and `constraint_precision`
 - [ ] Iteration output: write intermediate configurations every `writeout` steps
 - [ ] `writebad`: write output even when packing fails
@@ -224,13 +245,14 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       single-/multi-residue-template auto-detected default when unset)
 - [x] Chain identifier control (`changechains`, `chain`, per structure type, with Fortran's
       auto-cycling A-Z/1-9/0 default when unset)
-- [ ] AMBER TER records (`add_amber_ter`, `amber_ter_preserve`)
-- [ ] CONECT record preservation (`connect`) - requires PDBTools.jl to support connectivity first.
+- [x] AMBER TER records (`add_amber_ter`, `amber_ter_preserve`)
+- [x] CONECT record preservation: template connectivity (PDBToolsBase ≥ 1.1 `Structure.connectivity`)
+      repeated for every molecule, written by `write_pdb`
 - [x] CRYST1 record with box dimensions (`add_box_sides`, or automatically when PBC is set)
 
 #### Other Output Formats
 - [ ] Tinker XYZ format (won't be supported)
-- [ ] XYZ format
+- [x] XYZ format (`filetype xyz`, or by file extension; also mmCIF structure files), via PDBToolsBase ≥ 1.1
 - [ ] Moldy format (won't be supported)
 
 ---
@@ -241,7 +263,7 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       Packmol-format restart files only for now (a PDB-based restart, rigid-body-aligning each
       molecule's template to observed atom positions, was discussed and judged feasible but not
       yet built).
-- [ ] Short-range tolerance (`use_short_tol`, `short_tol_dist`, etc.)
+- [N] Short-range tolerance (`use_short_tol`, `short_tol_dist`, etc.): deprecated, warned and ignored
 - [x] Rotation constraints (`constrain_rotation`) - implemented as hard bounds on the rotation-angle
       optimization variables (matching Fortran's own `pgencan` bound-setting), not a soft penalty.
 - [ ] Gradient checking mode (`chkgrad` - compare analytical vs numerical gradients) - This is not necessary in the code itself, but for testing, and if the user implements new constraints, we will provide the directives on how to test their gradients. 
@@ -348,7 +370,9 @@ reachable from it to be resolved at compile time. In the engine code:
   reassigned (they get boxed); variables captured by `@spawn` must have concrete types
   (not `Union{Nothing,...}`: use a function barrier or a flag); don't call with
   `Val(runtime_value)`, keyword calls with `Union`-typed arguments, or a `Matrix` unit cell
-  where the dimension must be static (use `SMatrix{D,D,T}`).
+  where the dimension must be static (use `SMatrix{D,D,T}`);
+- no `readlines` (use a `readline` loop); pass a caught exception (typed `Any`) only to
+  `@nospecialize` functions, and narrow `AbstractString` fields (`e.msg`) to `String` before printing.
 To check (`juliac` is a `Pkg.Apps` app; `JULIA_APPS_JULIA_CMD` selects the Julia it runs with):
 `JULIA_APPS_JULIA_CMD=$(which julia) juliac --output-exe packmol --project . --experimental --trim=safe --bundle build app.jl`,
 with `app.jl` defining `(@main)(ARGS) = Packmol.CLI.main(ARGS)`. Requires the trim-compatible

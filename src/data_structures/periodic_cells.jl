@@ -41,3 +41,40 @@ function _nearest_periodic_image(x::SVector{3,T}, unitcell::AbstractMatrix, cent
     end
     return best + center
 end
+
+#
+# Throw an error if an atom of a fixed molecule is outside the periodic cell, as Fortran
+# Packmol does: it is most likely an error in the input (e.g. a cell too small for the
+# fixed molecule, or a fixed position given for another cell). An atom is inside the cell
+# if it is inside the parallelepiped of the cell vectors centered at `unitcell_center`, or
+# closer to the center than to all its periodic images (the shape of the dodecahedral and
+# octahedral cells). For orthorhombic cells both regions are the same box.
+#
+function _check_fixed_inside_cell(packmol_system::PackmolSystem{D,T}) where {D,T}
+    unitcell, center = packmol_system.unitcell, packmol_system.unitcell_center
+    (isnothing(unitcell) || isnothing(center)) && return nothing
+    ucell = SMatrix{D,D,T}(unitcell)
+    inv_ucell = inv(ucell)
+    for (itype, st) in enumerate(packmol_system.structure_types)
+        st.fixed.fixed || continue
+        # The reference coordinates of fixed molecules are their atom positions
+        for (iatom, x) in enumerate(st.reference_coordinates)
+            _inside_cell(x, ucell, inv_ucell, center) && continue
+            position = join((@sprintf("%.3f", xi) for xi in x), " ")
+            throw(ArgumentError("""\n
+                Fixed molecules are outside the periodic cell: atom $iatom of structure $itype ($(basename(st.filename)))
+                is at position ($position), after placing the molecule at its fixed position and orientation.
+                Check the size of the cell and the position of the fixed molecule.
+
+            """))
+        end
+    end
+    return nothing
+end
+
+function _inside_cell(x::SVector{D,T}, ucell::SMatrix{D,D,T}, inv_ucell::SMatrix{D,D,T}, center::SVector{D,T}) where {D,T}
+    tol = sqrt(eps(T))
+    all(f -> abs(f) <= T(0.5) + tol, inv_ucell * (x - center)) && return true
+    D == 3 || return false
+    return norm(_nearest_periodic_image(x, ucell, center) - x) <= tol * norm(ucell)
+end

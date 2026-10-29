@@ -19,9 +19,11 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [weakdeps]
+LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
 Packmol_jll = "eb89d173-8f78-57a0-9e6e-c2e8c44a5e61"
 
 [extensions]
+TestFilesExt = "LazyArtifacts"
 PackmolJLLExt = "Packmol_jll"
 
 [compat]
@@ -31,9 +33,10 @@ CellListMap = "0.10.9"
 ChunkSplitters = "3.2.0"
 FiniteDifferences = "0.12.30"
 ForwardDiff = "1.3.1"
+LazyArtifacts = "1.11"
 LinearAlgebra = "1.13"
 OrderedCollections = "1.8.0"
-PDBToolsBase = "1"
+PDBToolsBase = "1.1"
 Packmol_jll = "21.0.1"
 Printf = "1.11"
 Random = "1.11"
@@ -52,6 +55,7 @@ julia = "1.13"
 submodule = "CLI"
 
 [extras]
+LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
@@ -65,4 +69,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [targets]
-test = ["Aqua", "Test", "Random", "StaticArrays", "ForwardDiff", "FiniteDifferences", "TestItemRunner", "ShowMethodTesting", "CellListMap", "BenchmarkTools", "Packmol_jll"]
+test = ["Aqua", "LazyArtifacts", "Test", "Random", "StaticArrays", "ForwardDiff", "FiniteDifferences", "TestItemRunner", "ShowMethodTesting", "CellListMap", "BenchmarkTools", "Packmol_jll"]

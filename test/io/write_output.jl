@@ -47,10 +47,10 @@ end
     @test α2 ≈ 80.0 && β2 ≈ 95.0 && γ2 ≈ 70.0
 end
 
-@testitem "write_output: residue numbering and chains" begin
+@testitem "write_output: residue numbering and chains" setup=[TestFiles] begin
     using PDBToolsBase: read_pdb
 
-    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    water_pdb = TestFiles.test_file("structure_files/water.pdb")
 
     # Default (unset): single-residue template -> mode 0 (sequential per molecule)
     water = structure_type(water_pdb; number=5)
@@ -102,10 +102,10 @@ end
     @test_throws ErrorException structure_type(water_pdb; number=2, chain='A', changechains=true)
 end
 
-@testitem "write_output: CRYST1" begin
+@testitem "write_output: CRYST1" setup=[TestFiles] begin
     using PDBToolsBase: read_pdb
 
-    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    water_pdb = TestFiles.test_file("structure_files/water.pdb")
     water = structure_type(water_pdb; number=2, constraints=[InsideBox([0, 0, 0], [10, 10, 10])])
 
     # Neither add_box_sides nor PBC: no CRYST1 line
@@ -135,11 +135,11 @@ end
     rm(outfile; force=true)
 end
 
-@testitem "get_atoms / write_output: periodic_boundary_style" begin
+@testitem "get_atoms / write_output: periodic_boundary_style" setup=[TestFiles] begin
     using StaticArrays: SVector
     using PDBToolsBase: read_pdb, position
 
-    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    water_pdb = TestFiles.test_file("structure_files/water.pdb")
     water = structure_type(water_pdb; number=1)
 
     d = 100.0
@@ -215,7 +215,7 @@ end
     rm(short_file; force=true)
 end
 
-@testitem "PDB-based restart" begin
+@testitem "PDB-based restart" setup=[TestFiles] begin
     using PDBToolsBase: read_pdb, position
     using StaticArrays
     using LinearAlgebra: norm
@@ -226,7 +226,7 @@ end
     @test !Packmol._is_pdb_path("foo.txt")
     @test !Packmol._is_pdb_path("foo")
 
-    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    water_pdb = TestFiles.test_file("structure_files/water.pdb")
     water = structure_type(water_pdb; number=3, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
     sys = PackmolSystem([water]; output=tempname() * ".pdb", tolerance=2.0,
         unitcell=Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0),
@@ -260,4 +260,176 @@ end
     @test_throws ErrorException Packmol._restart_positions(atoms, wrong_segments, Packmol.MoleculePosition{3,Float64})
 
     rm(sys.output_file; force=true)
+end
+
+@testitem "AMBER TER records" setup=[TestFiles] begin
+    using PDBToolsBase: read_pdb
+    water = TestFiles.test_file("structure_files/water.pdb")
+    # A copy of the water template with a TER record after its second atom
+    template = tempname() * ".pdb"
+    lines = readlines(water)
+    iatom = findall(l -> startswith(l, "ATOM") || startswith(l, "HETATM"), lines)
+    write(template, join(vcat(lines[1:iatom[2]], "TER", lines[iatom[2]+1:end]), "\n") * "\n")
+    st = structure_type(template; number=3, constraints=[InsideBox([0.0, 0.0, 0.0], [20.0, 20.0, 20.0])])
+    output = tempname() * ".pdb"
+    nter(file) = count(l -> startswith(l, "TER"), readlines(file))
+    # TER after each molecule
+    sys = PackmolSystem([st]; output, tolerance=2.0, add_amber_ter=true)
+    write_output(sys)
+    @test nter(output) == 3
+    @test length(read_pdb(output)) == 9
+    out_lines = readlines(output)
+    @test startswith(out_lines[findlast(l -> startswith(l, "ATOM") || startswith(l, "HETATM"), out_lines)+1], "TER")
+    # TER records preserved from the template, and both options together
+    sys = PackmolSystem([st]; output, tolerance=2.0, amber_ter_preserve=true)
+    write_output(sys)
+    @test nter(output) == 3
+    out_lines = readlines(output)
+    @test startswith(out_lines[findfirst(startswith("TER"), out_lines)-2], "ATOM") ||
+          startswith(out_lines[findfirst(startswith("TER"), out_lines)-2], "HETATM")
+    sys = PackmolSystem([st]; output, tolerance=2.0, add_amber_ter=true, amber_ter_preserve=true)
+    write_output(sys)
+    @test nter(output) == 6
+    # No TER records by default
+    sys = PackmolSystem([st]; output, tolerance=2.0)
+    write_output(sys)
+    @test nter(output) == 0
+    rm(output; force=true)
+    rm(template; force=true)
+end
+
+@testitem "segid" setup=[TestFiles] begin
+    using PDBToolsBase: read_pdb
+    water = TestFiles.test_file("structure_files/water.pdb")
+    constraints = [InsideBox([0.0, 0.0, 0.0], [20.0, 20.0, 20.0])]
+    output = tempname() * ".pdb"
+    sys = PackmolSystem([
+            structure_type(water; number=2, constraints, segid="WAT"),
+            structure_type(water; number=2, constraints),
+        ]; output, tolerance=2.0)
+    write_output(sys)
+    atoms = read_pdb(output)
+    @test all(at.segname == "WAT" for at in atoms[1:6])
+    @test all(at.segname != "WAT" for at in atoms[7:12])
+    @test_throws ArgumentError structure_type(water; number=2, segid="TOOLONG")
+    rm(output; force=true)
+end
+
+@testitem "_FORCED output of a failed packing" setup=[TestFiles] begin
+    water = TestFiles.test_file("structure_files/water.pdb")
+    output = tempname() * ".pdb"
+    # Two molecules do not fit in this box (as Fortran's water_box_failed.inp)
+    st = structure_type(water; number=2, constraints=[InsideBox([0.0, 0.0, 0.0], [3.0, 3.0, 1.0])])
+    sys = PackmolSystem([st]; output, tolerance=2.0, nloop=1, max_iter=2)
+    best_positions = copy(sys.molecule_positions)
+    @test packmol(sys; iprint=1000).status == :failed_packing
+    @test isfile(output)
+    @test isfile(output * "_FORCED")
+    rm(output; force=true)
+    rm(output * "_FORCED"; force=true)
+    # No _FORCED output when the packing succeeds
+    st = structure_type(water; number=2, constraints=[InsideBox([0.0, 0.0, 0.0], [20.0, 20.0, 20.0])])
+    sys = PackmolSystem([st]; output, tolerance=2.0)
+    @test packmol(sys; iprint=1000).status == :packing_ready
+    @test isfile(output)
+    @test !isfile(output * "_FORCED")
+    rm(output; force=true)
+end
+
+@testitem "CONECT records" setup=[TestFiles] begin
+    using PDBToolsBase: read_pdb
+    files = TestFiles.test_file("structure_files")
+    ethanol = joinpath(files, "ethanol.pdb")
+    water = joinpath(files, "water.pdb")
+    constraints = [InsideBox([0.0, 0.0, 0.0], [20.0, 20.0, 20.0])]
+    output = tempname() * ".pdb"
+    nconect(file) = count(startswith("CONECT"), readlines(file))
+    # The connectivity of the template is repeated for every copy of the molecule
+    st_water = structure_type(water; number=2, constraints)
+    st_ethanol = structure_type(ethanol; number=3, constraints)
+    @test length(st_ethanol.connectivity) == 9
+    @test st_water.connectivity == [[3], [3], [1, 2]]
+    sys = PackmolSystem([st_water, st_ethanol]; output, tolerance=2.0)
+    write_output(sys)
+    @test nconect(output) == 33
+    s = read_pdb(output)
+    @test length(s.connectivity) == 33
+    @test s.connectivity[1:6] == [[3], [3], [1, 2], [6], [6], [4, 5]]
+    @test s.connectivity[7] == [8, 10, 11, 12]
+    @test s.connectivity[16] == [17, 19, 20, 21]
+    @test s.connectivity[33] == [27]
+    # Also written with TER records
+    sys = PackmolSystem([st_water, st_ethanol]; output, tolerance=2.0, add_amber_ter=true)
+    write_output(sys)
+    @test nconect(output) == 33
+    @test read_pdb(output).connectivity == s.connectivity
+    # Disabled for the whole system, or for a structure type
+    sys = PackmolSystem([st_water, st_ethanol]; output, tolerance=2.0, connect=false)
+    write_output(sys)
+    @test nconect(output) == 0
+    sys = PackmolSystem([st_water, structure_type(ethanol; number=3, constraints, connect=false)]; output, tolerance=2.0)
+    write_output(sys)
+    @test nconect(output) == 6
+    rm(output; force=true)
+end
+
+@testitem "xyz files" setup=[TestFiles] begin
+    using PDBToolsBase: read_xyz, read_pdb
+    using Packmol: read_packmol_input
+    files = TestFiles.test_file("structure_files")
+    dir = mktempdir()
+    input = joinpath(dir, "test.inp")
+    # filetype xyz: the output is an xyz file, whatever its extension
+    write(input, """
+    tolerance 2.0
+    filetype xyz
+    output out.xyz
+    structure $(joinpath(files, "ethanol.xyz"))
+      number 3
+      inside box 0. 0. 0. 20. 20. 20.
+    end structure
+    structure $(joinpath(files, "ethanol.pdb"))
+      number 2
+      connect no
+      inside box 0. 0. 0. 20. 20. 20.
+    end structure
+    """)
+    sys = read_packmol_input(input)
+    @test sys.filetype == "xyz"
+    @test sys.structure_types[1].natoms == 9
+    @test isnothing(sys.structure_types[1].connectivity)
+    @test isnothing(sys.structure_types[2].connectivity)
+    write_output(sys)
+    s = read_xyz(joinpath(dir, "out.xyz"))
+    @test length(s) == 45
+    @test s.title == "Built with Packmol"
+    # filetype pdb: xyz structure files are recognized by the extension
+    sys.filetype = "pdb"
+    sys.output_file = joinpath(dir, "out.pdb")
+    write_output(sys)
+    @test length(read_pdb(joinpath(dir, "out.pdb"))) == 45
+    # Unsupported file types
+    write(input, "tolerance 2.0\nfiletype tinker\n")
+    @test_throws ArgumentError read_packmol_input(input)
+    @test_throws ArgumentError Packmol._file_format("water.txyz", "tinker")
+    @test Packmol._file_format("water.txyz", "xyz") == "xyz"
+    @test Packmol._file_format("water.XYZ", "pdb") == "xyz"
+    @test Packmol._file_format("water.cif", "pdb") == "mmcif"
+end
+
+@testitem "CONECT records: Fortran Packmol connectivity test" setup=[TestFiles] begin
+    using PDBToolsBase: read_pdb
+    # Fortran Packmol's testing/test_connectivity.sh: the benzene template has
+    # repeated CONECT entries (double bonds), which must be preserved
+    input_file = TestFiles.test_file("input_files/benzene2.inp")
+    sys = redirect_stdout(devnull) do
+        packmol(input_file; iprint=1000)
+    end
+    @test sys.status == :packing_ready
+    output = read_pdb(sys.output_file)
+    reference = read_pdb(TestFiles.test_file("fortran_reference/benzene2.pdb"))
+    @test length(output) == length(reference) == 24
+    @test sort.(output.connectivity) == sort.(reference.connectivity)
+    # The 6 carbons of each benzene have a repeated bond (double bond)
+    @test count(c -> length(c) != length(unique(c)), output.connectivity) == 12
 end

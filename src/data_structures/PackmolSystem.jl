@@ -18,13 +18,22 @@
     # maximum constraint violation during a packing chunk (see
     # packmol_main.jl).
     stall_tolerance::T = 1e-3 * tolerance_precision
-    max_iter::Int = 1000
+    # Packing loops and optimizer iterations per loop (input keywords `nloop`
+    # and `maxit`): `nothing` means unset, and the keyword arguments of
+    # `packmol(::PackmolSystem)` take precedence over these.
+    nloop::Union{Nothing,Int} = nothing
+    max_iter::Union{Nothing,Int} = nothing
+    # Maximum fraction of the molecules of each type moved by `movebad!` per
+    # loop (input keyword `movefrac`): `nothing` means unset, as above.
+    movefrac::Union{Nothing,T} = nothing
     max_random_init::Int=20
     adjust_constraints_on_init::Bool=true
     add_amber_ter::Bool = false
     amber_ter_preserve::Bool = false
     add_box_sides::Bool = false
-    connect::Bool = false
+    # Write the connectivity of the structure files (CONECT records) to the output;
+    # disabled with `ignore_conect` (or `connect no`).
+    connect::Bool = true
     random_initial_point::Bool = false
     seed::Int = 1234567
     avoid_overlap::Bool = true
@@ -296,7 +305,7 @@ _warn(msg::AbstractString) = _with_stderr(io -> println(io, "Warning: ", msg))
 #
 function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, val::AbstractString) where {D,T}
     if keyword == "filetype"
-        sys.filetype = _parse_value(String, "filetype", val)
+        sys.filetype = _parse_options("filetype", val, ("pdb" => "pdb", "xyz" => "xyz"))
     elseif keyword == "output"
         sys.output_file = expanduser(_parse_value(String, "output", val))
     elseif keyword == "tolerance"
@@ -314,6 +323,10 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.stall_tolerance = _parse_value(T, "stall_tolerance", val)
     elseif keyword == "maxit"
         sys.max_iter = _parse_value(Int, "maxit", val)
+    elseif keyword == "nloop"
+        sys.nloop = _parse_value(Int, "nloop", val)
+    elseif keyword == "movefrac"
+        sys.movefrac = _parse_value(T, "movefrac", val)
     elseif keyword == "max_random_init"
         sys.max_random_init = _parse_value(Int, "max_random_init", val)
     elseif keyword == "adjust_constraints_on_init"
@@ -326,6 +339,8 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.add_box_sides = true
     elseif keyword == "connect"
         sys.connect = _parse_options("connect", val, _yes_no)
+    elseif keyword == "ignore_conect"
+        sys.connect = false
     elseif keyword == "randominitialpoint"
         sys.random_initial_point = true
     elseif keyword == "seed"
@@ -376,49 +391,86 @@ function unitcell_matrix(::Type{T}, a, b, c, α_deg, β_deg, γ_deg) where {T}
     ]
 end
 
+# Fortran Packmol keywords that have no use in Packmol.jl: they are accepted,
+# so that old input files still run, with a warning that they are ignored.
 const packmol_legacy_keywords = Dict{String,String}(
-    "fscale" => "fscale legacy keyword was ignored.",
-    "fbins" => "fbins legacy keyword was ignored.",
-    "iprint1" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
-    "iprint2" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
-    "iprint3" => "iprint1 legacy keyword was ignored, instead use: optim_print_level",
-    "precision" => "precision legacy keyword was ignored, instead use: tolerance_precision and/or constraint_precision",
-    "packall" => "packall is ignored and the only option",
+    "fscale" => "fscale is a deprecated keyword and was ignored.",
+    "fbins" => "fbins is a deprecated keyword and was ignored.",
+    "iprint1" => "iprint1 is a deprecated keyword and was ignored. Use instead: optimization_print_level",
+    "iprint2" => "iprint2 is a deprecated keyword and was ignored. Use instead: optimization_print_level",
+    "iprint3" => "iprint3 is a deprecated keyword and was ignored. Use instead: optimization_print_level",
+    "precision" => "precision is a deprecated keyword and was ignored. Use instead: tolerance_precision and/or constraint_precision",
+    "packall" => "packall is a deprecated keyword and was ignored (it is the only option).",
+    "use_short_tol" => "use_short_tol is a deprecated keyword and was ignored.",
+    "short_tol_dist" => "short_tol_dist is a deprecated keyword and was ignored.",
+    "short_tol_scale" => "short_tol_scale is a deprecated keyword and was ignored.",
+    "short_radius" => "short_radius is a deprecated keyword and was ignored.",
+    "short_radius_scale" => "short_radius_scale is a deprecated keyword and was ignored.",
+    "sidemax" => "sidemax is a deprecated keyword and was ignored.",
+    "maxmove" => "maxmove is a deprecated keyword and was ignored.",
+    "nloop0" => "nloop0 is a deprecated keyword and was ignored.",
+    "disable_movebad" => "disable_movebad is a deprecated keyword and was ignored.",
+    "writecrd" => "writecrd is a deprecated keyword and was ignored (CHARMM CRD output is not supported).",
+    "non_standard_conect" => "non_standard_conect is a deprecated keyword and was ignored (CONECT records are read in the standard PDB format).",
+    "hexadecimal_indices" => "hexadecimal_indices is a deprecated keyword and was ignored (atom indices above 99999 are always written in hexadecimal).",
+    "movebadrandom" => "movebadrandom is a deprecated keyword and was ignored (bad molecules are always moved to random positions).",
 )
 
 # Keywords recognized by Fortran Packmol but not yet wired into Packmol.jl
-# (see the Phase 1 "Missing keyword parsing" checklist in CLAUDE.md). Listed
-# here, rather than in `_set_input_keyword!`, so that using them produces a
-# clear warning instead of a crash while they remain unimplemented.
+# (see `dev/drop-in-replacement.md`). Listed here, rather than in
+# `_set_input_keyword!`, so that using them produces a clear warning instead
+# of a crash while they remain unimplemented.
 const packmol_unimplemented_keywords = Dict{String,String}(
-    "movefrac" => "movefrac keyword is not yet implemented in Packmol.jl and was ignored.",
-    "movebadrandom" => "movebadrandom keyword is not yet implemented in Packmol.jl and was ignored.",
-    "use_short_tol" => "use_short_tol keyword is not yet implemented in Packmol.jl and was ignored.",
-    "short_tol_dist" => "short_tol_dist keyword is not yet implemented in Packmol.jl and was ignored.",
-    "short_tol_scale" => "short_tol_scale keyword is not yet implemented in Packmol.jl and was ignored.",
-    "short_radius" => "short_radius keyword is not yet implemented in Packmol.jl and was ignored.",
-    "short_radius_scale" => "short_radius_scale keyword is not yet implemented in Packmol.jl and was ignored.",
-    "nloop" => "nloop keyword is not yet implemented in Packmol.jl and was ignored.",
 )
+
+# Keywords of a `structure ... end structure` block with no use in Packmol.jl
+# (accepted with a warning, as `packmol_legacy_keywords`).
+const packmol_legacy_structure_keywords = Dict{String,String}(
+    "nloop" => "nloop inside a structure block is a deprecated keyword and was ignored (use the global nloop).",
+    "nloop0" => "nloop0 is a deprecated keyword and was ignored.",
+)
+
+# Input file line without its comment (anything after a `#`, as in Fortran
+# Packmol) and surrounding whitespace.
+_strip_comment(line::AbstractString) = strip(first(split(line, '#'; limit=2)))
 
 #=
 
-    read_packmol_input
+    read_packmol_input(input_file::String)
+    read_packmol_input(io::IO)
 
-Reads the packmol input file to create a `PackmolSystem` object.
+Reads the packmol input file to create a `PackmolSystem` object. Paths in the
+input are relative to the directory of `input_file`, or to the current
+directory if the input is read from an `IO` stream (e.g. `stdin`).
 
 =#
-read_packmol_input(input_file::String; D::Int=3, T::DataType=Float64) =
-    read_packmol_input(input_file, Val(D), T)
+read_packmol_input(input::Union{String,IO}; D::Int=3, T::DataType=Float64) =
+    read_packmol_input(input, Val(D), T)
 
 function read_packmol_input(input_file::String, ::Val{D}, ::Type{T}) where {D,T}
     input_file = expanduser(input_file)
+    return _read_packmol_input(open(_read_lines, input_file), input_file, dirname(input_file), Val(D), T)
+end
+
+read_packmol_input(io::IO, ::Val{D}, ::Type{T}) where {D,T} =
+    _read_packmol_input(_read_lines(io), "", "", Val(D), T)
+
+# `readlines` is not compatible with `juliac --trim`
+function _read_lines(io::IO)
+    lines = String[]
+    while !eof(io)
+        push!(lines, readline(io))
+    end
+    return lines
+end
+
+function _read_packmol_input(lines::Vector{String}, input_file::String, input_dir::String, ::Val{D}, ::Type{T}) where {D,T}
     sys = PackmolSystem{D,T}(; input_file, output_file="")
     stall_tolerance_set = false
     structure_section = false
-    for line in eachline(input_file)
-        line = strip(line)
-        (startswith(line, "#") || isempty(line)) && continue
+    for line in lines
+        line = _strip_comment(line)
+        isempty(line) && continue
         words = split(line)
         keyword, values = words[1], @view(words[2:end])
         # `structure`/`end structure` must be recognized regardless of
@@ -468,9 +520,10 @@ function read_packmol_input(input_file::String, ::Val{D}, ::Type{T}) where {D,T}
             end
             vals = [_parse_value(T, "pbc", v) for v in values]
             if length(vals) == D
-                # 3 values: side lengths, center at origin
+                # 3 values: side lengths of the box from the origin to (a, b, c), as in
+                # Fortran Packmol (equivalent to `pbc 0 0 0 a b c`)
                 sys.unitcell = Matrix{T}(Diagonal(vals))
-                sys.unitcell_center = zero(SVector{D,T})
+                sys.unitcell_center = SVector{D,T}(vals) / 2
             elseif length(vals) == 2 * D
                 # 6 values: xmin ymin zmin xmax ymax zmax
                 lo = SVector{D,T}(@view(vals[1:D]))
@@ -506,7 +559,6 @@ function read_packmol_input(input_file::String, ::Val{D}, ::Type{T}) where {D,T}
     end
     # As the structure files, the other files named in the input file are
     # relative to its directory (an absolute path is kept as is by `joinpath`).
-    input_dir = dirname(input_file)
     isempty(sys.output_file) || (sys.output_file = joinpath(input_dir, sys.output_file))
     restart_from = sys.restart_from
     restart_from isa String && (sys.restart_from = joinpath(input_dir, restart_from))
@@ -514,9 +566,9 @@ function read_packmol_input(input_file::String, ::Val{D}, ::Type{T}) where {D,T}
     restart_to isa String && (sys.restart_to = joinpath(input_dir, restart_to))
     # Read structure data
     structure_input = IOBuffer()
-    for line in eachline(input_file)
-        line = strip(line)
-        (startswith(line, "#") || isempty(line)) && continue
+    for line in lines
+        line = _strip_comment(line)
+        isempty(line) && continue
         words = split(line)
         if words[1] == "structure"
             structure_section = true
@@ -527,7 +579,7 @@ function read_packmol_input(input_file::String, ::Val{D}, ::Type{T}) where {D,T}
         if words[1] == "end" && length(words) > 1 && words[2] == "structure"
             print(structure_input, line, "\n")
             push!(sys.structure_types, 
-                read_structure_data(structure_input, sys.tolerance, Val(D), T; path=input_dir)
+                read_structure_data(structure_input, sys.tolerance, Val(D), T; path=input_dir, filetype=sys.filetype)
             )
             continue
         end
@@ -543,6 +595,7 @@ function read_packmol_input(input_file::String, ::Val{D}, ::Type{T}) where {D,T}
     if !isnothing(unitcell) && !isnothing(unitcell_center)
         _add_pbc_confinement_constraints!(sys.structure_types, unitcell, unitcell_center, sys.tolerance)
     end
+    _check_fixed_inside_cell(sys)
     #
     # Initialize atom data and molecule position arrays
     #

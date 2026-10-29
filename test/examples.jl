@@ -7,10 +7,10 @@
 # machinery in packmol_main.jl, not just a slower run.
 #
 
-@testitem "example: mixture (water + urea)" begin
+@testitem "example: mixture (water + urea)" setup=[TestFiles] begin
     using PDBToolsBase: read_pdb
 
-    input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "mixture.inp")
+    input_file = TestFiles.test_file("input_files/mixture.inp")
     sys = Packmol.read_packmol_input(input_file)
     @test sys.nmols == 1400
 
@@ -24,10 +24,10 @@
     rm(sys.output_file; force=true)
 end
 
-@testitem "example: spherical (double-layered vesicle)" begin
+@testitem "example: spherical (double-layered vesicle)" setup=[TestFiles] begin
     using PDBToolsBase: read_pdb
 
-    input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "spherical.inp")
+    input_file = TestFiles.test_file("input_files/spherical.inp")
     sys = Packmol.read_packmol_input(input_file)
     @test sys.nmols == 18234
 
@@ -41,10 +41,10 @@ end
     rm(sys.output_file; force=true)
 end
 
-@testitem "example: solvprotein (protein + water + ions)" begin
+@testitem "example: solvprotein (protein + water + ions)" setup=[TestFiles] begin
     using PDBToolsBase: read_pdb
 
-    input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "solvprotein.inp")
+    input_file = TestFiles.test_file("input_files/solvprotein.inp")
     sys = Packmol.read_packmol_input(input_file)
     @test sys.nmols == 16551
 
@@ -58,10 +58,10 @@ end
     rm(sys.output_file; force=true)
 end
 
-@testitem "example: bilayer (lipid double layer)" begin
+@testitem "example: bilayer (lipid double layer)" setup=[TestFiles] begin
     using PDBToolsBase: read_pdb
 
-    input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "bilayer.inp")
+    input_file = TestFiles.test_file("input_files/bilayer.inp")
     sys = Packmol.read_packmol_input(input_file)
     @test sys.nmols == 1100
 
@@ -73,4 +73,17 @@ end
     @test isfile(sys.output_file)
     @test length(read_pdb(sys.output_file)) == length(sys.atoms)
     rm(sys.output_file; force=true)
+end
+
+@testitem "Fortran example: interface (xyz files)" setup=[TestFiles] begin
+    using PDBToolsBase: read_xyz
+    # Fortran Packmol's examples/interface.inp: xyz input and output, and a fixed
+    # structure without `number`
+    input_file = TestFiles.test_file("fortran_examples/interface.inp")
+    sys = redirect_stdout(devnull) do
+        Packmol.packmol(input_file; iprint=1000)
+    end
+    @test sys.status == :packing_ready
+    output = read_xyz(joinpath(dirname(input_file), "interface.xyz"))
+    @test length(output) == 1019 * 3 + 199 * 5 + 35
 end

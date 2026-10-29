@@ -368,6 +368,7 @@ function get_atoms(packmol_system::PackmolSystem{D,T}) where {D,T}
                 # template chain id (there's no "auto-cycle per molecule" to
                 # do for a single fixed copy).
                 atom.chain = isnothing(st.chain) ? st.atoms[j].chain : string(st.chain)
+                _set_segid!(atom, st.segid)
                 push!(output_atoms, atom)
             end
             irescount += nres
@@ -401,6 +402,7 @@ function get_atoms(packmol_system::PackmolSystem{D,T}) where {D,T}
                     atom.z = D == 3 ? pos[3] : zero(eltype(pos))
                     atom.resnum = _resnum(resnumbers_mode, false, imol_local, st.atoms[j].resnum, ifres, irescount, iimol)
                     atom.chain = string(write_chain)
+                    _set_segid!(atom, st.segid)
                     push!(output_atoms, atom)
                 end
                 irescount += nres
@@ -410,6 +412,9 @@ function get_atoms(packmol_system::PackmolSystem{D,T}) where {D,T}
 
     return output_atoms
 end
+
+_set_segid!(::Atom, ::Nothing) = nothing
+_set_segid!(atom::Atom, segid::String) = (atom.segname = segid; nothing)
 
 #
 # The same positions `get_atoms` just computed, repackaged as `SVector{D,T}`
@@ -429,18 +434,118 @@ Write packed coordinates to the output file specified in `packmol_system.output_
 Residue numbering follows each structure type's `residue_numbering` (`resnumbers`)
 setting, chain identifiers follow `chain`/`changechains`, and a `CRYST1` record is
 added when `add_box_sides` is set or the system has periodic boundary conditions.
-Also writes any configured `restart_to` file(s) from the current molecule positions.
+Also writes any configured `restart_to` file(s) from the current molecule positions,
+unless `write_restart=false`.
 Returns the path of the file that was written. See [`get_atoms`](@ref) for how the
 written coordinates are computed (including PBC wrapping and
 `packmol_system.periodic_boundary_style`).
 """
-function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_system.output_file) where {D,T}
-    _write_restart_files(packmol_system)
+function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_system.output_file, write_restart::Bool=true) where {D,T}
+    write_restart && _write_restart_files(packmol_system)
     output_atoms = get_atoms(packmol_system)
     atom_positions = _positions_from_atoms(output_atoms, Val(D), T)
 
+    if _file_format(output_file, packmol_system.filetype) == "xyz"
+        write_xyz(output_file, Structure(output_atoms; title="Built with Packmol"))
+        return output_file
+    end
     cryst1_lines = _cryst1_lines(packmol_system, atom_positions)
     header = join(vcat("HEADER", "REMARK   Packmol.jl generated PDB file", cryst1_lines), "\n")
-    write_pdb(output_file, output_atoms; header)
+    connectivity = _system_connectivity(packmol_system)
+    # Positional `MetaData` (unit cell, connectivity, title): a keyword call with the
+    # `Union`-typed connectivity is not compatible with `juliac --trim`
+    write_pdb(output_file, Structure(output_atoms, PDBToolsBase.MetaData(nothing, connectivity, nothing)); header)
+    if packmol_system.add_amber_ter || packmol_system.amber_ter_preserve
+        _add_ter_records(output_file, packmol_system)
+    end
+    return output_file
+end
+
+# Number of copies of a structure type in the output
+_ncopies(st::StructureType) = st.fixed.fixed ? 1 : st.number_of_molecules
+
+#
+# Connectivity of the packed system (in the order of the atoms of `get_atoms`):
+# the connectivity of the template of each structure type, repeated for every
+# copy of the molecule, with the indices shifted to the atoms of the copy.
+# `nothing` if no structure type has connectivity, or if `connect` is disabled.
+#
+function _system_connectivity(packmol_system::PackmolSystem)
+    packmol_system.connect || return nothing
+    any(st -> !isnothing(st.connectivity), packmol_system.structure_types) || return nothing
+    connectivity = Vector{Int32}[]
+    offset = Int32(0)
+    for st in packmol_system.structure_types
+        template = st.connectivity
+        for _ in 1:_ncopies(st)
+            for iat in 1:st.natoms
+                bonded = isnothing(template) || iat > length(template) ? Int32[] : template[iat] .+ offset
+                push!(connectivity, bonded)
+            end
+            offset += Int32(st.natoms)
+        end
+    end
+    return connectivity
+end
+
+#
+# Number of atoms preceding each `TER` record of a structure's PDB file (so
+# that 0 is a `TER` before its first atom), for `amber_ter_preserve`.
+#
+function _ter_positions(filename::AbstractString)
+    positions = Int[]
+    isfile(filename) || return positions
+    natoms = 0
+    for line in eachline(filename)
+        if startswith(line, "ATOM") || startswith(line, "HETATM")
+            natoms += 1
+        elseif startswith(line, "TER")
+            push!(positions, natoms)
+        end
+    end
+    return positions
+end
+
+#
+# Add `TER` records, as Fortran Packmol, to the PDB file written by `write_pdb`:
+# after every molecule with `add_amber_ter`, and where the structure's own PDB
+# file has them with `amber_ter_preserve`.
+#
+function _add_ter_records(output_file::AbstractString, packmol_system::PackmolSystem)
+    # nter[k+1]: number of TER records after the k-th atom of the file
+    nter = zeros(Int, sum(st -> st.natoms * _ncopies(st), packmol_system.structure_types; init=0) + 1)
+    offset = 0
+    for st in packmol_system.structure_types
+        ter_positions = packmol_system.amber_ter_preserve ? _ter_positions(st.filename) : Int[]
+        for _ in 1:_ncopies(st)
+            for k in ter_positions
+                k <= st.natoms && (nter[offset+k+1] += 1)
+            end
+            offset += st.natoms
+            packmol_system.add_amber_ter && (nter[offset+1] += 1)
+        end
+    end
+    lines = open(_read_lines, output_file)
+    io = open(output_file, "w")
+    try
+        iat = 0
+        for line in lines
+            is_atom = startswith(line, "ATOM") || startswith(line, "HETATM")
+            if is_atom && iat == 0
+                for _ in 1:nter[1]
+                    println(io, "TER")
+                end
+            end
+            println(io, line)
+            if is_atom
+                iat += 1
+                for _ in 1:nter[iat+1]
+                    println(io, "TER")
+                end
+            end
+        end
+    finally
+        close(io)
+    end
     return output_file
 end

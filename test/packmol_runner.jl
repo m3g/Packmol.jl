@@ -1,7 +1,7 @@
-@testitem "run_packmol_legacy" begin
+@testitem "run_packmol_legacy" setup=[TestFiles] begin
     using Packmol
     using Packmol_jll
-    test_dir = Packmol.src_dir*"/../test/input_files"
+    test_dir = TestFiles.test_file("input_files")
     run_packmol_legacy("$test_dir/water_box.inp")
     @test isfile("$test_dir/water_box.pdb")
     run_packmol_legacy("$test_dir/ieee_signaling.inp")

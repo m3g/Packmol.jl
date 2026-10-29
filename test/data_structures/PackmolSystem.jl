@@ -1,6 +1,6 @@
-@testitem "PackmolSystem from Julia code" begin
+@testitem "PackmolSystem from Julia code" setup=[TestFiles] begin
     using PDBToolsBase: read_pdb
-    file = Packmol.src_dir * "/../test/structure_files/water.pdb"
+    file = TestFiles.test_file("structure_files/water.pdb")
 
     st = structure_type(file; number=100, constraints=[InsideBox([0.,0.,0.],[40.,40.,40.])])
     sys = PackmolSystem([st]; output="julia_api_test.pdb", tolerance=2.0, seed=42)
@@ -37,9 +37,9 @@ end
     @test_throws ArgumentError _parse_options("connect", "nop", ("yes" => true, "no" => false))
 end
 
-@testitem "read_packmol_input" begin
+@testitem "read_packmol_input" setup=[TestFiles] begin
     using Packmol: read_packmol_input
-    file = Packmol.src_dir * "/../test/input_files/water_box.inp"
+    file = TestFiles.test_file("input_files/water_box.inp")
     sys = read_packmol_input(file)
     @test sys.filetype == "pdb"
     @test sys.output_file == joinpath(dirname(file), "water_box.pdb")
@@ -61,10 +61,10 @@ end
     # sys = read_packmol_input(file; D=2)
 end
 
-@testitem "radscale / discale keyword" begin
+@testitem "radscale / discale keyword" setup=[TestFiles] begin
     using Packmol: read_packmol_input
-    dir = dirname(Packmol.src_dir * "/../test/input_files/water_box.inp")
-    original = read(Packmol.src_dir * "/../test/input_files/water_box.inp", String)
+    dir = dirname(TestFiles.test_file("input_files/water_box.inp"))
+    original = read(TestFiles.test_file("input_files/water_box.inp"), String)
 
     mktempdir() do tmp
         cp(joinpath(dir, "water.pdb"), joinpath(tmp, "water.pdb"))
@@ -81,7 +81,7 @@ end
     end
 end
 
-@testitem "per-structure keyword does not leak into the global setting" begin
+@testitem "per-structure keyword does not leak into the global setting" setup=[TestFiles] begin
     using Packmol: read_packmol_input
     # `restart_from`/`restart_to` are valid both as a global keyword and as a
     # per-structure one (inside `structure ... end structure`); a
@@ -90,8 +90,8 @@ end
     # regression test for a parser bug where the global-keyword dispatch
     # table was consulted unconditionally, before checking whether the
     # current line was inside a structure block.
-    dir = dirname(Packmol.src_dir * "/../test/input_files/water_box.inp")
-    original = read(Packmol.src_dir * "/../test/input_files/water_box.inp", String)
+    dir = dirname(TestFiles.test_file("input_files/water_box.inp"))
+    original = read(TestFiles.test_file("input_files/water_box.inp"), String)
 
     mktempdir() do tmp
         cp(joinpath(dir, "water.pdb"), joinpath(tmp, "water.pdb"))
@@ -105,4 +105,114 @@ end
         @test isnothing(sys.restart_from)
         @test only(sys.structure_types).restart_from == restart_touched
     end
+end
+
+@testitem "read_packmol_input: comments, legacy keywords, nloop" setup=[TestFiles] begin
+    using Packmol: read_packmol_input
+    water = TestFiles.test_file("structure_files/water.pdb")
+    dir = mktempdir()
+    input = joinpath(dir, "test.inp")
+    write(input, """
+    # A comment line
+    tolerance 2.0 # inline comment
+    output out.pdb
+    nloop 37
+    maxit 15
+    movefrac 0.1
+    movebadrandom
+    short_tol_dist 1.0
+    sidemax 1000.
+    writecrd out.crd
+    structure $water # the water
+      number 10
+      nloop 5
+      segid WAT
+      inside box 0. 0. 0. 20. 20. 20. # inline comment
+    end structure
+    """)
+    sys = redirect_stderr(devnull) do
+        read_packmol_input(input)
+    end
+    @test sys.tolerance == 2.0
+    @test sys.nloop == 37
+    @test sys.max_iter == 15
+    @test sys.movefrac == 0.1
+    @test sys.structure_types[1].segid == "WAT"
+    @test sys.nmols == 10
+    @test length(sys.structure_types[1].constraints) == 1
+    # Not set in the input file: the `packmol` defaults apply
+    sys = read_packmol_input(TestFiles.test_file("input_files/water_box.inp"))
+    @test isnothing(sys.nloop)
+    @test isnothing(sys.max_iter)
+    @test isnothing(sys.movefrac)
+    @test isnothing(sys.structure_types[1].segid)
+    # segid has at most 4 characters
+    write(input, "tolerance 2.0\nstructure $water\n  number 1\n  segid TOOLONG\nend structure\n")
+    @test_throws ArgumentError read_packmol_input(input)
+end
+
+@testitem "read_packmol_input from IO" setup=[TestFiles] begin
+    using Packmol: read_packmol_input
+    # Paths are relative to the current directory
+    dir = TestFiles.test_file("structure_files")
+    input = "tolerance 2.0\noutput out.pdb\nstructure water.pdb\n  number 10\n  inside box 0. 0. 0. 20. 20. 20.\nend structure\n"
+    sys = cd(dir) do
+        read_packmol_input(IOBuffer(input))
+    end
+    @test sys.input_file == ""
+    @test sys.output_file == "out.pdb"
+    @test sys.nmols == 10
+    @test sys.structure_types[1].filename == "water.pdb"
+end
+
+@testitem "fixed structure without number" setup=[TestFiles] begin
+    using Packmol: read_packmol_input
+    water = TestFiles.test_file("structure_files/water.pdb")
+    input = tempname() * ".inp"
+    write(input, """
+    tolerance 2.0
+    structure $water
+      number 5
+      inside box 0. 0. 0. 20. 20. 20.
+    end structure
+    structure $water
+      fixed 10. 10. 10. 0. 0. 0.
+    end structure
+    """)
+    sys = read_packmol_input(input)
+    @test sys.structure_types[2].number_of_molecules == 1
+    @test sys.nmols == 6
+    @test length(get_atoms(sys)) == 18
+end
+
+@testitem "fixed molecules: positions and periodic cell" setup=[TestFiles] begin
+    using Packmol: read_packmol_input
+    using PDBToolsBase: position
+    using StaticArrays: SVector, SMatrix
+    # The positions of the fixed atoms used for the overlap checks are those of the output
+    # (a new input file: the test files are shared by the test items)
+    input = TestFiles.test_file("input_files/solvprotein_moved_protein.inp")
+    original = read(TestFiles.test_file("input_files/solvprotein.inp"), String)
+    write(input, replace(original, "fixed 0. 0. 0. 0. 0. 0." => "fixed 10. 3. 19. 0.5 0.3 0.2"))
+    sys = redirect_stderr(devnull) do
+        read_packmol_input(input)
+    end
+    fixed_positions = Packmol._collect_fixed_positions(sys)
+    @test length(fixed_positions) == sys.structure_types[1].natoms
+    @test all(isapprox(x, position(at); atol=1e-3) for (x, at) in zip(fixed_positions, get_atoms(sys)))
+    # Fixed molecules outside the periodic cell are an error (as Fortran Packmol's
+    # testing/input_files/protein_outside_pbc_error.inp)
+    @test_throws ArgumentError read_packmol_input(TestFiles.test_file("input_files/protein_outside_pbc_error.inp"))
+    sys = read_packmol_input(TestFiles.test_file("input_files/solvprotein_pbc.inp"))
+    @test isnothing(Packmol._check_fixed_inside_cell(sys))
+    sys.structure_types[1].reference_coordinates .+= Ref(SVector(100.0, 0.0, 0.0))
+    @test_throws ArgumentError packmol(sys)
+    # Dodecahedral cells: the molecule may be outside the parallelepiped of the cell
+    # vectors, but inside the dodecahedron
+    ucell = SMatrix{3,3}(Packmol.dodecahedral_unitcell(Float64, 30.0))
+    center = SVector(0.0, 0.0, 0.0)
+    x = SVector(0.0, 0.0, 20.0)
+    @test any(f -> abs(f) > 0.5, inv(ucell) * x)
+    @test Packmol._inside_cell(x, ucell, inv(ucell), center)
+    @test !Packmol._inside_cell(SVector(16.0, 0.0, 0.0), ucell, inv(ucell), center)
 end

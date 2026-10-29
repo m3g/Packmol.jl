@@ -1,10 +1,10 @@
-@testitem "water box packing" begin
+@testitem "water box packing" setup=[TestFiles] begin
     using Packmol
     using PDBToolsBase: read_pdb
     using StaticArrays
     using LinearAlgebra: norm
 
-    input_file = joinpath(Packmol.src_dir, "..", "test", "input_files", "water_box_small.inp")
+    input_file = TestFiles.test_file("input_files/water_box_small.inp")
     sys = Packmol.read_packmol_input(input_file)
     @test sys.nmols == 100
     @test length(sys.atoms) == 300
@@ -51,8 +51,8 @@
     rm(output_file; force=true)
 end
 
-@testitem "constrain_rotation" begin
-    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+@testitem "constrain_rotation" setup=[TestFiles] begin
+    water_pdb = TestFiles.test_file("structure_files/water.pdb")
     water = structure_type(water_pdb; number=5,
         constraints=[InsideBox([0, 0, 0], [28, 28, 28])],
         constrain_rotation=Dict(:x => (0.0, 5.0), :y => (0.0, 5.0), :z => (0.0, 5.0)),
@@ -72,9 +72,9 @@ end
     rm(sys.output_file; force=true)
 end
 
-@testitem "restart_from / restart_to" begin
-    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
-    urea_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "urea.pdb")
+@testitem "restart_from / restart_to" setup=[TestFiles] begin
+    water_pdb = TestFiles.test_file("structure_files/water.pdb")
+    urea_pdb = TestFiles.test_file("structure_files/urea.pdb")
     uc = Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0)
 
     restart_all = tempname()
@@ -124,10 +124,10 @@ end
     rm(restart_water; force=true)
 end
 
-@testitem "restart_from a PDB file" begin
+@testitem "restart_from a PDB file" setup=[TestFiles] begin
     using PDBToolsBase: read_pdb
 
-    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    water_pdb = TestFiles.test_file("structure_files/water.pdb")
     uc = Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0)
 
     # First run: a normal PDB output file, no restart involved — it's not
@@ -168,8 +168,8 @@ end
     rm(source_pdb; force=true)
 end
 
-@testitem "restart_from with a fixed molecule present" begin
-    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+@testitem "restart_from with a fixed molecule present" setup=[TestFiles] begin
+    water_pdb = TestFiles.test_file("structure_files/water.pdb")
     uc = Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0)
 
     restart_all = tempname()
@@ -240,13 +240,13 @@ end
     @test Packmol._format_dmin(2.4, 2.4) == "> 2.400000"
 end
 
-@testitem "structure radius larger than tolerance/2" begin
+@testitem "structure radius larger than tolerance/2" setup=[TestFiles] begin
     using StaticArrays
     using LinearAlgebra: norm, Diagonal
     # A minority structure with a larger radius in a dense system: pairs
     # involving it must be kept at r_i + r_j > tolerance, which requires the
     # cell-list cutoff to follow the radii rather than the global tolerance.
-    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    water_pdb = TestFiles.test_file("structure_files/water.pdb")
     L = 33.0
     water = structure_type(water_pdb; number=900)
     big = structure_type(water_pdb; number=30, radius=1.5)
@@ -270,14 +270,14 @@ end
     @test worst >= -0.1
 end
 
-@testitem "non-periodic cell is not inflated by fixed molecules" begin
+@testitem "non-periodic cell is not inflated by fixed molecules" setup=[TestFiles] begin
     using StaticArrays
     using LinearAlgebra: norm
     # A large fixed molecule surrounded by free molecules: the cell must cover
     # the region of the free molecules (plus their own extent) and the atoms of
     # the fixed molecule, but must not be inflated by the radius of the fixed one.
-    protein_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "protein.pdb")
-    water_pdb = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    protein_pdb = TestFiles.test_file("structure_files/protein.pdb")
+    water_pdb = TestFiles.test_file("structure_files/water.pdb")
     protein = structure_type(protein_pdb; number=1, fixed=(zeros(3), zeros(3)), center=:geometric)
     water = structure_type(water_pdb; number=2)
     sys = PackmolSystem([protein, water]; output="", tolerance=2.0)
@@ -300,12 +300,12 @@ end
     @test Packmol._nonperiodic_unitcell(sys, x)[1] ≈ 1.2 * (hi - lo + 2 * 2.0)
 end
 
-@testitem "packmol(input_file): paths relative to the input file" begin
+@testitem "packmol(input_file): paths relative to the input file" setup=[TestFiles] begin
     using Packmol
     # Run from another directory and check where the output lands.
     input_dir = mktempdir()
     for file in ("water_box_small.inp", "water.pdb")
-        cp(joinpath(Packmol.src_dir, "..", "test", "input_files", file), joinpath(input_dir, file))
+        cp(TestFiles.test_file(joinpath("input_files", file)), joinpath(input_dir, file))
     end
     current_dir = pwd()
     system = cd(mktempdir()) do

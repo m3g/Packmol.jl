@@ -62,8 +62,13 @@ Add the directory of julia binaries (`$HOME/.julia/bin`) to your path, and use p
 ```
 packmol input.inp
 ```
-(or `packmol -i input.inp`) as a standalone application. Without an input file, a file
-browser is opened to choose it.
+(or `packmol -i input.inp`, or `packmol < input.inp`, as Fortran Packmol) as a standalone
+application. `-o output.pdb` overrides the output file of the input. Without an input file
+(and no input redirected), a file browser is opened to choose it. The exit codes are those
+of Fortran Packmol: `0` for success, `173` if the packing did not converge (the best
+solution is written to the output file, and a solution satisfying only the constraints to
+`<output>_FORCED`), `171` for errors in the input, `172` if a file could not be opened,
+`174` for command-line errors, and `170` for other errors.
 
 ### Updating
 

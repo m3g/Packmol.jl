@@ -1,9 +1,9 @@
-@testitem "Membrane constructors" begin
+@testitem "Membrane constructors" setup=[TestFiles] begin
     using Packmol
     using Unitful
 
-    lipid = joinpath(Packmol.src_dir, "..", "test", "structure_files", "palmitoil.pdb")
-    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    lipid = TestFiles.test_file("structure_files/palmitoil.pdb")
+    water = TestFiles.test_file("structure_files/water.pdb")
 
     # basic construction (single lipid, single solvent)
     sys = Membrane(
@@ -81,13 +81,13 @@
     @test sys2.solvent_density == 1.0u"g/mL"
 end
 
-@testitem "Membrane show method" begin
+@testitem "Membrane show method" setup=[TestFiles] begin
     using Packmol
     using Unitful
     using ShowMethodTesting
 
-    lipid = joinpath(Packmol.src_dir, "..", "test", "structure_files", "palmitoil.pdb")
-    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    lipid = TestFiles.test_file("structure_files/palmitoil.pdb")
+    water = TestFiles.test_file("structure_files/water.pdb")
     sys = Membrane(
         lipids=lipid, lipid_head=[31], lipid_tail=[1], lipid_molar_ratio=[1.0],
         area_per_lipid=60.0, total_lipids=20,
@@ -111,12 +111,12 @@ end
     """
 end
 
-@testitem "Membrane bilayer geometry" begin
+@testitem "Membrane bilayer geometry" setup=[TestFiles] begin
     using Packmol
     using Unitful
 
-    lipid = joinpath(Packmol.src_dir, "..", "test", "structure_files", "palmitoil.pdb")
-    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    lipid = TestFiles.test_file("structure_files/palmitoil.pdb")
+    water = TestFiles.test_file("structure_files/water.pdb")
     sys = Membrane(
         type=:bilayer,
         lipids=lipid, lipid_head=[31], lipid_tail=[1], lipid_molar_ratio=[1.0],
@@ -154,12 +154,12 @@ end
     rm(tmp_input_file, force=true)
 end
 
-@testitem "Membrane monolayer geometry" begin
+@testitem "Membrane monolayer geometry" setup=[TestFiles] begin
     using Packmol
     using Unitful
 
-    lipid = joinpath(Packmol.src_dir, "..", "test", "structure_files", "palmitoil.pdb")
-    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    lipid = TestFiles.test_file("structure_files/palmitoil.pdb")
+    water = TestFiles.test_file("structure_files/water.pdb")
     sys = Membrane(
         type=:monolayer,
         lipids=lipid, lipid_head=[31], lipid_tail=[1], lipid_molar_ratio=[1.0],
@@ -188,13 +188,13 @@ end
     @test leaflet.head_low == false
 end
 
-@testitem "Membrane multi-lipid, multi-solvent, total_area" begin
+@testitem "Membrane multi-lipid, multi-solvent, total_area" setup=[TestFiles] begin
     using Packmol
     using Unitful
 
-    lipid = joinpath(Packmol.src_dir, "..", "test", "structure_files", "palmitoil.pdb")
-    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
-    diatomic = joinpath(Packmol.src_dir, "..", "test", "structure_files", "diatomic.pdb")
+    lipid = TestFiles.test_file("structure_files/palmitoil.pdb")
+    water = TestFiles.test_file("structure_files/water.pdb")
+    diatomic = TestFiles.test_file("structure_files/diatomic.pdb")
 
     sys = Membrane(
         lipids=[lipid, lipid], lipid_head=[31, 30], lipid_tail=[1, 2], lipid_molar_ratio=[2.0, 1.0],
@@ -224,13 +224,13 @@ end
     end
 end
 
-@testitem "Membrane packmol (bilayer)" begin
+@testitem "Membrane packmol (bilayer)" setup=[TestFiles] begin
     using Packmol
     using PDBToolsBase: read_pdb, positions
     using Unitful
 
-    lipid = joinpath(Packmol.src_dir, "..", "test", "structure_files", "palmitoil.pdb")
-    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    lipid = TestFiles.test_file("structure_files/palmitoil.pdb")
+    water = TestFiles.test_file("structure_files/water.pdb")
 
     sys = Membrane(
         type=:bilayer,
@@ -261,13 +261,13 @@ end
     rm(tmp_output_file, force=true)
 end
 
-@testitem "Membrane packmol (monolayer)" begin
+@testitem "Membrane packmol (monolayer)" setup=[TestFiles] begin
     using Packmol
     using PDBToolsBase: read_pdb, positions
     using Unitful
 
-    lipid = joinpath(Packmol.src_dir, "..", "test", "structure_files", "palmitoil.pdb")
-    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    lipid = TestFiles.test_file("structure_files/palmitoil.pdb")
+    water = TestFiles.test_file("structure_files/water.pdb")
 
     sys = Membrane(
         type=:monolayer,

@@ -18,10 +18,10 @@ end
     @test_throws ArgumentError Packmol.parse_pbc_dodecahedral(Float64, ["1.0", "2.0", "3.0"], Val(3))
 end
 
-@testitem "pbc dodecahedral input keyword" begin
+@testitem "pbc dodecahedral input keyword" setup=[TestFiles] begin
     using Packmol: read_packmol_input
-    dir = dirname(Packmol.src_dir * "/../test/input_files/water_box.inp")
-    original = read(Packmol.src_dir * "/../test/input_files/water_box.inp", String)
+    dir = dirname(TestFiles.test_file("input_files/water_box.inp"))
+    original = read(TestFiles.test_file("input_files/water_box.inp"), String)
 
     mktempdir() do tmp
         cp(joinpath(dir, "water.pdb"), joinpath(tmp, "water.pdb"))
@@ -37,7 +37,7 @@ end
     end
 end
 
-@testitem "triclinic_to_dodecahedral / dodecahedral_to_triclinic round trip" begin
+@testitem "triclinic_to_dodecahedral / dodecahedral_to_triclinic round trip" setup=[TestFiles] begin
     using StaticArrays: SVector
     using LinearAlgebra: norm
     using Random
@@ -65,7 +65,7 @@ end
           [Packmol.triclinic_to_dodecahedral(x, uc, center) for x in xs]
 
     st = structure_type(
-        Packmol.src_dir * "/../test/structure_files/water.pdb";
+        TestFiles.test_file("structure_files/water.pdb");
         number=2, constraints=[InsideBox([-10.0, -10.0, -10.0], [10.0, 10.0, 10.0])],
     )
     sys = PackmolSystem([st]; output="dodecahedron_test.pdb", tolerance=2.0, unitcell=uc, unitcell_center=center)
@@ -74,9 +74,9 @@ end
     @test Packmol.dodecahedral_to_triclinic(x, sys) == Packmol.dodecahedral_to_triclinic(x, uc, center)
 end
 
-@testitem "triclinic_to_dodecahedral(::PackmolSystem) / dodecahedral_to_triclinic(::PackmolSystem)" begin
+@testitem "triclinic_to_dodecahedral(::PackmolSystem) / dodecahedral_to_triclinic(::PackmolSystem)" setup=[TestFiles] begin
     st = structure_type(
-        Packmol.src_dir * "/../test/structure_files/water.pdb";
+        TestFiles.test_file("structure_files/water.pdb");
         number=2, constraints=[InsideBox([-10.0, -10.0, -10.0], [10.0, 10.0, 10.0])],
     )
 
