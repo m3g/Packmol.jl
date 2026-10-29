@@ -9,6 +9,9 @@ using SPGBox: spgbox!
     f::T
     g::Vector{MoleculePosition{D,T}}
     dmin::T
+    # Largest overlap `r_i + r_j - d` of a pair, with the radii of the atoms (not the
+    # inflated working radii): the convergence criterion
+    max_overlap::T
     fmol::Vector{T} # contribution of each molecule to the function value
     # Auxiliary array for gradient: carries the gradient relative to the cartesian coordinates of each atom
     gxcar::Vector{SVector{D,T}}
@@ -28,6 +31,7 @@ function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
         f = zero(T),
         g = zero(packmol_system.molecule_positions),
         dmin = typemax(T),
+        max_overlap = typemin(T),
         fmol = zeros(T, packmol_system.nmols),
         gxcar = fill(zero(SVector{D,T}), natoms),
         max_constraint_penalty = zero(T),
@@ -52,6 +56,7 @@ function CellListMap.copy_output(x::InteratomicDistanceFG{D,T}) where {D,T}
         x.f,
         MoleculePosition{D,T}[],  # empty — not used during pairwise
         x.dmin,
+        x.max_overlap,
         zeros(T, length(x.fmol)),
         fill(zero(SVector{D,T}), length(x.gxcar)),
         zero(T),  # max_constraint_penalty — not used by CellListMap threads
@@ -62,6 +67,7 @@ end
 function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,T}
     output.f = zero(T)
     output.dmin = typemax(T)
+    output.max_overlap = typemin(T)
     output.max_constraint_penalty = zero(T)
     if _is_thread_copy(output)
         _zero_touched!(output)
@@ -88,6 +94,7 @@ end
 function CellListMap.reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
     x.f += y.f
     x.dmin = min(x.dmin, y.dmin)
+    x.max_overlap = max(x.max_overlap, y.max_overlap)
     x.fmol .+= y.fmol
     x.gxcar .+= y.gxcar
     return x
@@ -107,10 +114,12 @@ function CellListMap.reduce_output!(
 ) where {D,T}
     output.f = zero(T)
     output.dmin = typemax(T)
+    output.max_overlap = typemin(T)
     ntouched = 0
     for ot in output_threaded
         output.f += ot.f
         output.dmin = min(output.dmin, ot.dmin)
+        output.max_overlap = max(output.max_overlap, ot.max_overlap)
         ntouched += length(ot.touched_atoms) + length(ot.touched_mols)
     end
     nmols = length(output.fmol)
@@ -168,9 +177,9 @@ end
 # toward its own floor (its user-specified or default radius) as improvement
 # stalls, and is fattened back up when its molecule is relocated by
 # movebad! (see packmol_main.jl). `fg.dmin` tracks the true (unscaled)
-# minimum distance regardless of `atom_radii`, so convergence checks against
-# the real tolerance are unaffected by this internal optimization-target
-# adjustment.
+# minimum distance and `fg.max_overlap` the largest overlap with the radii of the
+# atoms, regardless of `atom_radii`, so convergence checks are unaffected by this
+# internal optimization-target adjustment.
 function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_system, atom_radii)
     (; x, y, i, j, d2) = pair
     iatom = packmol_system.atoms[i]
@@ -181,6 +190,7 @@ function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_sy
     tol = atom_radii[i] + atom_radii[j]
     d = sqrt(d2)
     fg.dmin = min(d, fg.dmin)
+    fg.max_overlap = max(fg.max_overlap, iatom.radius + jatom.radius - d)
     if d < tol
         # Function value: add to total function value and to
         # molecular contributions

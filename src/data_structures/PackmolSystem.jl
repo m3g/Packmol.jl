@@ -49,12 +49,11 @@
     # source instead — the point of a whole-system restart is to skip that
     # (potentially expensive, for a large system) phase, not just to get
     # the same final starting point some other way.
-    # `restart_from` accepts either a file path (a raw Packmol-format
-    # restart file, or a `.pdb` — recognized by extension — whose atoms are
-    # rigid-body-aligned against each structure type's own template to
-    # recover (cm, angles); see `_align_molecule` in write_output.jl) or,
-    # Julia-API only, a `Vector{<:Atom}` already in memory (skipping the
-    # file entirely). `restart_to` only ever writes the raw format.
+    # `restart_from` accepts either a coordinate file (PDB, XYZ or mmCIF, by
+    # extension), whose atoms are rigid-body-aligned against each structure
+    # type's own template to recover (cm, angles) (see `_align_molecule` in
+    # write_output.jl), or, Julia-API only, a `Vector{<:Atom}` already in
+    # memory. `restart_to` writes the coordinates (PDB, or XYZ by extension).
     # See also `StructureType.restart_from`/`restart_to` for the
     # per-structure-type equivalents.
     restart_from::Union{Nothing,String,Vector{Atom{Nothing}}} = nothing
@@ -605,6 +604,7 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
         _add_pbc_confinement_constraints!(sys.structure_types, unitcell, unitcell_center, sys.tolerance)
     end
     _check_fixed_inside_cell(sys)
+    _check_restart_files(sys)
     #
     # Initialize atom data and molecule position arrays
     #

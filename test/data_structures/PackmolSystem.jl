@@ -95,7 +95,7 @@ end
 
     mktempdir() do tmp
         cp(joinpath(dir, "water.pdb"), joinpath(tmp, "water.pdb"))
-        restart_touched = joinpath(tmp, "some_restart_file.txt")
+        restart_touched = joinpath(tmp, "some_restart_file.pdb")
 
         text = replace(original, "end structure" => "restart_from $restart_touched\nend structure")
         file = joinpath(tmp, "per_structure_restart.inp")

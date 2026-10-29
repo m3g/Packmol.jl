@@ -104,14 +104,14 @@ lipid = structure_type(
 
 `restart_from`/`restart_to`, on both `PackmolSystem` (whole system) and
 `structure_type` (one structure type only), work as in the input file's
-[Restarting a run](input_files.md#Restarting-a-run) section — a file path,
-either Packmol's own raw restart format or a `.pdb` (dispatched by
-extension), skips or shortcuts the initial placement step:
+[Restarting a run](input_files.md#Restarting-a-run) section — a coordinate
+file (PDB, XYZ or mmCIF, by extension) skips or shortcuts the initial placement
+step:
 
 ```julia
-sys = PackmolSystem(structure_types; output="box.pdb", tolerance=2.0, restart_to="box.restart")
+sys = PackmolSystem(structure_types; output="box.pdb", tolerance=2.0, restart_to="box_restart.pdb")
 packmol(sys)  # ... later, resume packing (or extend a run that stopped early):
-sys2 = PackmolSystem(structure_types; output="box2.pdb", tolerance=2.0, restart_from="box.restart")
+sys2 = PackmolSystem(structure_types; output="box2.pdb", tolerance=2.0, restart_from="box_restart.pdb")
 packmol(sys2)
 ```
 

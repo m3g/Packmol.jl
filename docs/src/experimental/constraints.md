@@ -177,6 +177,19 @@ API](julia_api.md), it is the `constrain_rotation` keyword of
 [`structure_type`](@ref), taking a `Dict` such as
 `Dict(:z => (0.0, 15.0))`.
 
+The rotations are relative to the reference orientation of the molecule:
+centered at the origin and aligned with its principal axes of inertia (all
+atoms with the same mass), with the longest axis of the molecule along z and
+the axis of the largest moment of inertia along x. The orientation of the
+molecule in its structure file doesn't matter.
+
+!!! note "Difference from Fortran Packmol"
+    Fortran Packmol bounds the angles of a different Euler-angle convention
+    (z–x–z), relative to the orientation of the molecule in its structure
+    file, so the same `constrain_rotation` lines can give different
+    orientations here. For instance, Fortran's `constrain_rotation x 0 10`
+    alone bounds the tilt of the z axis of the molecule.
+
 ## Julia constructors
 
 Each shape above also has `Inside`/`Outside` (or `Above`/`Below`) Julia

@@ -77,10 +77,11 @@ end
     urea_pdb = TestFiles.test_file("structure_files/urea.pdb")
     uc = Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0)
 
-    restart_all = tempname()
-    restart_water = tempname()
+    restart_all = tempname() * ".pdb"
+    restart_water = tempname() * ".xyz"
 
-    # First run: converge normally, writing whole-system and per-type restart files
+    # First run: converge normally, writing the coordinates of the whole system (PDB)
+    # and of the water molecules (XYZ)
     water = structure_type(water_pdb; number=4,
         constraints=[InsideBox([0, 0, 0], [28, 28, 28])], restart_to=restart_water)
     urea = structure_type(urea_pdb; number=2, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
@@ -90,6 +91,7 @@ end
     @test packmol(sys1; nloop=20, maxit=100, iprint=1000, seed=1).status == :packing_ready
     @test isfile(restart_all)
     @test isfile(restart_water)
+    @test countlines(restart_water) == 2 + 4 * 3
     saved_water_cm = sys1.molecule_positions[1].cm
     rm(sys1.output_file; force=true)
 
@@ -102,7 +104,7 @@ end
         unitcell=uc, unitcell_center=zeros(3), restart_from=restart_all,
     )
     @test packmol(sys2; nloop=20, maxit=100, iprint=1000, seed=2).status == :packing_ready
-    @test sys2.molecule_positions[1].cm ≈ saved_water_cm
+    @test sys2.molecule_positions[1].cm ≈ saved_water_cm atol = 1e-2
     rm(sys2.output_file; force=true)
 
     # Third run: per-structure-type restart_from applies only to that type,
@@ -117,7 +119,7 @@ end
     @test isnothing(sys3.restart_from)
     @test sys3.structure_types[1].restart_from == restart_water
     @test packmol(sys3; nloop=20, maxit=100, iprint=1000, seed=3).status == :packing_ready
-    @test sys3.molecule_positions[1].cm ≈ saved_water_cm
+    @test sys3.molecule_positions[1].cm ≈ saved_water_cm atol = 1e-2
     rm(sys3.output_file; force=true)
 
     rm(restart_all; force=true)
@@ -172,7 +174,7 @@ end
     water_pdb = TestFiles.test_file("structure_files/water.pdb")
     uc = Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0)
 
-    restart_all = tempname()
+    restart_all = tempname() * ".pdb"
 
     # Fixed structure type declared *before* the free one — matching common
     # real-world inputs (e.g. a fixed protein listed first, solvent after) —
@@ -208,7 +210,7 @@ end
     end
     rm(sys2.output_file; force=true)
 
-    # Same, but restarting from the raw whole-system restart_to file (also
+    # Same, but restarting from the whole-system restart_to file (also
     # written for the entire system, fixed molecule included).
     fixed_water3 = structure_type(water_pdb; number=1, fixed=(zeros(3), zeros(3)))
     water3 = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
