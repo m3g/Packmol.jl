@@ -520,9 +520,10 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
             end
             vals = [_parse_value(T, "pbc", v) for v in values]
             if length(vals) == D
-                # 3 values: side lengths, center at origin
+                # 3 values: side lengths of the box from the origin to (a, b, c), as in
+                # Fortran Packmol (equivalent to `pbc 0 0 0 a b c`)
                 sys.unitcell = Matrix{T}(Diagonal(vals))
-                sys.unitcell_center = zero(SVector{D,T})
+                sys.unitcell_center = SVector{D,T}(vals) / 2
             elseif length(vals) == 2 * D
                 # 6 values: xmin ymin zmin xmax ymax zmax
                 lo = SVector{D,T}(@view(vals[1:D]))

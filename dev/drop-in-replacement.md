@@ -63,6 +63,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
   default instead places them next to a randomly chosen good molecule. That mode is not
   implemented; add it only if benchmarks show it helps.
 
+- **D11 (2026-10-29): `pbc a b c` is the box from the origin to (a, b, c)**, as in
+  Fortran (`pbc 0 0 0 a b c`). Packmol.jl used to center it at the origin, which shifted
+  every position-dependent constraint of Fortran inputs by half a box. That's why
+  `bilayer_pbc.inp` and `water_box_pbc2.inp` didn't converge. `unitcell a b c α β γ`
+  (Packmol.jl only, used by the recipes) stays centered at the origin.
+- **D12 (2026-10-29): the minimum-distance criterion is Packmol.jl's own**
+  (`tolerance - dmin < tolerance_precision`, default 0.1 Å). It is deliberately looser
+  than the 0.99 × tolerance that Fortran's `runtests.jl` checks.
+
 ---
 
 ## Baseline (measured 2026-10-29, Linux x86_64, Julia 1.13.2)
@@ -171,9 +180,8 @@ coordinate file formats.
   - Done: `benzene2` (bond orders preserved, which needed the PDBToolsBase fix in
     m3g/PDBToolsBase.jl#7) and `examples/interface.inp` run as tests.
   - The compiled binary converges on every input except three:
-    - `bilayer_pbc.inp` and `water_box_pbc2.inp` don't converge (exit 173, after 50 s
-      and 110 s), while Fortran's `test.sh` expects them to converge. These are
-      packing-quality gaps to investigate.
+    - `bilayer_pbc.inp` and `water_box_pbc2.inp` didn't converge (50 s and 110 s).
+      Fixed (D11): they now converge in under 0.1 s.
     - `protein_outside_pbc_error.inp`: fixed (2026-10-29). A fixed molecule with an
       atom outside the periodic cell is now an input error (exit 171), checked when
       the input is read and when `packmol()` starts. An atom is accepted if it lies
@@ -186,8 +194,14 @@ coordinate file formats.
         overlap checks (initial placement, `adjust_constraints!`, `movebad!`) were
         therefore misplaced for any fixed molecule not at the origin with zero
         rotation. The packing objective itself was not affected.
-  - Still to do: run the inputs through the binary in CI, and add the `runtests.jl`
-    validation (minimum distances and constraints) to the outputs.
+  - `test/fortran_test_suite.jl` (2026-10-29) packs every input of Fortran's
+    `test.sh` list and checks the intermolecular minimum distance against D12. It
+    also covers `water_box_failed` (`_FORCED`) and `protein_outside_pbc_error`.
+    `toy_with_fixed.inp` had been written for the old centered `pbc`; it's fixed
+    in `packmol-v2`.
+  - Still to do: run the inputs through the compiled binary in CI.
+  - Performance note: `mixture_pbc.inp` takes about 31 s (Fortran is much faster;
+    see A4.2).
 - [ ] **A4.2** Benchmark the binary against Fortran on the larger examples (solvprotein is
   slower single-threaded), and record the results here.
 
@@ -306,3 +320,8 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   - Test files moved to MolSimTestFiles (`packmol-v1`, lazy artifact, `TestFiles`
     test module).
   - The binary was run on all inputs of the set (see A4.1 for the 3 gaps).
+  - Then the 3 gaps were fixed:
+    - A fixed molecule outside the cell is an input error, which also exposed the
+      `_collect_fixed_positions` bug.
+    - `pbc a b c` now uses Fortran's convention (D11).
+  - The Fortran test suite is a Julia test. Test files are at `packmol-v2`.
