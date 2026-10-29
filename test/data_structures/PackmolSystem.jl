@@ -106,3 +106,61 @@ end
         @test only(sys.structure_types).restart_from == restart_touched
     end
 end
+
+@testitem "read_packmol_input: comments, legacy keywords, nloop" begin
+    using Packmol: read_packmol_input
+    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    dir = mktempdir()
+    input = joinpath(dir, "test.inp")
+    write(input, """
+    # A comment line
+    tolerance 2.0 # inline comment
+    output out.pdb
+    nloop 37
+    maxit 15
+    movefrac 0.1
+    movebadrandom
+    short_tol_dist 1.0
+    sidemax 1000.
+    writecrd out.crd
+    structure $water # the water
+      number 10
+      nloop 5
+      segid WAT
+      inside box 0. 0. 0. 20. 20. 20. # inline comment
+    end structure
+    """)
+    sys = redirect_stderr(devnull) do
+        read_packmol_input(input)
+    end
+    @test sys.tolerance == 2.0
+    @test sys.nloop == 37
+    @test sys.max_iter == 15
+    @test sys.movefrac == 0.1
+    @test sys.structure_types[1].segid == "WAT"
+    @test sys.nmols == 10
+    @test length(sys.structure_types[1].constraints) == 1
+    # Not set in the input file: the `packmol` defaults apply
+    sys = read_packmol_input(joinpath(Packmol.src_dir, "..", "test", "input_files", "water_box.inp"))
+    @test isnothing(sys.nloop)
+    @test isnothing(sys.max_iter)
+    @test isnothing(sys.movefrac)
+    @test isnothing(sys.structure_types[1].segid)
+    # segid has at most 4 characters
+    write(input, "tolerance 2.0\nstructure $water\n  number 1\n  segid TOOLONG\nend structure\n")
+    @test_throws ArgumentError read_packmol_input(input)
+end
+
+@testitem "read_packmol_input from IO" begin
+    using Packmol: read_packmol_input
+    # Paths are relative to the current directory
+    dir = joinpath(Packmol.src_dir, "..", "test", "structure_files")
+    input = "tolerance 2.0\noutput out.pdb\nstructure water.pdb\n  number 10\n  inside box 0. 0. 0. 20. 20. 20.\nend structure\n"
+    sys = cd(dir) do
+        read_packmol_input(IOBuffer(input))
+    end
+    @test sys.input_file == ""
+    @test sys.output_file == "out.pdb"
+    @test sys.nmols == 10
+    @test sys.structure_types[1].filename == "water.pdb"
+end

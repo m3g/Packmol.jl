@@ -261,3 +261,76 @@ end
 
     rm(sys.output_file; force=true)
 end
+
+@testitem "AMBER TER records" begin
+    using PDBToolsBase: read_pdb
+    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    # A copy of the water template with a TER record after its second atom
+    template = tempname() * ".pdb"
+    lines = readlines(water)
+    iatom = findall(l -> startswith(l, "ATOM") || startswith(l, "HETATM"), lines)
+    write(template, join(vcat(lines[1:iatom[2]], "TER", lines[iatom[2]+1:end]), "\n") * "\n")
+    st = structure_type(template; number=3, constraints=[InsideBox([0.0, 0.0, 0.0], [20.0, 20.0, 20.0])])
+    output = tempname() * ".pdb"
+    nter(file) = count(l -> startswith(l, "TER"), readlines(file))
+    # TER after each molecule
+    sys = PackmolSystem([st]; output, tolerance=2.0, add_amber_ter=true)
+    write_output(sys)
+    @test nter(output) == 3
+    @test length(read_pdb(output)) == 9
+    @test startswith(readlines(output)[end-1], "TER")
+    # TER records preserved from the template, and both options together
+    sys = PackmolSystem([st]; output, tolerance=2.0, amber_ter_preserve=true)
+    write_output(sys)
+    @test nter(output) == 3
+    out_lines = readlines(output)
+    @test startswith(out_lines[findfirst(startswith("TER"), out_lines)-2], "ATOM") ||
+          startswith(out_lines[findfirst(startswith("TER"), out_lines)-2], "HETATM")
+    sys = PackmolSystem([st]; output, tolerance=2.0, add_amber_ter=true, amber_ter_preserve=true)
+    write_output(sys)
+    @test nter(output) == 6
+    # No TER records by default
+    sys = PackmolSystem([st]; output, tolerance=2.0)
+    write_output(sys)
+    @test nter(output) == 0
+    rm(output; force=true)
+    rm(template; force=true)
+end
+
+@testitem "segid" begin
+    using PDBToolsBase: read_pdb
+    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    constraints = [InsideBox([0.0, 0.0, 0.0], [20.0, 20.0, 20.0])]
+    output = tempname() * ".pdb"
+    sys = PackmolSystem([
+            structure_type(water; number=2, constraints, segid="WAT"),
+            structure_type(water; number=2, constraints),
+        ]; output, tolerance=2.0)
+    write_output(sys)
+    atoms = read_pdb(output)
+    @test all(at.segname == "WAT" for at in atoms[1:6])
+    @test all(at.segname != "WAT" for at in atoms[7:12])
+    @test_throws ArgumentError structure_type(water; number=2, segid="TOOLONG")
+    rm(output; force=true)
+end
+
+@testitem "_FORCED output of a failed packing" begin
+    water = joinpath(Packmol.src_dir, "..", "test", "structure_files", "water.pdb")
+    output = tempname() * ".pdb"
+    # Two molecules do not fit in this box (as Fortran's water_box_failed.inp)
+    st = structure_type(water; number=2, constraints=[InsideBox([0.0, 0.0, 0.0], [3.0, 3.0, 1.0])])
+    sys = PackmolSystem([st]; output, tolerance=2.0, nloop=1, max_iter=2)
+    best_positions = copy(sys.molecule_positions)
+    @test packmol(sys; iprint=1000).status == :failed_packing
+    @test isfile(output)
+    @test isfile(output * "_FORCED")
+    rm(output; force=true)
+    rm(output * "_FORCED"; force=true)
+    # No _FORCED output when the packing succeeds
+    st = structure_type(water; number=2, constraints=[InsideBox([0.0, 0.0, 0.0], [20.0, 20.0, 20.0])])
+    sys = PackmolSystem([st]; output, tolerance=2.0)
+    @test packmol(sys; iprint=1000).status == :packing_ready
+    @test isfile(output)
+    @test !isfile(output * "_FORCED")
+    rm(output; force=true)
+end

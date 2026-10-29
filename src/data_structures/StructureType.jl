@@ -26,6 +26,9 @@ Structure that contains the input data for a structure block in the input file.
     # that one chain identifier instead.
     chain::Union{Nothing,Char} = nothing
     changechains::Bool = false
+    # Segment identifier (`segid` keyword) written to every atom of this type
+    # in the output (PDB columns 73-76); `nothing` keeps the template's own.
+    segid::Union{Nothing,String} = nothing
     # Per-axis (index 1=x, 2=y, 3=z — matching `eulermat`'s angle order, see
     # rigid_body.jl) bound on that molecule's rotation angle, as
     # (lower, upper) in radians; `nothing` means unconstrained. Set by
@@ -141,6 +144,7 @@ function structure_type(filename::String;
     residue_numbering::Int = -1,
     chain::Union{Nothing,Char} = nothing,
     changechains::Bool = false,
+    segid::Union{Nothing,String} = nothing,
     # e.g. `constrain_rotation=Dict(:x => (45, 10))` bounds the x-axis
     # rotation angle to 45° ± 10°; see `StructureType.rotation_bounds`.
     constrain_rotation::AbstractDict{Symbol} = Dict{Symbol,Tuple{Float64,Float64}}(),
@@ -180,7 +184,7 @@ function structure_type(filename::String;
     return StructureType{D,T}(;
         filename, natoms, atoms, number_of_molecules=number, rotation_bounds, restart_from=_restart_source(restart_from), restart_to,
         fixed=fixed_data, reference_coordinates, radii,
-        residue_numbering, chain, changechains, constraints, atom_constraints,
+        residue_numbering, chain, changechains, segid=_check_segid(segid), constraints, atom_constraints,
     )
 end
 
@@ -189,6 +193,18 @@ read_structure_data(input_file_block::AbstractString, args...; kargs...) =
 
 read_structure_data(input_file_block::IOBuffer, tolerance; D::Int=3, T::DataType=Float64, path::String="") =
     read_structure_data(input_file_block, tolerance, Val(D), T; path)
+
+# The segment identifier of the PDB format has at most 4 characters
+_check_segid(::Nothing) = nothing
+function _check_segid(segid::String)
+    if length(segid) > 4
+        throw(ArgumentError("""\n
+            segid must have at most 4 characters, got: $segid
+
+        """))
+    end
+    return segid
+end
 
 function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::Type{T}; path::String="") where {D,T}
     filename = ""
@@ -203,6 +219,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
     residue_numbering = -1
     chain = nothing
     changechains = false
+    segid = nothing
     rotation_bounds = Union{Nothing,Tuple{T,T}}[nothing for _ in 1:D]
     restart_from = nothing
     restart_to = nothing
@@ -211,8 +228,13 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
     iconstraint = 0
     seekstart(input_file_block)
     for line in eachline(input_file_block)
-        words = split(line)
+        words = split(_strip_comment(line))
+        isempty(words) && continue
         keyword, values = words[1], @view(words[2:end])
+        if haskey(packmol_legacy_structure_keywords, keyword)
+            _warn(packmol_legacy_structure_keywords[keyword])
+            continue
+        end
         if keyword == "atoms"
             atoms_block = true
         end
@@ -242,6 +264,8 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
             chain = only(values[1])
         elseif keyword == "changechains"
             changechains = true
+        elseif keyword == "segid"
+            segid = _check_segid(String(values[1]))
         elseif keyword == "constrain_rotation"
             axis, center_str, halfwidth_str = values[1], values[2], values[3]
             idx = axis == "x" ? 1 : axis == "y" ? 2 : axis == "z" ? 3 :
@@ -276,7 +300,8 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
     atoms_in_block = Int[]
     seekstart(input_file_block)
     for line in eachline(input_file_block)
-        words = split(line)
+        words = split(_strip_comment(line))
+        isempty(words) && continue
         keyword, values = words[1], @view(words[2:end])
         if keyword == "atoms" 
             atoms_block = true
@@ -302,7 +327,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
     end
     return StructureType{D,T}(;
         filename, natoms=length(atoms), atoms, number_of_molecules, fixed, reference_coordinates, radii,
-        residue_numbering, chain, changechains, rotation_bounds, restart_from, restart_to,
+        residue_numbering, chain, changechains, segid, rotation_bounds, restart_from, restart_to,
         constraints, atom_constraints,
     )
 end

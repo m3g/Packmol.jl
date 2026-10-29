@@ -120,21 +120,30 @@ it converged within `nloop` loops (both `tolerance_precision` and
 `constraint_precision` satisfied), `:failed_packing` if it did not, or
 `:not_packed` if `packmol_system.check` was set (initial approximation written,
 no packing attempted).
+
+`nloop` (maximum number of packing loops, default `200`), `maxit` (optimizer
+iterations per loop, default `800`) and `movefrac` (maximum fraction of the
+molecules of each type moved per loop, default `0.05`) take precedence over the
+values set in the input file (`packmol_system.nloop`, `packmol_system.max_iter`
+and `packmol_system.movefrac`).
 """
 function packmol(
     packmol_system::PackmolSystem{D,T};
     parallel::Bool=true,
     iprint::Int=10,
-    nloop::Int=200,
+    nloop::Union{Nothing,Int}=nothing,
     maxit::Union{Nothing,Int}=nothing,
-    movefrac::T=T(0.05),
+    movefrac::Union{Nothing,Real}=nothing,
     n_stall_iterations::Int=40,
     f_stall_tolerance::T=T(0.01),
     movebad_tolerance::T=T(0.10),
     seed::Int=packmol_system.seed,
     restart::Bool=false,
 ) where {D,T}
-    maxit = something(maxit, 800)
+    # Keyword arguments take precedence over the input file's `nloop`/`maxit`
+    nloop = something(nloop, packmol_system.nloop, 200)
+    maxit = something(maxit, packmol_system.max_iter, 800)
+    movefrac = T(something(movefrac, packmol_system.movefrac, 0.05))
     # Initialize RNG and molecule positions. Negative seed (Fortran Packmol's
     # `seed -1`, used by the Recipes as their default) means "pick a random
     # seed" rather than a literal RNG seed — passing it straight to
@@ -705,6 +714,7 @@ function packmol(
         write_output(packmol_system)
         _println()
         _println("  Solution written to file: ", packmol_system.output_file)
+        converged || _write_forced_output(packmol_system, free_mol_indices, RNG, buffers, nloop)
     end
 
     _println()
@@ -723,6 +733,27 @@ end
 const dash_line = repeat('-', 80)
 const hash_line = repeat('#', 80)
 const _packmol_version = string(pkgversion(@__MODULE__))
+
+#
+# When packing fails, write (as Fortran Packmol) the "forced" solution to
+# `<output>_FORCED`: the best solution, after an adjustment that satisfies the
+# constraints regardless of overlaps. The best solution itself is kept in the
+# system (and in the regular output and restart files).
+#
+function _write_forced_output(packmol_system::PackmolSystem, free_mol_indices::Vector{Int}, RNG, buffers::MemoryBuffers, nloop::Int)
+    best_positions = copy(packmol_system.molecule_positions)
+    _println()
+    _println("  Forcing the solution to fit the constraints...")
+    cm_min, cm_max = compute_cm_bounds(packmol_system)
+    adjust_constraints!(packmol_system, free_mol_indices, RNG;
+        nloop, cm_lo_type=cm_min, cm_hi_type=cm_max, buffers,
+    )
+    forced_file = packmol_system.output_file * "_FORCED"
+    write_output(packmol_system; output_file=forced_file, write_restart=false)
+    _println("  The forced point was written to the output file: ", forced_file)
+    copyto!(packmol_system.molecule_positions, best_positions)
+    return forced_file
+end
 
 #
 # Tracks whether a scalar convergence metric has stopped meaningfully

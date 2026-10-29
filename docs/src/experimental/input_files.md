@@ -10,7 +10,7 @@
 
 An input file has two parts: a handful of global keyword lines, and one or
 more `structure ... end structure` blocks, one per kind of molecule to pack.
-Lines starting with `#` are comments.
+Anything after a `#` on a line is a comment.
 
 ```
 tolerance 2.0
@@ -31,7 +31,10 @@ end structure
 | `output <file>` | Path of the output structure file. |
 | `filetype <type>` | Output file type (default `pdb`). |
 | `seed <int>` | Random number generator seed (default `1234567`). |
-| `maxit <int>` | Iterations per packing loop chunk. |
+| `movefrac <value>` | Maximum fraction of the molecules of each type moved by the bad-molecule heuristic in each loop (default `0.05`). The `movefrac` keyword argument of [`packmol`](@ref) takes precedence. |
+| `movebadrandom` | Accepted for compatibility: in Packmol.jl, bad molecules are always moved to random positions. |
+| `nloop <int>` | Maximum number of packing loops (default `200`). The `nloop` keyword argument of [`packmol`](@ref) takes precedence. |
+| `maxit <int>` | Optimizer iterations per packing loop (default `800`). The `maxit` keyword argument of [`packmol`](@ref) takes precedence. |
 | `radscale <value>` | Loose-start radius scale factor (see [`packmol`](@ref)); `discale` is accepted as a legacy alias. |
 | `tolerance_precision <value>`, `constraint_precision <value>` | Convergence tolerances for the distance and constraint checks. |
 | `stall_tolerance <value>` | Relative-improvement threshold below which a packing chunk is considered stalled and cut short (default `1e-2 * tolerance_precision`). |
@@ -42,8 +45,8 @@ end structure
 | `writeout <int>` | Write intermediate output every `N` loops. |
 | `writebad` | Flag (no value): also write output if packing did not converge. |
 | `randominitialpoint` | Flag: force a fully random initial point instead of the direct-sampling shortcut. |
-| `add_amber_ter yes\|no` | Whether to add AMBER `TER` records. |
-| `amber_ter_preserve` | Flag: preserve existing `TER` records. |
+| `add_amber_ter` | Flag: add a `TER` record after every molecule (AMBER convention). |
+| `amber_ter_preserve` | Flag: preserve the `TER` records of the structure files, in every copy of the molecule. |
 | `add_box_sides` | Flag: add a `CRYST1` record with the box dimensions. Added automatically (without needing this flag) whenever `pbc`/`unitcell` is set — with the real triclinic angles in that case, rather than the extrema-derived, always-orthorhombic box this flag alone falls back to. |
 | `optimization_print_level <int>` | Verbosity of the optimizer's own output. |
 | `chkgrad` | Flag: check analytical vs. numerical gradients (development use). |
@@ -60,12 +63,14 @@ full `pbc`/`unitcell` syntax (including the dodecahedral/octahedral shapes)
 and how they interact with the [Constraints](constraints.md) declared
 inside `structure` blocks.
 
-A handful of Fortran Packmol keywords are recognized but not yet implemented
-(`movefrac`, `movebadrandom`, `use_short_tol` and friends, `nloop`, ...) —
-using one prints a warning and it is ignored. See the "Missing keyword
-parsing" checklist in the repository's
-[`CLAUDE.md`](https://github.com/m3g/Packmol.jl/blob/main/CLAUDE.md) for the
-current list.
+Fortran Packmol keywords that have no use in Packmol.jl (`fscale`, `sidemax`,
+`maxmove`, `nloop0`, `use_short_tol` and the other short-tolerance keywords,
+...) are accepted with a deprecation warning and ignored, so that old input
+files still run. A few others are recognized but not yet implemented
+(the `CONECT`-related keywords): using one
+prints a warning and it is ignored. See
+[`dev/drop-in-replacement.md`](https://github.com/m3g/Packmol.jl/blob/main/dev/drop-in-replacement.md)
+for the current status.
 
 ## Structure blocks
 
@@ -77,6 +82,7 @@ structure <pdb file>
     [radius <value>]
     [resnumbers <0|1|2|3>]
     [chain <c> | changechains]
+    [segid <id>]
     [constrain_rotation <x|y|z> <center_deg> <halfwidth_deg>]
     [restart_from <file>]
     [restart_to <file>]
@@ -96,6 +102,7 @@ end structure
 | `resnumbers <n>` | Residue numbering scheme for the output — see [Residue numbering](@ref) below. |
 | `chain <c>` | Fix every molecule of this type to chain identifier `<c>` in the output, instead of the default auto-assigned one. |
 | `changechains` | Alternate between two auto-assigned chain identifiers every other molecule, instead of one chain for the whole type. Not compatible with `chain`. |
+| `segid <id>` | Segment identifier (at most 4 characters) for every atom of this type, in columns 73-76 of the output PDB file. Unlike Fortran Packmol, where `segid` is used only in CRD output, it is not inherited by the next structure types. |
 | `constrain_rotation <axis> <center_deg> <halfwidth_deg>` | Restrict this molecule's rotation about `<axis>` (`x`, `y`, or `z`) to `<center_deg> ± halfwidth_deg` degrees, as a hard bound on the optimizer's own rotation-angle variable — not a soft penalty. Repeat once per constrained axis. |
 | `restart_from <file>` | Restart only this structure type's molecules — see [Restarting a run](@ref). |
 | `restart_to <file>` | Write only this structure type's molecules to a restart file — see [Restarting a run](@ref). |
