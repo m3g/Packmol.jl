@@ -126,8 +126,21 @@ iterations per loop, default `800`) and `movefrac` (maximum fraction of the
 molecules of each type moved per loop, default `0.05`) take precedence over the
 values set in the input file (`packmol_system.nloop`, `packmol_system.max_iter`
 and `packmol_system.movefrac`).
+
+`nthreads` (maximum number of threads used, default: all the threads of the Julia
+session) takes precedence over `packmol_system.nthreads` (the input keyword `nthreads`).
 """
-function packmol(
+function packmol(packmol_system::PackmolSystem; nthreads::Union{Nothing,Int}=nothing, kargs...)
+    ntasks = _ntasks[]
+    _ntasks[] = something(nthreads, packmol_system.nthreads, 0)
+    try
+        return _packmol(packmol_system; kargs...)
+    finally
+        _ntasks[] = ntasks
+    end
+end
+
+function _packmol(
     packmol_system::PackmolSystem{D,T};
     parallel::Bool=true,
     iprint::Int=10,
@@ -300,13 +313,15 @@ function packmol(
     _println("  Total number of atoms: ", natoms)
     _println("  Number of free molecules: ", nfree)
     _println("  Number of variables: ", nfree * 2 * D)
+    _println("  Number of threads: ", _nbatches())
     cl_system = ParticleSystem(
         xpositions=atom_positions,
         unitcell=unitcell,
         cutoff=cutoff,
         output=fg_output,
         output_name=Val(:fg),
-        parallel=parallel,
+        parallel=parallel && _nbatches() > 1,
+        nbatches=_cl_nbatches(),
         validate_coordinates=_validate_positions,
     )
 

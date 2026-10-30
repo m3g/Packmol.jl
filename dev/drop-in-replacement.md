@@ -27,7 +27,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
 - **Build (B):** `juliac/build.jl` builds the executable and `juliac/test_executable.jl`
   tests it (the whole test suite, the CLI and the exit codes: A4.1). The workflow
   `BuildExecutable.yml` runs both on Linux (x86_64, arm64), macOS (arm64, x86_64) and
-  Windows (B3, B4: all pass). Next: B7 (threads, needs a decision), B5 (manylinux), C1/C2.
+  Windows (B3, B4: all pass). Threads: B7 done (D18). Next: B5 (manylinux), C1/C2.
 - **Distribution (C):** not started (needs B3).
 - **Docs (D):** the page of differences and Julia-only features is not written.
 - Merged: PR #42 (CLI, formats, keywords), PR #43 (fixed molecules, restarts from
@@ -130,6 +130,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
 - **D17 (2026-10-30): not ported.** `over/below xygauss` (the Gaussian surface will be an
   example of a custom constraint function in the Julia API), `writeout` as a time interval
   and `writebad` (A3.4, A5.6, A5.7).
+- **D18 (2026-10-30): threads.** The executable starts all the threads of the CPUs
+  available, and the number used is set by `-t N`, the input keyword `nthreads` or
+  `JULIA_NUM_THREADS` (in this order of precedence). BLAS uses one thread (B7).
 ---
 
 ## Baseline (measured 2026-10-29, Linux x86_64, Julia 1.13.2)
@@ -378,21 +381,22 @@ Fixed (branch `fixed-molecules-compat`):
   and Windows (library names differ), and run the tests on the slimmed bundle in CI.
   Less hacky alternatives to look into: whether JuliaC can exclude jll libraries, or
   dropping LinearAlgebra from the dependency tree (hard, because StaticArrays needs it).
-- [?] **B7** Threads: document `JULIA_NUM_THREADS` and/or add a `-t N` flag. Consider
-  defaulting to several threads.
-  - Findings (2026-10-30): the executable runs on **one thread** unless
-    `JULIA_NUM_THREADS` is set (JuliaC sets no default for executables). Single thread,
-    one core (s): spherical 13.7, bilayer 9.6 (Fortran: 36.7, 26.3). With 14 threads on
-    32 cores: 3.7 and 2.0. **Oversubscription is costly:** 14 threads on one core take
-    38.7 and 49.2 s. On CI runners (one thread) spherical takes 26–40 s.
-  - A thread count can only be fixed at build time (JuliaC's `jl_options`, e.g.
-    `threads=auto`, which on Linux respects the CPU affinity). Baked-in options take
-    precedence over `JULIA_NUM_THREADS`, as `-t` does in Julia, so the environment
-    variable would stop working. A `-t N` flag in the CLI can't change the thread count
-    after startup either. It would need a launcher that sets `JULIA_NUM_THREADS` and
-    execs the binary, which the Python wrapper (C2) could also do.
-    Needs a decision (single thread like Fortran, or `auto` by default).
-
+- [x] **B7** Threads (2026-10-30, D18). The executable is built with all threads
+  (`threads=auto,0`), and the number that work is the number of batches of the parallel
+  loops (`_nbatches()`, `src/threads.jl`), also passed to CellListMap (`nbatches`).
+  It is set by `-t N`, then the input keyword `nthreads`, then `JULIA_NUM_THREADS`,
+  and otherwise all threads are used; `packmol(sys; nthreads)` in Julia. The CLI sets
+  BLAS to one thread (Packmol makes no BLAS calls).
+  - Timings (s, 32-core machine; the trajectory changes with the number of batches):
+    bilayer: 1 core 8.9, `-t 1` 10.0, `-t 4` 4.5, `-t 14` 2.8, all 3.9;
+    spherical: 1 core 12.9, `-t 1` 14.0, `-t 4` 8.1, `-t 14` 5.8, all 3.2.
+    Single-thread Fortran: 26.3 and 36.7.
+  - Pitfall found: with `threads=auto` (one interactive thread by default in Julia ≥
+    1.12), a run on one core was up to 3 times slower (bilayer 26.3 s instead of 9.0),
+    because the idle interactive thread competes for the core. Hence `auto,0`.
+  - `auto` respects the CPU affinity (taskset, Slurm cpusets). Unverified: container
+    CPU quotas (`docker --cpus`), where `-t` may be needed.
+  - Idle threads cost about 10% (`-t 1` with 32 threads against one thread on one core).
 ---
 
 ## Workstream C: distribution
@@ -524,3 +528,6 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   B4 findings). Found that the executable is single-threaded by default (B7, decision
   needed). Local timings in this log were run with `JULIA_NUM_THREADS=14` set in the
   maintainer's shell.
+- **2026-10-30** (Claude, same session): B7 on branch `threads` (D18): `-t`, `nthreads`,
+  `_nbatches()` for every parallel loop and CellListMap, BLAS one thread, build with
+  `threads=auto,0` (the interactive thread made single-core runs 3 times slower).

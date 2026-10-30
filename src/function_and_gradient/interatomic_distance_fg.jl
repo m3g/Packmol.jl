@@ -137,7 +137,7 @@ function CellListMap.reduce_output!(
         return output
     end
     @_sync begin
-        for (_, mrange) in enumerate(chunks(1:nmols; n=Threads.nthreads()))
+        for (_, mrange) in enumerate(chunks(1:nmols; n=_nbatches()))
             @spawn for i in mrange
                 s = zero(T)
                 for ot in output_threaded
@@ -147,7 +147,7 @@ function CellListMap.reduce_output!(
                 output.fmol[i] = s
             end
         end
-        for (_, arange) in enumerate(chunks(1:natoms; n=Threads.nthreads()))
+        for (_, arange) in enumerate(chunks(1:natoms; n=_nbatches()))
             @spawn for i in arange
                 s = zero(SVector{D,T})
                 for ot in output_threaded
@@ -241,7 +241,7 @@ function compute_atom_positions!(
         nmols_st = st.number_of_molecules
         st_imol_offset = imol_offset
         st_iat_offset = iat_offset
-        @_sync for (_, mol_range) in enumerate(chunks(1:nmols_st; n=Threads.nthreads()))
+        @_sync for (_, mol_range) in enumerate(chunks(1:nmols_st; n=_nbatches()))
             @spawn begin
                 for i in mol_range
                     imol = st_imol_offset + i
@@ -326,7 +326,7 @@ function _compute_positions_and_constraints_for_mols!(
     fg_output.f = zero(T)
     fg_output.max_constraint_penalty = zero(T)
     lk = ReentrantLock()
-    @_sync for (_, mrange) in enumerate(chunks(1:length(mol_list); n=Threads.nthreads()))
+    @_sync for (_, mrange) in enumerate(chunks(1:length(mol_list); n=_nbatches()))
         @spawn begin
             f_local = zero(T)
             max_penalty_local = zero(T)
@@ -477,7 +477,7 @@ function _update_cl_positions!(
     unitcell::Matrix{T},
     unitcell_center::SVector{D,T},
 ) where {D,T,HASPBC}
-    @_sync for (_, iatrange) in enumerate(chunks(eachindex(atom_positions); n=Threads.nthreads()))
+    @_sync for (_, iatrange) in enumerate(chunks(eachindex(atom_positions); n=_nbatches()))
         @spawn for iat in iatrange
             if HASPBC
                 imol = packmol_system.atoms[iat].molecule_index
@@ -525,7 +525,7 @@ function _rotation_constraints_fg!(fg_output::InteratomicDistanceFG{D,T}, packmo
         nmols = st.fixed.fixed ? 1 : st.number_of_molecules
         if !st.fixed.fixed && !isempty(st.rotation_constraints)
             mol_offset, at_offset = imol_offset, iat_offset
-            @_sync for irange in index_chunks(1:nmols; n=Threads.nthreads())
+            @_sync for irange in index_chunks(1:nmols; n=_nbatches())
                 @spawn begin
                     f_local = zero(T)
                     max_local = zero(T)
@@ -569,7 +569,7 @@ function _constraint_fg!(
     # More chunks than threads balance the load between threads of different speeds.
     lk_fg = ReentrantLock()
     atoms = packmol_system.atoms
-    @_sync for iat_range in index_chunks(atoms; n=4 * Threads.nthreads())
+    @_sync for iat_range in index_chunks(atoms; n=4 * _nbatches())
         @spawn begin
             fg_local = zero(fg_output.f)
             max_penalty_local = zero(T)
@@ -643,7 +643,7 @@ function fg!(g, x,
 ) where {D,T}
     # Unpack optimizer variables into free molecule slots
     x_mol = reinterpret(MoleculePosition{D,T}, x)
-    @_sync for (_, krange) in enumerate(chunks(1:length(free_mol_indices); n=Threads.nthreads()))
+    @_sync for (_, krange) in enumerate(chunks(1:length(free_mol_indices); n=_nbatches()))
         @spawn for k in krange
             packmol_system.molecule_positions[free_mol_indices[k]] = x_mol[k]
         end
@@ -668,7 +668,7 @@ function fg!(g, x,
     chain_rule!(cl_system.fg, packmol_system)
     # Pack only free molecule gradients into optimizer gradient vector
     g_mol = reinterpret(MoleculePosition{D,T}, g)
-    @_sync for (_, krange) in enumerate(chunks(1:length(free_mol_indices); n=Threads.nthreads()))
+    @_sync for (_, krange) in enumerate(chunks(1:length(free_mol_indices); n=_nbatches()))
         @spawn for k in krange
             g_mol[k] = cl_system.fg.g[free_mol_indices[k]]
         end

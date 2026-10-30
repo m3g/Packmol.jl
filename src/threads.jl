@@ -23,3 +23,16 @@ macro _sync(block)
         end
     end
 end
+
+#
+# Number of tasks the parallel loops are split into, and hence the maximum number of
+# threads that work (the `nthreads` input keyword and keyword argument of `packmol`,
+# or the `-t` flag of the executable, which is built with all threads available).
+# 0 means all threads.
+#
+const _ntasks = Ref(0)
+_nbatches() = _ntasks[] > 0 ? min(_ntasks[], Threads.nthreads()) : Threads.nthreads()
+
+# `nbatches` of CellListMap's `ParticleSystem`: its heuristic (0, 0) unless the number
+# of tasks is limited.
+_cl_nbatches() = _nbatches() < Threads.nthreads() ? (_nbatches(), _nbatches()) : (0, 0)

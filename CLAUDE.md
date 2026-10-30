@@ -364,7 +364,9 @@ reachable from it to be resolved at compile time. In the engine code:
 - print with `_print`/`_println`/`@_printf` (`src/io/terminal.jl`), never `println`/`@printf`
   to `stdout`/`stderr` (non-constant globals of abstract type `IO`, and not even initialized
   in a trimmed executable: the CLI sets `_use_core_streams[] = true`); progress with `ProgressBar`;
-- use `@_sync` (`src/threads.jl`) instead of `@sync`, and no `deepcopy`;
+- use `@_sync` (`src/threads.jl`) instead of `@sync`, and no `deepcopy`; split parallel loops
+  into `_nbatches()` chunks, not `Threads.nthreads()` (the executable starts all threads, and
+  `nthreads`/`-t` limits how many work);
 - read/write PDB files with PDBToolsBase's `read_pdb`/`write_pdb` (trim-compatible);
 - call functions on constraints taken from a `Vector{AnyConstraint{T}}` through
   `_constraint_dispatch(f, c, args...)` (the union is too large for automatic union splitting);
