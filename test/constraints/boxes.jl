@@ -5,6 +5,9 @@
     @test OutsideCube([0,0,0],1.) == Cube{Outside,Float64}([0.5,0.5,0.5],1.,5.0)
     @test InsideBox([0,0,0],[1.,2.,4.]) == Box{Inside,Float64}([0.5,1.,2.],[1.,2.,4.],5.0)
     @test OutsideBox([0,0,0],[1.,2.,4.]) == Box{Outside,Float64}([0.5,1.,2.],[1.,2.,4.],5.0)
+    @test InsideBox([0,0,0],[1.,2.,4.]; weight=2.0) == Box{Inside,Float64}([0.5,1.,2.],[1.,2.,4.],2.0)
+    @test_throws ArgumentError InsideBox([0,0,0],[1.,-1.,1.])
+    @test_throws ArgumentError OutsideBox([0,0,0],[1.,-1.,1.])
     # Keywords: center and sides
     @test InsideCube(center=[0,0,0],side=1.) == Cube{Inside,Float64}([0.,0.,0.],1.,5.0)
     @test InsideCube(center=[0,0,0],side=1.,weight=2.0) == Cube{Inside,Float64}([0.,0.,0.],1.,2.0)

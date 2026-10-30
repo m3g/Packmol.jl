@@ -75,7 +75,7 @@ end
 # parameter T needing to be given explicitly. The positional form takes the
 # parameters of the input file (`inside cube xmin ymin zmin side`): the lower
 # corner and the side; the keyword form, the center and the side.
-function Cube{Placement}(corner, side, weight=weight_default[:box]) where {Placement}
+function Cube{Placement}(corner, side, w=weight_default[:box]; weight=w) where {Placement}
     T = promote_type(eltype(corner), typeof(side), typeof(weight))
     return Cube{Placement}(; center=SVector{3,T}(corner) .+ T(side) / 2, side=T(side), weight=T(weight))
 end
@@ -84,7 +84,31 @@ function Cube{Placement}(; center, side, weight=weight_default[:box]) where {Pla
     return Cube{Placement,T}(SVector{3,T}(center), T(side), T(weight))
 end
 
+"""
+    InsideCube(lower_corner, side; weight)
+    InsideCube(; center, side, weight)
+
+Keeps the atoms inside an axis-aligned cube. With positional arguments, the cube spans
+from `lower_corner` to `lower_corner .+ side`, as the input file line
+`inside cube xmin ymin zmin side`. With keyword arguments, it is given by its `center`.
+
+# Example
+
+```jldoctest
+julia> using Packmol
+
+julia> InsideCube([0.0, 0.0, 0.0], 40.0) == InsideCube(center=[20.0, 20.0, 20.0], side=40.0)
+true
+```
+"""
 InsideCube(args...; kargs...) = Cube{Inside}(args...; kargs...)
+
+"""
+    OutsideCube(lower_corner, side; weight)
+    OutsideCube(; center, side, weight)
+
+Keeps the atoms outside an axis-aligned cube, given as in [`InsideCube`](@ref).
+"""
 OutsideCube(args...; kargs...) = Cube{Outside}(args...; kargs...)
 
 constraint_penalty(c::Cube{Placement}, x) where {Placement} =
@@ -107,9 +131,14 @@ end
 # parameter T needing to be given explicitly. The positional form takes the
 # parameters of the input file (`inside box xmin ymin zmin xmax ymax zmax`):
 # the lower and upper corners; the keyword form, the center and the sides.
-function Box{Placement}(lower, upper, weight=weight_default[:box]) where {Placement}
+function Box{Placement}(lower, upper, w=weight_default[:box]; weight=w) where {Placement}
     T = promote_type(eltype(lower), eltype(upper), typeof(weight))
     lo, hi = SVector{3,T}(lower), SVector{3,T}(upper)
+    all(lo .<= hi) || throw(ArgumentError("""\n
+        The corners of a box must be given as the lower one and the upper one
+        (lower <= upper in every dimension).
+
+    """))
     return Box{Placement}(; center=(lo .+ hi) ./ 2, sides=hi .- lo, weight=T(weight))
 end
 function Box{Placement}(; center, sides, weight=weight_default[:box]) where {Placement}
@@ -117,7 +146,32 @@ function Box{Placement}(; center, sides, weight=weight_default[:box]) where {Pla
     return Box{Placement,T}(SVector{3,T}(center), SVector{3,T}(sides), T(weight))
 end
 
+"""
+    InsideBox(lower, upper; weight)
+    InsideBox(; center, sides, weight)
+
+Keeps the atoms inside an axis-aligned box. With positional arguments, the box spans
+from the `lower` to the `upper` corner, as the input file line
+`inside box xmin ymin zmin xmax ymax zmax`. With keyword arguments, it is given by its
+`center` and the lengths of its `sides`.
+
+# Example
+
+```jldoctest
+julia> using Packmol
+
+julia> InsideBox([0.0, 0.0, 0.0], [40.0, 40.0, 40.0]) == InsideBox(center=[20.0, 20.0, 20.0], sides=[40.0, 40.0, 40.0])
+true
+```
+"""
 InsideBox(args...; kargs...) = Box{Inside}(args...; kargs...)
+
+"""
+    OutsideBox(lower, upper; weight)
+    OutsideBox(; center, sides, weight)
+
+Keeps the atoms outside an axis-aligned box, given as in [`InsideBox`](@ref).
+"""
 OutsideBox(args...; kargs...) = Box{Outside}(args...; kargs...)
 
 constraint_penalty(c::Box{Placement}, x) where {Placement} =
