@@ -26,6 +26,28 @@ function build_graphite(; nx=40, ny=23, nlayers=3, a=2.46, d=1.42)
     return atoms
 end
 
+#
+# Armchair (n,n) carbon nanotube along z, centered at the origin: the rectangular cell of
+# graphene rolled with its y axis (4.26 Å, n cells) around the circumference, so that the
+# tube is periodic along z with a period of 2.46 Å (nz cells).
+#
+function build_nanotube(; n=12, nz=20, a=2.46, d=1.42)
+    cell = [(0.0, 0.0), (a / 2, d / 2), (a / 2, 3d / 2), (0.0, 2d)]
+    circumference = n * 3d
+    radius = circumference / (2π)
+    Lz = nz * a
+    atoms = Atom{Nothing}[]
+    for i in 0:nz-1, j in 0:n-1, (z, y) in cell
+        θ = 2π * (j * 3d + y) / circumference
+        push!(atoms, atom("C", "CNT", 1, radius * cos(θ), radius * sin(θ), i * a + z - Lz / 2))
+    end
+    return atoms
+end
+
+mkpath(joinpath(files, "nanotube"))
+write_pdb(joinpath(files, "nanotube", "cnt.pdb"), build_nanotube())
+cp(joinpath(files, "membrane", "water.pdb"), joinpath(files, "nanotube", "water.pdb"); force=true)
+
 mkpath(joinpath(files, "water_drop"))
 write_pdb(joinpath(files, "water_drop", "graphite.pdb"), build_graphite())
 cp(joinpath(files, "membrane", "water.pdb"), joinpath(files, "water_drop", "water.pdb"); force=true)

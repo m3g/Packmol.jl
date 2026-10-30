@@ -19,6 +19,8 @@ its features. Each one shows the same system built in two ways:
 | [Solvated protein](solvprotein.md) | A fixed protein in a sphere of water and ions |
 | [Protein in glycerol and water](protein_glycerol.md) | A fixed protein in a mixture, in a periodic box |
 | [Water drop on graphite](water_drop.md) | A fixed surface, and a drop shaped by constraints |
+| [Polymer in DMF](polymer_dmf.md) | A polymer in a solvent, in a periodic box |
+| [Carbon nanotube filled with water](nanotube.md) | A fixed nanotube crossing the periodic boundary, with water inside and outside |
 | [Gases in a zeolite](zeolite.md) | A fixed crystal in its triclinic periodic cell, with gases in its pores |
 | [Zika virion](zika.md) | A large system: 2.8 million particles in membranes and spherical shells |
 
