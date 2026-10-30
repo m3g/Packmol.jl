@@ -15,23 +15,24 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
 
 ---
 
-## Status (2026-10-29)
+## Status (2026-10-30)
 
 - **Feature parity (A): essentially done.** The CLI contract (stdin, `-i`/`-o`, exit
   codes, `_FORCED`), XYZ, CONECT, TER, `segid`, `nloop`/`maxit`/`movefrac`, deprecation
   warnings, fixed molecules and the Fortran `pbc` convention all match Fortran, and the
   whole Fortran test suite packs (`test/fortran_test_suite.jl`). Packmol.jl is faster
   than Fortran on every test input (A5.10). Deliberate differences: D1, D11–D16.
-  Remaining: `xygauss` (A3.4), `writeout` as a time interval and `writebad` (A5.7),
-  keywords without effect (A5.8), running the suite through the compiled binary in CI
-  (A4.1), and the large test (A4.3).
-- **Build (B):** the trimmed binary builds and runs locally on Linux. Nothing is in CI
-  yet; Windows/macOS untested. Next: B2 (build script), B3 (CI workflow), B4.
+  `xygauss`, `writeout` as a time interval and `writebad` are not needed (D17).
+  Remaining: keywords without effect (A5.8). The large test (A4.3) converges in 33 min.
+- **Build (B):** `juliac/build.jl` builds the executable and `juliac/test_executable.jl`
+  tests it (the whole test suite, the CLI and the exit codes: A4.1). The workflow
+  `BuildExecutable.yml` runs both on Linux (x86_64, arm64), macOS (arm64, x86_64) and
+  Windows (B3, B4: all pass). Next: B7 (threads, needs a decision), B5 (manylinux), C1/C2.
 - **Distribution (C):** not started (needs B3).
 - **Docs (D):** the page of differences and Julia-only features is not written.
 - Merged: PR #42 (CLI, formats, keywords), PR #43 (fixed molecules, restarts from
-  coordinates, principal axes, radius-aware convergence, PBC trap). Branch
-  `rotation-constraints`: the new `constrain_rotation` (D15, A5.11).
+  coordinates, principal axes, radius-aware convergence, PBC trap), PR #44 (the new
+  `constrain_rotation`, D15, A5.11). Branch `build-ci`: B2, B3.
 
 ---
 
@@ -126,6 +127,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
   center (`center`) or the center of mass (`centerofmass`, with the atomic masses,
   where Fortran uses unit masses) when asked.
 
+- **D17 (2026-10-30): not ported.** `over/below xygauss` (the Gaussian surface will be an
+  example of a custom constraint function in the Julia API), `writeout` as a time interval
+  and `writebad` (A3.4, A5.6, A5.7).
 ---
 
 ## Baseline (measured 2026-10-29, Linux x86_64, Julia 1.13.2)
@@ -217,14 +221,14 @@ coordinate file formats.
   `precision` and `iprint*`. (`segid` and the CONECT options were implemented later:
   A3.3b, A2.4.)
 - [x] **A3.3b** `segid` (D9).
-- [ ] **A3.4** `over xygauss` / `below xygauss` (Fortran's Gaussian surface): map onto
-  the `AboveGaussian`/`BelowGaussian` constraints (check that the parameterization is
-  equivalent).
+- [N] **A3.4** `over xygauss` / `below xygauss` (Fortran's Gaussian surface): not needed
+  (maintainer, 2026-10-30, D17). The Gaussian surface will be an example of a custom
+  constraint function in the Julia API.
 - [x] **A3.5** `movefrac` is read into `sys.movefrac` (the `packmol()` keyword argument
   takes precedence). `movebadrandom` is deprecated (D10).
 
 ### A4. Validation
-- [~] **A4.1** Port Fortran's `testing/` suite (runtests.jl validates outputs with
+- [x] **A4.1** Port Fortran's `testing/` suite (runtests.jl validates outputs with
   CellListMap; test.sh, test_cli.sh, test_failed.sh) to run **against the compiled
   binary**, with the inputs adapted for D1. This is the drop-in acceptance test.
   - Status (2026-10-29): the test files are now the `packmol` set of MolSimTestFiles
@@ -252,10 +256,14 @@ coordinate file formats.
     also covers `water_box_failed` (`_FORCED`) and `protein_outside_pbc_error`.
     `toy_with_fixed.inp` had been written for the old centered `pbc`; it's fixed
     in `packmol-v2`.
-  - Still to do: run the inputs through the compiled binary in CI (with B3).
+  - Done (2026-10-30): `juliac/test_executable.jl` runs the compiled executable on every
+    input of the set and checks the outputs (minimum intermolecular distance), the CLI
+    (`--version`, `-h`, stdin, `-i`, `-o`, positional input) and the exit codes (171,
+    173 with `_FORCED`, 174). It runs in `BuildExecutable.yml` (B3) on all platforms.
+    Not ported from `test_cli.sh`: identical outputs across invocation methods.
 - [x] **A4.2** Benchmark the binary against Fortran on the test inputs: see the table in
   A5.10 (Packmol.jl is faster on all of them).
-- [ ] **A4.3** **The large test** (run only when the maintainer asks):
+- [x] **A4.3** **The large test** (run only when the maintainer asks):
   `~/Documents/Zika/montevideo/packmol/all_from_scratch.inp`, a Zika virion (fixed
   capsid, two membranes, ~550k water and ion molecules), about 30 min. Its
   `restart_to ... .pack` line is rejected since D13, so run a scratch copy (symlinked
@@ -291,11 +299,11 @@ Fixed (branch `fixed-molecules-compat`):
   `constrain_rotation x 0 10` alone restricts the tilt of the molecule's z axis to 10°.
   Packmol.jl bounds its own Euler angles (`eulermat`). Neither is the intended behavior:
   replaced by D15 (A5.11).
-- [ ] **A5.6 `over/below xygauss`** constraint (= A3.4).
-- [ ] **A5.7 `writeout`/`writebad`.** In Fortran, `writeout` is a time interval in
+- [N] **A5.6 `over/below xygauss`** constraint (= A3.4, D17).
+- [N] **A5.7 `writeout`/`writebad`.** In Fortran, `writeout` is a time interval in
   seconds (default 10) for writing the best solution so far, and `writebad` also writes
-  worse points. Packmol.jl parses both but writes after every improved loop, which is
-  costly for large systems.
+  worse points. Not needed (maintainer, 2026-10-30, D17): Packmol.jl parses both and
+  keeps writing after every improved loop.
 - [ ] **A5.8 Parsed but without effect:** `randominitialpoint` (Fortran skips the
   constraint fit of the initial point), `optimization_print_level`, `chkgrad`.
   Implement them or deprecate them.
@@ -340,18 +348,28 @@ Fixed (branch `fixed-molecules-compat`):
 ## Workstream B: standalone executable build (and CI)
 
 - [x] **B1** Trim-safe build works locally on Linux (see Baseline).
-- [ ] **B2** Build script in the repo (`build/` or `juliac/`: `app.jl` + a script running
-  juliac), so that CI and humans run the same thing. Pin the Julia version used to build.
-- [ ] **B3** CI workflow `BuildExecutable.yml`: a matrix with ubuntu-latest,
+- [x] **B2** Build script in the repo (2026-10-30): `juliac/` holds `app.jl`, `build.jl`
+  (JuliaC's library API; `julia --project=juliac juliac/build.jl [outdir]`, default
+  `juliac/build`), `test_executable.jl` and a `Project.toml` (JuliaC, Packmol from `..`,
+  and the test dependencies). The Julia version is pinned in the workflow (1.13.2).
+- [x] **B3** CI workflow `BuildExecutable.yml`: a matrix with ubuntu-latest,
   ubuntu-24.04-arm, macos-latest (arm64), macos-15-intel and windows-latest, each building
-  the bundle, running smoke tests (A4.1 subset) on the bundle, and uploading it as an
-  artifact. Trigger on tags/releases and `workflow_dispatch`, plus a cheap Linux run on PRs
-  to catch trim regressions (any new non-trim-safe call breaks the build).
-- [ ] **B4** **Windows and macOS spikes.** It is unverified whether `juliac --trim` works
+  the bundle, running the tests (A4.1) on the bundle, and uploading it as an
+  artifact. It runs the whole matrix on PRs, pushes to main, tags and
+  `workflow_dispatch` (any new non-trim-safe call breaks the build). If the matrix gets
+  too slow for PRs, restrict PRs to ubuntu-latest.
+- [~] **B4** **Windows and macOS spikes.** It is unverified whether `juliac --trim` works
   on them with 1.13. On Windows, look at the toolchain JuliaC needs, and at `pick_file`'s
   PowerShell path. On macOS, look at code signing/notarization (an unsigned binary is
   quarantined when downloaded through a browser, though pip/conda installs are fine).
   Record the findings here.
+  - Findings (2026-10-30, PR #45): `juliac --trim=safe` builds and passes all 81
+    executable checks on ubuntu-latest, ubuntu-24.04-arm, macos-latest (arm64),
+    macos-15-intel and windows-latest, with no platform-specific code. Windows uses the
+    MinGW that JuliaC downloads by itself. Compressed bundles: Linux x86_64 37 MB, arm64
+    35 MB, macOS arm64 15 MB, x86_64 21 MB, Windows 49 MB.
+  - Still open: code signing/notarization on macOS, and `pick_file` (PowerShell) on
+    Windows, which can't be tested in CI.
 - [ ] **B5** Linux portability: the build host's glibc sets the minimum (≥ 2.34 today).
   Build in a manylinux_2_28 container (or older) for wider coverage, matching the wheel tag.
 - [~] **B6** Size reduction: optional, since size doesn't block PyPI. The experiment
@@ -360,8 +378,20 @@ Fixed (branch `fixed-molecules-compat`):
   and Windows (library names differ), and run the tests on the slimmed bundle in CI.
   Less hacky alternatives to look into: whether JuliaC can exclude jll libraries, or
   dropping LinearAlgebra from the dependency tree (hard, because StaticArrays needs it).
-- [ ] **B7** Threads: document `JULIA_NUM_THREADS` and/or add a `-t N` flag. Consider
+- [?] **B7** Threads: document `JULIA_NUM_THREADS` and/or add a `-t N` flag. Consider
   defaulting to several threads.
+  - Findings (2026-10-30): the executable runs on **one thread** unless
+    `JULIA_NUM_THREADS` is set (JuliaC sets no default for executables). Single thread,
+    one core (s): spherical 13.7, bilayer 9.6 (Fortran: 36.7, 26.3). With 14 threads on
+    32 cores: 3.7 and 2.0. **Oversubscription is costly:** 14 threads on one core take
+    38.7 and 49.2 s. On CI runners (one thread) spherical takes 26–40 s.
+  - A thread count can only be fixed at build time (JuliaC's `jl_options`, e.g.
+    `threads=auto`, which on Linux respects the CPU affinity). Baked-in options take
+    precedence over `JULIA_NUM_THREADS`, as `-t` does in Julia, so the environment
+    variable would stop working. A `-t N` flag in the CLI can't change the thread count
+    after startup either. It would need a launcher that sets `JULIA_NUM_THREADS` and
+    execs the binary, which the Python wrapper (C2) could also do.
+    Needs a decision (single thread like Fortran, or `auto` by default).
 
 ---
 
@@ -486,3 +516,11 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   `rotation-constraints`), Julia with 32 threads (`-t auto`), not the binary: converged
   ("Success!") at loop 35; packing 1977.6 s (33.0 min), wall clock 33:09 including
   startup and compilation, peak memory 6.1 GB, output PDB 209 MB.
+- **2026-10-30** (Claude, same session): merged PR #44. `xygauss`, `writeout` and
+  `writebad` not needed (D17). Branch `build-ci`: `juliac/` build script and executable
+  tests (B2, A4.1: 81 checks pass locally in 15 s, build 16 s), `BuildExecutable.yml`
+  (B3) on five platforms.
+- **2026-10-30** (Claude, same session): PR #45 CI green on all five platforms (B3,
+  B4 findings). Found that the executable is single-threaded by default (B7, decision
+  needed). Local timings in this log were run with `JULIA_NUM_THREADS=14` set in the
+  maintainer's shell.
