@@ -101,6 +101,9 @@ fraction of a second) and shows it with `PDBTools.visualize` (structure files co
 `docs/src/tutorials/` holds the classic Packmol examples (water–urea, interface, bilayer,
 vesicle, solvated protein), each with a command-line and a Julia section; keep both paths
 equivalent when changing the input syntax or the Julia API.
+Tutorial images (`docs/src/tutorials/images/*.webp`) are rendered with VMD by the scripts of
+`dev/tutorials/` (`render.jl`; `classic.jl` for the classic examples). Tutorials of non-trivial
+systems first show the `check` output (the initial approximation), then the packing.
 
 ## Running Tests
 

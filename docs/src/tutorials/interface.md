@@ -4,7 +4,7 @@ A thyroid hormone at the interface between water and chloroform. The two solvent
 adjacent boxes, which share the plane `x = 0`, and the hormone is fixed at a given
 position and orientation on that plane. The files are in the XYZ format.
 
-![Water–chloroform interface](https://m3g.github.io/packmol/examples/interface.jpg)
+![Water–chloroform interface](images/interface.webp)
 
 Files: [`water.xyz`](https://m3g.github.io/packmol/examples/water.xyz),
 [`chlor.xyz`](https://m3g.github.io/packmol/examples/chlor.xyz),
@@ -64,6 +64,32 @@ structure t3.xyz
 end structure
 ```
 
+### Check the initial approximation first
+
+For a system with the two solvents and the fixed hormone, first check that the constraints place the molecules where
+intended. Add the `check` keyword to the input file:
+
+```
+check
+```
+
+and run it as below. Packmol then only builds the initial approximation, in a fraction
+of a second: each molecule is placed in its region, satisfying the constraints, but the
+molecules may still overlap. It is written to the output file (`interface.xyz`). Look at it in
+a molecular visualization program:
+
+![Initial approximation](images/interface_check.webp)
+
+*Water (left) and chloroform (right) in the initial approximation: the molecules are in their boxes, but may overlap. The hormone is fixed at the interface.*
+
+When the molecules are where they should be, remove `check`, and run the packing.
+If the constraints cannot be satisfied at all, even without the distances between the
+molecules, Packmol stops after the initial approximation with an error (unless the
+`continue_failed_initial_packing` keyword is set): that is almost always a sign of
+wrong constraints.
+
+### Packing
+
 Run it with:
 
 ```
@@ -100,6 +126,10 @@ hormone = structure_type("t3.xyz";
 system = PackmolSystem([water, chloroform, hormone]; output = "interface.xyz", tolerance = 2.0)
 packmol(system)
 ```
+
+As with the input file, check the initial approximation first, by building the system
+with `check = true` (`PackmolSystem(...; check = true)`): `packmol(system)` then writes
+the initial approximation to the output file, and stops.
 
 `fixed` is a `(position, angles)` pair, and `center = :mass` is the input's
 `centerofmass` (`center = :geometric` is `center`). The format of each file follows its
