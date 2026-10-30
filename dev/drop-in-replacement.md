@@ -577,3 +577,13 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   not run; polymer in DMF has files only. Not started: the Zika virion tutorial (its input
   packs NaW twice; the last block, under "Chloride", should probably be ClW), the
   50%-rule SVG and recipe default, and the very large (10⁶–10⁷ atoms) system experiment.
+- **2026-10-30** (Claude, same session): bug fixes found while writing tutorials, merged:
+  `outside box/cube` penalized points outside in only one dimension (#54); `packmol` stops
+  when the initial approximation does not satisfy the constraints, unless
+  `continue_failed_initial_packing` (#55, exit code 171); fixed atoms on the faces of the
+  periodic cell rejected by the rounding of PDB coordinates (#57). Tutorials: VMD images
+  and `check`-first advice for the classic examples (#56); protein in glycerol/water,
+  water drop on graphite, gases in chabazite (triclinic) (#58); Zika virion (files in the
+  `packmol_zika-v1` release of MolSimTestFiles), zeolite with a live PDBTools view. The
+  POPC membrane tutorial does not pack yet (see the memory notes / tutorials-status):
+  lipids alone fail at 64–75 Å²/lipid with an extended POPC and permissive planes.

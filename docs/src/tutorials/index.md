@@ -20,6 +20,7 @@ its features. Each one shows the same system built in two ways:
 | [Protein in glycerol and water](protein_glycerol.md) | A fixed protein in a mixture, in a periodic box |
 | [Water drop on graphite](water_drop.md) | A fixed surface, and a drop shaped by constraints |
 | [Gases in a zeolite](zeolite.md) | A fixed crystal in its triclinic periodic cell, with gases in its pores |
+| [Zika virion](zika.md) | A large system: 2.8 million particles in membranes and spherical shells |
 
 ## Getting the files
 
