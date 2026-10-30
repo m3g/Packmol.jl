@@ -4,7 +4,7 @@ A lipid bilayer with water above and below it. The lipids of each layer are pack
 slab, and constraints on some of their atoms orient them: the polar heads point to the
 water and the hydrophobic tails to the center of the bilayer.
 
-![Lipid bilayer](https://m3g.github.io/packmol/examples/bilayer.jpg)
+![Lipid bilayer](images/bilayer.webp)
 
 Files: [`palmitoil.pdb`](https://m3g.github.io/packmol/examples/palmitoil.pdb),
 [`water.pdb`](https://m3g.github.io/packmol/examples/water.pdb) and the input file
@@ -92,6 +92,32 @@ The constraints inside an `atoms ... end atoms` block apply only to the atoms li
 while those outside it (here, `inside box`) apply to all the atoms of the molecule.
 `below plane 0. 0. 1. 2.` is the half-space `0x + 0y + 1z ≤ 2`, that is, `z ≤ 2`.
 
+### Check the initial approximation first
+
+For a system with two lipid layers oriented by constraints on some of their atoms, first check that the constraints place the molecules where
+intended. Add the `check` keyword to the input file:
+
+```
+check
+```
+
+and run it as below. Packmol then only builds the initial approximation, in a fraction
+of a second: each molecule is placed in its region, satisfying the constraints, but the
+molecules may still overlap. It is written to the output file (`bilayer.pdb`). Look at it in
+a molecular visualization program:
+
+![Initial approximation](images/bilayer_check.webp)
+
+*The initial approximation: the lipids are already oriented by the constraints on their head and tail atoms, but molecules may overlap.*
+
+When the molecules are where they should be, remove `check`, and run the packing.
+If the constraints cannot be satisfied at all, even without the distances between the
+molecules, Packmol stops after the initial approximation with an error (unless the
+`continue_failed_initial_packing` keyword is set): that is almost always a sign of
+wrong constraints.
+
+### Packing
+
 Run it with:
 
 ```
@@ -141,6 +167,10 @@ system = PackmolSystem([water_below, water_above, lower_layer, upper_layer];
 )
 packmol(system)
 ```
+
+As with the input file, check the initial approximation first, by building the system
+with `check = true` (`PackmolSystem(...; check = true)`): `packmol(system)` then writes
+the initial approximation to the output file, and stops.
 
 `BelowPlane(normal, d)` and `AbovePlane(normal, d)` take the parameters of
 `below plane` and `above plane`.

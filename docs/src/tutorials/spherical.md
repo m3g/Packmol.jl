@@ -4,7 +4,9 @@ A vesicle with a double layer of lipids, water inside it and water around it. Ev
 component is placed in a spherical shell, and constraints on the atoms of the polar
 heads and of the tails orient the lipids of each layer.
 
-![Spherical vesicle](https://m3g.github.io/packmol/examples/spherical.gif)
+![Spherical vesicle](images/spherical.webp)
+
+*A slab through the center of the vesicle: the water inside, the two layers of lipids, and the water outside.*
 
 Files: [`palmitoil.pdb`](https://m3g.github.io/packmol/examples/palmitoil.pdb),
 [`water.pdb`](https://m3g.github.io/packmol/examples/water.pdb) and the input file
@@ -93,6 +95,32 @@ The lipids have no constraint on the whole molecule: only atoms 37 and 5 are
 constrained, and the rest of each molecule follows them. The outer water has two
 constraints on every atom, which together carve a spherical hole in the box.
 
+### Check the initial approximation first
+
+For a system with spherical shells and lipids oriented by constraints on some of their atoms, first check that the constraints place the molecules where
+intended. Add the `check` keyword to the input file:
+
+```
+check
+```
+
+and run it as below. Packmol then only builds the initial approximation, in a fraction
+of a second: each molecule is placed in its region, satisfying the constraints, but the
+molecules may still overlap. It is written to the output file (`spherical.pdb`). Look at it in
+a molecular visualization program:
+
+![Initial approximation](images/spherical_check.webp)
+
+*A slab through the center of the initial approximation: the two lipid layers and the water are already in their shells, but molecules may overlap.*
+
+When the molecules are where they should be, remove `check`, and run the packing.
+If the constraints cannot be satisfied at all, even without the distances between the
+molecules, Packmol stops after the initial approximation with an error (unless the
+`continue_failed_initial_packing` keyword is set): that is almost always a sign of
+wrong constraints.
+
+### Packing
+
 Run it with:
 
 ```
@@ -141,6 +169,10 @@ system = PackmolSystem([water_inside, inner_layer, outer_layer, water_outside];
 )
 packmol(system)
 ```
+
+As with the input file, check the initial approximation first, by building the system
+with `check = true` (`PackmolSystem(...; check = true)`): `packmol(system)` then writes
+the initial approximation to the output file, and stops.
 
 `InsideSphere(center, radius)` and `OutsideSphere(center, radius)` take the parameters
 of `inside sphere` and `outside sphere`.

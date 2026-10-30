@@ -4,7 +4,9 @@ A protein of 4246 atoms in a sphere of water molecules and sodium and chloride i
 protein is fixed at the center of the sphere, and the solvent fills the space around it.
 This system was used in [Martínez L., et al. J. Med. Chem. 49, 23–26, 2006](https://doi.org/10.1021/jm050805n).
 
-![Solvated protein](https://m3g.github.io/packmol/examples/solvprotein.jpg)
+![Solvated protein](images/solvprotein.webp)
+
+*The protein, the ions, and the water behind the protein.*
 
 Files: [`protein.pdb`](https://m3g.github.io/packmol/examples/protein.pdb),
 [`water.pdb`](https://m3g.github.io/packmol/examples/water.pdb),
@@ -71,6 +73,32 @@ end structure
 No constraint keeps the solvent away from the protein: the protein is fixed, and the
 packing itself keeps the other molecules at least `tolerance` away from its atoms.
 
+### Check the initial approximation first
+
+For a system with a fixed protein in a sphere of solvent, first check that the constraints place the molecules where
+intended. Add the `check` keyword to the input file:
+
+```
+check
+```
+
+and run it as below. Packmol then only builds the initial approximation, in a fraction
+of a second: each molecule is placed in its region, satisfying the constraints, but the
+molecules may still overlap. It is written to the output file (`solvprotein.pdb`). Look at it in
+a molecular visualization program:
+
+![Initial approximation](images/solvprotein_check.webp)
+
+*The initial approximation: the solvent fills the sphere around the fixed protein, but molecules may overlap, also with the protein.*
+
+When the molecules are where they should be, remove `check`, and run the packing.
+If the constraints cannot be satisfied at all, even without the distances between the
+molecules, Packmol stops after the initial approximation with an error (unless the
+`continue_failed_initial_packing` keyword is set): that is almost always a sign of
+wrong constraints.
+
+### Packing
+
 Run it with:
 
 ```
@@ -100,6 +128,10 @@ system = PackmolSystem([protein, water, chloride, sodium];
 )
 packmol(system)
 ```
+
+As with the input file, check the initial approximation first, by building the system
+with `check = true` (`PackmolSystem(...; check = true)`): `packmol(system)` then writes
+the initial approximation to the output file, and stops.
 
 A constraint is a regular Julia value, so the same `sphere` can be given to several
 structure types.

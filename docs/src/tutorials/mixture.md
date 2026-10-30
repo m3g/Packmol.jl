@@ -3,7 +3,7 @@
 A box of 1000 water molecules and 400 urea molecules: the simplest kind of system, in
 which every molecule is placed in the same region.
 
-![Water and urea](https://m3g.github.io/packmol/examples/mixture.jpg)
+![Water and urea](images/mixture.webp)
 
 Files: [`water.pdb`](https://m3g.github.io/packmol/examples/water.pdb),
 [`urea.pdb`](https://m3g.github.io/packmol/examples/urea.pdb) and the input file
