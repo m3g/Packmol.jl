@@ -241,6 +241,12 @@ end
     @test any(f -> abs(f) > 0.5, inv(ucell) * x)
     @test Packmol._inside_cell(x, ucell, inv(ucell), center)
     @test !Packmol._inside_cell(SVector(16.0, 0.0, 0.0), ucell, inv(ucell), center)
+    # Atoms on the faces of a triclinic cell, slightly outside by the rounding of the
+    # coordinates in PDB files (0.001 Å), are inside
+    ucell = SMatrix{3,3}(Packmol.unitcell_matrix(Float64, 27.35, 27.35, 29.534, 90.0, 90.0, 120.0))
+    face = -0.5 * ucell[:, 2] - 0.5 * ucell[:, 3]
+    @test Packmol._inside_cell(face + SVector(0.0, -0.0005, -0.0005), ucell, inv(ucell), center)
+    @test !Packmol._inside_cell(face + SVector(0.0, -0.1, 0.0), ucell, inv(ucell), center)
 end
 
 @testitem "read_packmol_input: constrain_rotation" setup=[TestFiles] begin

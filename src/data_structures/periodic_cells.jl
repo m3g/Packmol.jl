@@ -72,9 +72,15 @@ function _check_fixed_inside_cell(packmol_system::PackmolSystem{D,T}) where {D,T
     return nothing
 end
 
+# Atoms within `_inside_cell_tolerance` (Å) of the cell are inside: the coordinates of PDB
+# files have a precision of 0.001 Å, so atoms on the faces of the cell (as in crystal
+# structures) can be slightly outside it.
+const _inside_cell_tolerance = 0.01
+
 function _inside_cell(x::SVector{D,T}, ucell::SMatrix{D,D,T}, inv_ucell::SMatrix{D,D,T}, center::SVector{D,T}) where {D,T}
-    tol = sqrt(eps(T))
-    all(f -> abs(f) <= T(0.5) + tol, inv_ucell * (x - center)) && return true
+    tol = T(_inside_cell_tolerance)
+    f = inv_ucell * (x - center)
+    all(i -> abs(f[i]) <= T(0.5) + tol / norm(ucell[:, i]), 1:D) && return true
     D == 3 || return false
-    return norm(_nearest_periodic_image(x, ucell, center) - x) <= tol * norm(ucell)
+    return norm(_nearest_periodic_image(x, ucell, center) - x) <= tol
 end
