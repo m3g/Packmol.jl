@@ -222,6 +222,10 @@ function PackmolSystem(
     if haskey(kw, :restart_from)
         kw = merge(kw, (; restart_from=_restart_source(kw.restart_from)))
     end
+    # A unit cell without a center is centered at the origin (as `unitcell` in input files)
+    if !isnothing(unitcell_raw) && !haskey(kw, :unitcell_center)
+        kw = merge(kw, (; unitcell_center=zero(SVector{D,T})))
+    end
     return PackmolSystem{D,T}(;
         structure_types, atoms, molecule_positions, nmols,
         input_file, output_file=output, kw...,
@@ -337,6 +341,9 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.add_amber_ter = true
     elseif keyword == "amber_ter_preserve"
         sys.amber_ter_preserve = true
+    elseif keyword == "periodic_boundary_style"
+        sys.periodic_boundary_style = _parse_options("periodic_boundary_style", val,
+            ("triclinic" => :triclinic, "dodecahedral" => :dodecahedral, "octahedral" => :octahedral))
     elseif keyword == "add_box_sides"
         sys.add_box_sides = true
     elseif keyword == "connect"
@@ -428,7 +435,7 @@ const packmol_unimplemented_keywords = Dict{String,String}(
 # Global keywords (see `_set_input_keyword!` and `_read_packmol_input`)
 const _global_keywords = (
     "filetype", "output", "tolerance", "radscale", "discale", "tolerance_precision",
-    "constraint_precision", "stall_tolerance", "maxit", "nloop", "movefrac", "nthreads", "max_random_init",
+    "constraint_precision", "stall_tolerance", "maxit", "nloop", "movefrac", "nthreads", "periodic_boundary_style", "max_random_init",
     "adjust_constraints_on_init", "add_amber_ter", "amber_ter_preserve", "add_box_sides",
     "ignore_conect", "randominitialpoint", "seed", "avoid_overlap", "writeout", "writebad",
     "optimization_print_level", "chkgrad", "check", "pbc", "unitcell",
@@ -608,6 +615,10 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
     end
     _check_fixed_inside_cell(sys)
     _check_restart_files(sys)
+    sys.periodic_boundary_style != :triclinic && isnothing(sys.unitcell) && throw(ArgumentError("""\n
+        periodic_boundary_style requires periodic boundary conditions (pbc or unitcell).
+
+    """))
     #
     # Initialize atom data and molecule position arrays
     #

@@ -73,13 +73,12 @@ end
 
 """
     triclinic_to_octahedral(x, unitcell, center)
-    triclinic_to_octahedral(x, packmol_system::PackmolSystem)
 
-Remaps position(s) `x` to the periodic image closest to `center` — the
-truncated-octahedron-shaped (Wigner-Seitz) fundamental domain of the cell,
-as opposed to the skewed-parallelepiped one `wrap_to_center` produces. `x`
-can be a single `SVector{3}` or a vector of them. `unitcell` and `center`
-can also be given together as a `PackmolSystem`.
+Remaps the position(s) `x` to the truncated-octahedron shape of the periodic cell.
+
+`x` is mapped to its periodic image closest to `center`: the truncated-octahedron
+(Wigner-Seitz) fundamental domain of the cell, as opposed to the skewed-parallelepiped
+one of `wrap_to_center`. `x` can be a single `SVector{3}` or a vector of them.
 
 See also [`octahedral_to_triclinic`](@ref) for the reverse mapping.
 """
@@ -89,15 +88,23 @@ triclinic_to_octahedral(x::SVector{3,T}, unitcell::AbstractMatrix, center::SVect
 triclinic_to_octahedral(xs::AbstractVector{<:SVector{3}}, unitcell::AbstractMatrix, center::SVector{3}) =
     [triclinic_to_octahedral(x, unitcell, center) for x in xs]
 
+"""
+    triclinic_to_octahedral(x, packmol_system::PackmolSystem)
+
+Remaps the position(s) `x` to the truncated-octahedron shape of the periodic cell of `packmol_system`.
+
+The same as `triclinic_to_octahedral(x, packmol_system.unitcell, packmol_system.unitcell_center)`.
+"""
 triclinic_to_octahedral(x, packmol_system::PackmolSystem) =
     triclinic_to_octahedral(x, packmol_system.unitcell, packmol_system.unitcell_center)
 
 """
     triclinic_to_octahedral(packmol_system::PackmolSystem)
 
-Sets `packmol_system.periodic_boundary_style = :octahedral` and returns
-`packmol_system` — unlike the coordinate-remapping methods above, this one
-touches no coordinates itself. It just selects, for subsequent calls to
+Selects the truncated-octahedron shape for the output of `packmol_system`, and returns it.
+
+It sets `packmol_system.periodic_boundary_style = :octahedral`; unlike the
+coordinate-remapping methods above, it touches no coordinates itself. It just selects, for subsequent calls to
 [`get_atoms`](@ref)/`write_output`, which fundamental-domain shape molecule
 positions get wrapped into: the truncated-octahedron (Wigner-Seitz)
 "compact" shape instead of the default triclinic one. The actual remapping
@@ -117,15 +124,13 @@ end
 
 """
     octahedral_to_triclinic(x, unitcell, center)
-    octahedral_to_triclinic(x, packmol_system::PackmolSystem)
 
-The other direction of [`triclinic_to_octahedral`](@ref): remaps
-position(s) `x` into the skewed-parallelepiped fundamental domain of the
-cell (the ordinary `unitcell` representation, e.g. what CRYST1/PDB output
-implies). This is just `wrap_to_center` under a name that pairs with
-`triclinic_to_octahedral` for this box. `x` can be a single `SVector{3}`
-or a vector of them; `unitcell` and `center` can also be given together as
-a `PackmolSystem`.
+Remaps the position(s) `x` to the parallelepiped shape of the periodic cell.
+
+The other direction of [`triclinic_to_octahedral`](@ref): `x` is mapped into the
+skewed-parallelepiped fundamental domain of the cell (the ordinary `unitcell`
+representation, as in the CRYST1 record of PDB files), with `wrap_to_center`. `x` can
+be a single `SVector{3}` or a vector of them.
 """
 octahedral_to_triclinic(x::SVector{3,T}, unitcell::AbstractMatrix, center::SVector{3,T}) where {T} =
     wrap_to_center(x, unitcell, center)
@@ -133,15 +138,23 @@ octahedral_to_triclinic(x::SVector{3,T}, unitcell::AbstractMatrix, center::SVect
 octahedral_to_triclinic(xs::AbstractVector{<:SVector{3}}, unitcell::AbstractMatrix, center::SVector{3}) =
     [octahedral_to_triclinic(x, unitcell, center) for x in xs]
 
+"""
+    octahedral_to_triclinic(x, packmol_system::PackmolSystem)
+
+Remaps the position(s) `x` to the parallelepiped shape of the periodic cell of `packmol_system`.
+
+The same as `octahedral_to_triclinic(x, packmol_system.unitcell, packmol_system.unitcell_center)`.
+"""
 octahedral_to_triclinic(x, packmol_system::PackmolSystem) =
     octahedral_to_triclinic(x, packmol_system.unitcell, packmol_system.unitcell_center)
 
 """
     octahedral_to_triclinic(packmol_system::PackmolSystem)
 
-The other direction of [`triclinic_to_octahedral`](@ref)`(packmol_system)`:
-sets `packmol_system.periodic_boundary_style = :triclinic` (the default) and
-returns `packmol_system`, so [`get_atoms`](@ref)/`write_output` go back to
+Selects the parallelepiped shape (the default) for the output of `packmol_system`, and returns it.
+
+The other direction of [`triclinic_to_octahedral`](@ref)`(packmol_system)`: it
+sets `packmol_system.periodic_boundary_style = :triclinic`, so [`get_atoms`](@ref)/`write_output` go back to
 wrapping molecule positions into the ordinary skewed-parallelepiped shape.
 """
 function octahedral_to_triclinic(packmol_system::PackmolSystem)

@@ -89,7 +89,6 @@ end
 
 """
     packmol(input_file::String; kargs...)
-    packmol(; kargs...)
 
 Read a Packmol input file, run the packing optimization, and write the output.
 Returns the built `PackmolSystem` (see `packmol(::PackmolSystem)` for details).
@@ -104,6 +103,15 @@ function packmol(input_file::String; D::Int=3, T::DataType=Float64, kargs...)
     packmol_system = read_packmol_input(input_file; D, T)
     return packmol(packmol_system; kargs...)
 end
+"""
+    packmol(; kargs...)
+
+Choose a Packmol input file in a file browser, and run it.
+
+The same as `packmol(input_file; kargs...)`, with the file chosen in the file browser of
+[`Packmol.pick_file`](@ref) (disabled by setting the environment variable
+`PACKMOL_GUI="false"`, in which case the file is asked for in the terminal).
+"""
 packmol(; kargs...) = packmol(pick_file(); kargs...)
 
 """

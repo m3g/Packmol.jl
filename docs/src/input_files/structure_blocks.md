@@ -26,7 +26,7 @@ end structure
 | Keyword | Meaning |
 |:--|:--|
 | `number <n>` | Number of copies of this molecule to pack (required). |
-| `fixed x y z beta gamma theta` | Don't pack this molecule — place it once at this position and (Euler angle) orientation and leave it fixed. `number` is optional for a fixed structure (it is a single molecule). |
+| `fixed x y z beta gamma theta` | Don't pack this molecule — place it once at this position and (Euler angle) orientation and leave it fixed. `number` is optional for a fixed structure (it is a single molecule). See [Fixed molecules](../constraints/fixed.md). |
 | `connect no` | Don't write the connectivity (`CONECT` records) of this structure to the output. |
 | `center` / `centerofmass` | Only valid together with `fixed`: re-center the molecule (geometric center or mass-weighted center of mass) before applying the fixed position/orientation. Without them, the molecule is rotated about the origin of its coordinates, and then translated. (Fortran Packmol uses unit masses for `centerofmass`, so its center of mass is the geometric center.) |
 | `radius <value>` | Atom radius for every atom of this structure, overriding the default of `tolerance/2`. |

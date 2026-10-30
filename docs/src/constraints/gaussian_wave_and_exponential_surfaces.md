@@ -29,6 +29,40 @@ underlying shape.
 
 where `s = along·x` (using the normalized `along`).
 
+
+## Example
+
+390 water molecules (about 1 g/mL) in a box, above a Gaussian bump of height 6 Å and width 4 Å along x:
+
+```
+structure water.pdb
+    number 390
+    inside box -15. -15. 0. 15. 15. 15.
+    above gaussian 0. 0. 1. 1. 0. 0. 0. 6. 0. 4.
+end structure
+```
+
+The same system, packed with the [Julia API](../julia_api/index.md) and shown with the
+`visualize` function of [PDBTools.jl](https://github.com/m3g/PDBTools.jl):
+
+```@setup gaussian
+using Packmol
+cp(joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb"), "water.pdb"; force = true)
+```
+
+```@example gaussian
+using Packmol, PDBTools
+water = structure_type("water.pdb";
+    number = 390,
+    constraints = [InsideBox([-15., -15., 0.], [15., 15., 15.]), AboveGaussian([0., 0., 1.], [1., 0., 0.], 0., 6., 0., 4.)],
+)
+system = PackmolSystem([water]; tolerance = 2.0, output = "gaussian.pdb")
+redirect_stdio(stdout = devnull, stderr = devnull) do # hide
+packmol(system)
+end # hide
+visualize(get_atoms(system); unitcell = UnitCell([30., 30., 15.]), unitcell_origin = [-15., -15., 0.])
+```
+
 ## Radial variants
 
 ```
