@@ -113,3 +113,34 @@ end
     @test g1 ≈ g2
     @test fmol1 ≈ fmol2
 end
+
+@testitem "centers of mass in the closed cell are not wrapped" begin
+    using StaticArrays
+    uc = [40.0 0 0; 0 40 0; 0 0 40]
+    c = SVector(0.0, 0.0, 0.0)
+    # The upper faces of the cell are inside the bounds of the centers of mass:
+    # `wrap_to_center` maps them to the lower faces, `_wrap_cm` keeps them
+    @test Packmol.wrap_to_center(SVector(0.0, 0.0, 20.0), uc, c) ≈ SVector(0.0, 0.0, -20.0)
+    @test Packmol._wrap_cm(SVector(0.0, 0.0, 20.0), uc, c) == SVector(0.0, 0.0, 20.0)
+    @test Packmol._wrap_cm(SVector(20.0, -20.0, 20.0), uc, c) == SVector(20.0, -20.0, 20.0)
+    @test Packmol._wrap_cm(SVector(0.0, 0.0, 21.0), uc, c) ≈ SVector(0.0, 0.0, -19.0)
+    # Triclinic cell, off-center
+    uc = [10.0 5.0 0; 0 10 0; 0 0 10]
+    c = SVector(1.0, 2.0, 3.0)
+    x = c + uc * SVector(0.5, 0.5, -0.5)
+    @test Packmol._wrap_cm(x, uc, c) == x
+    y = c + uc * SVector(0.3, 0.2, -0.1)
+    @test Packmol._wrap_cm(y + uc[:, 1] - uc[:, 3], uc, c) ≈ y
+end
+
+@testitem "mixture_pbc: water and urea separated by a plane under PBC" setup=[TestFiles] begin
+    # Regression: urea molecules pushed against the upper bound of their centers of
+    # mass (z = 20) were evaluated at z = -20, violating `over plane 0` by the whole
+    # cell, and were trapped: the packing took minutes, or failed, instead of < 1 s
+    for seed in (4, 5, 7)
+        sys = redirect_stdout(devnull) do
+            packmol(TestFiles.test_file("input_files/mixture_pbc.inp"); seed, iprint=1000)
+        end
+        @test sys.status == :packing_ready
+    end
+end

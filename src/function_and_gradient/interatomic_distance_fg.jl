@@ -343,7 +343,7 @@ function _compute_positions_and_constraints_for_mols!(
                 # Wrap the molecule's CM once (not each atom's own absolute
                 # position independently) — see the comment on
                 # `_constraint_fg!` below for why this matters.
-                wrapped_cm = HASPBC ? wrap_to_center(cm, unitcell, unitcell_center) : cm
+                wrapped_cm = HASPBC ? _wrap_cm(cm, unitcell, unitcell_center) : cm
                 has_constraints = !isempty(st.constraints)
                 fmol_local = zero(T)
                 for j in 1:natoms_st
@@ -389,6 +389,23 @@ function wrap_to_center(x::SVector{D,T}, unitcell::AbstractMatrix, center::SVect
     half = SVector{D,T}(ntuple(_ -> T(0.5), D))
     offset = uc * half
     return CellListMap.wrap_to_first(x - center + offset, uc) + center - offset
+end
+
+#
+# The image of the center of mass of a molecule in which its constraints are
+# evaluated (and its atoms are given to the cell lists). A center of mass in the
+# closed cell is not moved: the optimizer bounds the centers of mass to the closed
+# cell (see `packmol`), and `wrap_to_center` maps the upper faces of the cell to
+# the lower ones. A molecule pushed against an upper bound would otherwise be
+# evaluated on the opposite face of the cell, where a non-periodic constraint
+# (e.g. `over plane`) can be violated by a whole cell length, with a gradient
+# that the bound doesn't let it follow: the molecule is trapped.
+#
+function _wrap_cm(cm::SVector{D,T}, unitcell::AbstractMatrix, center::SVector{D,T}) where {D,T}
+    uc = SMatrix{D,D,T}(unitcell)
+    frac = uc \ (cm - center)
+    all(f -> abs(f) <= T(0.5), frac) && return cm
+    return wrap_to_center(cm, unitcell, center)
 end
 
 #
@@ -460,7 +477,7 @@ function _update_cl_positions!(
             if HASPBC
                 imol = packmol_system.atoms[iat].molecule_index
                 cm = packmol_system.molecule_positions[imol].cm
-                cm_shift = wrap_to_center(cm, unitcell, unitcell_center) - cm
+                cm_shift = _wrap_cm(cm, unitcell, unitcell_center) - cm
                 cl_xpositions[iat] = atom_positions[iat] + cm_shift
             else
                 cl_xpositions[iat] = atom_positions[iat]
@@ -535,7 +552,7 @@ function _constraint_fg!(
                     # atom only ever crosses a wrap seam when its molecule's
                     # CM does.
                     cm = packmol_system.molecule_positions[atom.molecule_index].cm
-                    x = x + (wrap_to_center(cm, unitcell, unitcell_center) - cm)
+                    x = x + (_wrap_cm(cm, unitcell, unitcell_center) - cm)
                 end
                 st = packmol_system.structure_types[atom.structure_type_index]
                 atom_penalty = zero(T)

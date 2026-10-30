@@ -363,7 +363,9 @@ function packmol(
     # loss of generality — every reachable physical configuration already has
     # a representative inside that one period, via wrapping — it just forces
     # SPGBox to find it directly instead of possibly overshooting through
-    # several periods and having to claw back. `nothing` (not just ±Inf
+    # several periods and having to claw back. The bounds are closed, and the
+    # upper faces belong to the cell: centers of mass inside the closed cell are
+    # not wrapped when evaluating constraints (`_wrap_cm`). `nothing` (not just ±Inf
     # vectors) when neither PBC nor any structure type's rotation is
     # constrained, so SPGBox skips the bound-checking overhead entirely in
     # that common case.

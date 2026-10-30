@@ -281,11 +281,27 @@ Open:
   the other constraints) has a Cartesian gradient on the atoms of A and B, and goes
   through the existing chain rule. This replaces the hard bounds on the Euler angles
   (`rotation_bounds`, also used to sample initial angles). Needs the syntax (D15).
-- [ ] **A5.10 Performance:** `mixture_pbc.inp` takes 0.68 s with Fortran, 12.3 s with
-  the Packmol.jl binary on 1 thread, and 19.6 s on 4 threads (slower with more threads).
-  Profile it (A4.2). It also fails to converge with about 12% of the seeds (3 of 24,
-  both before and after D16; failures take ~340 s), the default seed included, so the
-  Fortran test suite test pins `seed 1` for it.
+- [x] **A5.10 Performance: `mixture_pbc` was trapped by a PBC inconsistency.** The
+  centers of mass are bounded to the closed cell, but `wrap_to_center` maps the upper
+  faces to the lower ones. A urea pushed against z = +20 was evaluated for its
+  constraints at z = −20, violating `over plane 0` by the whole cell, with a gradient
+  the bound didn't let it follow. Packings took 10–400 s and failed with ~12% of the
+  seeds. Fixed with `_wrap_cm` (centers of mass in the closed cell are not wrapped).
+  Wall-clock times (s), trimmed binary vs Fortran, 2026-10-29:
+
+  | input | Fortran | Packmol.jl |
+  |---|---|---|
+  | mixture_pbc | 0.70 | 0.06 |
+  | mixture | 1.33 | 0.10 |
+  | water_box | 0.11 | 0.05 |
+  | solvprotein | 12.7 | 0.35 |
+  | solvprotein_pbc | 2.73 | 1.89 |
+  | spherical | 36.7 | 4.4 |
+  | spherical_pbc | 0.99 | 0.62 |
+  | bilayer | 26.3 | 2.5 |
+  | bilayer_pbc | 0.61 | 0.60 |
+
+  Recheck the multi-thread slowdown seen before the fix (B7).
 
 ## Workstream B: standalone executable build (and CI)
 
@@ -421,3 +437,9 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   decide). Seed study of `mixture_pbc` (A5.10). The test `structure radius larger than
   tolerance/2` exposed that convergence ignored the radii: D12 refined to a per-pair
   overlap (`InteratomicDistanceFG.max_overlap`).
+- **2026-10-29** (Claude, same session): investigated `mixture_pbc` (the maintainer: any
+  input taking more than a few seconds signals a bug). Variants showed only PBC + planes
+  was slow; the cause was the wrap of centers of mass on the upper faces of the cell
+  (A5.10, fixed). The PBC confinement must stay (maintainer): it gives non-periodic
+  constraints their meaning. Regression tests in
+  `test/function_and_gradient/interatomic_distance_fg.jl`; the seed pin was removed.
