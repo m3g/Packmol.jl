@@ -1,7 +1,0 @@
-/* Images of the content (tutorials): at most half of the width of the page */
-.docs-main article img {
-    max-width: 50%;
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-}
