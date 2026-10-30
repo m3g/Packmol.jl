@@ -8,7 +8,7 @@
     @test st.natoms == 3
     @test st.number_of_molecules == 1000
     @test st.fixed.fixed == false
-    @test st.constraints == [Box{Inside,Float64}([0.,0.,0.],[40.,40.,40.],5.0)]
+    @test st.constraints == [Box{Inside,Float64}([20.,20.,20.],[40.,40.,40.],5.0)]
     @test st.atom_constraints == [[1], [1], [1]]
     @test st.radii == [1.0, 1.0, 1.0]  # defaults to tolerance/2
 
@@ -193,4 +193,35 @@ end
     s = Packmol.read_structure_data(input_file_block, tolerance) 
     @test s.reference_coordinates ≈ SVector{3, Float64}[[10.0, 10.0, 9.5], [10.0, 10.0, 10.5]]
 
+end
+
+@testitem "structure_type: atom_constraints" setup=[TestFiles] begin
+    file = TestFiles.test_file("structure_files/palmitoil.pdb")
+    st = structure_type(file;
+        number = 2,
+        constraints = [InsideBox([0., 0., 0.], [40., 40., 14.])],
+        atom_constraints = [
+            [31, 32] => BelowPlane([0., 0., 1.], 2.0),
+            [1, 2] => [AbovePlane([0., 0., 1.], 12.0)],
+        ],
+    )
+    # The same as the `atoms ... end atoms` blocks of an input file
+    st_input = Packmol.read_structure_data("""
+        structure $file
+          number 2
+          inside box 0. 0. 0. 40. 40. 14.
+          atoms 31 32
+            below plane 0. 0. 1. 2.
+          end atoms
+          atoms 1 2
+            above plane 0. 0. 1. 12.
+          end atoms
+        end structure
+        """, 2.0)
+    @test st.constraints == st_input.constraints
+    @test st.atom_constraints == st_input.atom_constraints
+    @test st.atom_constraints[31] == [1, 2]
+    @test st.atom_constraints[1] == [1, 3]
+    @test st.atom_constraints[10] == [1]
+    @test_throws ArgumentError structure_type(file; number=1, atom_constraints=[[1000] => BelowPlane([0., 0., 1.], 2.0)])
 end

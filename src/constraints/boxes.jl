@@ -72,15 +72,43 @@ end
 # Outer constructors that infer T from the given arguments, so that
 # `Cube{Placement}(...)` (a partially-applied UnionAll, as used by
 # InsideCube/OutsideCube below) can be called without the type
-# parameter T needing to be given explicitly.
-function Cube{Placement}(center, side, weight=weight_default[:box]) where {Placement}
+# parameter T needing to be given explicitly. The positional form takes the
+# parameters of the input file (`inside cube xmin ymin zmin side`): the lower
+# corner and the side; the keyword form, the center and the side.
+function Cube{Placement}(corner, side, w=weight_default[:box]; weight=w) where {Placement}
+    T = promote_type(eltype(corner), typeof(side), typeof(weight))
+    return Cube{Placement}(; center=SVector{3,T}(corner) .+ T(side) / 2, side=T(side), weight=T(weight))
+end
+function Cube{Placement}(; center, side, weight=weight_default[:box]) where {Placement}
     T = promote_type(eltype(center), typeof(side), typeof(weight))
     return Cube{Placement,T}(SVector{3,T}(center), T(side), T(weight))
 end
-Cube{Placement}(; center, side, weight=weight_default[:box]) where {Placement} =
-    Cube{Placement}(center, side, weight)
 
+"""
+    InsideCube(lower_corner, side; weight)
+    InsideCube(; center, side, weight)
+
+Keeps the atoms inside an axis-aligned cube. With positional arguments, the cube spans
+from `lower_corner` to `lower_corner .+ side`, as the input file line
+`inside cube xmin ymin zmin side`. With keyword arguments, it is given by its `center`.
+
+# Example
+
+```jldoctest
+julia> using Packmol
+
+julia> InsideCube([0.0, 0.0, 0.0], 40.0) == InsideCube(center=[20.0, 20.0, 20.0], side=40.0)
+true
+```
+"""
 InsideCube(args...; kargs...) = Cube{Inside}(args...; kargs...)
+
+"""
+    OutsideCube(lower_corner, side; weight)
+    OutsideCube(; center, side, weight)
+
+Keeps the atoms outside an axis-aligned cube, given as in [`InsideCube`](@ref).
+"""
 OutsideCube(args...; kargs...) = Cube{Outside}(args...; kargs...)
 
 constraint_penalty(c::Cube{Placement}, x) where {Placement} =
@@ -100,15 +128,50 @@ end
 # Outer constructors that infer T from the given arguments, so that
 # `Box{Placement}(...)` (a partially-applied UnionAll, as used by
 # InsideBox/OutsideBox below) can be called without the type
-# parameter T needing to be given explicitly.
-function Box{Placement}(center, sides, weight=weight_default[:box]) where {Placement}
+# parameter T needing to be given explicitly. The positional form takes the
+# parameters of the input file (`inside box xmin ymin zmin xmax ymax zmax`):
+# the lower and upper corners; the keyword form, the center and the sides.
+function Box{Placement}(lower, upper, w=weight_default[:box]; weight=w) where {Placement}
+    T = promote_type(eltype(lower), eltype(upper), typeof(weight))
+    lo, hi = SVector{3,T}(lower), SVector{3,T}(upper)
+    all(lo .<= hi) || throw(ArgumentError("""\n
+        The corners of a box must be given as the lower one and the upper one
+        (lower <= upper in every dimension).
+
+    """))
+    return Box{Placement}(; center=(lo .+ hi) ./ 2, sides=hi .- lo, weight=T(weight))
+end
+function Box{Placement}(; center, sides, weight=weight_default[:box]) where {Placement}
     T = promote_type(eltype(center), eltype(sides), typeof(weight))
     return Box{Placement,T}(SVector{3,T}(center), SVector{3,T}(sides), T(weight))
 end
-Box{Placement}(; center, sides, weight=weight_default[:box]) where {Placement} =
-    Box{Placement}(center, sides, weight)
 
+"""
+    InsideBox(lower, upper; weight)
+    InsideBox(; center, sides, weight)
+
+Keeps the atoms inside an axis-aligned box. With positional arguments, the box spans
+from the `lower` to the `upper` corner, as the input file line
+`inside box xmin ymin zmin xmax ymax zmax`. With keyword arguments, it is given by its
+`center` and the lengths of its `sides`.
+
+# Example
+
+```jldoctest
+julia> using Packmol
+
+julia> InsideBox([0.0, 0.0, 0.0], [40.0, 40.0, 40.0]) == InsideBox(center=[20.0, 20.0, 20.0], sides=[40.0, 40.0, 40.0])
+true
+```
+"""
 InsideBox(args...; kargs...) = Box{Inside}(args...; kargs...)
+
+"""
+    OutsideBox(lower, upper; weight)
+    OutsideBox(; center, sides, weight)
+
+Keeps the atoms outside an axis-aligned box, given as in [`InsideBox`](@ref).
+"""
 OutsideBox(args...; kargs...) = Box{Outside}(args...; kargs...)
 
 constraint_penalty(c::Box{Placement}, x) where {Placement} =
@@ -148,7 +211,8 @@ function parse_constraint(::Val{Symbol("inside cube")}, data::AbstractVector{<:A
     catch
         error("Error parsing 'inside cube' constraint data for $filename.")
     end
-    return Cube{Inside,T}(;center, side)
+    # The data is the lower corner and the side (as in Fortran Packmol)
+    return Cube{Inside,T}(; center=center .+ side / 2, side)
 end
 
 function parse_constraint(::Val{Symbol("outside cube")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
@@ -157,5 +221,5 @@ function parse_constraint(::Val{Symbol("outside cube")}, data::AbstractVector{<:
     catch
         error("Error parsing 'outside cube' constraint data for $filename.")
     end
-    return Cube{Outside,T}(;center, side)
+    return Cube{Outside,T}(; center=center .+ side / 2, side)
 end

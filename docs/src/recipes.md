@@ -4,10 +4,6 @@ CollapsedDocStrings = true
 
 # Recipes
 
-!!! warning "Experimental"
-    Recipes are under active development. Struct fields, keyword arguments,
-    and the exact contents of generated input files may still change.
-
 ## Overview
 
 A recipe is a higher-level, parameter-driven system setup: instead of

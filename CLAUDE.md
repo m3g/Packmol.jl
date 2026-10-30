@@ -89,6 +89,12 @@ juliac/                               # Executable: app.jl, build.jl (juliac), t
 - `StaticArrays.jl`: Fixed-size vectors/matrices for performance
 - `Unitful.jl`: Physical unit handling (in Recipes)
 
+## Documentation
+
+`docs/src/tutorials/` holds the classic Packmol examples (water–urea, interface, bilayer,
+vesicle, solvated protein), each with a command-line and a Julia section; keep both paths
+equivalent when changing the input syntax or the Julia API.
+
 ## Running Tests
 
 ```bash
@@ -150,8 +156,8 @@ These are the building blocks everything else depends on.
       `inside/outside cylinder`, `inside/outside ellipsoid`, `above/over/below plane`
 - [x] Per-atom blocks (`atoms ... end atoms`) with custom constraints
 - [x] `radscale` (with legacy `discale` mapped to it)
-- [x] Julia-native construction API (no input file needed): `structure_type(pdbfile; number, constraints, ...)`
-      + `PackmolSystem(structure_types; output, ...)`, documented in `docs/src/experimental/julia_api.md`
+- [x] Julia-native construction API (no input file needed): `structure_type(pdbfile; number, constraints, atom_constraints, ...)`
+      + `PackmolSystem(structure_types; output, ...)`, documented in `docs/src/julia_api.md`
 - [x] `nloop`, `maxit` (stored in `PackmolSystem.nloop`/`max_iter`; `packmol(sys; nloop, maxit)` takes precedence)
 - [x] Inline `#` comments stripped (as Fortran)
 - [x] Deprecated Fortran keywords (`fscale`, `fbins`, `precision`, `sidemax`, `maxmove`, `nloop0`,
@@ -168,7 +174,8 @@ These are the building blocks everything else depends on.
 Each constraint type needs: data structure, penalty function, gradient, parsing, and tests.
 
 #### Implemented
-- [x] `Box` (InsideBox / OutsideBox) - axis-aligned rectangular box
+- [x] `Box` (InsideBox / OutsideBox) - axis-aligned rectangular box; positional constructors take the input's
+      parameters (`InsideBox(lower, upper)`, `InsideCube(lower_corner, side)`), keywords the center
 - [x] `Cube` (InsideCube / OutsideCube) - axis-aligned cube
 - [x] `Sphere` (InsideSphere / OutsideSphere) - sphere
 - [x] `Plane` (AbovePlane / BelowPlane) - point + normal vector; input keywords `above`/`over` (synonyms) and `below`, matching Fortran Packmol
@@ -320,9 +327,9 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 - [x] Concentration unit conversions (Molarity, Molality, MoleFraction, etc.)
 - [x] Ported from MolSimToolkit.jl's Packmol Input Creator (whose docs page is to be replaced by a pointer
       here): `convert_concentration`, `convert_density_table!`, `get_density_table`, the `"vv"`/`"mm"` unit aliases
-      ("Coming from MolSimToolkit.jl" section of `experimental/recipes.md`)
+      ("Coming from MolSimToolkit.jl" section of `docs/src/recipes.md`)
 - [x] DensityTable interpolation
-- [x] Documented on its own `experimental/recipes.md` docs page
+- [x] Documented on its own `recipes.md` docs page
 - [x] `pbc` keyword (`:cubic`/`:orthorhombic`/`:dodecahedral`/`:octahedral`) selecting the
       periodic cell shape, shared by the three solvation recipes; cell volume computed generally as
       `det(unitcell)` rather than assuming an orthorhombic box
