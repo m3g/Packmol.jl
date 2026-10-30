@@ -84,7 +84,8 @@ terminal.
 
 ## See also
 
-[MolSimToolkit.jl/Packmol-Input-Creator](https://m3g.github.io/MolSimToolkit.jl/stable/system_setup/#Packmol-Input-Creator)
+[Recipes](experimental/recipes.md): building solvated systems from target densities and
+concentrations (formerly the Packmol Input Creator of MolSimToolkit.jl).
 
 # Reference
 

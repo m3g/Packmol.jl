@@ -72,7 +72,8 @@
             solute: 5612.801f0 g mol^-1
             solvent: 46.069218f0 g mol^-1
             cossolvent: 18.01534f0 g mol^-1
-        Concentration range: 0.0 mol L^-1 - 55.40278204007167 mol L^-1
+        Concentration units: x
+        Concentration range: 0.0 - 1.0
         Density range: 0.7906 g mL^-1 - 0.9981 g mL^-1
     ==================================================================
     """
@@ -113,6 +114,19 @@
     @test r1[2] == 13527
     @test r1[3] ≈ [118.81, 118.81, 118.81]u"Å"
 
+    # The same concentration in mol/L, given with concentration_units, or with the units
+    # of the system set by convert_density_table! (the density is interpolated linearly
+    # in the given units, so the numbers of molecules differ slightly)
+    cmol = ustrip(convert_concentration(system, 0.5, "x" => "mol/L"))
+    rm(tmp_input_file, force=true)
+    r2 = write_packmol_input(system; concentration = cmol, concentration_units = "mol/L", margin = 20.0, input = tmp_input_file, debug = true)
+    @test all(isapprox.(r2[1:2], r1[1:2]; rtol=2e-3))
+    convert_density_table!(system, "mol/L")
+    rm(tmp_input_file, force=true)
+    r2 = write_packmol_input(system; concentration = cmol, margin = 20.0, input = tmp_input_file, debug = true)
+    @test all(isapprox.(r2[1:2], r1[1:2]; rtol=2e-3))
+    convert_density_table!(system, "x")
+
     rm(tmp_input_file, force=true)
     r1 = write_packmol_input(system; concentration = 0.5, margin = 20.0, input = tmp_input_file, debug = true, pbc = :orthorhombic)
     @test isfile(tmp_input_file)
@@ -146,4 +160,64 @@
     @test first(system.density_table.concentration) ≈ 0.0u"mol/L" atol=0.01u"mol/L"
     @test last(system.density_table.concentration) ≈ 1.0u"mol/L" rtol=0.01
 
+end
+
+@testitem "SolutionBoxUSC: convert_concentration" begin
+    using Unitful
+    test_dir = Packmol.RecipesDirectory * "/test"
+    sys(table) = redirect_stderr(devnull) do
+        SolutionBoxUSC(
+            solute_pdbfile = "$test_dir/data/poly_h.pdb",
+            solvent_pdbfile = "$test_dir/data/water.pdb",
+            cossolvent_pdbfile = "$test_dir/data/water.pdb",
+            density_table = table,
+        )
+    end
+    c(x) = ustrip(x)
+    # Water as solvent and cossolvent, with constant density
+    system = sys(hcat(0:0.1:1, ones(11)))
+    mw = 55.50824
+    for x in (0.0, 0.2, 0.5, 0.7, 1.0)
+        @test convert_concentration(system, x, "x" => "vv") ≈ x atol = 1e-3
+        @test c(convert_concentration(system, x, "x" => "mol/L")) ≈ x * mw atol = 1e-2
+        @test convert_concentration(system, x, "x" => "mm") ≈ x atol = 1e-3
+        @test convert_concentration(system, x, "vv" => "x") ≈ x atol = 1e-3
+        @test c(convert_concentration(system, x, "vv" => "mol/L")) ≈ x * mw atol = 1e-2
+        @test convert_concentration(system, x, "vv" => "mm") ≈ x atol = 1e-3
+        @test convert_concentration(system, x * mw, "mol/L" => "x") ≈ x atol = 1e-3
+        @test convert_concentration(system, x * mw, "mol/L" => "vv") ≈ x atol = 1e-3
+        @test convert_concentration(system, x * mw, "mol/L" => "mm") ≈ x atol = 1e-3
+        @test convert_concentration(system, x * mw * u"mol/L", "mol/L" => "x") ≈ x atol = 1e-3
+    end
+    # Density linear in the molar fraction, with the same molar mass for both components
+    system = sys(hcat([0.05 * i for i in 0:20], [1.0 + 0.05 * i for i in 0:20]))
+    ρc, ρw = 2.0, 1.0
+    M = c(system.solvent_molar_mass)
+    ρ(x) = ρc * x + ρw * (1 - x)
+    # Volume fraction: volume of the pure cossolvent over the volume of the solution
+    # (MolSimToolkit used the sum of the volumes of the pure components instead)
+    vv(x) = (x * M / ρc) / (M / ρ(x))
+    mx(x) = x / (M / (1000 * ρ(x)))
+    for x in (0.0, 0.2, 0.5, 0.7, 1.0)
+        @test convert_concentration(system, x, "x" => "vv") ≈ vv(x) atol = 1e-6
+        @test c(convert_concentration(system, x, "x" => "mol/L")) ≈ mx(x) rtol = 1e-6
+        @test convert_concentration(system, x, "x" => "mm") ≈ x atol = 1e-6
+        @test convert_concentration(system, vv(x), "vv" => "x") ≈ x atol = 1e-6
+        @test c(convert_concentration(system, vv(x), "vv" => "mol/L")) ≈ mx(x) rtol = 1e-6
+        @test convert_concentration(system, vv(x), "vv" => "mm") ≈ x atol = 1e-6
+        @test convert_concentration(system, mx(x), "mol/L" => "x") ≈ x atol = 1e-6
+        @test convert_concentration(system, mx(x), "mol/L" => "vv") ≈ vv(x) atol = 1e-6
+        @test convert_concentration(system, mx(x), "mol/L" => "mm") ≈ x atol = 1e-6
+    end
+    @test_throws ArgumentError convert_concentration(system, 0.5, "x" => "mol/kg")
+    # convert_density_table!: the units of the system
+    @test system.concentration_units == "x"
+    @test get_density_table(system)[:, 1] ≈ [0.05 * i for i in 0:20]
+    @test convert_density_table!(system, "mol/L") === system
+    @test system.concentration_units == "mol/L"
+    @test get_density_table(system)[:, 1] ≈ mx.([0.05 * i for i in 0:20]) rtol = 1e-6
+    @test get_density_table(system)[:, 2] ≈ [1.0 + 0.05 * i for i in 0:20]
+    convert_density_table!(system, "vv")
+    @test get_density_table(system)[:, 1] ≈ vv.([0.05 * i for i in 0:20]) atol = 1e-6
+    @test_throws ArgumentError convert_density_table!(system, "mol/kg")
 end

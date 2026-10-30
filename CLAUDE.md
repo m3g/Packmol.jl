@@ -318,6 +318,9 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       `write_packmol_input`/`packmol` call time, unlike the solvation recipes below).
 - [x] `packmol(recipe; ...)` - build and pack a recipe directly, without an explicit input file
 - [x] Concentration unit conversions (Molarity, Molality, MoleFraction, etc.)
+- [x] Ported from MolSimToolkit.jl's Packmol Input Creator (whose docs page is to be replaced by a pointer
+      here): `convert_concentration`, `convert_density_table!`, `get_density_table`, the `"vv"`/`"mm"` unit aliases
+      ("Coming from MolSimToolkit.jl" section of `experimental/recipes.md`)
 - [x] DensityTable interpolation
 - [x] Documented on its own `experimental/recipes.md` docs page
 - [x] `pbc` keyword (`:cubic`/`:orthorhombic`/`:dodecahedral`/`:octahedral`) selecting the

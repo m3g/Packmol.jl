@@ -6,6 +6,10 @@ mutable struct SolutionBoxUSC <: Recipe
     solute_molar_mass::Number
     solvent_molar_mass::Number
     cossolvent_molar_mass::Number
+    # Units of the concentrations given to and shown by this system (e.g. the default
+    # units of `concentration` in `write_packmol_input`); see `convert_density_table!`.
+    # The density table itself is stored in mol/L.
+    concentration_units::String
 end
 
 _mandatory_keywords(::Type{SolutionBoxUSC}) = (:solute_pdbfile, :solvent_pdbfile, :cossolvent_pdbfile, :density_table)
@@ -43,10 +47,13 @@ function SolutionBoxUSC(;
         solvent_molar_mass::Union{Nothing,<:Number} = nothing,
         cossolvent_molar_mass::Union{Nothing,<:Number} = nothing,
     )
-    if isnothing(concentration_units) && unit(density_table[begin, 1]) == NoUnits
+    if unit(density_table[begin, 1]) != NoUnits
+        concentration_units = something(concentration_units, UNIT_TYPE_MAP[unit(density_table[begin, 1])])
+    elseif isnothing(concentration_units)
         concentration_units = "x"
         @warn "Concentration units not provided, assuming molar fraction (x)." _file=nothing _line=nothing
     end
+    _check_concentration_units(concentration_units)
     if unit(density_table[begin, 2]) == NoUnits
         @warn "Density units not provided, assuming g/mL." _file=nothing _line=nothing
     end
@@ -75,8 +82,92 @@ function SolutionBoxUSC(;
         solute_molar_mass,
         solvent_molar_mass,
         cossolvent_molar_mass,
+        concentration_units,
     )
     return system
+end
+
+# Concentration units accepted by `SolutionBoxUSC` (see `UNIT_STRINGS` for their aliases)
+function _check_concentration_units(units::String)
+    haskey(UNIT_STRINGS, strip(units)) && UNIT_STRINGS[strip(units)] in (Molarity, MoleFraction, MassFraction, VolumeFraction) ||
+        throw(ArgumentError("""\n
+            Concentration units must be a molarity ("mol/L"), molar fraction ("x"), mass
+            fraction ("w/w", "mm") or volume fraction ("v/v", "vv"), got "$units".
+
+        """))
+    return units
+end
+
+# A concentration in `units`, with units if it is a molarity (as `cconvert` returns them)
+_with_units(c::Number, units::String) =
+    UNIT_STRINGS[strip(units)] == Molarity ? _ensure_unit(c, u"mol/L") : ustrip(c)
+
+"""
+    convert_concentration(system::SolutionBoxUSC, concentration, units::Pair{String,String})
+
+Converts the `concentration` of the cossolvent from one unit to another, as
+`first(units) => last(units)`, using the density of the solution at that concentration
+(interpolated from the density table of the `system`) and the molar masses of the
+solvent and the cossolvent. The units are `"mol/L"` (molarity), `"x"` (molar fraction),
+`"w/w"` or `"mm"` (mass fraction), `"v/v"` or `"vv"` (volume fraction), or any of their
+aliases (see [Concentration Unit Conversion](@ref)). Molarities are returned with units.
+
+# Example
+
+```julia
+convert_concentration(system, 0.2, "x" => "mol/L")
+```
+"""
+function convert_concentration(system::SolutionBoxUSC, concentration::Number, units::Pair{String,String})
+    _check_concentration_units(first(units))
+    _check_concentration_units(last(units))
+    first(units) == last(units) && return concentration
+    c = _with_units(concentration, first(units))
+    ρ = interpolate_density(system, c, first(units))
+    ρc = density_pure_cossolvent(system)
+    return cconvert(c, units;
+        M_solvent=system.solvent_molar_mass, M_solute=system.cossolvent_molar_mass,
+        rho_solution=ρ, rho_solute=ρc,
+    )
+end
+
+"""
+    convert_density_table!(system::SolutionBoxUSC, target_units::String)
+
+Sets the units of the concentrations of the `system` to `target_units`: the units in
+which its density table is shown, and the default units of the `concentration` given to
+[`write_packmol_input`](@ref write_packmol_input(::SolutionBoxUSC)) and
+[`packmol`](@ref packmol(::SolutionBoxUSC)). The units are those of
+[`convert_concentration`](@ref). Returns the `system`.
+
+# Example
+
+```julia
+convert_density_table!(system, "mol/L")
+```
+"""
+function convert_density_table!(system::SolutionBoxUSC, target_units::String)
+    system.concentration_units = _check_concentration_units(target_units)
+    return system
+end
+
+"""
+    get_density_table(system::SolutionBoxUSC)
+
+The density table of the `system`, as a matrix with the concentrations of the cossolvent
+(in the units of the system, see [`convert_density_table!`](@ref)) in the first column
+and the densities of the solution (in g/mL) in the second one.
+"""
+function get_density_table(system::SolutionBoxUSC)
+    (; concentration, density) = system.density_table
+    ρc = density_pure_cossolvent(system)
+    c = [
+        ustrip(cconvert(ci, "mol/L" => system.concentration_units;
+            M_solvent=system.solvent_molar_mass, M_solute=system.cossolvent_molar_mass,
+            rho_solution=di, rho_solute=ρc,
+        )) for (ci, di) in zip(concentration, density)
+    ]
+    return hcat(c, ustrip.(u"g/mL", density))
 end
 
 function Base.show(io::IO, ::MIME"text/plain", system::SolutionBoxUSC)
@@ -91,7 +182,8 @@ function Base.show(io::IO, ::MIME"text/plain", system::SolutionBoxUSC)
             solute: $(system.solute_molar_mass)
             solvent: $(system.solvent_molar_mass)
             cossolvent: $(system.cossolvent_molar_mass)
-        Concentration range: $(first(system.density_table.concentration)) - $(last(system.density_table.concentration))
+        Concentration units: $(system.concentration_units)
+        Concentration range: $(first(get_density_table(system)[:, 1])) - $(last(get_density_table(system)[:, 1]))
         Density range: $(first(system.density_table.density)) - $(last(system.density_table.density))
     ==================================================================
     """))
@@ -124,8 +216,8 @@ function _setup(
 
     # Check the input units of the concentration
     if unit(concentration) == NoUnits
-        isnothing(concentration_units) && @warn "Concentration units not provided, assuming molar fraction (x)." _file=nothing _line=nothing
-        cunit = "x"
+        cunit = _check_concentration_units(something(concentration_units, system.concentration_units))
+        concentration = _with_units(concentration, cunit)
     else
         cunit = UNIT_TYPE_MAP[unit(concentration)]
     end

@@ -571,7 +571,7 @@ A mapping of string identifiers to concentration unit types.
 
 ```julia
 julia> Packmol.UNIT_STRINGS
-OrderedCollections.OrderedDict{String, DataType} with 26 entries:
+OrderedCollections.OrderedDict{String, DataType} with 28 entries:
   "Molarity"       => Molarity
   "molarity"       => Molarity
   "mol/L"          => Molarity
@@ -592,12 +592,14 @@ OrderedCollections.OrderedDict{String, DataType} with 26 entries:
   "w/w"            => MassFraction
   "mass %"         => MassFraction
   "%w/w"           => MassFraction
+  "mm"             => MassFraction
   "VolumeFraction" => VolumeFraction
   "volumefraction" => VolumeFraction
   "%v/v"           => VolumeFraction
   "v/v"            => VolumeFraction
   "volume %"       => VolumeFraction
   "%vol/vol"       => VolumeFraction
+  "vv"             => VolumeFraction
   "NumberDensity"  => NumberDensity
   "numberdensity"  => NumberDensity
   "Å^-3"           => NumberDensity,
@@ -633,12 +635,14 @@ const UNIT_STRINGS = OrderedDict(
   "w/w"            => MassFraction,
   "mass %"         => MassFraction,
   "%w/w"           => MassFraction,
+  "mm"             => MassFraction,
   "VolumeFraction" => VolumeFraction,
   "volumefraction" => VolumeFraction,
   "%v/v"           => VolumeFraction,
   "v/v"            => VolumeFraction,
   "volume %"       => VolumeFraction,
   "%vol/vol"       => VolumeFraction,
+  "vv"             => VolumeFraction,
   "NumberDensity"  => NumberDensity,
   "numberdensity"  => NumberDensity,
   "Å^-3"           => NumberDensity,
