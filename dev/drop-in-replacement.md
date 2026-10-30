@@ -560,3 +560,20 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   constraints), D19 (box/cube positional constructors), A5.12 (cube corner fix).
 - **2026-10-30** (Claude, same session): merged PRs #47–#50 (tutorials, docs layout,
   MolSimToolkit port). D20 (distribution decisions); B5 finding (glibc 2.34).
+- **2026-10-30** (Claude, same session): bug fixes found while writing tutorials, merged:
+  `outside box/cube` penalized points outside in only one dimension (#54); `packmol` stops
+  when the initial approximation does not satisfy the constraints, unless
+  `continue_failed_initial_packing` (#55, exit code 171); fixed atoms on the faces of the
+  periodic cell rejected by the rounding of PDB coordinates (#57). Tutorials: new VMD
+  images and `check`-first advice for the classic examples (#56); protein in
+  glycerol/water, water drop on graphite, gases in chabazite (triclinic) (#58). Scripts in
+  `dev/tutorials/` (`render.jl` renders with VMD offscreen).
+  **In progress (uncommitted, in the working tree):** the POPC membrane in water/ethanol
+  (`docs/src/tutorials/files/membrane/`; the extended POPC conformation is residue 10 of
+  ComplexMixturesExamples example 3) does not pack: lipids alone fail at 64–75 Å²/lipid,
+  even with head/tail planes 47% of the lipid length apart; Fortran does worse; our
+  `Membrane` recipe fails with this POPC too. To study (less dense membranes; chains as
+  separate molecules; flexibility). The vesicle and lipid nanotube inputs are written but
+  not run; polymer in DMF has files only. Not started: the Zika virion tutorial (its input
+  packs NaW twice; the last block, under "Chloride", should probably be ClW), the
+  50%-rule SVG and recipe default, and the very large (10⁶–10⁷ atoms) system experiment.
