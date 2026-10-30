@@ -9,6 +9,14 @@ makedocs(
         "Stable" => [
             "Home" => "index.md",
         ],
+        "Tutorials" => [
+            "Overview" => "tutorials/index.md",
+            "Water and urea" => "tutorials/mixture.md",
+            "Water–chloroform interface" => "tutorials/interface.md",
+            "Lipid bilayer" => "tutorials/bilayer.md",
+            "Spherical vesicle" => "tutorials/spherical.md",
+            "Solvated protein" => "tutorials/solvprotein.md",
+        ],
         "Experimental" => [
             "Home" => "experimental/index.md",
             "Input files" => "experimental/input_files.md",

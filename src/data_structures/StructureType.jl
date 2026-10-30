@@ -115,8 +115,12 @@ _atom_position(atom::Atom, ::Val{D}, ::Type{T}) where {D,T} = SVector{D,T}(ntupl
 
 Build a `StructureType` for `number` copies of the molecule read from the PDB file
 `filename`, without going through an input file. Every constraint in `constraints`
-applies to the whole molecule (for per-atom constraints, build a `StructureType`
-directly with its keyword constructor).
+applies to the whole molecule.
+
+`atom_constraints` gives constraints that apply only to some atoms of the molecule (as
+the `atoms ... end atoms` blocks of an input file): a vector of `indices => constraints`
+pairs, with the indices of the atoms in the structure file and one constraint or a
+vector of them. For example, `atom_constraints = [[31, 32] => BelowPlane([0,0,1], 2.0)]`.
 
 `radius` sets a uniform atom radius; if not given, it defaults to `tolerance/2` (so
 that two touching atoms' radii sum to `tolerance`, matching the input file default).
@@ -137,6 +141,7 @@ julia> st = structure_type("water.pdb"; number=1000, constraints=[InsideBox([0,0
 function structure_type(filename::String;
     number::Int,
     constraints::Vector{<:Constraint} = Constraint[],
+    atom_constraints::AbstractVector{<:Pair} = Pair[],
     tolerance::Real = 2.0,
     radius::Union{Nothing,Real} = nothing,
     fixed::Union{Nothing,Tuple} = nothing,
@@ -163,7 +168,23 @@ function structure_type(filename::String;
     natoms = length(atoms)
     reference_coordinates = [_atom_position(at, Val(D), T) for at in atoms]
     radii = fill(T(something(radius, tolerance / 2)), natoms)
+    per_atom_constraints = atom_constraints
+    constraints = Constraint[constraints...]
     atom_constraints = [collect(1:length(constraints)) for _ in 1:natoms]
+    for (indices, cs) in per_atom_constraints
+        for i in indices
+            (1 <= i <= natoms) || throw(ArgumentError("""\n
+                atom_constraints: atom index $i out of range (the molecule has $natoms atoms).
+
+            """))
+        end
+        for c in (cs isa Constraint ? (cs,) : cs)
+            push!(constraints, c)
+            for i in indices
+                push!(atom_constraints[i], length(constraints))
+            end
+        end
+    end
 
     fixed_data = if isnothing(fixed)
         zero(FixedMoleculeData{D,T})
