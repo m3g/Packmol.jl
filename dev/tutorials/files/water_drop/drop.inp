@@ -1,0 +1,19 @@
+#
+# A drop of water on graphite: the cap of a sphere with a radius of 30 Å,
+# above z = 2 (1700 water molecules, 1 g/mL), on three fixed layers of graphene.
+#
+tolerance 2.0
+output drop.pdb
+
+# Graphite, kept at the coordinates of the file (surface at z = 0)
+structure graphite.pdb
+  number 1
+  fixed 0. 0. 0. 0. 0. 0.
+end structure
+
+# The drop: inside a sphere centered on the surface, above the surface
+structure water.pdb
+  number 1700
+  inside sphere 0. 0. 0. 30.
+  above plane 0. 0. 1. 2.
+end structure
