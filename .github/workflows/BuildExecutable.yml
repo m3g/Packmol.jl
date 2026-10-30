@@ -1,0 +1,52 @@
+name: Build executable
+# Builds the `packmol` executable with juliac (juliac/build.jl), tests it
+# (juliac/test_executable.jl), and uploads the bundle as an artifact.
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '*'
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - macos-latest
+          - macos-15-intel
+          - windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          # The Julia version the executable is built with
+          version: '1.13.2'
+      - uses: julia-actions/cache@v3
+      - name: instantiate
+        run: julia --project=juliac -e 'using Pkg; Pkg.instantiate()'
+      - name: build
+        run: julia --project=juliac juliac/build.jl
+      - name: test
+        run: julia --project=juliac juliac/test_executable.jl
+      - name: archive
+        run: |
+          name=packmol-${{ runner.os }}-${{ runner.arch }}
+          tar czf $name.tar.gz -C juliac/build .
+          echo "archive=$name" >> $GITHUB_ENV
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.archive }}
+          path: ${{ env.archive }}.tar.gz

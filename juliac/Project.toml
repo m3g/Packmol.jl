@@ -1,0 +1,15 @@
+[deps]
+CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
+JuliaC = "acedd4c2-ced6-4a15-accc-2607eb759ba2"
+LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
+PDBToolsBase = "c8914394-62c2-4233-bff1-d1ad7c5159d7"
+Packmol = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[sources]
+Packmol = {path = ".."}
+
+[compat]
+JuliaC = "0.3.12"
+julia = "1.13"

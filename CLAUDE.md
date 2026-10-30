@@ -72,6 +72,7 @@ src/
     concentration_units.jl
 ext/
   PackmolJLLExt.jl                    # run_packmol_legacy methods (loaded with Packmol_jll)
+juliac/                               # Executable: app.jl, build.jl (juliac), test_executable.jl
 ```
 
 ## Key Dependencies
@@ -218,8 +219,7 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] `movefrac` control: fraction of bad molecules moved per iteration
 - [x] `<output>_FORCED`: constraint-only adjustment of the best solution, written when packing fails
 - [ ] Convergence criteria based on `tolerance_precision` and `constraint_precision`
-- [ ] Iteration output: write intermediate configurations every `writeout` steps
-- [ ] `writebad`: write output even when packing fails
+- [N] `writeout` as a time interval and `writebad` (the output is written after every improved loop)
 
 **Note on optimizer choice**: The Fortran Packmol uses GENCAN (large-scale bound-constrained
 optimizer with truncated Newton steps). The Julia version uses SPGBox (spectral projected gradient).
@@ -375,9 +375,10 @@ reachable from it to be resolved at compile time. In the engine code:
   where the dimension must be static (use `SMatrix{D,D,T}`);
 - no `readlines` (use a `readline` loop); pass a caught exception (typed `Any`) only to
   `@nospecialize` functions, and narrow `AbstractString` fields (`e.msg`) to `String` before printing.
-To check (`juliac` is a `Pkg.Apps` app; `JULIA_APPS_JULIA_CMD` selects the Julia it runs with):
-`JULIA_APPS_JULIA_CMD=$(which julia) juliac --output-exe packmol --project . --experimental --trim=safe --bundle build app.jl`,
-with `app.jl` defining `(@main)(ARGS) = Packmol.CLI.main(ARGS)`. Requires the trim-compatible
+To check, build and test the executable (`juliac/`; the CI workflow `BuildExecutable.yml` does
+the same on Linux, macOS and Windows):
+`julia --project=juliac juliac/build.jl` (bundle in `juliac/build`), then
+`julia --project=juliac juliac/test_executable.jl`. Requires the trim-compatible
 versions of CellListMap (`show_progress = nothing` default, typed task waits) and SPGBox
 (`iprint = nothing` default).
 
