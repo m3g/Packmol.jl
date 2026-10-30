@@ -50,14 +50,14 @@ function set_initial_approximation!(
     # is to skip the rest of this pipeline entirely — including step 1's
     # random placement, which would otherwise unconditionally overwrite
     # those positions before ever checking this flag.
-    restart && return packmol_system
+    restart && return true
 
     # Step 1: Random initial placement
     initialize_molecules!(packmol_system, RNG)
 
     # Step 2: Constraint-only optimization (no movebad) to push molecules
     # toward feasible regions, then compute CM bounds from the result.
-    adjust_constraints!(packmol_system, free_mol_indices, RNG; domovebad=false, buffers)
+    converged = adjust_constraints!(packmol_system, free_mol_indices, RNG; domovebad=false, buffers)
     # Use only constraint-satisfying molecules for bounds: outliers still at
     # sidemax (±1000 Å) would otherwise produce a huge bounding box, causing
     # CellListMap to allocate a ~10⁹-cell grid in subsequent steps.
@@ -73,7 +73,7 @@ function set_initial_approximation!(
     # Step 4: Full constraint adjustment with the solver and movebad,
     # randomizing bad molecules within the CM bounds from step 2
     if packmol_system.adjust_constraints_on_init
-        adjust_constraints!(packmol_system, free_mol_indices, RNG;
+        converged = adjust_constraints!(packmol_system, free_mol_indices, RNG;
             cm_lo_type=cm_min, cm_hi_type=cm_max, buffers,
         )
     end
@@ -83,5 +83,6 @@ function set_initial_approximation!(
     # This prevents a huge bounding box that would blow up CellListMap memory.
     _clamp_molecules_to_bounds!(packmol_system, free_mol_indices, cm_min, cm_max, RNG)
 
-    return packmol_system
+    # Whether the constraints were satisfied (see `packmol`)
+    return converged
 end

@@ -44,6 +44,9 @@
     optim_print_level::Int = 0
     chkgrad::Bool = false
     check::Bool = false
+    # Pack even if the initial approximation does not satisfy the constraints (input
+    # keyword `continue_failed_initial_packing`); otherwise `packmol` stops there.
+    continue_failed_initial_packing::Bool = false
     # Whole-system restart (Fortran's `restart_from`/`restart_to` with no
     # structure type, i.e. index 0): `nothing` means unset. When
     # `restart_from` is set, packmol() skips the whole initial-approximation
@@ -366,6 +369,8 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.chkgrad = true
     elseif keyword == "check"
         sys.check = true
+    elseif keyword == "continue_failed_initial_packing"
+        sys.continue_failed_initial_packing = true
     elseif keyword == "restart_from"
         sys.restart_from = expanduser(_parse_value(String, "restart_from", val))
     elseif keyword == "restart_to"
@@ -438,7 +443,7 @@ const _global_keywords = (
     "constraint_precision", "stall_tolerance", "maxit", "nloop", "movefrac", "nthreads", "periodic_boundary_style", "max_random_init",
     "adjust_constraints_on_init", "add_amber_ter", "amber_ter_preserve", "add_box_sides",
     "ignore_conect", "randominitialpoint", "seed", "avoid_overlap", "writeout", "writebad",
-    "optimization_print_level", "chkgrad", "check", "pbc", "unitcell",
+    "optimization_print_level", "chkgrad", "check", "continue_failed_initial_packing", "pbc", "unitcell",
 )
 
 # Keywords of a `structure ... end structure` block with no use in Packmol.jl

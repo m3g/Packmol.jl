@@ -10,6 +10,9 @@
 #    within the per-type CM bounds (if provided)
 # 4. Repeat up to `nloop` times until all constraints are satisfied.
 #
+# Returns `true` if the constraints are satisfied (and there are no overlaps with fixed
+# molecules), `false` otherwise.
+#
 function adjust_constraints!(
     packmol_system::PackmolSystem{D,T},
     free_mol_indices::Vector{Int},
@@ -25,7 +28,7 @@ function adjust_constraints!(
     buffers::Union{Nothing,MemoryBuffers} = nothing,
 ) where {D,T}
     nfree = length(free_mol_indices)
-    nfree == 0 && return packmol_system
+    nfree == 0 && return true
 
     # Check if there are any constraints to satisfy
     has_constraints = false
@@ -35,7 +38,7 @@ function adjust_constraints!(
             break
         end
     end
-    has_constraints || return packmol_system
+    has_constraints || return true
 
     natoms = length(packmol_system.atoms)
     atom_positions = isnothing(buffers) ? Vector{SVector{D,T}}(undef, natoms) : buffers.atom_positions
@@ -225,7 +228,7 @@ function adjust_constraints!(
         total_badness = sum(badness[imol] for imol in free_mol_indices)
         if total_badness < precision
             @_printf("  Adjustment for %s converged at loop %d (f = %.2e)\n", checking_str, iloop, total_badness)
-            return packmol_system
+            return true
         end
 
         # Identify bad molecules — only among active_mols: anything outside
@@ -242,7 +245,7 @@ function adjust_constraints!(
 
         if nbad == 0
             @_printf("  All molecules satisfy %s at loop %d\n", checking_str, iloop)
-            return packmol_system
+            return true
         end
 
         # Sort bad molecules from worst to best
@@ -289,5 +292,5 @@ function adjust_constraints!(
     final_badness = molecule_badness(packmol_system, atom_positions, fixed_sys, tol; buffers)
     total_badness = sum(final_badness[imol] for imol in free_mol_indices)
     @_printf("  WARNING: adjustment for %s did not fully converge after %d loops (f = %.2e)\n", checking_str, nloop, total_badness)
-    return packmol_system
+    return false
 end
