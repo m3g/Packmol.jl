@@ -34,4 +34,6 @@ deploydocs(
     target = "build",
     branch = "gh-pages",
     versions = ["stable" => "v^", "v#.#"],
+    # Pull requests from branches of this repository are published to previews/PR<number>
+    push_preview = true,
 )
