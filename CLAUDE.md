@@ -94,6 +94,10 @@ juliac/                               # Executable: app.jl, build.jl (juliac), t
 Each tab of the top menu (`docs/make.jl`) is a directory of `docs/src/` with one page per
 topic (its dropdown items): Home, Tutorials, Input files, Constraints, Periodic boundary
 conditions, Julia API (ending with Reference) and Recipes (ending with Concentration units).
+Every constraint and periodic cell page ends with an "Example" section: the structure
+block of an input file, then the same system as an `@example` block that packs it (in a
+fraction of a second) and shows it with `PDBTools.visualize` (structure files copied from
+`Packmol.RecipesDirectory` in a hidden `@setup` block). New constraints get one too.
 `docs/src/tutorials/` holds the classic Packmol examples (water–urea, interface, bilayer,
 vesicle, solvated protein), each with a command-line and a Julia section; keep both paths
 equivalent when changing the input syntax or the Julia API.

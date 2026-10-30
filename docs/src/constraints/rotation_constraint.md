@@ -48,3 +48,37 @@ API](../julia_api/index.md), it is the `constrain_rotation` keyword of
     `constrain_rotation x 0 10` alone bounds the tilt of the z axis of the
     molecule (as given in its file), while here it keeps the longest axis of
     the molecule within 10° of x.
+
+## Example
+
+40 octane molecules in a box, with their longest axis within 10° of the z axis:
+
+```
+structure octane.pdb
+    number 40
+    inside box 0. 0. 0. 30. 30. 30.
+    constrain_rotation z 0. 10.
+end structure
+```
+
+The same system, packed with the [Julia API](../julia_api/index.md) and shown with the
+`visualize` function of [PDBTools.jl](https://github.com/m3g/PDBTools.jl):
+
+```@setup rotation
+using Packmol
+cp(joinpath(Packmol.RecipesDirectory, "test", "data", "octane.pdb"), "octane.pdb"; force = true)
+```
+
+```@example rotation
+using Packmol, PDBTools
+octane = structure_type("octane.pdb";
+    number = 40,
+    constraints = [InsideBox([0., 0., 0.], [30., 30., 30.])],
+    constrain_rotation = Dict(:z => (0.0, 10.0)),
+)
+system = PackmolSystem([octane]; tolerance = 2.0, output = "rotation.pdb")
+redirect_stdio(stdout = devnull, stderr = devnull) do # hide
+packmol(system)
+end # hide
+visualize(get_atoms(system); unitcell = UnitCell([30., 30., 30.]))
+```

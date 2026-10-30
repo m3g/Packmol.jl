@@ -307,3 +307,14 @@ end
         2. "water.pdb" - n_atoms = 3 - n_mols = 100 - n_constraints = 1"""
     @test !endswith(s, "\n")
 end
+
+@testitem "PackmolSystem: unitcell without unitcell_center" setup=[TestFiles] begin
+    using StaticArrays: SVector
+    water = TestFiles.test_file("structure_files/water.pdb")
+    sys = PackmolSystem([structure_type(water; number=10)]; output=tempname() * ".pdb",
+        unitcell=dodecahedral_unitcell(Float64, 15.0))
+    @test sys.unitcell_center == SVector(0.0, 0.0, 0.0)
+    @test redirect_stdout(devnull) do
+        packmol(sys; iprint=1000)
+    end.status == :packing_ready
+end

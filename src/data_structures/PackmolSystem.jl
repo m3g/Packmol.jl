@@ -222,6 +222,10 @@ function PackmolSystem(
     if haskey(kw, :restart_from)
         kw = merge(kw, (; restart_from=_restart_source(kw.restart_from)))
     end
+    # A unit cell without a center is centered at the origin (as `unitcell` in input files)
+    if !isnothing(unitcell_raw) && !haskey(kw, :unitcell_center)
+        kw = merge(kw, (; unitcell_center=zero(SVector{D,T})))
+    end
     return PackmolSystem{D,T}(;
         structure_types, atoms, molecule_positions, nmols,
         input_file, output_file=output, kw...,

@@ -2,9 +2,13 @@
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterCodeBlocks = "b6400b83-267f-4b55-9fd8-bffc853bdfd8"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
+PDBTools = "e29189f1-7114-4dbd-93d0-c5673a921a58"
 PDBToolsBase = "c8914394-62c2-4233-bff1-d1ad7c5159d7"
 Packmol = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
 
 [sources]
 Documenter = {rev = "top_menu_from_pages", url = "https://github.com/lmiq/Documenter.jl"}
 Packmol = {path = ".."}
+
+[compat]
+PDBTools = "4.1"

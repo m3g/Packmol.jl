@@ -4,7 +4,15 @@ push!(LOAD_PATH, "../src/")
 makedocs(
     modules = [Packmol],
     sitename = "Packmol.jl",
-    format = Documenter.HTML(top_menu = true),
+    format = Documenter.HTML(
+        top_menu = true,
+        # The interactive 3D views of the examples are embedded in the pages
+        example_size_threshold = nothing,
+        size_threshold_ignore = [
+            joinpath(dir, file) for dir in ("constraints", "periodic_boundary_conditions")
+            for file in readdir(joinpath(@__DIR__, "src", dir)) if endswith(file, ".md")
+        ],
+    ),
     plugins = [CodeBlocks()],
     pages = [
         "Home" => [
@@ -29,6 +37,7 @@ makedocs(
         ],
         "Constraints" => [
             "Overview" => "constraints/index.md",
+            "Fixed molecules" => "constraints/fixed.md",
             "Box" => "constraints/box.md",
             "Cube" => "constraints/cube.md",
             "Sphere" => "constraints/sphere.md",

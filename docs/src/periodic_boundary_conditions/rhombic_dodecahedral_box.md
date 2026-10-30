@@ -21,3 +21,35 @@ convert atomic coordinates between them (analogous to GROMACS's `trjconv
 -ur compact` vs `-ur rect`): useful for visualization or analysis centered
 on the solute, where the more sphere-like dodecahedral shape reads more
 naturally than the sheared parallelepiped.
+
+## Example
+
+640 water molecules (about 1 g/mL) in a rhombic dodecahedron with `d = 30` Å, shown in the dodecahedral shape:
+
+```
+pbc dodecahedral 0. 0. 0. 30.
+
+structure water.pdb
+    number 640
+end structure
+```
+
+The same system, packed with the [Julia API](../julia_api/index.md) and shown with the
+`visualize` function of [PDBTools.jl](https://github.com/m3g/PDBTools.jl):
+
+```@setup dodecahedral
+using Packmol
+cp(joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb"), "water.pdb"; force = true)
+```
+
+```@example dodecahedral
+using Packmol, PDBTools
+water = structure_type("water.pdb"; number = 640)
+system = PackmolSystem([water]; tolerance = 2.0, output = "dodecahedral.pdb",
+    unitcell = dodecahedral_unitcell(Float64, 30.))
+redirect_stdio(stdout = devnull, stderr = devnull) do # hide
+packmol(system)
+end # hide
+triclinic_to_dodecahedral(system) # the shape of the output
+visualize(get_atoms(system))
+```
