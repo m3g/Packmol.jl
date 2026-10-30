@@ -9,6 +9,9 @@ using SPGBox: spgbox!
     f::T
     g::Vector{MoleculePosition{D,T}}
     dmin::T
+    # Largest overlap `r_i + r_j - d` of a pair, with the radii of the atoms (not the
+    # inflated working radii): the convergence criterion
+    max_overlap::T
     fmol::Vector{T} # contribution of each molecule to the function value
     # Auxiliary array for gradient: carries the gradient relative to the cartesian coordinates of each atom
     gxcar::Vector{SVector{D,T}}
@@ -28,6 +31,7 @@ function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
         f = zero(T),
         g = zero(packmol_system.molecule_positions),
         dmin = typemax(T),
+        max_overlap = typemin(T),
         fmol = zeros(T, packmol_system.nmols),
         gxcar = fill(zero(SVector{D,T}), natoms),
         max_constraint_penalty = zero(T),
@@ -52,6 +56,7 @@ function CellListMap.copy_output(x::InteratomicDistanceFG{D,T}) where {D,T}
         x.f,
         MoleculePosition{D,T}[],  # empty — not used during pairwise
         x.dmin,
+        x.max_overlap,
         zeros(T, length(x.fmol)),
         fill(zero(SVector{D,T}), length(x.gxcar)),
         zero(T),  # max_constraint_penalty — not used by CellListMap threads
@@ -62,6 +67,7 @@ end
 function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,T}
     output.f = zero(T)
     output.dmin = typemax(T)
+    output.max_overlap = typemin(T)
     output.max_constraint_penalty = zero(T)
     if _is_thread_copy(output)
         _zero_touched!(output)
@@ -88,6 +94,7 @@ end
 function CellListMap.reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
     x.f += y.f
     x.dmin = min(x.dmin, y.dmin)
+    x.max_overlap = max(x.max_overlap, y.max_overlap)
     x.fmol .+= y.fmol
     x.gxcar .+= y.gxcar
     return x
@@ -107,10 +114,12 @@ function CellListMap.reduce_output!(
 ) where {D,T}
     output.f = zero(T)
     output.dmin = typemax(T)
+    output.max_overlap = typemin(T)
     ntouched = 0
     for ot in output_threaded
         output.f += ot.f
         output.dmin = min(output.dmin, ot.dmin)
+        output.max_overlap = max(output.max_overlap, ot.max_overlap)
         ntouched += length(ot.touched_atoms) + length(ot.touched_mols)
     end
     nmols = length(output.fmol)
@@ -168,9 +177,9 @@ end
 # toward its own floor (its user-specified or default radius) as improvement
 # stalls, and is fattened back up when its molecule is relocated by
 # movebad! (see packmol_main.jl). `fg.dmin` tracks the true (unscaled)
-# minimum distance regardless of `atom_radii`, so convergence checks against
-# the real tolerance are unaffected by this internal optimization-target
-# adjustment.
+# minimum distance and `fg.max_overlap` the largest overlap with the radii of the
+# atoms, regardless of `atom_radii`, so convergence checks are unaffected by this
+# internal optimization-target adjustment.
 function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_system, atom_radii)
     (; x, y, i, j, d2) = pair
     iatom = packmol_system.atoms[i]
@@ -181,6 +190,7 @@ function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_sy
     tol = atom_radii[i] + atom_radii[j]
     d = sqrt(d2)
     fg.dmin = min(d, fg.dmin)
+    fg.max_overlap = max(fg.max_overlap, iatom.radius + jatom.radius - d)
     if d < tol
         # Function value: add to total function value and to
         # molecular contributions
@@ -333,7 +343,7 @@ function _compute_positions_and_constraints_for_mols!(
                 # Wrap the molecule's CM once (not each atom's own absolute
                 # position independently) — see the comment on
                 # `_constraint_fg!` below for why this matters.
-                wrapped_cm = HASPBC ? wrap_to_center(cm, unitcell, unitcell_center) : cm
+                wrapped_cm = HASPBC ? _wrap_cm(cm, unitcell, unitcell_center) : cm
                 has_constraints = !isempty(st.constraints)
                 fmol_local = zero(T)
                 for j in 1:natoms_st
@@ -379,6 +389,23 @@ function wrap_to_center(x::SVector{D,T}, unitcell::AbstractMatrix, center::SVect
     half = SVector{D,T}(ntuple(_ -> T(0.5), D))
     offset = uc * half
     return CellListMap.wrap_to_first(x - center + offset, uc) + center - offset
+end
+
+#
+# The image of the center of mass of a molecule in which its constraints are
+# evaluated (and its atoms are given to the cell lists). A center of mass in the
+# closed cell is not moved: the optimizer bounds the centers of mass to the closed
+# cell (see `packmol`), and `wrap_to_center` maps the upper faces of the cell to
+# the lower ones. A molecule pushed against an upper bound would otherwise be
+# evaluated on the opposite face of the cell, where a non-periodic constraint
+# (e.g. `over plane`) can be violated by a whole cell length, with a gradient
+# that the bound doesn't let it follow: the molecule is trapped.
+#
+function _wrap_cm(cm::SVector{D,T}, unitcell::AbstractMatrix, center::SVector{D,T}) where {D,T}
+    uc = SMatrix{D,D,T}(unitcell)
+    frac = uc \ (cm - center)
+    all(f -> abs(f) <= T(0.5), frac) && return cm
+    return wrap_to_center(cm, unitcell, center)
 end
 
 #
@@ -450,7 +477,7 @@ function _update_cl_positions!(
             if HASPBC
                 imol = packmol_system.atoms[iat].molecule_index
                 cm = packmol_system.molecule_positions[imol].cm
-                cm_shift = wrap_to_center(cm, unitcell, unitcell_center) - cm
+                cm_shift = _wrap_cm(cm, unitcell, unitcell_center) - cm
                 cl_xpositions[iat] = atom_positions[iat] + cm_shift
             else
                 cl_xpositions[iat] = atom_positions[iat]
@@ -525,7 +552,7 @@ function _constraint_fg!(
                     # atom only ever crosses a wrap seam when its molecule's
                     # CM does.
                     cm = packmol_system.molecule_positions[atom.molecule_index].cm
-                    x = x + (wrap_to_center(cm, unitcell, unitcell_center) - cm)
+                    x = x + (_wrap_cm(cm, unitcell, unitcell_center) - cm)
                 end
                 st = packmol_system.structure_types[atom.structure_type_index]
                 atom_penalty = zero(T)

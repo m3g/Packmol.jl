@@ -99,9 +99,12 @@ function _apply_fixed_center!(
         elseif center == :geometric
             move!(reference_coordinates, fixed.position)
         else
-            cm = mean(reference_coordinates)
-            move!(reference_coordinates, fixed.position)
-            reference_coordinates .+= Ref(cm)
+            # Without `center`/`centerofmass`, the molecule is rotated about the origin of
+            # its coordinates and then translated, as in Fortran Packmol
+            R = eulermat(fixed.position.angles)
+            for i in eachindex(reference_coordinates)
+                reference_coordinates[i] = R * reference_coordinates[i] + fixed.position.cm
+            end
         end
     elseif center != :none
         throw(ArgumentError("option `center`/`centerofmass` cannot be set without a fixed position"))
@@ -228,6 +231,23 @@ function _file_format(filename::AbstractString, filetype::String)
     """))
 end
 
+# Keywords of a structure block that are not used here: deprecated keywords and global
+# keywords (which Fortran Packmol also accepts inside structure blocks) are ignored with
+# a warning, and anything else is an error (e.g. a misspelled keyword).
+function _other_structure_keyword(keyword::AbstractString, filename::AbstractString)
+    if haskey(packmol_legacy_keywords, keyword)
+        _warn(packmol_legacy_keywords[keyword])
+    elseif keyword in _global_keywords
+        _warn("$keyword is a global keyword, and was ignored inside the structure block of $(basename(filename)).")
+    else
+        throw(ArgumentError("""\n
+            Keyword $keyword not recognized, in the structure block of $(basename(filename)).
+
+        """))
+    end
+    return nothing
+end
+
 # The segment identifier of the PDB format has at most 4 characters
 _check_segid(::Nothing) = nothing
 function _check_segid(segid::String)
@@ -326,6 +346,10 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
             end
         elseif !atoms_block && keyword == "radius"
             radii .= parse(T, values[1])
+        elseif keyword in ("atoms", "end", "radius")
+            # `atoms` blocks are read below
+        else
+            _other_structure_keyword(keyword, filename)
         end
     end
     # If molecule is fixed, apply transformation to obtain the reference coordinates

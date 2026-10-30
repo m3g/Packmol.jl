@@ -163,6 +163,7 @@ function packmol(
     _println(hash_line)
     _println()
     _check_fixed_inside_cell(packmol_system)
+    _check_restart_files(packmol_system)
 
     # Build index of free (non-fixed) molecules
     free_mol_indices = Int[]
@@ -195,14 +196,14 @@ function packmol(
     # read, since a PDB-based restart_from needs them for its rigid-body
     # alignment.
     #
-    # A *whole-system* restart source (PDB or raw) is whatever a prior
+    # A *whole-system* restart source is whatever a prior
     # `write_output`/`_write_restart_files` call wrote for the entire
     # system, so it lists every molecule of every structure type, fixed
     # ones included, interleaved in structure-declaration order — not just
     # the free ones. `segments` below therefore spans every structure type
     # (not just the non-fixed ones), with `extract` (the tuple's 4th field)
     # marking which ones to actually read a position back from; a fixed
-    # segment's atoms/lines still have to be counted and skipped over so the
+    # segment's atoms still have to be counted and skipped over so the
     # expected total and the file's actual layout line up (see
     # `_restart_positions_from_atoms`/`_restart_positions`), even though its
     # own position is discarded.
@@ -211,7 +212,7 @@ function packmol(
     if !isnothing(restart_from)
         _println("  Restarting all free molecules from: ", _restart_source_name(restart_from))
         segments = Tuple{Int,Int,Vector{SVector{D,T}},Bool}[
-            (st.number_of_molecules, st.natoms, st.reference_coordinates, !st.fixed.fixed)
+            (_ncopies(st), st.natoms, st.reference_coordinates, !st.fixed.fixed)
             for st in packmol_system.structure_types
         ]
         positions = _restart_positions(restart_from, segments, MoleculePosition{D,T})
@@ -362,7 +363,9 @@ function packmol(
     # loss of generality — every reachable physical configuration already has
     # a representative inside that one period, via wrapping — it just forces
     # SPGBox to find it directly instead of possibly overshooting through
-    # several periods and having to claw back. `nothing` (not just ±Inf
+    # several periods and having to claw back. The bounds are closed, and the
+    # upper faces belong to the cell: centers of mass inside the closed cell are
+    # not wrapped when evaluating constraints (`_wrap_cm`). `nothing` (not just ±Inf
     # vectors) when neither PBC nor any structure type's rotation is
     # constrained, so SPGBox skips the bound-checking overhead entirely in
     # that common case.
@@ -538,6 +541,7 @@ function packmol(
         # have under the working atom_radii.)
         f_true_loop_end = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
         dmin = min(cl_system.fg.dmin, cl_system.cutoff)
+        max_overlap = cl_system.fg.max_overlap
         fimp_within_loop = clamp(-100 * (f_true_loop_end - f_true_loop_start) / f_true_loop_start, T(-99.99), T(99.99))
         fimprov = clamp(-100 * (f_true_loop_end - bestf) / bestf, T(-99.99), T(99.99))
         improved = f_true_loop_end < bestf
@@ -553,8 +557,10 @@ function packmol(
         # molecules to relocate.
         fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
 
-        # Check convergence: both tolerance and constraint precisions must be satisfied
-        tol_ok = tol - dmin < packmol_system.tolerance_precision
+        # Check convergence: both tolerance and constraint precisions must be satisfied.
+        # The overlap of each pair is measured with the radii of its atoms (by default
+        # tolerance/2, so that the criterion is `tolerance - dmin < tolerance_precision`).
+        tol_ok = max_overlap < packmol_system.tolerance_precision
         const_ok = max_const < packmol_system.constraint_precision
 
         # Report why this chunk's optimization ended. This is purely
@@ -853,7 +859,7 @@ function packmol_callback(
         (" Function evaluations", isnothing(nfeval) ? nfeval : "$nfeval / $nfevalmax"),
         (" Projected gradient norm", gnorm),
     ))
-    tol_ok = tol - dmin < tolerance_precision
+    tol_ok = cl_system.fg.max_overlap < tolerance_precision
     const_ok = max_const < constraint_precision
     if tol_ok && const_ok
         return true

@@ -96,42 +96,35 @@ function _cryst1_lines(packmol_system::PackmolSystem{D,T}, atom_positions) where
 end
 
 #
-# Restart file I/O (Fortran Packmol's `restart_from`/`restart_to`): a plain
-# text dump, one line per molecule, of that molecule's raw optimization
-# variables (center of mass + Euler angles, in radians) — not a PDB file.
-# Written every time `write_output` runs (matching Fortran, which writes
-# restart files at the top of its own `output` subroutine, called for every
-# intermediate/best-so-far write as well as the final one), and read back
-# in `packmol()` before the initial-approximation pipeline runs, so a
-# restart resumes packing from exactly where the previous run left off
-# instead of re-deriving a starting point.
+# Restarts (`restart_from`/`restart_to`) use coordinate files (PDB, XYZ or mmCIF, by
+# the file extension): `restart_to` writes the coordinates of the system (or of one
+# structure type) every time the output is written, and `restart_from` recovers the
+# position of each molecule from coordinates (see `_align_molecule`). The restart
+# files of Fortran Packmol (raw center of mass and Euler angles) are not supported.
 #
-function _write_restart(filename::AbstractString, positions::AbstractVector{MoleculePosition{D,T}}) where {D,T}
-    open(expanduser(filename); write=true) do io
-        for mp in positions
-            for v in mp.cm
-                @printf(io, " %23.16e", v)
-            end
-            for v in mp.angles
-                @printf(io, " %23.16e", v)
-            end
-            println(io)
-        end
-    end
-    return filename
-end
+_restart_file_format(path::AbstractString) = _file_format(path, "")
 
-function _read_restart(filename::AbstractString, n::Int, ::Type{MoleculePosition{D,T}}) where {D,T}
-    positions = Vector{MoleculePosition{D,T}}(undef, n)
-    open(expanduser(filename)) do io
-        for i in 1:n
-            eof(io) && error("Restart file '$filename' has fewer than the expected $n molecule lines.")
-            vals = parse.(T, split(readline(io)))
-            length(vals) < 2D && error("Restart file '$filename' line $i has fewer than $(2D) values.")
-            positions[i] = MoleculePosition(SVector{D,T}(vals[1:D]), SVector{D,T}(vals[D+1:2D]))
-        end
+function _check_restart_file(path::AbstractString, keyword::AbstractString)
+    ext = lowercase(splitext(path)[2])
+    ext in (".pdb", ".xyz", ".cif", ".mmcif") && return path
+    throw(ArgumentError("""\n
+        $keyword $path: restart files must be coordinate files (.pdb, .xyz or .cif).
+        The restart files of Fortran Packmol are not supported: restart from the
+        coordinates of a previous run (its output file, or a restart_to file).
+
+    """))
+end
+_check_restart_file(::Nothing, ::AbstractString) = nothing
+_check_restart_file(::AbstractVector{<:Atom}, ::AbstractString) = nothing
+
+function _check_restart_files(packmol_system::PackmolSystem)
+    _check_restart_file(packmol_system.restart_from, "restart_from")
+    _check_restart_file(packmol_system.restart_to, "restart_to")
+    for st in packmol_system.structure_types
+        _check_restart_file(st.restart_from, "restart_from")
+        _check_restart_file(st.restart_to, "restart_to")
     end
-    return positions
+    return nothing
 end
 
 #
@@ -141,10 +134,7 @@ end
 # `observed` (raw, uncentered) via the Kabsch algorithm: `cm` is `observed`'s
 # centroid, and `angles` is the least-squares-optimal rotation taking
 # `reference` onto `observed - cm`, decomposed back into `eulermat`'s
-# parameterization. Used for a PDB-based restart_from, where the exact
-# rigid-body transform used to generate the observed positions is unknown
-# and must be recovered rather than read out directly (unlike the raw
-# restart format, which stores it verbatim).
+# parameterization.
 #
 function _align_molecule(reference::AbstractVector{SVector{3,T}}, observed::AbstractVector{SVector{3,T}}) where {T}
     cm = sum(observed) / length(observed)
@@ -157,7 +147,7 @@ end
 # a (number_of_molecules, natoms, reference_coordinates, extract) tuple, in
 # the same order the atoms appear in `atoms` — by rigid-body-aligning every
 # molecule's atoms against its own type's template (see `_align_molecule`).
-# Used for both a `.pdb`-file restart_from and an in-memory `Vector{<:Atom}`
+# Used for both a coordinate-file restart_from and an in-memory `Vector{<:Atom}`
 # one; both go through this same function once the atoms are in hand.
 #
 # `extract` lets a segment's atoms be *skipped* (counted toward the expected
@@ -175,7 +165,7 @@ function _restart_positions_from_atoms(
 ) where {D,T}
     expected = sum(nmols * natoms for (nmols, natoms, _, _) in segments)
     length(atoms) == expected || error(
-        "Restart PDB has $(length(atoms)) atoms, expected $expected " *
+        "Restart coordinates have $(length(atoms)) atoms, expected $expected " *
         "($(join(("$nmols × $natoms" for (nmols, natoms, _, _) in segments), " + ")))."
     )
     positions = MoleculePosition{D,T}[]
@@ -192,22 +182,10 @@ function _restart_positions_from_atoms(
     return positions
 end
 
-# A `.pdb` extension (case-insensitive) selects the rigid-body-alignment
-# restart path; anything else is read as the raw Packmol restart format.
-_is_pdb_path(path::AbstractString) = lowercase(splitext(path)[2]) == ".pdb"
-
 #
 # Restart positions for one or more structure-type `segments` (see
 # `_restart_positions_from_atoms` for the tuple layout and what `extract`
-# means), dispatching on what `source` is: an in-memory atom vector (Julia
-# API only), a `.pdb` file path (rigid-body alignment against each segment's
-# template), or any other file path (the raw Packmol restart format, read
-# directly with no alignment needed since it already stores (cm, angles)
-# verbatim). The raw format mirrors the PDB path: it too has one line per
-# *molecule* for the whole system (fixed ones included, in the same
-# structure-declaration order — see `_write_restart_files`), so all
-# `sum(nmols)` lines are read and only the `extract`-flagged segments'
-# positions are kept.
+# means), from an in-memory atom vector (Julia API only) or a coordinate file.
 #
 # A restart source given as atoms (e.g. the `Structure` returned by `read_pdb`) is
 # stored as a `Vector{Atom{Nothing}}`.
@@ -222,38 +200,37 @@ function _restart_positions(source::AbstractVector{<:Atom}, segments::Vector{Tup
     _restart_positions_from_atoms(source, segments)
 end
 function _restart_positions(source::AbstractString, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}},Bool}}, ::Type{MoleculePosition{D,T}}) where {D,T}
-    if _is_pdb_path(source)
-        _restart_positions_from_atoms(Vector{Atom{Nothing}}(read_pdb(source)), segments)
-    else
-        total = sum(nmols for (nmols, _, _, _) in segments)
-        all_positions = _read_restart(source, total, MoleculePosition{D,T})
-        positions = MoleculePosition{D,T}[]
-        i = 0
-        for (nmols, _, _, extract) in segments
-            for _ in 1:nmols
-                i += 1
-                extract && push!(positions, all_positions[i])
-            end
-        end
-        positions
-    end
+    atoms, _ = _read_structure_file(source, _restart_file_format(source))
+    _restart_positions_from_atoms(atoms, segments)
 end
 
 #
 # Write any configured restart_to files (whole-system and/or per structure
-# type) from the current molecule positions. A no-op for any that aren't set.
+# type): the coordinates of `output_atoms` (the atoms of `get_atoms`), or of
+# the atoms of one structure type.
 #
-function _write_restart_files(packmol_system::PackmolSystem{D,T}) where {D,T}
-    isnothing(packmol_system.restart_to) ||
-        _write_restart(packmol_system.restart_to, packmol_system.molecule_positions)
-    imol_offset = 0
+function _write_restart_files(packmol_system::PackmolSystem, output_atoms::Vector{Atom{Nothing}})
+    restart_to = packmol_system.restart_to
+    isnothing(restart_to) || _write_coordinates(restart_to, output_atoms)
+    iat_offset = 0
     for st in packmol_system.structure_types
-        if !isnothing(st.restart_to)
-            _write_restart(st.restart_to, view(packmol_system.molecule_positions, imol_offset+1:imol_offset+st.number_of_molecules))
+        natoms = _ncopies(st) * st.natoms
+        st_restart_to = st.restart_to
+        if !isnothing(st_restart_to)
+            _write_coordinates(st_restart_to, output_atoms[iat_offset+1:iat_offset+natoms])
         end
-        imol_offset += st.number_of_molecules
+        iat_offset += natoms
     end
     return nothing
+end
+
+function _write_coordinates(filename::String, atoms::Vector{Atom{Nothing}})
+    if _restart_file_format(filename) == "xyz"
+        write_xyz(filename, Structure(atoms; title="Built with Packmol"))
+    else
+        write_pdb(filename, atoms)
+    end
+    return filename
 end
 
 #
@@ -286,6 +263,12 @@ function _wrap_molecules!(
     for st in packmol_system.structure_types
         natoms_st = st.natoms
         nmols_st = st.number_of_molecules
+        # Fixed molecules are written where they were placed (they are inside the cell)
+        if st.fixed.fixed
+            imol_offset += nmols_st
+            iat_offset += nmols_st * natoms_st
+            continue
+        end
         for i in 1:nmols_st
             imol = imol_offset + i
             mp = packmol_system.molecule_positions[imol]
@@ -441,8 +424,8 @@ written coordinates are computed (including PBC wrapping and
 `packmol_system.periodic_boundary_style`).
 """
 function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_system.output_file, write_restart::Bool=true) where {D,T}
-    write_restart && _write_restart_files(packmol_system)
     output_atoms = get_atoms(packmol_system)
+    write_restart && _write_restart_files(packmol_system, output_atoms)
     atom_positions = _positions_from_atoms(output_atoms, Val(D), T)
 
     if _file_format(output_file, packmol_system.filetype) == "xyz"

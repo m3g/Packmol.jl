@@ -73,7 +73,7 @@ rotate!(x::AbstractVector{<:SVector{3,T}}, angles::SVector{3,T}) where {T} =
 # `observed`, both already centered at their own centroid: the rotation
 # matrix R minimizing `sum(norm(R*reference[i] - observed[i])^2 for i)`.
 # `reference`/`observed` must correspond atom-for-atom (same length, same
-# order). Used to recover a molecule's (cm, angles) from a PDB restart file
+# order). Used to recover a molecule's (cm, angles) from restart coordinates
 # — see `_align_molecule` in write_output.jl.
 #
 function kabsch_rotation(reference::AbstractVector{<:SVector{3,T}}, observed::AbstractVector{<:SVector{3,T}}) where {T}
@@ -140,47 +140,31 @@ function random_move!(
 end
 
 #
-# The following function takes the vector of coordinates of a molecule, and rotates
-# and translates it to put the center of mass in the origin and the principal moment
-# of inertia (assuming all equal masses) along the z-axis. That will define the orientation
-# of the reference coordinates.
+# Center the coordinates of a molecule at the origin and rotate them to the principal
+# axes of inertia of the molecule (with equal masses): the axis of the smallest moment
+# of inertia (along which the molecule is longest) along the last axis (z in 3D), and
+# that of the largest moment along x. This is the reference orientation of the free
+# molecules, the orientation of zero Euler angles. Each axis is chosen with its largest
+# component positive, and the rotation is proper, so that aligning coordinates that are
+# already aligned does not change them.
 #
-function set_reference_coordinates!(x::AbstractVector{<:SVector{3,T}}; fixed::Tuple{Bool, String, Vector{T}}) where {T<:Real}
-    # Move center of mass to the origin
-    cm = mean(x)
-    x .= x .- Ref(cm)
-    # If the molecule is fixed, apply the transformation that sets its position, and return
-    if first(fixed)
-        # Rotate molecule according to parameters of fixed position
-        rotate!(x, fixed[3][4], fixed[3][5], fixed[3][6])
-        if fixed[2] == "absolute"
-            x .= x + Ref(SVector(fixed[3][1:3]...))
-        end
-        return x
-    end
-    # If the molecule is not fixed, rotate it to align the principal moments of inertia
-    # Inertia tensor
-    I = zeros(MMatrix{3,3,T,9})
+_largest_component_sign(v::SVector{D,T}) where {D,T} = v[argmax(abs.(v))] < 0 ? -one(T) : one(T)
+
+function set_reference_coordinates!(x::AbstractVector{<:SVector{D,T}}) where {D,T<:Real}
+    x .= x .- Ref(mean(x))
+    C = zero(SMatrix{D,D,T})
     for xi in x
-        I[1,1] += xi[2]^2 + xi[3]^2
-        I[2,2] += xi[1]^2 + xi[3]^2
-        I[3,3] += xi[1]^2 + xi[2]^2
-        I[1,2] -= xi[1] * xi[2]
-        I[1,3] -= xi[1] * xi[3]
-        I[2,3] -= xi[2] * xi[3]
+        C += xi * xi'
     end
-    I[2,1] = I[1,2]
-    I[3,1] = I[1,3]
-    I[3,2] = I[2,3]
-    I = SMatrix(I)
-    # Diagonalize
-    evals, evecs = eigen(I)
-    # Sort eigenvectors by eigenvalues
-    idx = sortperm(evals, rev=true)
-    evecs = evecs[:, idx]
-    # Rotate
+    # Eigenvalues in increasing order (the spread along each axis): the longest axis last
+    evecs = eigen(Symmetric(C)).vectors
+    signs = SVector{D,T}(ntuple(i -> _largest_component_sign(evecs[:, i]), Val(D)))
+    R = evecs .* signs'
+    if det(R) < 0
+        R = R .* SVector{D,T}(ntuple(i -> i == 1 ? -one(T) : one(T), Val(D)))'
+    end
     for i in eachindex(x)
-        x[i] = evecs' * x[i]
+        x[i] = R' * x[i]
     end
     return x
 end

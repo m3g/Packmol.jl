@@ -194,37 +194,20 @@ end
     @test sys.periodic_boundary_style == :triclinic
 end
 
-@testitem "restart file round-trip" begin
-    using StaticArrays
-
-    positions = [
-        Packmol.MoleculePosition(SVector(1.0, 2.0, 3.0), SVector(0.1, 0.2, 0.3)),
-        Packmol.MoleculePosition(SVector(-4.5, 0.0, 9.25), SVector(-1.5, 3.0, 0.0)),
-    ]
-    file = tempname()
-    Packmol._write_restart(file, positions)
-    @test isfile(file)
-    read_back = Packmol._read_restart(file, 2, Packmol.MoleculePosition{3,Float64})
-    @test read_back == positions
-    rm(file; force=true)
-
-    # Too few lines for the requested molecule count
-    short_file = tempname()
-    Packmol._write_restart(short_file, positions[1:1])
-    @test_throws ErrorException Packmol._read_restart(short_file, 2, Packmol.MoleculePosition{3,Float64})
-    rm(short_file; force=true)
+@testitem "restart files are coordinate files" begin
+    for file in ("a.pdb", "a.PDB", "dir/a.xyz", "a.cif", "a.mmcif")
+        @test Packmol._check_restart_file(file, "restart_from") == file
+    end
+    # The restart files of Fortran Packmol are not supported
+    @test_throws ArgumentError Packmol._check_restart_file("water.pack", "restart_from")
+    @test_throws ArgumentError Packmol._check_restart_file("restart", "restart_to")
+    @test isnothing(Packmol._check_restart_file(nothing, "restart_to"))
 end
 
 @testitem "PDB-based restart" setup=[TestFiles] begin
     using PDBToolsBase: read_pdb, position
     using StaticArrays
     using LinearAlgebra: norm
-
-    @test Packmol._is_pdb_path("foo.pdb")
-    @test Packmol._is_pdb_path("foo.PDB")
-    @test Packmol._is_pdb_path("/some/dir/foo.pdb")
-    @test !Packmol._is_pdb_path("foo.txt")
-    @test !Packmol._is_pdb_path("foo")
 
     water_pdb = TestFiles.test_file("structure_files/water.pdb")
     water = structure_type(water_pdb; number=3, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])

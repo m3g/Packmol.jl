@@ -139,7 +139,9 @@ end
 #
 # Center each free structure type's reference coordinates at their own
 # centroid (required for the chain rule, and for `compute_atom_positions!`'s
-# `R*ref + cm` to mean what it says). Idempotent, so calling it more than
+# `R*ref + cm` to mean what it says), oriented along their principal axes of
+# inertia (see `set_reference_coordinates!`). The coordinates of fixed molecules
+# are those given (see `_apply_fixed_center!`). Idempotent, so calling it more than
 # once is harmless — but it must run exactly once before any molecule of
 # that type is ever positioned, restart or not: skipping it (e.g. for a
 # `restart=true` run that skips the rest of `initialize_molecules!`) would
@@ -149,10 +151,7 @@ end
 #
 function _center_reference_coordinates!(packmol_system::PackmolSystem)
     for st in packmol_system.structure_types
-        if !st.fixed.fixed
-            cm = mean(st.reference_coordinates)
-            st.reference_coordinates .-= Ref(cm)
-        end
+        st.fixed.fixed || set_reference_coordinates!(st.reference_coordinates)
     end
     return packmol_system
 end
@@ -184,7 +183,9 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
                 for i in irange
                     imol_local = st_offset + i
                     if st.fixed.fixed
-                        packmol_system.molecule_positions[imol_local] = st.fixed.position
+                        # The reference coordinates of a fixed molecule already are its atom
+                        # positions (see `_apply_fixed_center!`): its position is the identity
+                        packmol_system.molecule_positions[imol_local] = zero(MoleculePosition{D,T})
                     else
                         if has_pbc
                             frac = SVector{D,T}(ntuple(_ -> rand(task_rng, T) - T(0.5), D))

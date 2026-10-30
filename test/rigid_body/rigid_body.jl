@@ -117,25 +117,41 @@ end
     using StaticArrays
     using BenchmarkTools
     using Statistics: mean
-    # A molecule not `fixed` in the input file: `set_reference_coordinates!`
-    # still requires the keyword, but never reads past `first(fixed)` in that case.
-    not_fixed = (false, "", Float64[])
+    using LinearAlgebra: det
+    # Centered, with the longest axis along z
     x = [ SVector(0.0, 0.0, 0.0), SVector(√3/3, √3/3, √3/3) ]
-    Packmol.set_reference_coordinates!(x; fixed=not_fixed)
-    @test x[1] ≈ SVector(0., 0., -0.5)
-    @test x[2] ≈ SVector(0., 0., 0.5)
-    x = [ SVector(√3/3, √3/3, √3/3), SVector(0.0, 0.0, 0.0) ]
-    Packmol.set_reference_coordinates!(x; fixed=not_fixed)
-    @test x[1] ≈ SVector(0.0, 0.0, 0.5)
-    @test x[2] ≈ SVector(0.0, 0.0, -0.5)
+    Packmol.set_reference_coordinates!(x)
+    @test x[1] ≈ SVector(0., 0., -0.5) atol = 1e-12
+    @test x[2] ≈ SVector(0., 0., 0.5) atol = 1e-12
+    # Principal axes: a rotated and translated ellipsoidal cloud of points ends up with a
+    # diagonal, increasing covariance; with a proper rotation (internal distances and
+    # handedness kept); aligning again does not change the coordinates
+    y = [SVector(cos(i), 3 * sin(2i), 0.3 * cos(5i)) for i in 1:20]
+    y = [Packmol.eulermat(SVector(0.3, 1.2, -0.7)) * v .+ 4 for v in y]
+    y0 = copy(y)
+    Packmol.set_reference_coordinates!(y)
+    C = sum(v * v' for v in y)
+    @test all(abs(C[i, j]) < 1e-10 for i in 1:3, j in 1:3 if i != j)
+    @test C[1, 1] < C[2, 2] < C[3, 3]
+    @test check_internal_distances(y, y0)
+    triple(v) = det(hcat(v[2] - v[1], v[3] - v[1], v[4] - v[1]))
+    @test triple(y) ≈ triple(y0)
+    y1 = copy(y)
+    Packmol.set_reference_coordinates!(y)
+    @test maximum(norm.(y .- y1)) < 1e-12
+    # 2D
+    z = [SVector(3 * cos(i), sin(3i)) for i in 1:10]
+    Packmol.set_reference_coordinates!(z)
+    C = sum(v * v' for v in z)
+    @test abs(C[1, 2]) < 1e-10 && C[1, 1] < C[2, 2]
     water = positions(read_pdb(TestFiles.test_file("structure_files/water.pdb")))
     water_save = copy(water)
-    not_fixed_water = (false, "", zeros(eltype(eltype(water)), 0))
-    a = @ballocated Packmol.set_reference_coordinates!($water; fixed=$not_fixed_water) samples=1 evals=1
+    a = @ballocated Packmol.set_reference_coordinates!($water) samples=1 evals=1
     @test a == 0
     # water coordinates are Float32 (as read from the PDB file), so the
     # residual from centering is limited by Float32 precision, not 1e-10.
     @test mean(water) ≈ SVector(0.0, 0.0, 0.0) atol = 1e-6
-    @test all(isapprox(v[1],0.0,atol=1e-10) for v in water)
+    # water is planar: the axis normal to its plane (the largest moment of inertia) is x
+    @test all(isapprox(v[1], 0.0, atol=1e-5) for v in water)
     @test check_internal_distances(water, water_save)
 end

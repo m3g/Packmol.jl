@@ -55,7 +55,7 @@ end structure
 | `pbc octahedral <cx cy cz d>` | Truncated octahedron periodic box of size `d` centered at `(cx,cy,cz)` — likewise stored as the equivalent triclinic cell. |
 | `unitcell <a b c α β γ>` | Triclinic periodic box, CRYST1-style (centered at the origin). |
 | `restart_from <file>` | Skip initial placement for every free molecule and read their positions from `<file>` instead — see [Restarting a run](@ref) below. Also valid inside a `structure ... end structure` block, to restart only that structure type. |
-| `restart_to <file>` | Write every free molecule's position to `<file>` each time output is written (including intermediate `writeout` writes). Also valid per structure type. |
+| `restart_to <file>` | Write the coordinates of the system to `<file>` (PDB, or XYZ by the extension) each time output is written (including intermediate `writeout` writes). Also valid per structure type. |
 
 See [Periodic boundary conditions](periodic_boundary_conditions.md) for the
 full `pbc`/`unitcell` syntax (including the dodecahedral/octahedral shapes)
@@ -98,15 +98,15 @@ end structure
 | `number <n>` | Number of copies of this molecule to pack (required). |
 | `fixed x y z beta gamma theta` | Don't pack this molecule — place it once at this position and (Euler angle) orientation and leave it fixed. `number` is optional for a fixed structure (it is a single molecule). |
 | `connect no` | Don't write the connectivity (`CONECT` records) of this structure to the output. |
-| `center` / `centerofmass` | Only valid together with `fixed`: re-center the molecule (geometric center or mass-weighted center of mass) before applying the fixed position/orientation. |
+| `center` / `centerofmass` | Only valid together with `fixed`: re-center the molecule (geometric center or mass-weighted center of mass) before applying the fixed position/orientation. Without them, the molecule is rotated about the origin of its coordinates, and then translated. (Fortran Packmol uses unit masses for `centerofmass`, so its center of mass is the geometric center.) |
 | `radius <value>` | Atom radius for every atom of this structure, overriding the default of `tolerance/2`. |
 | `resnumbers <n>` | Residue numbering scheme for the output — see [Residue numbering](@ref) below. |
 | `chain <c>` | Fix every molecule of this type to chain identifier `<c>` in the output, instead of the default auto-assigned one. |
 | `changechains` | Alternate between two auto-assigned chain identifiers every other molecule, instead of one chain for the whole type. Not compatible with `chain`. |
 | `segid <id>` | Segment identifier (at most 4 characters) for every atom of this type, in columns 73-76 of the output PDB file. Without `segid`, the segment identifiers of the structure's own PDB file are kept (blank if it has none). |
-| `constrain_rotation <axis> <center_deg> <halfwidth_deg>` | Restrict this molecule's rotation about `<axis>` (`x`, `y`, or `z`) to `<center_deg> ± halfwidth_deg` degrees, as a hard bound on the optimizer's own rotation-angle variable — not a soft penalty. Repeat once per constrained axis. |
+| `constrain_rotation <axis> <center_deg> <halfwidth_deg>` | Restrict this molecule's rotation about `<axis>` (`x`, `y`, or `z`) to `<center_deg> ± halfwidth_deg` degrees, as a hard bound on the optimizer's own rotation-angle variable — not a soft penalty. Repeat once per constrained axis. The rotations are relative to the principal axes of the molecule (see [Rotation constraint](@ref)). |
 | `restart_from <file>` | Restart only this structure type's molecules — see [Restarting a run](@ref). |
-| `restart_to <file>` | Write only this structure type's molecules to a restart file — see [Restarting a run](@ref). |
+| `restart_to <file>` | Write the coordinates of this structure type's molecules only — see [Restarting a run](@ref). |
 | `atoms <indices> ... end` | Restrict the enclosed lines (`radius`, constraints) to the listed 1-based atom indices instead of the whole molecule. |
 
 Constraint lines (`inside box`, `outside sphere`, `above plane`, ...) are
@@ -142,18 +142,19 @@ reason to use it on a large system); given inside a `structure ... end
 structure` block, they cover only that type's molecules instead, with the
 rest of the system still placed normally.
 
-`restart_from <file>` accepts two formats, chosen by `<file>`'s extension:
+Restarts use coordinate files (PDB, XYZ or mmCIF, by the extension of
+`<file>`). `restart_to <file>` writes the coordinates of the system (or of the
+structure type) each time the output is written, and `restart_from <file>`
+reads any coordinate file with the same number of atoms and molecules as the
+structure type(s) being restarted, in the same order: Packmol's own output, a
+`restart_to` file, or a configuration from a simulation. Each molecule's
+(center of mass, orientation) is recovered by rigid-body-aligning that
+structure type's own template onto the observed atom positions (the Kabsch
+algorithm), so the atoms don't need to sit at exactly the template's bond
+lengths and angles.
 
-- Anything else: Packmol's own raw restart format (plain text, one line per
-  molecule: center of mass and the three Euler angles, in radians) — what
-  `restart_to` always writes.
-- A `.pdb` file: any PDB with the same number of atoms and molecules as the
-  structure type(s) being restarted — including, but not limited to,
-  Packmol's own prior output. Each molecule's (center of mass, orientation)
-  is recovered by rigid-body-aligning that structure type's own template
-  onto the observed atom positions (the Kabsch algorithm), rather than read
-  out directly, so the atoms don't need to already sit at exactly the
-  template's bond lengths/angles.
+The restart files of Fortran Packmol (centers of mass and Euler angles) are not
+supported: restart from the coordinates of the previous run instead.
 
-Fixed molecules are never included in a restart, in either direction — their
-position is already fully determined by their own `fixed` keyword.
+A whole-system restart file includes the fixed molecules, but their positions
+are never read back: they are determined by their own `fixed` keyword.

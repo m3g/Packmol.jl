@@ -133,7 +133,8 @@ These are the building blocks everything else depends on.
 - [x] Euler angle rotation matrix (`eulermat`)
 - [x] Molecule move/rotate (`move!`, `rotate!`)
 - [x] Random molecule placement (`random_move!`)
-- [x] Reference coordinate alignment via inertia tensor (`set_reference_coordinates!`)
+- [x] Reference coordinate alignment via inertia tensor (`set_reference_coordinates!`): free molecules
+      only, longest axis along z; fixed molecules are rotated from their given coordinates
 - [x] Gradient chain rule (Cartesian -> rigid-body DOFs) - implemented and tested
 - [ ] 2D rigid body chain rule tests
 
@@ -259,10 +260,9 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 
 ### Phase 5: Advanced Features
 
-- [x] Restart capability (`restart_from`, `restart_to`, whole-system and per structure type). Raw
-      Packmol-format restart files only for now (a PDB-based restart, rigid-body-aligning each
-      molecule's template to observed atom positions, was discussed and judged feasible but not
-      yet built).
+- [x] Restart capability (`restart_from`, `restart_to`, whole-system and per structure type), with
+      coordinate files only (PDB/XYZ/mmCIF): `restart_from` rigid-body-aligns each molecule's
+      template to the observed atom positions. Fortran's raw restart files are not supported.
 - [N] Short-range tolerance (`use_short_tol`, `short_tol_dist`, etc.): deprecated, warned and ignored
 - [x] Rotation constraints (`constrain_rotation`) - implemented as hard bounds on the rotation-angle
       optimization variables (matching Fortran's own `pgencan` bound-setting), not a soft penalty.

@@ -71,6 +71,34 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
 - **D12 (2026-10-29): the minimum-distance criterion is Packmol.jl's own**
   (`tolerance - dmin < tolerance_precision`, default 0.1 Å). It is deliberately looser
   than the 0.99 × tolerance that Fortran's `runtests.jl` checks.
+  *Refined 2026-10-29 (to confirm):* the overlap of each pair is measured with the
+  radii of its atoms, `max(r_i + r_j - d) < tolerance_precision`. That's the same
+  thing with the default radii (tolerance/2), but `radius` larger than tolerance/2 is
+  now respected (it was ignored: overlaps of 0.25 Å were accepted), and a smaller
+  `radius` allows closer pairs, as in Fortran.
+- **D13 (2026-10-29): no Fortran restart files.** Restarts use coordinate files only
+  (PDB, XYZ or mmCIF, by extension): `restart_to` writes the coordinates of the system
+  (or of one structure type), and `restart_from` recovers each molecule's position from
+  coordinates by rigid-body alignment to its template. The raw format of center of mass
+  and Euler angles was removed, so Fortran restart files are not read (a clear input
+  error), and Fortran never reads Packmol.jl's.
+- **D14 (2026-10-29): Packmol.jl's own Euler angles (`eulermat`) are the only convention.**
+  Fortran's z–x–z `eulerrmat` of free molecules is not used anywhere.
+- **D15 (2026-10-29, revised by the maintainer): `constrain_rotation` constrains the
+  angle between an axis and a molecular vector**, regardless of what Fortran does.
+  `constrain_rotation z <center> <halfwidth>` keeps the angle between the z axis and a
+  vector of the molecule within `center ± halfwidth`. The vector joins the centers of
+  two sets of atoms of the molecule, given with the constraint. Fortran compatibility of
+  `constrain_rotation` is not required. Open: the input syntax, the default vector when
+  no atom sets are given (proposed: the longest principal axis), and whether the bound
+  is a penalty or a hard bound (see A5.11).
+- **D16 (2026-10-29): reference orientations.** Free molecules are oriented internally
+  along their principal axes of inertia (equal masses: the longest axis along z, the
+  largest moment along x; `set_reference_coordinates!`), which defines their zero
+  angles. Fixed molecules are rotated from
+  the given coordinates: about the origin of the coordinates, or about the geometric
+  center (`center`) or the center of mass (`centerofmass`, with the atomic masses,
+  where Fortran uses unit masses) when asked.
 
 ---
 
@@ -207,6 +235,74 @@ coordinate file formats.
 
 ---
 
+### A5. Audit round 2 (2026-10-29): Fortran and Packmol.jl run side by side
+
+This round compared outputs of the two binaries on the same inputs, not just keyword lists.
+
+Fixed (branch `fixed-molecules-compat`):
+- [x] **A5.1 Fixed molecules were placed twice.** `_apply_fixed_center!` already puts the
+  placed atoms in `reference_coordinates`, but initialization also set the molecule
+  position to `fixed.position`. The position and rotation were therefore applied a second
+  time, in both the packing objective and the output, for any fixed molecule not at the
+  origin with zero rotation (e.g. `fixed 5 -3 2 0 0 0` was written 5 Å off).
+  - Fixed molecules now have the identity position, and their reference coordinates are
+    their atoms.
+  - The output does not wrap fixed molecules (they must be inside the cell).
+  - `_collect_fixed_positions` (overlap checks) uses the same positions.
+- [x] **A5.2 `fixed` without `center`** rotated about the geometric center; Fortran
+  rotates about the origin of the coordinates (x = R·r + t). Now the same as Fortran.
+  The Euler-angle convention of `fixed` (Fortran's `eulerfixed`) already matched.
+- [x] **A5.3 Restart files** used Packmol.jl's angles while Fortran's use its
+  `eulerrmat` (z–x–z) convention. Superseded by D13: restart files are coordinate files.
+- [x] **A5.4 Misspelled keywords in structure blocks** (`numbr 10`) were silently ignored
+  (0 molecules). They are now errors. Deprecated and global keywords inside structure
+  blocks are ignored with a warning (Fortran accepts them there).
+
+Open:
+- [x] **A5.5 `constrain_rotation` semantics differ.** Fortran bounds the angles of its
+  z–x–z `eulerrmat` convention (x → θ, y → β, z → γ, `app/packmol.f90`), so for example
+  `constrain_rotation x 0 10` alone restricts the tilt of the molecule's z axis to 10°.
+  Packmol.jl bounds its own Euler angles (`eulermat`). Neither is the intended behavior:
+  replaced by D15 (A5.11).
+- [ ] **A5.6 `over/below xygauss`** constraint (= A3.4).
+- [ ] **A5.7 `writeout`/`writebad`.** In Fortran, `writeout` is a time interval in
+  seconds (default 10) for writing the best solution so far, and `writebad` also writes
+  worse points. Packmol.jl parses both but writes after every improved loop, which is
+  costly for large systems.
+- [ ] **A5.8 Parsed but without effect:** `randominitialpoint` (Fortran skips the
+  constraint fit of the initial point), `optimization_print_level`, `chkgrad`.
+  Implement them or deprecate them.
+- [x] **A5.9 `centerofmass` of fixed molecules:** Fortran sets all masses to 1, so its
+  "center of mass" is the geometric center. Packmol.jl uses atomic masses (0.05 Å
+  difference for the protein test). Kept (D16). To document (D-doc).
+- [ ] **A5.11 New `constrain_rotation` (D15).** Proposed design: the vector
+  v = cm(B) − cm(A) is a linear combination of atom positions, so the penalty on the
+  angle between v and the axis (quadratic in the violation of `center ± halfwidth`, like
+  the other constraints) has a Cartesian gradient on the atoms of A and B, and goes
+  through the existing chain rule. This replaces the hard bounds on the Euler angles
+  (`rotation_bounds`, also used to sample initial angles). Needs the syntax (D15).
+- [x] **A5.10 Performance: `mixture_pbc` was trapped by a PBC inconsistency.** The
+  centers of mass are bounded to the closed cell, but `wrap_to_center` maps the upper
+  faces to the lower ones. A urea pushed against z = +20 was evaluated for its
+  constraints at z = −20, violating `over plane 0` by the whole cell, with a gradient
+  the bound didn't let it follow. Packings took 10–400 s and failed with ~12% of the
+  seeds. Fixed with `_wrap_cm` (centers of mass in the closed cell are not wrapped).
+  Wall-clock times (s), trimmed binary vs Fortran, 2026-10-29:
+
+  | input | Fortran | Packmol.jl |
+  |---|---|---|
+  | mixture_pbc | 0.70 | 0.06 |
+  | mixture | 1.33 | 0.10 |
+  | water_box | 0.11 | 0.05 |
+  | solvprotein | 12.7 | 0.35 |
+  | solvprotein_pbc | 2.73 | 1.89 |
+  | spherical | 36.7 | 4.4 |
+  | spherical_pbc | 0.99 | 0.62 |
+  | bilayer | 26.3 | 2.5 |
+  | bilayer_pbc | 0.61 | 0.60 |
+
+  Recheck the multi-thread slowdown seen before the fix (B7).
+
 ## Workstream B: standalone executable build (and CI)
 
 - [x] **B1** Trim-safe build works locally on Linux (see Baseline).
@@ -277,6 +373,10 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
     ComplexMixtures, and restarting from `Atom` vectors.
   - **`run_packmol_legacy`** (Packmol_jll): Julia-only, and to be dropped.
   - **Interactive file dialog**: the binary has it (`pick_file`), through OS tools.
+  - **Differences from Fortran Packmol** (or a separate migration page): restart files
+    are coordinate files (D13), `constrain_rotation` bounds Packmol.jl's angles of the
+    principal-axes orientation (D15, D16), `centerofmass` uses atomic masses (D16),
+    `pbc a b c` (D11), the distance criterion (D12), deprecated keywords (D4).
   - Check whether **D=2 packing** and **other number types** (`Float32`) are reachable
     from the CLI (today it is hard-wired to `Val(3), Float64`).
 
@@ -325,3 +425,21 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
       `_collect_fixed_positions` bug.
     - `pbc a b c` now uses Fortran's convention (D11).
   - The Fortran test suite is a Julia test. Test files are at `packmol-v2`.
+- **2026-10-29** (Claude, same session): decisions D13–D16 after PR #43 (fixed molecules,
+  Fortran restart angles). Removed the raw restart format and the angle conversion of
+  PR #43: `restart_to` writes coordinates (PDB/XYZ) and `restart_from` reads any
+  coordinate file (`_check_restart_files` at parse time and in `packmol()`). Free
+  molecules are now aligned to their principal axes (`set_reference_coordinates!`,
+  dimension-generic, proper and idempotent, called from `_center_reference_coordinates!`):
+  it existed but was never called. A5.5 and A5.9 closed.
+- **2026-10-29** (Claude, same session): the maintainer revised D15 (`constrain_rotation`
+  as the angle between an axis and a vector between two atom sets; A5.11, syntax to
+  decide). Seed study of `mixture_pbc` (A5.10). The test `structure radius larger than
+  tolerance/2` exposed that convergence ignored the radii: D12 refined to a per-pair
+  overlap (`InteratomicDistanceFG.max_overlap`).
+- **2026-10-29** (Claude, same session): investigated `mixture_pbc` (the maintainer: any
+  input taking more than a few seconds signals a bug). Variants showed only PBC + planes
+  was slow; the cause was the wrap of centers of mass on the upper faces of the cell
+  (A5.10, fixed). The PBC confinement must stay (maintainer): it gives non-periodic
+  constraints their meaning. Regression tests in
+  `test/function_and_gradient/interatomic_distance_fg.jl`; the seed pin was removed.

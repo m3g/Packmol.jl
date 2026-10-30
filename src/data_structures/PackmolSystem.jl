@@ -49,12 +49,11 @@
     # source instead — the point of a whole-system restart is to skip that
     # (potentially expensive, for a large system) phase, not just to get
     # the same final starting point some other way.
-    # `restart_from` accepts either a file path (a raw Packmol-format
-    # restart file, or a `.pdb` — recognized by extension — whose atoms are
-    # rigid-body-aligned against each structure type's own template to
-    # recover (cm, angles); see `_align_molecule` in write_output.jl) or,
-    # Julia-API only, a `Vector{<:Atom}` already in memory (skipping the
-    # file entirely). `restart_to` only ever writes the raw format.
+    # `restart_from` accepts either a coordinate file (PDB, XYZ or mmCIF, by
+    # extension), whose atoms are rigid-body-aligned against each structure
+    # type's own template to recover (cm, angles) (see `_align_molecule` in
+    # write_output.jl), or, Julia-API only, a `Vector{<:Atom}` already in
+    # memory. `restart_to` writes the coordinates (PDB, or XYZ by extension).
     # See also `StructureType.restart_from`/`restart_to` for the
     # per-structure-type equivalents.
     restart_from::Union{Nothing,String,Vector{Atom{Nothing}}} = nothing
@@ -423,6 +422,15 @@ const packmol_legacy_keywords = Dict{String,String}(
 const packmol_unimplemented_keywords = Dict{String,String}(
 )
 
+# Global keywords (see `_set_input_keyword!` and `_read_packmol_input`)
+const _global_keywords = (
+    "filetype", "output", "tolerance", "radscale", "discale", "tolerance_precision",
+    "constraint_precision", "stall_tolerance", "maxit", "nloop", "movefrac", "max_random_init",
+    "adjust_constraints_on_init", "add_amber_ter", "amber_ter_preserve", "add_box_sides",
+    "ignore_conect", "randominitialpoint", "seed", "avoid_overlap", "writeout", "writebad",
+    "optimization_print_level", "chkgrad", "check", "pbc", "unitcell",
+)
+
 # Keywords of a `structure ... end structure` block with no use in Packmol.jl
 # (accepted with a warning, as `packmol_legacy_keywords`).
 const packmol_legacy_structure_keywords = Dict{String,String}(
@@ -596,6 +604,7 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
         _add_pbc_confinement_constraints!(sys.structure_types, unitcell, unitcell_center, sys.tolerance)
     end
     _check_fixed_inside_cell(sys)
+    _check_restart_files(sys)
     #
     # Initialize atom data and molecule position arrays
     #
