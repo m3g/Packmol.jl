@@ -482,3 +482,7 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   maintainer; tests for the penalty, its gradient (finite differences on the whole
   objective), the parser and packings measured from the output. Plan revised (Status
   section, stale items). Then the large test (A4.3).
+- **2026-10-29** (Claude, same session): **large test** (A4.3), commit d7c6d81 (branch
+  `rotation-constraints`), Julia with 32 threads (`-t auto`), not the binary: converged
+  ("Success!") at loop 35; packing 1977.6 s (33.0 min), wall clock 33:09 including
+  startup and compilation, peak memory 6.1 GB, output PDB 209 MB.
