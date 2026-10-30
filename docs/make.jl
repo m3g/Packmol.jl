@@ -1,10 +1,11 @@
-using Documenter
+using Documenter, DocumenterCodeBlocks
 using Packmol
 push!(LOAD_PATH, "../src/")
 makedocs(
     modules = [Packmol],
     sitename = "Packmol.jl",
     format = Documenter.HTML(top_menu = true),
+    plugins = [CodeBlocks()],
     pages = [
         "Home" => [
             "Introduction" => "index.md",
