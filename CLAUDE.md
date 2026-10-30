@@ -91,6 +91,9 @@ juliac/                               # Executable: app.jl, build.jl (juliac), t
 
 ## Documentation
 
+Each tab of the top menu (`docs/make.jl`) is a directory of `docs/src/` with one page per
+topic (its dropdown items): Home, Tutorials, Input files, Constraints, Periodic boundary
+conditions, Julia API (ending with Reference) and Recipes (ending with Concentration units).
 `docs/src/tutorials/` holds the classic Packmol examples (water–urea, interface, bilayer,
 vesicle, solvated protein), each with a command-line and a Julia section; keep both paths
 equivalent when changing the input syntax or the Julia API.
@@ -157,7 +160,7 @@ These are the building blocks everything else depends on.
 - [x] Per-atom blocks (`atoms ... end atoms`) with custom constraints
 - [x] `radscale` (with legacy `discale` mapped to it)
 - [x] Julia-native construction API (no input file needed): `structure_type(pdbfile; number, constraints, atom_constraints, ...)`
-      + `PackmolSystem(structure_types; output, ...)`, documented in `docs/src/julia_api.md`
+      + `PackmolSystem(structure_types; output, ...)`, documented in `docs/src/julia_api/`
 - [x] `nloop`, `maxit` (stored in `PackmolSystem.nloop`/`max_iter`; `packmol(sys; nloop, maxit)` takes precedence)
 - [x] Inline `#` comments stripped (as Fortran)
 - [x] Deprecated Fortran keywords (`fscale`, `fbins`, `precision`, `sidemax`, `maxmove`, `nloop0`,
@@ -327,9 +330,9 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 - [x] Concentration unit conversions (Molarity, Molality, MoleFraction, etc.)
 - [x] Ported from MolSimToolkit.jl's Packmol Input Creator (whose docs page is to be replaced by a pointer
       here): `convert_concentration`, `convert_density_table!`, `get_density_table`, the `"vv"`/`"mm"` unit aliases
-      ("Coming from MolSimToolkit.jl" section of `docs/src/recipes.md`)
+      ("Coming from MolSimToolkit.jl" page of `docs/src/recipes/`)
 - [x] DensityTable interpolation
-- [x] Documented on its own `recipes.md` docs page
+- [x] Documented in its own `docs/src/recipes/` section
 - [x] `pbc` keyword (`:cubic`/`:orthorhombic`/`:dodecahedral`/`:octahedral`) selecting the
       periodic cell shape, shared by the three solvation recipes; cell volume computed generally as
       `det(unitcell)` rather than assuming an orthorhombic box
