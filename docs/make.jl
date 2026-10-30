@@ -6,9 +6,7 @@ makedocs(
     sitename = "Packmol.jl",
     format = Documenter.HTML(top_menu = true),
     pages = [
-        "Stable" => [
-            "Home" => "index.md",
-        ],
+        "Home" => "index.md",
         "Tutorials" => [
             "Overview" => "tutorials/index.md",
             "Water and urea" => "tutorials/mixture.md",
@@ -17,16 +15,13 @@ makedocs(
             "Spherical vesicle" => "tutorials/spherical.md",
             "Solvated protein" => "tutorials/solvprotein.md",
         ],
-        "Experimental" => [
-            "Home" => "experimental/index.md",
-            "Input files" => "experimental/input_files.md",
-            "Constraints" => "experimental/constraints.md",
-            "Periodic boundary conditions" => "experimental/periodic_boundary_conditions.md",
-            "Defining systems in Julia" => "experimental/julia_api.md",
-            "Recipes" => "experimental/recipes.md",
-            "Concentration units" => "concentration_units.md",
-            "Reference" => "experimental/reference.md",
-        ],
+        "Input files" => "input_files.md",
+        "Constraints" => "constraints.md",
+        "Periodic boundary conditions" => "periodic_boundary_conditions.md",
+        "Julia API" => "julia_api.md",
+        "Recipes" => "recipes.md",
+        "Concentration units" => "concentration_units.md",
+        "Reference" => "reference.md",
     ],
 )
 deploydocs(

@@ -4,10 +4,8 @@ CollapsedDocStrings = true
 
 # Reference
 
-!!! warning "Experimental"
-    These are the public functions of the native Julia packing engine.
-    Signatures and behavior may still change. Recipes' functions are
-    documented on their own [Recipes](recipes.md) page.
+These are the public functions of Packmol.jl. The functions of the recipes are
+documented on the [Recipes](recipes.md) page.
 
 ## Packing engine
 
@@ -42,4 +40,11 @@ dodecahedral_to_triclinic
 octahedral_unitcell
 triclinic_to_octahedral
 octahedral_to_triclinic
+```
+
+## Legacy (Fortran) Packmol and the file browser
+
+```@docs
+run_packmol_legacy
+Packmol.pick_file
 ```
