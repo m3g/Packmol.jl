@@ -27,7 +27,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
 - **Build (B):** `juliac/build.jl` builds the executable and `juliac/test_executable.jl`
   tests it (the whole test suite, the CLI and the exit codes: A4.1). The workflow
   `BuildExecutable.yml` runs both on Linux (x86_64, arm64), macOS (arm64, x86_64) and
-  Windows (B3, B4). Next: B4 findings, B5 (manylinux), B7 (threads).
+  Windows (B3, B4: all pass). Next: B7 (threads, needs a decision), B5 (manylinux), C1/C2.
 - **Distribution (C):** not started (needs B3).
 - **Docs (D):** the page of differences and Julia-only features is not written.
 - Merged: PR #42 (CLI, formats, keywords), PR #43 (fixed molecules, restarts from
@@ -352,17 +352,24 @@ Fixed (branch `fixed-molecules-compat`):
   (JuliaC's library API; `julia --project=juliac juliac/build.jl [outdir]`, default
   `juliac/build`), `test_executable.jl` and a `Project.toml` (JuliaC, Packmol from `..`,
   and the test dependencies). The Julia version is pinned in the workflow (1.13.2).
-- [~] **B3** CI workflow `BuildExecutable.yml`: a matrix with ubuntu-latest,
+- [x] **B3** CI workflow `BuildExecutable.yml`: a matrix with ubuntu-latest,
   ubuntu-24.04-arm, macos-latest (arm64), macos-15-intel and windows-latest, each building
   the bundle, running the tests (A4.1) on the bundle, and uploading it as an
   artifact. It runs the whole matrix on PRs, pushes to main, tags and
   `workflow_dispatch` (any new non-trim-safe call breaks the build). If the matrix gets
   too slow for PRs, restrict PRs to ubuntu-latest.
-- [ ] **B4** **Windows and macOS spikes.** It is unverified whether `juliac --trim` works
+- [~] **B4** **Windows and macOS spikes.** It is unverified whether `juliac --trim` works
   on them with 1.13. On Windows, look at the toolchain JuliaC needs, and at `pick_file`'s
   PowerShell path. On macOS, look at code signing/notarization (an unsigned binary is
   quarantined when downloaded through a browser, though pip/conda installs are fine).
   Record the findings here.
+  - Findings (2026-10-30, PR #45): `juliac --trim=safe` builds and passes all 81
+    executable checks on ubuntu-latest, ubuntu-24.04-arm, macos-latest (arm64),
+    macos-15-intel and windows-latest, with no platform-specific code. Windows uses the
+    MinGW that JuliaC downloads by itself. Compressed bundles: Linux x86_64 37 MB, arm64
+    35 MB, macOS arm64 15 MB, x86_64 21 MB, Windows 49 MB.
+  - Still open: code signing/notarization on macOS, and `pick_file` (PowerShell) on
+    Windows, which can't be tested in CI.
 - [ ] **B5** Linux portability: the build host's glibc sets the minimum (≥ 2.34 today).
   Build in a manylinux_2_28 container (or older) for wider coverage, matching the wheel tag.
 - [~] **B6** Size reduction: optional, since size doesn't block PyPI. The experiment
@@ -371,8 +378,20 @@ Fixed (branch `fixed-molecules-compat`):
   and Windows (library names differ), and run the tests on the slimmed bundle in CI.
   Less hacky alternatives to look into: whether JuliaC can exclude jll libraries, or
   dropping LinearAlgebra from the dependency tree (hard, because StaticArrays needs it).
-- [ ] **B7** Threads: document `JULIA_NUM_THREADS` and/or add a `-t N` flag. Consider
+- [?] **B7** Threads: document `JULIA_NUM_THREADS` and/or add a `-t N` flag. Consider
   defaulting to several threads.
+  - Findings (2026-10-30): the executable runs on **one thread** unless
+    `JULIA_NUM_THREADS` is set (JuliaC sets no default for executables). Single thread,
+    one core (s): spherical 13.7, bilayer 9.6 (Fortran: 36.7, 26.3). With 14 threads on
+    32 cores: 3.7 and 2.0. **Oversubscription is costly:** 14 threads on one core take
+    38.7 and 49.2 s. On CI runners (one thread) spherical takes 26–40 s.
+  - A thread count can only be fixed at build time (JuliaC's `jl_options`, e.g.
+    `threads=auto`, which on Linux respects the CPU affinity). Baked-in options take
+    precedence over `JULIA_NUM_THREADS`, as `-t` does in Julia, so the environment
+    variable would stop working. A `-t N` flag in the CLI can't change the thread count
+    after startup either. It would need a launcher that sets `JULIA_NUM_THREADS` and
+    execs the binary, which the Python wrapper (C2) could also do.
+    Needs a decision (single thread like Fortran, or `auto` by default).
 
 ---
 
@@ -501,3 +520,7 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   `writebad` not needed (D17). Branch `build-ci`: `juliac/` build script and executable
   tests (B2, A4.1: 81 checks pass locally in 15 s, build 16 s), `BuildExecutable.yml`
   (B3) on five platforms.
+- **2026-10-30** (Claude, same session): PR #45 CI green on all five platforms (B3,
+  B4 findings). Found that the executable is single-threaded by default (B7, decision
+  needed). Local timings in this log were run with `JULIA_NUM_THREADS=14` set in the
+  maintainer's shell.
