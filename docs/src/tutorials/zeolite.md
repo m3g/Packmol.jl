@@ -5,10 +5,7 @@ cages, connected by windows of eight oxygen atoms (3.8 Å), are those of the zeo
 to separate carbon dioxide from methane. The zeolite is a fixed molecule filling its
 periodic cell, which is triclinic, and the gas molecules are packed in its free space.
 
-![Gases in the chabazite zeolite](images/zeolite.webp)
-
-*Chabazite (silicon in brown, oxygen in red), methane (cyan) and carbon dioxide (green),
-seen almost down the c axis of the hexagonal cell, with the edges of the periodic cell.*
+An interactive view of the packed system is at the end of the [Julia](#Julia) section.
 
 Files: [`cha.pdb`](files/zeolite/cha.pdb), [`methane.pdb`](files/zeolite/methane.pdb),
 [`co2.pdb`](files/zeolite/co2.pdb), and the input file [`zeolite.inp`](files/zeolite/zeolite.inp).
@@ -98,7 +95,13 @@ triclinic cell, ready for a simulation.
 
 ## Julia
 
-```julia
+```@setup zeolite
+for file in ("cha.pdb", "methane.pdb", "co2.pdb")
+    cp(joinpath("files", "zeolite", file), file; force = true)
+end
+```
+
+```@example zeolite
 using Packmol, PDBTools
 
 cha = structure_type("cha.pdb";
@@ -113,12 +116,26 @@ system = PackmolSystem([cha, methane, co2];
     tolerance = 2.0,
     unitcell = UnitCell(27.350, 27.350, 29.534, 90., 90., 120.), # centered at the origin
 )
+redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
+end # hide
+system.status
 ```
 
 `UnitCell` (from [PDBTools.jl](https://github.com/m3g/PDBTools.jl)) builds the matrix of the
 cell vectors from its lattice parameters. As with the input file, check the initial
 approximation first, with `PackmolSystem(...; check = true)`.
+
+The packed system, with the `visualize` function of PDBTools.jl, and the edges of the
+triclinic cell (whose corner is at `-(a + b + c)/2`, since it is centered at the origin):
+the framework of the zeolite, methane and carbon dioxide (drag to rotate, scroll to zoom):
+
+```@example zeolite
+visualize(get_atoms(system);
+    unitcell = UnitCell(system.unitcell),
+    unitcell_origin = -sum(eachcol(system.unitcell)) / 2,
+)
+```
 
 ### Building the supercell
 

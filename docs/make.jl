@@ -12,7 +12,7 @@ makedocs(
         size_threshold_ignore = [
             joinpath(dir, file) for dir in ("constraints", "periodic_boundary_conditions")
             for file in readdir(joinpath(@__DIR__, "src", dir)) if endswith(file, ".md")
-        ],
+        ] ∪ ["tutorials/zeolite.md"],
     ),
     plugins = [CodeBlocks()],
     pages = [
@@ -31,6 +31,7 @@ makedocs(
             "Protein in glycerol and water" => "tutorials/protein_glycerol.md",
             "Water drop on graphite" => "tutorials/water_drop.md",
             "Gases in a zeolite" => "tutorials/zeolite.md",
+            "Zika virion (a large system)" => "tutorials/zika.md",
         ],
         "Input files" => [
             "Overview" => "input_files/index.md",
