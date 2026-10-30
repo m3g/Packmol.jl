@@ -83,7 +83,10 @@ structure <pdb file>
     [resnumbers <0|1|2|3>]
     [chain <c> | changechains]
     [segid <id>]
-    [constrain_rotation <x|y|z> <center_deg> <halfwidth_deg>]
+    [constrain_rotation <x|y|z> <center_deg> <halfwidth_deg>
+      [atoms <i> ...
+       to <j> ...
+     end constrain_rotation]]
     [restart_from <file>]
     [restart_to <file>]
     <constraint lines...>
@@ -104,7 +107,7 @@ end structure
 | `chain <c>` | Fix every molecule of this type to chain identifier `<c>` in the output, instead of the default auto-assigned one. |
 | `changechains` | Alternate between two auto-assigned chain identifiers every other molecule, instead of one chain for the whole type. Not compatible with `chain`. |
 | `segid <id>` | Segment identifier (at most 4 characters) for every atom of this type, in columns 73-76 of the output PDB file. Without `segid`, the segment identifiers of the structure's own PDB file are kept (blank if it has none). |
-| `constrain_rotation <axis> <center_deg> <halfwidth_deg>` | Restrict this molecule's rotation about `<axis>` (`x`, `y`, or `z`) to `<center_deg> ± halfwidth_deg` degrees, as a hard bound on the optimizer's own rotation-angle variable — not a soft penalty. Repeat once per constrained axis. The rotations are relative to the principal axes of the molecule (see [Rotation constraint](@ref)). |
+| `constrain_rotation <axis> <center_deg> <halfwidth_deg>` | Keep the angle between `<axis>` (`x`, `y` or `z`) and a vector of the molecule within `<center_deg> ± <halfwidth_deg>` degrees: the longest axis of the molecule, or, followed by `atoms <i> ...`, `to <j> ...` and `end constrain_rotation` lines, the vector between the centers of two sets of atoms. See [Rotation constraint](@ref). |
 | `restart_from <file>` | Restart only this structure type's molecules — see [Restarting a run](@ref). |
 | `restart_to <file>` | Write the coordinates of this structure type's molecules only — see [Restarting a run](@ref). |
 | `atoms <indices> ... end` | Restrict the enclosed lines (`radius`, constraints) to the listed 1-based atom indices instead of the whole molecule. |

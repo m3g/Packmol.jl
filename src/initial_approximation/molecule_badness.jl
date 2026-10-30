@@ -143,6 +143,10 @@ function _molecule_badness_constraints!(
                             badness[imol] += _constraint_dispatch(constraint_penalty, c, x)
                         end
                     end
+                    if !isempty(st.rotation_constraints)
+                        R = eulermat(packmol_system.molecule_positions[imol].angles)
+                        badness[imol] += _rotation_penalty(st, R)
+                    end
                 end
             end
         end
@@ -267,6 +271,9 @@ function _molecule_badness_constraints_for_mols!(
                         b += _constraint_dispatch(constraint_penalty, c, x)
                     end
                 end
+            end
+            if !isempty(st.rotation_constraints)
+                b += _rotation_penalty(st, eulermat(packmol_system.molecule_positions[imol].angles))
             end
             badness[imol] = b
         end

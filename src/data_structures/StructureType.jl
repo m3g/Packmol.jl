@@ -29,15 +29,9 @@ Structure that contains the input data for a structure block in the input file.
     # Segment identifier (`segid` keyword) written to every atom of this type
     # in the output (PDB columns 73-76); `nothing` keeps the template's own.
     segid::Union{Nothing,String} = nothing
-    # Per-axis (index 1=x, 2=y, 3=z — matching `eulermat`'s angle order, see
-    # rigid_body.jl) bound on that molecule's rotation angle, as
-    # (lower, upper) in radians; `nothing` means unconstrained. Set by
-    # `constrain_rotation <axis> <center_deg> <halfwidth_deg>`, one line per
-    # constrained axis. Applied as hard bounds on the optimization variables
-    # in the main packing loop (matching Fortran Packmol's own `pgencan`,
-    # which sets GENCAN's `l`/`u` this way) and as the sampling range for
-    # that axis during initial random placement.
-    rotation_bounds::Vector{Union{Nothing,Tuple{T,T}}} = fill(nothing, D)
+    # `constrain_rotation`: bounds on the angle between an axis and a vector of the
+    # molecule (see constraints/rotations.jl)
+    rotation_constraints::Vector{RotationConstraint{D,T}} = RotationConstraint{D,T}[]
     # Per-structure-type restart (Fortran's `restart_from`/`restart_to` given
     # inside a `structure ... end structure` block): `nothing` means unset.
     # See `PackmolSystem.restart_from`/`restart_to` for the whole-system
@@ -151,9 +145,10 @@ function structure_type(filename::String;
     chain::Union{Nothing,Char} = nothing,
     changechains::Bool = false,
     segid::Union{Nothing,String} = nothing,
-    # e.g. `constrain_rotation=Dict(:x => (45, 10))` bounds the x-axis
-    # rotation angle to 45° ± 10°; see `StructureType.rotation_bounds`.
-    constrain_rotation::AbstractDict{Symbol} = Dict{Symbol,Tuple{Float64,Float64}}(),
+    # e.g. `constrain_rotation=Dict(:z => (0, 10))` keeps the angle between the z axis and
+    # the longest axis of the molecule within 0° ± 10°, and `Dict(:z => (0, 10, [1, 2], [30]))`
+    # the angle between the z axis and the vector from the center of atoms 1 and 2 to atom 30
+    constrain_rotation = Dict{Symbol,Tuple{Float64,Float64}}(),
     restart_from::Union{Nothing,String,AbstractVector{<:Atom}} = nothing,
     restart_to::Union{Nothing,String} = nothing,
     connect::Bool = true,
@@ -179,19 +174,19 @@ function structure_type(filename::String;
     end
     _apply_fixed_center!(reference_coordinates, atoms, fixed_data, center)
 
-    rotation_bounds = Union{Nothing,Tuple{T,T}}[nothing for _ in 1:D]
-    axis_index = Dict(:x => 1, :y => 2, :z => 3)
-    for (axis, (center_deg, halfwidth_deg)) in constrain_rotation
-        haskey(axis_index, axis) || error("constrain_rotation axis must be :x, :y, or :z, got $(repr(axis))")
-        idx = axis_index[axis]
-        idx > D && error("constrain_rotation axis $axis is out of range for D=$D")
-        hw = abs(T(halfwidth_deg)) * T(π) / 180
-        c = T(center_deg) * T(π) / 180
-        rotation_bounds[idx] = (c - hw, c + hw)
+    rotation_constraints = RotationConstraint{D,T}[]
+    for (axis, spec) in constrain_rotation
+        length(spec) in (2, 4) || throw(ArgumentError("""\n
+            constrain_rotation: give (center, halfwidth) or (center, halfwidth, from_atoms, to_atoms) for each axis.
+
+        """))
+        from, to = length(spec) == 4 ? (spec[3], spec[4]) : (Int[], Int[])
+        push!(rotation_constraints, RotationConstraint{D,T}(axis, spec[1], spec[2]; from, to))
     end
+    _check_rotation_constraints(rotation_constraints, fixed_data, natoms)
 
     return StructureType{D,T}(;
-        filename, natoms, atoms, number_of_molecules=number, rotation_bounds, restart_from=_restart_source(restart_from), restart_to,
+        filename, natoms, atoms, number_of_molecules=number, rotation_constraints, restart_from=_restart_source(restart_from), restart_to,
         fixed=fixed_data, reference_coordinates, radii,
         residue_numbering, chain, changechains, segid=_check_segid(segid), connectivity, constraints, atom_constraints,
     )
@@ -260,6 +255,75 @@ function _check_segid(segid::String)
     return segid
 end
 
+#
+# `constrain_rotation <axis> <center> <halfwidth>` lines of a structure block, optionally
+# followed by the two sets of atoms that define the vector of the molecule:
+#
+#     constrain_rotation z 0. 15.
+#       atoms 1 2 3
+#       to 25 26
+#     end constrain_rotation
+#
+# A `constrain_rotation` line starts such a block when it is followed by an `atoms` line
+# and a `to` line (an `atoms` block of per-atom constraints has no `to`). Returns the
+# block without these lines (read by `read_structure_data`), and the constraints.
+#
+function _read_rotation_constraints(input_file_block::IOBuffer, ::Val{D}, ::Type{T}) where {D,T}
+    seekstart(input_file_block)
+    lines = _read_lines(input_file_block)
+    words = [split(_strip_comment(line)) for line in lines]
+    significant = [i for i in eachindex(words) if !isempty(words[i])]
+    rotation_constraints = RotationConstraint{D,T}[]
+    skip = falses(length(lines))
+    k = 1
+    while k <= length(significant)
+        i = significant[k]
+        w = words[i]
+        k += 1
+        w[1] == "constrain_rotation" || continue
+        length(w) >= 4 || throw(ArgumentError("""\n
+            constrain_rotation requires an axis, a center and a half-width (degrees): $(strip(lines[i]))
+
+        """))
+        skip[i] = true
+        from, to = Int[], Int[]
+        if k + 1 <= length(significant) && words[significant[k]][1] == "atoms" && words[significant[k+1]][1] == "to"
+            from = [parse(Int, v) for v in @view(words[significant[k]][2:end])]
+            to = [parse(Int, v) for v in @view(words[significant[k+1]][2:end])]
+            iend = k + 2 <= length(significant) ? significant[k+2] : 0
+            (iend > 0 && words[iend][1] == "end" && length(words[iend]) >= 2 && words[iend][2] == "constrain_rotation") ||
+                throw(ArgumentError("""\n
+                    constrain_rotation: the `atoms` and `to` lines must be followed by `end constrain_rotation`.
+
+                """))
+            skip[significant[k]] = skip[significant[k+1]] = skip[iend] = true
+            k += 3
+        end
+        axis = w[2] == "x" ? :x : w[2] == "y" ? :y : w[2] == "z" ? :z : :invalid
+        push!(rotation_constraints, RotationConstraint{D,T}(axis, parse(T, w[3]), parse(T, w[4]); from, to))
+    end
+    filtered = IOBuffer()
+    for i in eachindex(lines)
+        skip[i] || println(filtered, lines[i])
+    end
+    return seekstart(filtered), rotation_constraints
+end
+
+function _check_rotation_constraints(rotation_constraints, fixed, natoms::Int)
+    isempty(rotation_constraints) && return nothing
+    fixed.fixed && throw(ArgumentError("""\n
+        constrain_rotation cannot be used with a fixed molecule.
+
+    """))
+    for rc in rotation_constraints, i in Iterators.flatten((rc.from, rc.to))
+        (1 <= i <= natoms) || throw(ArgumentError("""\n
+            constrain_rotation: atom index $i out of range (the molecule has $natoms atoms).
+
+        """))
+    end
+    return nothing
+end
+
 function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::Type{T}; path::String="", filetype::String="pdb") where {D,T}
     filename = ""
     atoms = Atom{Nothing}[]
@@ -276,7 +340,7 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
     chain = nothing
     changechains = false
     segid = nothing
-    rotation_bounds = Union{Nothing,Tuple{T,T}}[nothing for _ in 1:D]
+    input_file_block, rotation_constraints = _read_rotation_constraints(input_file_block, Val(D), T)
     restart_from = nothing
     restart_to = nothing
     # Read basic structure data first
@@ -324,14 +388,6 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
             connect = _parse_options("connect", isempty(values) ? "" : values[1], _yes_no)
         elseif keyword == "segid"
             segid = _check_segid(String(values[1]))
-        elseif keyword == "constrain_rotation"
-            axis, center_str, halfwidth_str = values[1], values[2], values[3]
-            idx = axis == "x" ? 1 : axis == "y" ? 2 : axis == "z" ? 3 :
-                error("constrain_rotation axis must be x, y, or z, got '$axis'")
-            idx > D && error("constrain_rotation axis '$axis' is out of range for D=$D")
-            hw = abs(parse(T, halfwidth_str)) * T(π) / 180
-            c = parse(T, center_str) * T(π) / 180
-            rotation_bounds[idx] = (c - hw, c + hw)
         elseif keyword == "restart_from"
             restart_from = joinpath(path, expanduser(String(values[1])))
         elseif keyword == "restart_to"
@@ -389,9 +445,10 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
     if changechains && !isnothing(chain)
         error("'changechains' and 'chain' input parameters are not compatible for a single structure.")
     end
+    _check_rotation_constraints(rotation_constraints, fixed, length(atoms))
     return StructureType{D,T}(;
         filename, natoms=length(atoms), atoms, number_of_molecules, fixed, reference_coordinates, radii,
-        residue_numbering, chain, changechains, segid, rotation_bounds, restart_from, restart_to,
+        residue_numbering, chain, changechains, segid, rotation_constraints, restart_from, restart_to,
         connectivity=connect ? connectivity : nothing,
         constraints, atom_constraints,
     )
