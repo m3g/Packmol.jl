@@ -8,7 +8,8 @@
 #     (selection = "water", style = "Lines", color = "Name", material = "AOChalky")
 #
 # `rotate` is a list of rotations applied to the view, e.g. [(:x, -90), (:y, 30)], and
-# `cell = true` draws the periodic cell of the CRYST1 record (pbctools).
+# `cell` draws the periodic cell of the CRYST1 record (pbctools), centered at the origin
+# (`cell = :origin`) or with a corner at the origin (`cell = :unitcell`).
 #
 const default_material = "AOChalky"
 
@@ -17,7 +18,7 @@ function render(pdbfile::AbstractString, imagefile::AbstractString;
     rotate = Tuple{Symbol,Real}[],
     zoom::Real = 1.0,
     size::Tuple{Int,Int} = (1600, 1200),
-    cell::Bool = false,
+    cell::Union{Nothing,Symbol} = nothing,
     clip::Union{Nothing,Tuple{Real,Real}} = nothing,
     width::Int = 1000,
 )
@@ -55,9 +56,9 @@ function render(pdbfile::AbstractString, imagefile::AbstractString;
         println(tcl, "display nearclip set $(clip[1])")
         println(tcl, "display farclip set $(clip[2])")
     end
-    if cell
+    if !isnothing(cell)
         println(tcl, "package require pbctools")
-        println(tcl, "pbc box -color gray -width 2 -center origin")
+        println(tcl, "pbc box -color gray -width 2 -center $cell")
     end
     tga = tempname() * ".tga"
     println(tcl, "render TachyonInternal {$tga}")

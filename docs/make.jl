@@ -6,6 +6,7 @@ makedocs(
     sitename = "Packmol.jl",
     format = Documenter.HTML(
         top_menu = true,
+        assets = ["assets/custom.css"],
         # The interactive 3D views of the examples are embedded in the pages
         example_size_threshold = nothing,
         size_threshold_ignore = [
@@ -27,6 +28,9 @@ makedocs(
             "Lipid bilayer" => "tutorials/bilayer.md",
             "Spherical vesicle" => "tutorials/spherical.md",
             "Solvated protein" => "tutorials/solvprotein.md",
+            "Protein in glycerol and water" => "tutorials/protein_glycerol.md",
+            "Water drop on graphite" => "tutorials/water_drop.md",
+            "Gases in a zeolite" => "tutorials/zeolite.md",
         ],
         "Input files" => [
             "Overview" => "input_files/index.md",
