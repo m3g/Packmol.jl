@@ -4,7 +4,7 @@ using PDBToolsBase: read_pdb, write_pdb, Atom, mass, charge, maxmin, eachresidue
 
 export density_pure_solvent, density_pure_cossolvent
 export write_packmol_input
-export SolutionBoxUSC
+export SolutionBoxUSC, convert_concentration, convert_density_table!, get_density_table
 export SolutionBoxUS
 export SolutionBoxUWI
 export Membrane

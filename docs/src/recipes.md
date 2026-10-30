@@ -45,8 +45,9 @@ used to convert between them.
 julia> using Packmol
 ```
 
-`SolutionBoxUS`, `SolutionBoxUSC`, `SolutionBoxUWI`, and `write_packmol_input`
-are exported directly from `Packmol`.
+`SolutionBoxUS`, `SolutionBoxUSC`, `SolutionBoxUWI`, `Membrane`,
+`write_packmol_input`, `convert_concentration`, `convert_density_table!` and
+`get_density_table` are exported directly from `Packmol`.
 
 ## Running Packmol
 
@@ -166,13 +167,16 @@ Alternatively, the box size can be given explicitly with
 
 Here, `SolutionBoxUSC` stands for `Solute (U)`, `Solvent (S)`, and
 `Cossolvent (C)`. Concentrations can be given in molarity (`"mol/L"`), molar
-fraction (`"x"`), mass fraction (`"w/w"`), or volume fraction (`"v/v"`); see
-[Concentration Unit Conversion](@ref) for the full list of unit aliases.
+fraction (`"x"`), mass fraction (`"w/w"` or `"mm"`), or volume fraction (`"v/v"` or
+`"vv"`); see [Concentration Unit Conversion](@ref) for the full list of unit aliases.
 
 ```@docs
 SolutionBoxUSC
 write_packmol_input(::SolutionBoxUSC)
 packmol(::SolutionBoxUSC)
+convert_concentration
+convert_density_table!
+get_density_table
 ```
 
 ### Setting up the system properties
@@ -234,6 +238,32 @@ or, equivalently, pack it directly with `packmol(system; concentration=0.5, marg
 other than the density table's own (e.g. request a concentration in
 `"mol/L"` even though the table above is indexed by molar fraction).
 `margin`, `box_sides`, and `pbc` behave as in `SolutionBoxUS`.
+
+### Converting concentrations
+
+`convert_concentration` converts a concentration of the cossolvent between units, using
+the density of the solution at that concentration (interpolated from the density table)
+and the molar masses of the components. For example, the molarity of ethanol at a molar
+fraction of 0.5:
+
+```@example usc
+convert_concentration(system, 0.5, "x" => "mol/L")
+```
+
+`convert_density_table!` changes the units in which the system takes and shows the
+concentrations: after it, `concentration` in `write_packmol_input` is read in the new
+units, and `get_density_table` returns the table in them:
+
+```@example usc
+convert_density_table!(system, "mol/L")
+get_density_table(system)
+```
+
+!!! note "Volume fractions"
+    The volume fraction is the IUPAC one: the volume of the pure cossolvent divided by
+    the sum of the volumes of the pure components, before mixing. Computing it requires
+    the densities of the pure solvent and cossolvent, so the density table must include
+    both (concentrations 0 and 1 in molar fraction).
 
 ## Solute-Water-Ions system
 
@@ -348,3 +378,23 @@ write_packmol_input(system; input = "membrane.inp", output = "membrane.pdb")
 ```julia
 packmol(system; output = "membrane.pdb")
 ```
+
+## Coming from MolSimToolkit.jl
+
+The Packmol Input Creator of MolSimToolkit.jl (`MolSimToolkit.PackmolInputCreator`) moved
+here. The same systems are built with:
+
+| MolSimToolkit.jl | Packmol.jl |
+|---|---|
+| `using MolSimToolkit.PackmolInputCreator` | `using Packmol` |
+| `PackmolInputCreator.PackmolInputCreatorDirectory` | `Packmol.RecipesDirectory` |
+| `SolutionBoxUS(...; density=1.0, density_units="g/mL")` | `SolutionBoxUS(...; density=1.0u"g/mL")` (or `55.5u"mol/L"`; a plain number is in g/mL) |
+| `SolutionBoxUSC(...; density_table, concentration_units="x")` | the same |
+| `write_packmol_input(system; ..., cubic=true)` | `write_packmol_input(system; ..., pbc=:cubic)` (the default) |
+| `write_packmol_input(system; ..., cubic=false)` | `write_packmol_input(system; ..., pbc=:orthorhombic)` |
+| `convert_concentration(system, c, "mol/L" => "x")` | the same (molarities are returned with units) |
+| `convert_density_table!(system, "mol/L")` | the same; `get_density_table(system)` gives the table in those units |
+| `run_packmol("box.inp")` | `packmol("box.inp")`, or `packmol(system; ...)` without an input file |
+
+The concentration units `"mol/L"`, `"x"`, `"vv"` and `"mm"` are accepted, along with
+the other aliases of [Concentration Unit Conversion](@ref).

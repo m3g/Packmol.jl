@@ -159,27 +159,6 @@ function cconvert(
     return ustrip(NoUnits, mf)
 end
 
-function cconvert(
-    C_val, ::Type{Molarity}, ::Type{VolumeFraction};
-    M_solute, rho_solute, kwargs...
-)
-    # This conversion assumes the definition V_solute / V_solution
-    # V_solution is the basis (e.g. 1L). V_solute depends on density of PURE solute.
-    # rho_solution is NOT directly needed here if we assume C refers to the final volume V0.
-    C = _ensure_unit(C_val, DEFAULT_MOLARITY_UNIT)
-    Ms = _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
-    rho_pure_s = _ensure_unit(rho_solute, DEFAULT_DENSITY_UNIT)
-
-    V0 = 1u"L" # Basis volume (final solution volume)
-    n_solute = uconvert(u"mol", C * V0)
-    m_solute = uconvert(DEFAULT_MASS_QUANTITY_UNIT, n_solute * Ms)
-    V_solute = uconvert(DEFAULT_VOLUME_UNIT, m_solute / rho_pure_s)
-
-    # Volume fraction assumes additivity, or more commonly relates V_solute to V_solution
-    vf = V_solute / V0 # Should be dimensionless
-    return ustrip(NoUnits, vf)
-end
-
 function cconvert(C_val, ::Type{Molarity}, ::Type{NumberDensity}; kwargs...)
     C = _ensure_unit(C_val, DEFAULT_MOLARITY_UNIT)
     num_dens = C * AVOGADRO # mol/L * N/mol = N/L
@@ -242,16 +221,6 @@ function cconvert(
 end
 
 # Molality -> VolumeFraction and Molality -> NumberDensity require rho_solution
-function cconvert(
-    m_val, ::Type{Molality}, ::Type{VolumeFraction};
-    M_solute, rho_solute, rho_solution, kwargs...
-)
-    # Need to find V_solute and V_solution for the same amount of substance.
-    # Go via Molarity first?
-    C = cconvert(m_val, Molality, Molarity; M_solute, rho_solution)
-    return cconvert(C, Molarity, VolumeFraction; M_solute, rho_solute)
-end
-
 function cconvert(
     m_val, ::Type{Molality}, ::Type{NumberDensity};
     M_solute, rho_solution, kwargs...
@@ -333,15 +302,6 @@ end
 
 # MoleFraction -> VolumeFraction/NumberDensity require rho_solution
 function cconvert(
-    chi_val::Real, ::Type{MoleFraction}, ::Type{VolumeFraction};
-    M_solute, M_solvent, rho_solute, rho_solution, kwargs...
-)
-    # Go via Molarity
-    C = cconvert(chi_val, MoleFraction, Molarity; M_solute, M_solvent, rho_solution)
-    return cconvert(C, Molarity, VolumeFraction; M_solute, rho_solute)
-end
-
-function cconvert(
     chi_val::Real, ::Type{MoleFraction}, ::Type{NumberDensity};
     M_solute, M_solvent, rho_solution, kwargs...
 )
@@ -412,27 +372,6 @@ function cconvert(
 end
 
 function cconvert(
-    mf_val::Real, ::Type{MassFraction}, ::Type{VolumeFraction};
-    rho_solute, rho_solution, kwargs...
-)
-    # Note: This uses rho_solution, relating V_solute to V_solution via masses
-    !(0 <= _round(mf_val) <= 1) && throw(ArgumentError("Mass fraction must be 0-1"))
-    mf = mf_val * NoUnits
-    rho_pure_s = _ensure_unit(rho_solute, DEFAULT_DENSITY_UNIT)
-    rho_s = _ensure_unit(rho_solution, DEFAULT_DENSITY_UNIT)
-
-    m_solution_basis = 1u"kg" # Basis mass
-    m_solute = mf * m_solution_basis
-
-    V_solute = uconvert(DEFAULT_VOLUME_UNIT, m_solute / rho_pure_s)
-    V_solution = uconvert(DEFAULT_VOLUME_UNIT, m_solution_basis / rho_s)
-    _round(V_solution) < 0 * unit(V_solution) && throw(ArgumentError("Non-positive solution volume ($V_solution)"))
-
-    vf = V_solute / V_solution
-    return ustrip(NoUnits, vf)
-end
-
-function cconvert(
     mf_val::Real, ::Type{MassFraction}, ::Type{NumberDensity};
     M_solute, rho_solution, kwargs...
 )
@@ -442,77 +381,7 @@ function cconvert(
 end
 
 # --- Volume Fraction Conversions ---
-function cconvert(
-    vf_val::Real, ::Type{VolumeFraction}, ::Type{Molarity};
-    M_solute, rho_solute, kwargs...
-)
-    # Inverse of Molarity -> VolumeFraction
-    # Assumes vf = V_solute / V_solution
-    !(0 <= _round(vf_val) <= 1) && throw(ArgumentError("Volume fraction must be 0-1"))
-    vf = vf_val * NoUnits
-    Ms = _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
-    rho_pure_s = _ensure_unit(rho_solute, DEFAULT_DENSITY_UNIT)
-
-    V0 = 1u"L" # Basis volume
-    V_solute = vf * V0
-    m_solute = uconvert(DEFAULT_MASS_QUANTITY_UNIT, V_solute * rho_pure_s)
-    n_solute = uconvert(u"mol", m_solute / Ms)
-
-    molarity = n_solute / V0
-    return uconvert(DEFAULT_MOLARITY_UNIT, molarity)
-end
-
-function cconvert(
-    vf_val::Real, ::Type{VolumeFraction}, ::Type{MassFraction};
-    rho_solute, rho_solution, kwargs...
-)
-    # Inverse of MassFraction -> VolumeFraction
-     !(0 <= _round(vf_val) <= 1) && throw(ArgumentError("Volume fraction must be 0-1"))
-     vf = vf_val * NoUnits
-     rho_pure_s = _ensure_unit(rho_solute, DEFAULT_DENSITY_UNIT)
-     rho_s = _ensure_unit(rho_solution, DEFAULT_DENSITY_UNIT)
-
-     V_solution_basis = 1u"L" # Basis volume
-     V_solute = vf * V_solution_basis
-
-     m_solute = uconvert(DEFAULT_MASS_QUANTITY_UNIT, V_solute * rho_pure_s)
-     m_solution = uconvert(DEFAULT_MASS_QUANTITY_UNIT, V_solution_basis * rho_s)
-     _round(m_solution) <= 0 * unit(m_solution) && throw(ArgumentError("Non-positive solution mass ($m_solution)"))
-
-     mf = m_solute / m_solution
-     return ustrip(NoUnits, mf)
-end
-
 # VolumeFraction -> Molality/MoleFraction/NumberDensity require more info or intermediate steps
-function cconvert(
-    vf_val::Real, ::Type{VolumeFraction}, ::Type{Molality};
-    M_solute, rho_solute, rho_solution, kwargs...
-)
-    # Go via Molarity
-    C = cconvert(vf_val, VolumeFraction, Molarity; M_solute, rho_solute)
-    # Need M_solute and rho_solution for Molarity -> Molality step (already required)
-    return cconvert(C, Molarity, Molality; M_solute, rho_solution)
-end
-
-function cconvert(
-    vf_val::Real, ::Type{VolumeFraction}, ::Type{MoleFraction};
-    M_solute, M_solvent, rho_solute, rho_solution, kwargs...
-)
-    # Go via Molarity
-    C = cconvert(vf_val, VolumeFraction, Molarity; M_solute, rho_solute)
-    # Need M_solute, M_solvent, rho_solution for Molarity -> MoleFraction step (already required)
-    return cconvert(C, Molarity, MoleFraction; M_solute, M_solvent, rho_solution)
-end
-
-function cconvert(
-    vf_val::Real, ::Type{VolumeFraction}, ::Type{NumberDensity};
-    M_solute, rho_solute, kwargs...
-)
-     # Go via Molarity
-    C = cconvert(vf_val, VolumeFraction, Molarity; M_solute, rho_solute)
-    return cconvert(C, Molarity, NumberDensity)
-end
-
 # --- Number Density Conversions ---
 function cconvert(N_val, ::Type{NumberDensity}, ::Type{Molarity}; kwargs...)
     N = _ensure_unit(N_val, DEFAULT_NUMBERDENSITY_UNIT)
@@ -545,19 +414,51 @@ function cconvert(
     return cconvert(C, Molarity, MassFraction; M_solute, rho_solution)
 end
 
-function cconvert(
-    N_val, ::Type{NumberDensity}, ::Type{VolumeFraction};
-    M_solute, rho_solute, kwargs...
-)
-    C = cconvert(N_val, NumberDensity, Molarity)
-    return cconvert(C, Molarity, VolumeFraction; M_solute, rho_solute)
-end
-
 const UNIT_TYPE_MAP = Dict(
     u"mol/L" => "mol/L",
     u"mol/kg" => "mol/kg",
     u"1/(Å^3)" => "molecule/Å^3",
 )
+
+# --- Volume Fraction Conversions ---
+#
+# The volume fraction is the IUPAC one: the volume of the pure solute over the sum of the
+# volumes of the pure components (before mixing), φ = V*_solute / (V*_solute + V*_solvent).
+# It is converted from and to the other units through the mole fraction:
+#
+#   φ = x M_solute/ρ_solute / (x M_solute/ρ_solute + (1 - x) M_solvent/ρ_solvent)
+#
+cconvert(φ::Real, ::Type{VolumeFraction}, ::Type{VolumeFraction}; kwargs...) = φ
+
+function _volume_fraction_from_mole_fraction(x::Real; M_solute, M_solvent, rho_solute, rho_solvent)
+    !(0 <= _round(x) <= 1) && throw(ArgumentError("Mole fraction must be 0-1"))
+    vu = x * _ensure_unit(M_solute, DEFAULT_MASS_UNIT) / _ensure_unit(rho_solute, DEFAULT_DENSITY_UNIT)
+    vs = (1 - x) * _ensure_unit(M_solvent, DEFAULT_MASS_UNIT) / _ensure_unit(rho_solvent, DEFAULT_DENSITY_UNIT)
+    return ustrip(NoUnits, vu / (vu + vs))
+end
+
+function _mole_fraction_from_volume_fraction(φ::Real; M_solute, M_solvent, rho_solute, rho_solvent)
+    !(0 <= _round(φ) <= 1) && throw(ArgumentError("Volume fraction must be 0-1"))
+    nu = φ * _ensure_unit(rho_solute, DEFAULT_DENSITY_UNIT) / _ensure_unit(M_solute, DEFAULT_MASS_UNIT)
+    ns = (1 - φ) * _ensure_unit(rho_solvent, DEFAULT_DENSITY_UNIT) / _ensure_unit(M_solvent, DEFAULT_MASS_UNIT)
+    return ustrip(NoUnits, nu / (nu + ns))
+end
+
+function cconvert(
+    val, ::Type{U}, ::Type{VolumeFraction};
+    M_solute, M_solvent, rho_solute, rho_solvent, kwargs...
+) where {U<:AbstractConcentrationUnit}
+    x = U == MoleFraction ? val : cconvert(val, U, MoleFraction; M_solute, M_solvent, rho_solute, rho_solvent, kwargs...)
+    return _volume_fraction_from_mole_fraction(x; M_solute, M_solvent, rho_solute, rho_solvent)
+end
+
+function cconvert(
+    φ::Real, ::Type{VolumeFraction}, ::Type{U};
+    M_solute, M_solvent, rho_solute, rho_solvent, kwargs...
+) where {U<:AbstractConcentrationUnit}
+    x = _mole_fraction_from_volume_fraction(φ; M_solute, M_solvent, rho_solute, rho_solvent)
+    return U == MoleFraction ? x : cconvert(x, MoleFraction, U; M_solute, M_solvent, rho_solute, rho_solvent, kwargs...)
+end
 
 # ==============================================================================
 # User-Friendly Wrapper (String-based, handles percentages)
@@ -571,7 +472,7 @@ A mapping of string identifiers to concentration unit types.
 
 ```julia
 julia> Packmol.UNIT_STRINGS
-OrderedCollections.OrderedDict{String, DataType} with 26 entries:
+OrderedCollections.OrderedDict{String, DataType} with 28 entries:
   "Molarity"       => Molarity
   "molarity"       => Molarity
   "mol/L"          => Molarity
@@ -592,12 +493,14 @@ OrderedCollections.OrderedDict{String, DataType} with 26 entries:
   "w/w"            => MassFraction
   "mass %"         => MassFraction
   "%w/w"           => MassFraction
+  "mm"             => MassFraction
   "VolumeFraction" => VolumeFraction
   "volumefraction" => VolumeFraction
   "%v/v"           => VolumeFraction
   "v/v"            => VolumeFraction
   "volume %"       => VolumeFraction
   "%vol/vol"       => VolumeFraction
+  "vv"             => VolumeFraction
   "NumberDensity"  => NumberDensity
   "numberdensity"  => NumberDensity
   "Å^-3"           => NumberDensity,
@@ -633,12 +536,14 @@ const UNIT_STRINGS = OrderedDict(
   "w/w"            => MassFraction,
   "mass %"         => MassFraction,
   "%w/w"           => MassFraction,
+  "mm"             => MassFraction,
   "VolumeFraction" => VolumeFraction,
   "volumefraction" => VolumeFraction,
   "%v/v"           => VolumeFraction,
   "v/v"            => VolumeFraction,
   "volume %"       => VolumeFraction,
   "%vol/vol"       => VolumeFraction,
+  "vv"             => VolumeFraction,
   "NumberDensity"  => NumberDensity,
   "numberdensity"  => NumberDensity,
   "Å^-3"           => NumberDensity,
@@ -678,6 +583,7 @@ julia> using Packmol
 M_EtOH = 46.068u"g/mol"
 M_H2O = 18.015u"g/mol"
 rho_EtOH_pure = 0.789u"kg/L" # Density of pure Ethanol
+rho_H2O_pure = 0.997u"kg/L" # Density of pure water
 # Some realistic solution densities for examples:
 rho_sol_10M = 0.90u"kg/L"   # Approx. density for ~10 mol/L EtOH (~58% w/w)
 rho_sol_50ww = 0.914u"kg/L" # Approx. density for 50% w/w EtOH
@@ -697,9 +603,10 @@ C1 = cconvert(mass_perc_in, "%m/m" => "Molarity"; M_solute=M_EtOH, rho_solution=
 chi_in = 0.2
 m2 = cconvert(chi_in, "mole fraction" => "molality"; M_solvent=M_H2O) # Expect ~13.88 mol/kg
 
-# Molarity (input Quantity) to Volume Percent (output %)
+# Molarity (input Quantity) to Volume Percent (output %): the volume fraction is the
+# IUPAC one (volumes of the pure components before mixing)
 C_in2 = 10.0u"M" # Unitful recognizes M as mol/L
-vp1 = cconvert(C_in2, "M" => "%v/v"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) # Expect ~58.39 %v/v
+vp1 = cconvert(C_in2, "M" => "%v/v"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solution=rho_sol_10M, rho_solute=rho_EtOH_pure, rho_solvent=rho_H2O_pure)
 
 # Number Density (input Quantity) to Molarity
 N_in = 0.005u"Å^-3"
