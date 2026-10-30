@@ -89,6 +89,12 @@ juliac/                               # Executable: app.jl, build.jl (juliac), t
 - `StaticArrays.jl`: Fixed-size vectors/matrices for performance
 - `Unitful.jl`: Physical unit handling (in Recipes)
 
+## Documentation
+
+`docs/src/tutorials/` holds the classic Packmol examples (water–urea, interface, bilayer,
+vesicle, solvated protein), each with a command-line and a Julia section; keep both paths
+equivalent when changing the input syntax or the Julia API.
+
 ## Running Tests
 
 ```bash
@@ -150,7 +156,7 @@ These are the building blocks everything else depends on.
       `inside/outside cylinder`, `inside/outside ellipsoid`, `above/over/below plane`
 - [x] Per-atom blocks (`atoms ... end atoms`) with custom constraints
 - [x] `radscale` (with legacy `discale` mapped to it)
-- [x] Julia-native construction API (no input file needed): `structure_type(pdbfile; number, constraints, ...)`
+- [x] Julia-native construction API (no input file needed): `structure_type(pdbfile; number, constraints, atom_constraints, ...)`
       + `PackmolSystem(structure_types; output, ...)`, documented in `docs/src/experimental/julia_api.md`
 - [x] `nloop`, `maxit` (stored in `PackmolSystem.nloop`/`max_iter`; `packmol(sys; nloop, maxit)` takes precedence)
 - [x] Inline `#` comments stripped (as Fortran)
@@ -168,7 +174,8 @@ These are the building blocks everything else depends on.
 Each constraint type needs: data structure, penalty function, gradient, parsing, and tests.
 
 #### Implemented
-- [x] `Box` (InsideBox / OutsideBox) - axis-aligned rectangular box
+- [x] `Box` (InsideBox / OutsideBox) - axis-aligned rectangular box; positional constructors take the input's
+      parameters (`InsideBox(lower, upper)`, `InsideCube(lower_corner, side)`), keywords the center
 - [x] `Cube` (InsideCube / OutsideCube) - axis-aligned cube
 - [x] `Sphere` (InsideSphere / OutsideSphere) - sphere
 - [x] `Plane` (AbovePlane / BelowPlane) - point + normal vector; input keywords `above`/`over` (synonyms) and `below`, matching Fortran Packmol

@@ -133,6 +133,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
 - **D18 (2026-10-30): threads.** The executable starts all the threads of the CPUs
   available, and the number used is set by `-t N`, the input keyword `nthreads` or
   `JULIA_NUM_THREADS` (in this order of precedence). BLAS uses one thread (B7).
+- **D19 (2026-10-30): the positional Julia constructors of boxes and cubes take the
+  parameters of the input file** (maintainer's choice): `InsideBox(lower, upper)` and
+  `InsideCube(lower_corner, side)`. The keyword forms (`center`, `sides`/`side`) keep the
+  center convention. Before, the positional forms took the center, unlike the input lines
+  and the docs.
 ---
 
 ## Baseline (measured 2026-10-29, Linux x86_64, Julia 1.13.2)
@@ -326,6 +331,9 @@ Fixed (branch `fixed-molecules-compat`):
   initial angles are uniform. Julia API: `constrain_rotation = Dict(:z => (c, hw))` or
   `Dict(:z => (c, hw, from, to))`.
 
+- [x] **A5.12 `inside/outside cube x y z side` read (x, y, z) as the center** (2026-10-30).
+  Fortran (and the docs) take the lower corner (`comprest.f90`: `xmin = restpars(1)`,
+  `xmax = xmin + side`). Fixed in `parse_constraint`; none of the test inputs use cubes.
 - [x] **A5.10 Performance: `mixture_pbc` was trapped by a PBC inconsistency.** The
   centers of mass are bounded to the closed cell, but `wrap_to_center` maps the upper
   faces to the lower ones. A urea pushed against z = +20 was evaluated for its
@@ -531,3 +539,7 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
 - **2026-10-30** (Claude, same session): B7 on branch `threads` (D18): `-t`, `nthreads`,
   `_nbatches()` for every parallel loop and CellListMap, BLAS one thread, build with
   `threads=auto,0` (the interactive thread made single-core runs 3 times slower).
+- **2026-10-30** (Claude, same session): merged PRs #45 and #46. Branch `tutorials`:
+  tutorial pages for the five examples of the Packmol site (command line and Julia),
+  `atom_constraints` keyword of `structure_type` (the Julia API had no per-atom
+  constraints), D19 (box/cube positional constructors), A5.12 (cube corner fix).

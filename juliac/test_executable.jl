@@ -27,6 +27,10 @@ cp(Packmol.test_file(""), dir; force=true)
 chmod(dir, 0o755; recursive=true)
 const inputs = joinpath(dir, "input_files")
 
+# Maximum change of a distance by the rounding of the coordinates in the output files
+# (0.001 Å in PDB files): the convergence criterion holds for the coordinates before rounding
+const pdb_rounding = 2 * sqrt(3) * 0.0005
+
 # Runs the executable, and returns its exit code and output (stdout and stderr)
 function run_packmol(args...; stdin_file=nothing, cwd=inputs)
     cmd = Cmd(`$exe $args`; ignorestatus=true, dir=cwd)
@@ -90,7 +94,7 @@ end
         @test code == 0
         code == 0 || println(out)
         dmin, sys = minimum_intermolecular_distance(input_file)
-        @test dmin >= sys.tolerance - sys.tolerance_precision
+        @test dmin >= sys.tolerance - sys.tolerance_precision - pdb_rounding
         println("  $name: $(round(elapsed; digits=2)) s")
     end
 
@@ -99,13 +103,13 @@ end
         code, _ = run_packmol(; stdin_file=input_file)
         @test code == 0
         dmin, sys = minimum_intermolecular_distance(input_file)
-        @test dmin >= sys.tolerance - sys.tolerance_precision
+        @test dmin >= sys.tolerance - sys.tolerance_precision - pdb_rounding
         output_file = joinpath(dir, "water_box_o.pdb")
         code, _ = run_packmol("-i", input_file, "-o", output_file)
         @test code == 0
         @test isfile(output_file)
         dmin, sys = minimum_intermolecular_distance(input_file, output_file)
-        @test dmin >= sys.tolerance - sys.tolerance_precision
+        @test dmin >= sys.tolerance - sys.tolerance_precision - pdb_rounding
         # The input file as the first positional argument
         rm(output_file)
         code, _ = run_packmol(input_file, "-o", output_file)

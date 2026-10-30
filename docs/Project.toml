@@ -6,4 +6,4 @@ Packmol = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
 
 [sources]
 Documenter = {rev = "top_menu_from_pages", url = "https://github.com/lmiq/Documenter.jl"}
-Packmol = {path = "/tmp/claude-1000/-home-leandro--julia-dev-PDBToolsBase/98061a25-7811-4477-9d72-db5ec32f9575/scratchpad/wt/Packmol"}
+Packmol = {path = "/home/leandro/.julia/dev/Packmol"}

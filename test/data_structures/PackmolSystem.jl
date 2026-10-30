@@ -288,3 +288,22 @@ end
         @test err isa ArgumentError && occursin(msg, err.msg)
     end
 end
+
+@testitem "show(::PackmolSystem)" setup=[TestFiles] begin
+    using ShowMethodTesting
+    water = TestFiles.test_file("structure_files/water.pdb")
+    protein = TestFiles.test_file("structure_files/protein.pdb")
+    sys = PackmolSystem([
+            structure_type(protein; number=1, fixed=([0., 0., 0.], [0., 0., 0.])),
+            structure_type(water; number=100, constraints=[InsideSphere([0., 0., 0.], 30.0)]),
+        ]; output="show_test.pdb", tolerance=2.0)
+    s = repr(MIME"text/plain"(), sys)
+    @test parse_show(sys) ≈ """
+    PackmolSystem{3,Float64}
+        Number of types of structures: 2
+        Total number of molecules: 101
+        Structure types:
+        1. "protein.pdb" - n_atoms = 4246 - n_mols = 1 - fixed - n_constraints = 0
+        2. "water.pdb" - n_atoms = 3 - n_mols = 100 - n_constraints = 1"""
+    @test !endswith(s, "\n")
+end
