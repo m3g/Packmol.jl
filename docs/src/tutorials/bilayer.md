@@ -148,4 +148,4 @@ packmol(system)
 !!! tip
     The `Membrane` recipe builds bilayers like this one from a few parameters
     (lipid composition, area per lipid, solvent thickness), with periodic boundary
-    conditions. See [Recipes](../recipes.md).
+    conditions. See [Recipes](../recipes/index.md).

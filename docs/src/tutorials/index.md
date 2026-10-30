@@ -8,7 +8,7 @@ built in two ways:
   Packmol (see [Home](../index.md) for how to install it).
 - **Julia:** the same system defined with Julia code, with
   [`structure_type`](@ref), [`PackmolSystem`](@ref) and [`packmol`](@ref) (see
-  [Defining systems in Julia](../julia_api.md)).
+  [Defining systems in Julia](../julia_api/index.md)).
 
 | Tutorial | System |
 |---|---|
