@@ -138,6 +138,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
   `InsideCube(lower_corner, side)`. The keyword forms (`center`, `sides`/`side`) keep the
   center convention. Before, the positional forms took the center, unlike the input lines
   and the docs.
+- **D20 (2026-10-30): distribution (maintainer).** Everything lives in this repository,
+  including the Python packaging; m3g/packmol will be archived (or renamed, with this
+  repository's content merged into it, for continuity). The maintainer provides only
+  GitHub release archives (C1) and PyPI/uvx wheels (C2). Linux distribution packages,
+  Homebrew, conda-forge, etc. are left to third parties, who can repackage the C1
+  archives. The installation page of the docs links to the binaries of the latest
+  release and of the development version.
 ---
 
 ## Baseline (measured 2026-10-29, Linux x86_64, Julia 1.13.2)
@@ -382,6 +389,11 @@ Fixed (branch `fixed-molecules-compat`):
   - Still open: code signing/notarization on macOS, and `pick_file` (PowerShell) on
     Windows, which can't be tested in CI.
 - [ ] **B5** Linux portability: the build host's glibc sets the minimum (≥ 2.34 today).
+  Checked on the CI-built executable (2026-10-30): the newest glibc symbol it needs is
+  `GLIBC_2.34`, from the executable itself (the bundled Julia libraries need ≤ 2.17).
+  So it runs on Ubuntu ≥ 22.04, Debian ≥ 12, RHEL/Rocky/Alma ≥ 9, but not on RHEL 8
+  and its clones (glibc 2.28, supported until 2029 and common on HPC clusters), Ubuntu
+  20.04 or Debian 11 (2.31).
   Build in a manylinux_2_28 container (or older) for wider coverage, matching the wheel tag.
 - [~] **B6** Size reduction: optional, since size doesn't block PyPI. The experiment
   succeeded (Baseline: 117 MB → 67 MB, 36 MB → 21 MB compressed). To adopt it, add the
@@ -411,7 +423,9 @@ Fixed (branch `fixed-molecules-compat`):
 
 - [ ] **C1** Release archives on GitHub Releases: `packmol-<ver>-<os>-<arch>.tar.gz`
   (or `.zip` on Windows) with SHA256 sums, produced by B3. Package managers consume these
-  archives.
+  archives. Also a rolling `dev` pre-release, replaced on every push to `main`. Link both
+  from the installation page of the docs (D20); the `releases/latest/download/<name>`
+  URLs need asset names without the version (or a stable alias next to the versioned one).
 - [ ] **C2** Python wheels (`pip install packmol`, `uvx packmol`). Reuse the Fortran
   repo's layout: a hatchling package whose `cli.py` execs the bundled binary. The wheel
   carries the prebuilt bundle (no compilation in the build hook). Platform tags:
@@ -422,11 +436,12 @@ Fixed (branch `fixed-molecules-compat`):
   The runtime libraries can't be separate PyPI dependencies: they are the exact build of
   one Julia version, and PyPI has no shared package for them. A `packmol-runtime` wheel
   would only split the download without saving anything, so bundling is the way.
-- [?] **C3** Where the Python packaging lives: in this repo, or in m3g/packmol (which then
-  becomes the "distribution" repo, downloading the binaries from Packmol.jl releases).
-  This needs a decision (see D2).
-- [ ] **C4** conda-forge recipe (repackaging the C1 binaries, or building from source with
-  juliac, which is harder), then Homebrew, AUR, etc. Lower priority, after C1/C2.
+- [x] **C3** The Python packaging lives in this repository (D20). The PyPI project
+  `packmol` already exists (Fortran wheels, latest 21.2.3, published from m3g/packmol):
+  this repository must be added as a trusted publisher of that project, and the new
+  versions must sort after 21.2.3 (C5).
+- [N] **C4** conda-forge, Homebrew, AUR, distribution packages: left to third parties
+  (D20). They are possible by repackaging the C1 archives.
 - [ ] **C5** Versioning scheme: binary version, Packmol.jl version and PyPI version.
   Reported by `packmol --version` (A1.5).
 
@@ -543,3 +558,5 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   tutorial pages for the five examples of the Packmol site (command line and Julia),
   `atom_constraints` keyword of `structure_type` (the Julia API had no per-atom
   constraints), D19 (box/cube positional constructors), A5.12 (cube corner fix).
+- **2026-10-30** (Claude, same session): merged PRs #47–#50 (tutorials, docs layout,
+  MolSimToolkit port). D20 (distribution decisions); B5 finding (glibc 2.34).
