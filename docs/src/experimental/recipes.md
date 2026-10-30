@@ -264,10 +264,10 @@ get_density_table(system)
 ```
 
 !!! note "Volume fractions"
-    The volume fraction is the volume of the pure cossolvent divided by the volume of
-    the solution (as in "% v/v", where the solution is made up to its final volume).
-    MolSimToolkit.jl divided by the sum of the volumes of the pure components instead
-    (ideal mixing). The two differ when the volumes are not additive.
+    The volume fraction is the IUPAC one: the volume of the pure cossolvent divided by
+    the sum of the volumes of the pure components, before mixing. Computing it requires
+    the densities of the pure solvent and cossolvent, so the density table must include
+    both (concentrations 0 and 1 in molar fraction).
 
 ## Solute-Water-Ions system
 
@@ -401,5 +401,4 @@ here. The same systems are built with:
 | `run_packmol("box.inp")` | `packmol("box.inp")`, or `packmol(system; ...)` without an input file |
 
 The concentration units `"mol/L"`, `"x"`, `"vv"` and `"mm"` are accepted, along with
-the other aliases of [Concentration Unit Conversion](@ref). Volume fractions are defined
-differently (see the note in [Converting concentrations](@ref)).
+the other aliases of [Concentration Unit Conversion](@ref).

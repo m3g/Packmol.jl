@@ -127,7 +127,7 @@ function convert_concentration(system::SolutionBoxUSC, concentration::Number, un
     ρc = density_pure_cossolvent(system)
     return cconvert(c, units;
         M_solvent=system.solvent_molar_mass, M_solute=system.cossolvent_molar_mass,
-        rho_solution=ρ, rho_solute=ρc,
+        rho_solution=ρ, rho_solute=ρc, rho_solvent=density_pure_solvent(system),
     )
 end
 
@@ -164,7 +164,7 @@ function get_density_table(system::SolutionBoxUSC)
     c = [
         ustrip(cconvert(ci, "mol/L" => system.concentration_units;
             M_solvent=system.solvent_molar_mass, M_solute=system.cossolvent_molar_mass,
-            rho_solution=di, rho_solute=ρc,
+            rho_solution=di, rho_solute=ρc, rho_solvent=density_pure_solvent(system),
         )) for (ci, di) in zip(concentration, density)
     ]
     return hcat(c, ustrip.(u"g/mL", density))

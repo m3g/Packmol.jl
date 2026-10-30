@@ -45,21 +45,6 @@
     @test cconvert(0.0u"M", "M" => "w/w"; M_solute=M_EtOH, rho_solution=rho_sol_1M) == 0.0
     @test cconvert(0.0u"M", "M" => "%m/m"; M_solute=M_EtOH, rho_solution=rho_sol_1M) == 0.0
 
-    # --- Molarity to VolumeFraction ---
-    # Ethanol case (1 M -> ~0.05839)
-    @test cconvert(1.0u"M", "M" => "VolumeFraction"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) ≈ (1.0*ustrip(M_EtOH)/1000)/ustrip(rho_EtOH_pure) # 0.046068/0.789
-    @test cconvert(1.0u"M", "M" => "VolumeFraction"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) ≈ 0.05868 rtol=1e-3
-    # Ethanol case (~10 M -> ~0.5839)
-    @test cconvert(10.0u"M", "M" => "v/v"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) ≈ 0.5868 rtol=1e-3
-    # Output as Percentage
-    @test cconvert(10.0u"M", "M" => "%v/v"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) ≈ 58.68 rtol=1e-3
-    # Missing Kwargs
-    @test_throws UndefKeywordError cconvert(1.0u"M", "M" => "v/v"; M_solute=M_EtOH)
-    @test_throws UndefKeywordError cconvert(1.0u"M", "M" => "v/v"; rho_solute=rho_EtOH_pure)
-    # Zero concentration
-    @test cconvert(0.0u"M", "M" => "v/v"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) == 0.0
-    @test cconvert(0.0u"M", "M" => "%v/v"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) == 0.0
-
     # --- Molarity to NumberDensity ---
     @test cconvert(1.0u"mol/L", "M" => "Å^-3") ≈ 1.0u"mol/L" * Na rtol=1e-6
     @test cconvert(1.0u"mol/L", "M" => "Å^-3") ≈ 0.000602214u"Å^-3"  rtol=1e-6 
@@ -107,17 +92,6 @@ end
     # Zero concentration
     @test cconvert(0.0u"mol/kg", "mol/kg" => "w/w"; M_solute=M_EtOH) == 0.0
     @test cconvert(0.0u"mol/kg", "mol/kg" => "%m/m"; M_solute=M_EtOH) == 0.0
-
-    # --- Molality to VolumeFraction --- (Requires rho_solution, rho_solute)
-    @test cconvert(1.0u"mol/kg", "mol/kg" => "v/v"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure, rho_solution=rho_sol_1m) ≈ 0.0557 rtol=1e-3
-    # Output Percentage
-    @test cconvert(1.0u"mol/kg", "mol/kg" => "%v/v"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure, rho_solution=rho_sol_1m) ≈ 5.5652 rtol=1e-3
-    # Missing Kwargs
-    @test_throws UndefKeywordError cconvert(1.0u"mol/kg", "mol/kg" => "v/v"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) # Missing rho_solution
-    @test_throws UndefKeywordError cconvert(1.0u"mol/kg", "mol/kg" => "v/v"; M_solute=M_EtOH, rho_solution=rho_sol_1m) # Missing rho_solute
-    @test_throws UndefKeywordError cconvert(1.0u"mol/kg", "mol/kg" => "v/v"; rho_solute=rho_EtOH_pure, rho_solution=rho_sol_1m) # Missing M_solute
-    # Zero concentration
-    @test cconvert(0.0u"mol/kg", "mol/kg" => "v/v"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure, rho_solution=rho_H2O_pure) == 0.0
 
     # --- Molality to NumberDensity --- (Requires rho_solution)
     # Ethanol case (1m -> intermediate molarity -> number density)
@@ -176,18 +150,6 @@ end
     @test cconvert(1.0, "chi" => "w/w"; M_solute=M_EtOH, M_solvent=M_H2O) == 1.0
     @test cconvert(1.0, "chi" => "%m/m"; M_solute=M_EtOH, M_solvent=M_H2O) == 100.0
 
-    # --- MoleFraction to VolumeFraction --- (Requires densities)
-    # Ethanol case (χ=0.2 -> ~0.265) - Requires intermediate Molarity calc
-    @test cconvert(0.2, "chi" => "v/v"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure, rho_solution=rho_sol_chi02) ≈ 0.4630 rtol=1e-3
-    # Output Percentage
-    @test cconvert(0.2, "chi" => "%v/v"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure, rho_solution=rho_sol_chi02) ≈ 46.30 rtol=1e-3 
-    # Missing Kwargs (will cascade from intermediate call)
-    @test_throws UndefKeywordError cconvert(0.2, "chi" => "v/v"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure) # Missing rho_solution
-    # Edge cases
-    @test cconvert(0.0, "chi" => "v/v"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure, rho_solution=rho_H2O_pure) == 0.0
-    # Pure solute vf=1 needs density of pure solute as rho_solution
-    @test cconvert(1.0, "chi" => "v/v"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure, rho_solution=rho_EtOH_pure) ≈ 1.0
-
      # --- MoleFraction to NumberDensity --- (Requires densities)
      # Ethanol case (χ=0.2 -> ~3.44e-3 Å^-3) - Requires intermediate Molarity calc
      @test cconvert(0.2, "chi" => "Å^-3"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solution=rho_sol_chi02) ≈ 0.0047513u"Å^-3" rtol=1e-3
@@ -244,22 +206,6 @@ end
     @test cconvert(1.0, "w/w" => "chi"; M_solute=M_EtOH, M_solvent=M_H2O) == 1.0
     @test cconvert(100.0, "%m/m" => "chi"; M_solute=M_EtOH, M_solvent=M_H2O) == 1.0
 
-    # --- MassFraction to VolumeFraction ---
-    # Ethanol case (50% w/w -> vf ~ 0.584)
-    vf = (0.5 / ustrip(rho_EtOH_pure)) / (1.0 / ustrip(rho_sol_50ww))
-    @test cconvert(50.0, "%m/m" => "v/v"; rho_solute=rho_EtOH_pure, rho_solution=rho_sol_50ww) ≈ vf
-    @test cconvert(50.0, "%m/m" => "v/v"; rho_solute=rho_EtOH_pure, rho_solution=rho_sol_50ww) ≈ 0.5822 rtol=1e-3 
-    @test cconvert(0.5, "w/w" => "v/v"; rho_solute=rho_EtOH_pure, rho_solution=rho_sol_50ww) ≈ (0.5/ustrip(rho_EtOH_pure))/(1.0/ustrip(rho_sol_50ww))
-    @test cconvert(0.5, "w/w" => "v/v"; rho_solute=rho_EtOH_pure, rho_solution=rho_sol_50ww) ≈ 0.5822 rtol=1e-3
-    # Output Percentage
-    @test cconvert(50.0, "%m/m" => "%v/v"; rho_solute=rho_EtOH_pure, rho_solution=rho_sol_50ww) ≈ 58.216 rtol=1e-3
-    # Missing Kwargs
-    @test_throws UndefKeywordError cconvert(0.5, "w/w" => "v/v"; rho_solute=rho_EtOH_pure)
-    @test_throws UndefKeywordError cconvert(0.5, "w/w" => "v/v"; rho_solution=rho_sol_50ww)
-    # Edge Cases
-    @test cconvert(0.0, "w/w" => "v/v"; rho_solute=rho_EtOH_pure, rho_solution=rho_H2O_pure) == 0.0
-    @test cconvert(1.0, "w/w" => "v/v"; rho_solute=rho_EtOH_pure, rho_solution=rho_EtOH_pure) == 1.0
-
     # --- MassFraction to NumberDensity ---
     # Ethanol case (50% w/w -> ~5.97e-3 Å^-3) - intermediate molarity
     @test cconvert(50.0, "%m/m" => "Å^-3"; M_solute=M_EtOH, rho_solution=rho_sol_50ww) ≈ 0.00597u"Å^-3"  rtol=1e-3
@@ -272,64 +218,51 @@ end
 end
 
 @testitem "VolumeFraction Conversions" setup=[CConvert] begin
+    # The volume fraction is the IUPAC one: the volume of the pure solute over the sum of
+    # the volumes of the pure components (before mixing)
+    pure = (M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure, rho_solvent=rho_H2O_pure)
 
     # --- Identity ---
     @test cconvert(0.5, "VolumeFraction" => "VolumeFraction") == 0.5
     @test cconvert(50.0, "%v/v" => "v/v") == 0.5 # Percent input, fraction output
     @test cconvert(0.5, "v/v" => "%v/v") == 50.0 # Fraction input, percent output
+    @test cconvert(0.5, "vv" => "v/v") == 0.5
 
-    # --- VolumeFraction to Molarity ---
-    # Ethanol case (vf=0.5 -> ~8.56 M)
-    @test cconvert(0.5, "v/v" => "M"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) ≈ (0.5 * ustrip(rho_EtOH_pure)) / (ustrip(M_EtOH)/1000.0) * u"mol/L"
-    @test cconvert(0.5, "v/v" => "M"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) ≈ 8.520u"mol/L" rtol=1e-3
-    # Missing Kwargs
-    @test_throws UndefKeywordError cconvert(0.5, "v/v" => "M"; M_solute=M_EtOH)
-    @test_throws UndefKeywordError cconvert(0.5, "v/v" => "M"; rho_solute=rho_EtOH_pure)
-    # Edge Cases
-    @test cconvert(0.0, "v/v" => "M"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) == 0.0u"mol/L"
-    @test cconvert(1.0, "v/v" => "M"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) ≈ uconvert(u"mol/L", rho_EtOH_pure / M_EtOH) # Molarity of pure
+    # 40 mL of ethanol and 60 mL of water (before mixing): φ = 0.4
+    nE = 40 * ustrip(u"g/mL", rho_EtOH_pure) / ustrip(M_EtOH)
+    nW = 60 * ustrip(u"g/mL", rho_H2O_pure) / ustrip(M_H2O)
+    x = nE / (nE + nW)
+    mE, mW = 40 * ustrip(u"g/mL", rho_EtOH_pure), 60 * ustrip(u"g/mL", rho_H2O_pure)
+    @test cconvert(0.4, "v/v" => "chi"; pure...) ≈ x
+    @test cconvert(x, "chi" => "v/v"; pure...) ≈ 0.4
+    @test cconvert(40.0, "%v/v" => "chi"; pure...) ≈ x
+    @test cconvert(x, "chi" => "%v/v"; pure...) ≈ 40.0
+    @test cconvert(0.4, "v/v" => "w/w"; pure...) ≈ mE / (mE + mW)
+    @test cconvert(mE / (mE + mW), "w/w" => "v/v"; pure...) ≈ 0.4
+    @test cconvert(0.4, "v/v" => "mol/kg"; pure...) ≈ (nE / (mW / 1000)) * u"mol/kg"
+    @test cconvert((nE / (mW / 1000)) * u"mol/kg", "mol/kg" => "v/v"; pure...) ≈ 0.4
+    # The molarity and the number density need the density of the solution (100 mL
+    # before mixing make less than 100 mL of solution)
+    ρ = rho_sol_50vv
+    V = (mE + mW) / ustrip(u"g/mL", ρ) # mL
+    @test cconvert(0.4, "v/v" => "M"; rho_solution=ρ, pure...) ≈ (1000 * nE / V) * u"mol/L"
+    @test cconvert((1000 * nE / V) * u"mol/L", "M" => "v/v"; rho_solution=ρ, pure...) ≈ 0.4
+    @test cconvert(0.4, "v/v" => "Å^-3"; rho_solution=ρ, pure...) ≈ cconvert((1000 * nE / V) * u"mol/L", "M" => "Å^-3")
+    @test cconvert(cconvert(0.4, "v/v" => "Å^-3"; rho_solution=ρ, pure...), "Å^-3" => "v/v"; rho_solution=ρ, pure...) ≈ 0.4
 
-    # --- VolumeFraction to MassFraction ---
-    # Ethanol case (vf=0.5 -> mf ~ 0.424) - use rho for vf=0.5
-    mf = (0.5 * ustrip(rho_EtOH_pure)) / ustrip(rho_sol_50vv)
-    @test cconvert(0.5, "v/v" => "w/w"; rho_solute=rho_EtOH_pure, rho_solution=rho_sol_50vv) ≈ mf
-    @test cconvert(0.5, "v/v" => "w/w"; rho_solute=rho_EtOH_pure, rho_solution=rho_sol_50vv) ≈ 0.4220 rtol=1e-3
-    # Output Percentage
-    @test cconvert(50.0, "%v/v" => "%m/m"; rho_solute=rho_EtOH_pure, rho_solution=rho_sol_50vv) ≈ 42.20 rtol=1e-3
-    # Missing Kwargs
-    @test_throws UndefKeywordError cconvert(0.5, "v/v" => "w/w"; rho_solute=rho_EtOH_pure)
-    @test_throws UndefKeywordError cconvert(0.5, "v/v" => "w/w"; rho_solution=rho_sol_50vv)
-    # Edge Cases
-    @test cconvert(0.0, "v/v" => "w/w"; rho_solute=rho_EtOH_pure, rho_solution=rho_H2O_pure) == 0.0
-    @test cconvert(1.0, "v/v" => "w/w"; rho_solute=rho_EtOH_pure, rho_solution=rho_EtOH_pure) == 1.0
+    # Edge cases
+    @test cconvert(0.0, "v/v" => "chi"; pure...) == 0.0
+    @test cconvert(1.0, "v/v" => "chi"; pure...) == 1.0
+    @test cconvert(0.0, "chi" => "v/v"; pure...) == 0.0
+    @test cconvert(1.0, "chi" => "v/v"; pure...) == 1.0
+    @test cconvert(0.0u"M", "M" => "v/v"; rho_solution=rho_H2O_pure, pure...) == 0.0
+    @test_throws ArgumentError cconvert(1.5, "v/v" => "chi"; pure...)
 
-    # --- VolumeFraction to Molality --- (Requires intermediate Molarity/MassFraction)
-    # Ethanol case (vf=0.5 -> ~15.6 m)
-    @test cconvert(0.5, "v/v" => "mol/kg"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure, rho_solution=rho_sol_50vv) ≈ 15.85u"mol/kg" rtol=1e-3 # Chain M->m or MF->m
-    # Missing Kwargs (will cascade)
-    @test_throws UndefKeywordError cconvert(0.5, "v/v" => "mol/kg"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) # Missing rho_solution
-    # Edge Cases
-    @test cconvert(0.0, "v/v" => "mol/kg"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure, rho_solution=rho_H2O_pure) == 0.0u"mol/kg"
-    @test_throws ArgumentError cconvert(1.0, "v/v" => "mol/kg"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure, rho_solution=rho_EtOH_pure) # Fails at MF->m step (mf=1)
-
-    # --- VolumeFraction to MoleFraction --- (Requires intermediate Molarity/MassFraction)
-    # Ethanol case (vf=0.5 -> χ ~ 0.218)
-    @test cconvert(0.5, "v/v" => "chi"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure, rho_solution=rho_sol_50vv) ≈ 0.2221 rtol=1e-3
-    # Missing Kwargs (will cascade)
-    @test_throws UndefKeywordError cconvert(0.5, "v/v" => "chi"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure) # Missing rho_solution
-    # Edge Cases
-    @test cconvert(0.0, "v/v" => "chi"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure, rho_solution=rho_H2O_pure) == 0.0
-    @test cconvert(1.0 - eps(1.0), "v/v" => "chi"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure, rho_solution=rho_EtOH_pure) ≈ 1.0
-
-    # --- VolumeFraction to NumberDensity ---
-    # Ethanol case (vf=0.5 -> ~5.16e-3 Å^-3) - Intermediate Molarity
-    @test cconvert(0.5, "v/v" => "Å^-3"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) ≈ 0.0051308u"Å^-3"  rtol=1e-4
-    # Missing Kwargs
-    @test_throws UndefKeywordError cconvert(0.5, "v/v" => "Å^-3"; M_solute=M_EtOH) # rho_solute missing
-    @test_throws UndefKeywordError cconvert(0.5, "v/v" => "Å^-3"; rho_solute=rho_EtOH_pure) # M_solute missing
-    # Edge Cases
-    @test cconvert(0.0, "v/v" => "Å^-3"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) == 0.0u"Å^-3"
-
+    # Missing Kwargs: the molar masses and the densities of both pure components
+    @test_throws UndefKeywordError cconvert(0.5, "v/v" => "chi"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure)
+    @test_throws UndefKeywordError cconvert(0.5, "v/v" => "chi"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solvent=rho_H2O_pure)
+    @test_throws UndefKeywordError cconvert(0.5, "chi" => "v/v"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure, rho_solvent=rho_H2O_pure)
+    @test_throws UndefKeywordError cconvert(0.5, "v/v" => "M"; pure...) # Missing rho_solution
 end
 
 @testitem "NumberDensity Conversions" setup=[CConvert] begin
@@ -377,16 +310,6 @@ end
      # Edge Cases
     @test cconvert(0.0u"Å^-3", "Å^-3" => "w/w"; M_solute=M_EtOH, rho_solution=rho_H2O_pure) == 0.0
 
-    # --- NumberDensity to VolumeFraction --- (Intermediate Molarity)
-    # Ethanol case (N_test -> vf ~ 0.485)
-    @test cconvert(N_test, "Å^-3" => "v/v"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) ≈ 0.4872 rtol=1e-3
-    # Output Percentage
-    @test cconvert(N_test, "Å^-3" => "%v/v"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) ≈ 48.72 rtol=1e-3
-    # Missing Kwargs (cascades)
-    @test_throws UndefKeywordError cconvert(N_test, "Å^-3" => "v/v"; M_solute=M_EtOH) # Missing rho_solute
-    # Edge Cases
-    @test cconvert(0.0u"Å^-3", "Å^-3" => "v/v"; M_solute=M_EtOH, rho_solute=rho_EtOH_pure) == 0.0
-
 end
 
 @testitem "Wrapper Functionality" setup=[CConvert] begin
@@ -418,14 +341,14 @@ end
     M1 = cconvert(chi1, "chi" => "M"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solution=rho_sol_chi02)
     m1 = cconvert(chi1, "chi" => "mol/kg"; M_solvent=M_H2O)
     mf1_perc = cconvert(chi1, "chi" => "%m/m"; M_solute=M_EtOH, M_solvent=M_H2O)
-    vf1_perc = cconvert(chi1, "chi" => "%v/v"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure, rho_solution=rho_sol_chi02)
+    vf1_perc = cconvert(chi1, "chi" => "%v/v"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure, rho_solvent=rho_H2O_pure, rho_solution=rho_sol_chi02)
     N1 = cconvert(chi1, "chi" => "Å^-3"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solution=rho_sol_chi02)
 
     # Test round trips back to mole fraction (expect approx equality)
     @test cconvert(M1, "M" => "chi"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solution=rho_sol_chi02) ≈ chi1 rtol=1e-3
     @test cconvert(m1, "mol/kg" => "chi"; M_solvent=M_H2O) ≈ chi1 rtol=1e-3
     @test cconvert(mf1_perc, "%m/m" => "chi"; M_solute=M_EtOH, M_solvent=M_H2O) ≈ chi1 rtol=1e-3
-    @test cconvert(vf1_perc, "%v/v" => "chi"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure, rho_solution=rho_sol_chi02) ≈ chi1 rtol=1e-3
+    @test cconvert(vf1_perc, "%v/v" => "chi"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solute=rho_EtOH_pure, rho_solvent=rho_H2O_pure, rho_solution=rho_sol_chi02) ≈ chi1 rtol=1e-3
     @test cconvert(N1, "Å^-3" => "chi"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solution=rho_sol_chi02) ≈ chi1 rtol=1e-3
 
 end

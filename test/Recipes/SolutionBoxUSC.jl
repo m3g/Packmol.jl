@@ -194,9 +194,8 @@ end
     ρc, ρw = 2.0, 1.0
     M = c(system.solvent_molar_mass)
     ρ(x) = ρc * x + ρw * (1 - x)
-    # Volume fraction: volume of the pure cossolvent over the volume of the solution
-    # (MolSimToolkit used the sum of the volumes of the pure components instead)
-    vv(x) = (x * M / ρc) / (M / ρ(x))
+    # Volume fraction (IUPAC): volumes of the pure components before mixing
+    vv(x) = (x / ρc) / (x / ρc + (1 - x) / ρw)
     mx(x) = x / (M / (1000 * ρ(x)))
     for x in (0.0, 0.2, 0.5, 0.7, 1.0)
         @test convert_concentration(system, x, "x" => "vv") ≈ vv(x) atol = 1e-6

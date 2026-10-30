@@ -90,12 +90,14 @@ function interpolate_density(
     dtab = density_table.density
     ctab = density_table.concentration
     dpc = density_pure_cossolvent(density_table, M_solvent, M_solute)
+    dps = density_pure_solvent(density_table)
     for (ic,c) in enumerate(ctab)
         cc = cconvert(c, "mol/L" => concentration_units; 
             M_solvent = M_solvent,
             M_solute = M_solute,
             rho_solution = dtab[ic],
             rho_solute = dpc,
+            rho_solvent = dps,
         )
         if (ic == 1 && concentration < cc) || (ic+1 > length(ctab))
             cfirst = cconvert(ctab[1], "mol/L" => concentration_units; 
@@ -103,12 +105,14 @@ function interpolate_density(
                 M_solute, 
                 rho_solution = dtab[1],
                 rho_solute = dpc,
+                rho_solvent = dps,
             ) 
             clast = cconvert(ctab[end], "mol/L" => concentration_units; 
                 M_solvent = M_solvent,
                 M_solute = M_solute,
                 rho_solution = dtab[end],
-                rho_solute = dpc, 
+                rho_solute = dpc,
+                rho_solvent = dps,
             )
             throw(ArgumentError("""\n
                 Concentration out of range of density table.
@@ -120,7 +124,8 @@ function interpolate_density(
             M_solvent = M_solvent,
             M_solute = M_solute,
             rho_solution = dtab[ic+1],
-            rho_solute = dpc, 
+            rho_solute = dpc,
+            rho_solvent = dps,
         )
         if cc <= concentration <= cnext
             return dtab[ic] + (dtab[ic+1] - dtab[ic]) * (concentration - cc) / (cnext - cc)
