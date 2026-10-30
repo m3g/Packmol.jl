@@ -42,7 +42,7 @@ HETATM   39  O   HOH A  13       6.762   1.192   9.463  0.00  0.00         X O
 HETATM   40  H   HOH A  14      13.796   4.323  17.058  0.00  0.00         X H
 HETATM   41  H   HOH A  14      15.355   4.611  16.667  0.00  0.00         X H
 HETATM   42  O   HOH A  14      14.738   4.313  17.394  0.00  0.00         X O
-HETATM   43  H   HOH A  15      10.535   8.610   7.043  0.00  0.00         X H
+HETATM   43  H   HOH A  15      10.536   8.610   7.043  0.00  0.00         X H
 HETATM   44  H   HOH A  15      11.446   7.868   5.909  0.00  0.00         X H
 HETATM   45  O   HOH A  15      11.261   8.737   6.367  0.00  0.00         X O
 HETATM   46  H   HOH A  16      14.266   3.459   6.800  0.00  0.00         X H
