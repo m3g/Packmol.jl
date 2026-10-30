@@ -85,17 +85,18 @@ particular run rather than being system properties.
 
 ## Rotation constraints
 
-[`structure_type`](@ref)'s `constrain_rotation` keyword bounds a molecule's
-rotation about one or more axes to `center ± halfwidth` degrees — a hard
-bound on the optimizer's own rotation-angle variable, not a soft penalty
-(matching the input file's `constrain_rotation <axis> <center_deg>
-<halfwidth_deg>`, one call per axis instead of one line per axis):
+[`structure_type`](@ref)'s `constrain_rotation` keyword keeps the angle between
+an axis and a vector of the molecule within `center ± halfwidth` degrees (see
+[Rotation constraint](@ref)). Each axis takes `(center, halfwidth)`, for the
+longest axis of the molecule, or `(center, halfwidth, from_atoms, to_atoms)`,
+for the vector between the centers of two sets of atoms:
 
 ```julia
 lipid = structure_type(
     "lipid.pdb";
     number = 100,
-    constrain_rotation = Dict(:z => (0.0, 15.0)),  # keep roughly upright
+    # head (atoms 1 and 2) to tail (atom 42) within 15° of z
+    constrain_rotation = Dict(:z => (0.0, 15.0, [1, 2], [42])),
     constraints = [InsideBox([0.,0.,0.],[80.,80.,40.])],
 )
 ```

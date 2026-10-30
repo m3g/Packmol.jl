@@ -52,6 +52,7 @@ include("./constraints/gaussians.jl")
 include("./constraints/waves.jl")
 include("./constraints/exponentials.jl")
 include("./constraints/constraint_types.jl")
+include("./constraints/rotations.jl")
 
 # Data structures
 include("./data_structures/atoms_and_molecules.jl")

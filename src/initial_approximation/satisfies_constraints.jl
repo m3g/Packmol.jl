@@ -7,8 +7,9 @@ function satisfies_constraints(
     st::StructureType{D,T},
     mol_positions::Vector{SVector{D,T}},
 ) where {D,T}
-    isempty(st.constraints) && return true
+    isempty(st.constraints) && isempty(st.rotation_constraints) && return true
     R = eulermat(mp.angles)
+    _rotation_penalty(st, R) > zero(T) && return false
     for (j, r) in enumerate(st.reference_coordinates)
         x = R * r + mp.cm
         mol_positions[j] = x

@@ -15,6 +15,26 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
 
 ---
 
+## Status (2026-10-29)
+
+- **Feature parity (A): essentially done.** The CLI contract (stdin, `-i`/`-o`, exit
+  codes, `_FORCED`), XYZ, CONECT, TER, `segid`, `nloop`/`maxit`/`movefrac`, deprecation
+  warnings, fixed molecules and the Fortran `pbc` convention all match Fortran, and the
+  whole Fortran test suite packs (`test/fortran_test_suite.jl`). Packmol.jl is faster
+  than Fortran on every test input (A5.10). Deliberate differences: D1, D11–D16.
+  Remaining: `xygauss` (A3.4), `writeout` as a time interval and `writebad` (A5.7),
+  keywords without effect (A5.8), running the suite through the compiled binary in CI
+  (A4.1), and the large test (A4.3).
+- **Build (B):** the trimmed binary builds and runs locally on Linux. Nothing is in CI
+  yet; Windows/macOS untested. Next: B2 (build script), B3 (CI workflow), B4.
+- **Distribution (C):** not started (needs B3).
+- **Docs (D):** the page of differences and Julia-only features is not written.
+- Merged: PR #42 (CLI, formats, keywords), PR #43 (fixed molecules, restarts from
+  coordinates, principal axes, radius-aware convergence, PBC trap). Branch
+  `rotation-constraints`: the new `constrain_rotation` (D15, A5.11).
+
+---
+
 ## Decisions
 
 - **D1 (2026-10-29): paths in an input file are relative to the input file's directory**
@@ -85,13 +105,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
 - **D14 (2026-10-29): Packmol.jl's own Euler angles (`eulermat`) are the only convention.**
   Fortran's z–x–z `eulerrmat` of free molecules is not used anywhere.
 - **D15 (2026-10-29, revised by the maintainer): `constrain_rotation` constrains the
-  angle between an axis and a molecular vector**, regardless of what Fortran does.
-  `constrain_rotation z <center> <halfwidth>` keeps the angle between the z axis and a
-  vector of the molecule within `center ± halfwidth`. The vector joins the centers of
-  two sets of atoms of the molecule, given with the constraint. Fortran compatibility of
-  `constrain_rotation` is not required. Open: the input syntax, the default vector when
-  no atom sets are given (proposed: the longest principal axis), and whether the bound
-  is a penalty or a hard bound (see A5.11).
+  angle between an axis and a molecular vector**, regardless of what Fortran does
+  (Fortran compatibility is not required). `constrain_rotation z <center> <halfwidth>`
+  keeps the angle between the z axis and a vector of the molecule within
+  `center ± halfwidth`. The vector joins the centers of two sets of atoms, given in a
+  block (syntax approved by the maintainer):
+
+      constrain_rotation z 0. 15.
+        atoms 1 2 3
+        to 25 26
+      end constrain_rotation
+
+  Without the block, the vector is the longest principal axis of the molecule. It is a
+  penalty, like the other constraints (A5.11).
 - **D16 (2026-10-29): reference orientations.** Free molecules are oriented internally
   along their principal axes of inertia (equal masses: the longest axis along z, the
   largest moment along x; `set_reference_coordinates!`), which defines their zero
@@ -154,11 +180,10 @@ coordinate file formats.
   `filetype` applies otherwise. The XYZ comment line is "Built with Packmol".
   `examples/interface.inp` runs. It also exposed a bug, now fixed: a `fixed` structure
   without `number` had 0 molecules (Fortran treats it as one molecule).
-- [?] **A2.2** `filetype tinker` (and `moldy`): marked "won't be supported" in CLAUDE.md.
-  Today `filetype` is parsed and silently ignored, so a Tinker input would be read as PDB.
-  At least fail with a clear error for any `filetype` other than pdb (and xyz once A2.1
-  lands).
-- [ ] **A2.3** `writecrd` (CHARMM CRD output, Fortran-only today). Decide: implement or reject clearly.
+- [x] **A2.2** `filetype tinker` (and `moldy`) won't be supported: any `filetype` other
+  than `pdb` or `xyz` is an input error.
+- [N] **A2.3** `writecrd` (CHARMM CRD output): deprecated with a warning (D4; the
+  maintainer judged CRD of no use).
 - [x] **A2.4** CONECT (2026-10-29), with PDBToolsBase 1.1 `Structure.connectivity`.
   - Each template's connectivity is stored in `StructureType.connectivity`, repeated
     with offset indices for every copy (`_system_connectivity`), and written by
@@ -189,8 +214,8 @@ coordinate file formats.
   Still to check: that `water_box_failed.inp` now fails as expected (A4.1).
 - [x] **A3.3** Deprecated keywords warn instead of erroring (D4): `sidemax`, `maxmove`,
   `nloop0`, `disable_movebad`, `writecrd`, the short-tolerance options, `fscale`, `fbins`,
-  `precision` and `iprint*`. `segid` (per structure) and the CONECT options are
-  "not yet implemented" warnings.
+  `precision` and `iprint*`. (`segid` and the CONECT options were implemented later:
+  A3.3b, A2.4.)
 - [x] **A3.3b** `segid` (D9).
 - [ ] **A3.4** `over xygauss` / `below xygauss` (Fortran's Gaussian surface): map onto
   the `AboveGaussian`/`BelowGaussian` constraints (check that the parameterization is
@@ -227,11 +252,14 @@ coordinate file formats.
     also covers `water_box_failed` (`_FORCED`) and `protein_outside_pbc_error`.
     `toy_with_fixed.inp` had been written for the old centered `pbc`; it's fixed
     in `packmol-v2`.
-  - Still to do: run the inputs through the compiled binary in CI.
-  - Performance note: `mixture_pbc.inp` takes about 31 s (Fortran is much faster;
-    see A4.2).
-- [ ] **A4.2** Benchmark the binary against Fortran on the larger examples (solvprotein is
-  slower single-threaded), and record the results here.
+  - Still to do: run the inputs through the compiled binary in CI (with B3).
+- [x] **A4.2** Benchmark the binary against Fortran on the test inputs: see the table in
+  A5.10 (Packmol.jl is faster on all of them).
+- [ ] **A4.3** **The large test** (run only when the maintainer asks):
+  `~/Documents/Zika/montevideo/packmol/all_from_scratch.inp`, a Zika virion (fixed
+  capsid, two membranes, ~550k water and ion molecules), about 30 min. Its
+  `restart_to ... .pack` line is rejected since D13, so run a scratch copy (symlinked
+  `pdb_files/`, that line pointed to a `.pdb`). Record the times in the session log.
 
 ---
 
@@ -258,7 +286,6 @@ Fixed (branch `fixed-molecules-compat`):
   (0 molecules). They are now errors. Deprecated and global keywords inside structure
   blocks are ignored with a warning (Fortran accepts them there).
 
-Open:
 - [x] **A5.5 `constrain_rotation` semantics differ.** Fortran bounds the angles of its
   z–x–z `eulerrmat` convention (x → θ, y → β, z → γ, `app/packmol.f90`), so for example
   `constrain_rotation x 0 10` alone restricts the tilt of the molecule's z axis to 10°.
@@ -275,12 +302,19 @@ Open:
 - [x] **A5.9 `centerofmass` of fixed molecules:** Fortran sets all masses to 1, so its
   "center of mass" is the geometric center. Packmol.jl uses atomic masses (0.05 Å
   difference for the protein test). Kept (D16). To document (D-doc).
-- [ ] **A5.11 New `constrain_rotation` (D15).** Proposed design: the vector
-  v = cm(B) − cm(A) is a linear combination of atom positions, so the penalty on the
-  angle between v and the axis (quadratic in the violation of `center ± halfwidth`, like
-  the other constraints) has a Cartesian gradient on the atoms of A and B, and goes
-  through the existing chain rule. This replaces the hard bounds on the Euler angles
-  (`rotation_bounds`, also used to sample initial angles). Needs the syntax (D15).
+- [x] **A5.11 New `constrain_rotation` (D15)**, `src/constraints/rotations.jl`
+  (branch `rotation-constraints`). The vector is a fixed linear combination of the atom
+  positions, v = Σ wᵢ xᵢ (Σ wᵢ = 0): the difference of the centers of the two sets, or,
+  by default, L·R ẑ (wᵢ = L zᵢ/Σ z², L the length of the molecule along z). The penalty
+  `weight·(L·Δθ)²` is the squared displacement of the tip of the vector (Å², comparable
+  to the other penalties and to `constraint_precision`); its gradient goes to the atoms
+  through the weights and the existing chain rule (at constant |v|, as the molecule is
+  rigid). It is evaluated wherever constraints are (objective, constraint-only fits,
+  badness of `movebad!`, initial placement checks). The hard bounds on the Euler angles
+  (`rotation_bounds`) were removed, so the optimizer has no angle bounds left; the
+  initial angles are uniform. Julia API: `constrain_rotation = Dict(:z => (c, hw))` or
+  `Dict(:z => (c, hw, from, to))`.
+
 - [x] **A5.10 Performance: `mixture_pbc` was trapped by a PBC inconsistency.** The
   centers of mass are bounded to the closed cell, but `wrap_to_center` maps the upper
   faces to the lower ones. A urea pushed against z = +20 was evaluated for its
@@ -374,8 +408,8 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   - **`run_packmol_legacy`** (Packmol_jll): Julia-only, and to be dropped.
   - **Interactive file dialog**: the binary has it (`pick_file`), through OS tools.
   - **Differences from Fortran Packmol** (or a separate migration page): restart files
-    are coordinate files (D13), `constrain_rotation` bounds Packmol.jl's angles of the
-    principal-axes orientation (D15, D16), `centerofmass` uses atomic masses (D16),
+    are coordinate files (D13), `constrain_rotation` constrains the angle between an axis
+    and a vector of the molecule (D15), `centerofmass` uses atomic masses (D16),
     `pbc a b c` (D11), the distance criterion (D12), deprecated keywords (D4).
   - Check whether **D=2 packing** and **other number types** (`Float32`) are reachable
     from the CLI (today it is hard-wired to `Val(3), Float64`).
@@ -443,3 +477,8 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   (A5.10, fixed). The PBC confinement must stay (maintainer): it gives non-periodic
   constraints their meaning. Regression tests in
   `test/function_and_gradient/interatomic_distance_fg.jl`; the seed pin was removed.
+- **2026-10-29** (Claude, same session): PR #43 merged. New branch `rotation-constraints`:
+  the `constrain_rotation` of D15 (A5.11), with the block syntax approved by the
+  maintainer; tests for the penalty, its gradient (finite differences on the whole
+  objective), the parser and packings measured from the output. Plan revised (Status
+  section, stale items). Then the large test (A4.3).

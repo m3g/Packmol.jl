@@ -335,13 +335,7 @@ function packmol(
         _build_overlap_check_system(packmol_system, movebad_overlap_tol)
     movebad_fg_output = InteratomicDistanceFG{D,T}(packmol_system)
 
-    # `constrain_rotation` bounds (per structure type, per axis) as hard
-    # bounds on the rotation-angle optimization variables — matching Fortran
-    # Packmol's own `pgencan`, which sets GENCAN's `l`/`u` this way rather
-    # than adding a soft penalty term. Built once (bounds don't change loop
-    # to loop) in the same flat MoleculePosition-reinterpreted layout as `x`.
-    #
-    # Under PBC, translation is *also* hard-bounded — to exactly one
+    # Under PBC, the centers of mass are hard-bounded — to exactly one
     # canonical period of the cell, centered at `unitcell_center` — rather
     # than left unbounded. Without this, a molecule can be pushed by a large
     # gradient (e.g. deep inside a non-periodic constraint's violation
@@ -365,35 +359,21 @@ function packmol(
     # SPGBox to find it directly instead of possibly overshooting through
     # several periods and having to claw back. The bounds are closed, and the
     # upper faces belong to the cell: centers of mass inside the closed cell are
-    # not wrapped when evaluating constraints (`_wrap_cm`). `nothing` (not just ±Inf
-    # vectors) when neither PBC nor any structure type's rotation is
-    # constrained, so SPGBox skips the bound-checking overhead entirely in
-    # that common case.
-    any_rotation_constrained = any(packmol_system.structure_types) do st
-        any(!isnothing, st.rotation_bounds)
-    end
-    lower, upper = if has_pbc || any_rotation_constrained
-        lower_mol = Vector{MoleculePosition{D,T}}(undef, nfree)
-        upper_mol = Vector{MoleculePosition{D,T}}(undef, nfree)
-        cm_lo, cm_hi = if has_pbc
-            # Axis-aligned half-extent of the (possibly triclinic) periodic
-            # cell — exact for an orthorhombic (diagonal) unitcell, and a
-            # (safe, if not perfectly tight) enclosing box for a sheared one.
-            half_extent = SVector{D,T}(
-                ntuple(i -> sum(abs(packmol_system.unitcell[i, j]) for j in 1:D) / 2, D)
-            )
-            packmol_system.unitcell_center .- half_extent, packmol_system.unitcell_center .+ half_extent
-        else
-            SVector{D,T}(ntuple(_ -> T(-Inf), D)), SVector{D,T}(ntuple(_ -> T(Inf), D))
-        end
-        for (k, imol) in enumerate(free_mol_indices)
-            bounds = packmol_system.structure_types[mol_structure_type[imol]].rotation_bounds
-            ang_lo = SVector{D,T}(ntuple(d -> isnothing(bounds[d]) ? T(-Inf) : bounds[d][1], D))
-            ang_hi = SVector{D,T}(ntuple(d -> isnothing(bounds[d]) ? T(Inf) : bounds[d][2], D))
-            lower_mol[k] = MoleculePosition(cm_lo, ang_lo)
-            upper_mol[k] = MoleculePosition(cm_hi, ang_hi)
-        end
-        reinterpret(T, lower_mol), reinterpret(T, upper_mol)
+    # not wrapped when evaluating constraints (`_wrap_cm`). `nothing` without
+    # PBC, so SPGBox skips the bound-checking overhead entirely.
+    lower, upper = if has_pbc
+        # Axis-aligned half-extent of the (possibly triclinic) periodic
+        # cell — exact for an orthorhombic (diagonal) unitcell, and a
+        # (safe, if not perfectly tight) enclosing box for a sheared one.
+        half_extent = SVector{D,T}(
+            ntuple(i -> sum(abs(packmol_system.unitcell[i, j]) for j in 1:D) / 2, D)
+        )
+        cm_lo = packmol_system.unitcell_center .- half_extent
+        cm_hi = packmol_system.unitcell_center .+ half_extent
+        ang_lo = SVector{D,T}(ntuple(_ -> T(-Inf), D))
+        ang_hi = SVector{D,T}(ntuple(_ -> T(Inf), D))
+        reinterpret(T, fill(MoleculePosition(cm_lo, ang_lo), nfree)),
+            reinterpret(T, fill(MoleculePosition(cm_hi, ang_hi), nfree))
     else
         nothing, nothing
     end

@@ -239,3 +239,49 @@ end
     @test Packmol._inside_cell(x, ucell, inv(ucell), center)
     @test !Packmol._inside_cell(SVector(16.0, 0.0, 0.0), ucell, inv(ucell), center)
 end
+
+@testitem "read_packmol_input: constrain_rotation" setup=[TestFiles] begin
+    using Packmol: read_packmol_input
+    lipid = TestFiles.test_file("structure_files/palmitoil.pdb")
+    file = tempname() * ".inp"
+    write(file, """
+        tolerance 2.0
+        output $(tempname()).pdb
+        structure $lipid
+          number 10
+          inside box -20 -20 -20 20 20 20
+          constrain_rotation z 0. 15.
+            atoms 1 2   # head
+            to 42
+          end constrain_rotation
+          constrain_rotation x 90. 10.
+          atoms 42
+            below plane 0. 0. 1. 15.
+          end atoms
+        end structure
+        """)
+    sys = read_packmol_input(file)
+    st = only(sys.structure_types)
+    rz, rx = st.rotation_constraints
+    @test rz.axis == [0, 0, 1] && rz.from == [1, 2] && rz.to == [42]
+    @test rz.lower == 0 && rz.upper ≈ deg2rad(15)
+    @test rx.axis == [1, 0, 0] && isempty(rx.from) && rx.lower ≈ deg2rad(80) && rx.upper ≈ deg2rad(100)
+    # The `atoms` block of per-atom constraints is still read
+    @test length(st.constraints) == 2
+    @test st.atom_constraints[42] == [1, 2] && st.atom_constraints[1] == [1]
+    # Errors
+    for (text, msg) in (
+        ("constrain_rotation w 0. 15.", "axis"),
+        ("constrain_rotation z 0. 15.\n atoms 1\n to 99\n end constrain_rotation", "out of range"),
+        ("constrain_rotation z 0. 15.\n atoms 1\n to 2", "end constrain_rotation"),
+        ("fixed 0. 0. 0. 0. 0. 0.\n constrain_rotation z 0. 15.", "fixed"),
+    )
+        write(file, "tolerance 2.0\noutput $(tempname()).pdb\nstructure $lipid\n number 1\n $text\nend structure\n")
+        err = try
+            read_packmol_input(file); nothing
+        catch e
+            e
+        end
+        @test err isa ArgumentError && occursin(msg, err.msg)
+    end
+end

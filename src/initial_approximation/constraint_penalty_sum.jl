@@ -6,9 +6,9 @@ function constraint_penalty_sum(
     mp::MoleculePosition{D,T},
     st::StructureType{D,T},
 ) where {D,T}
-    isempty(st.constraints) && return zero(T)
+    isempty(st.constraints) && isempty(st.rotation_constraints) && return zero(T)
     R = eulermat(mp.angles)
-    fx = zero(T)
+    fx = _rotation_penalty(st, R)
     for (j, r) in enumerate(st.reference_coordinates)
         x = R * r + mp.cm
         for ic in st.atom_constraints[j]

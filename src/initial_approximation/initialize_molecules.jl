@@ -151,7 +151,11 @@ end
 #
 function _center_reference_coordinates!(packmol_system::PackmolSystem)
     for st in packmol_system.structure_types
-        st.fixed.fixed || set_reference_coordinates!(st.reference_coordinates)
+        st.fixed.fixed && continue
+        set_reference_coordinates!(st.reference_coordinates)
+        for rc in st.rotation_constraints
+            _set_rotation_constraint!(rc, st.reference_coordinates)
+        end
     end
     return packmol_system
 end
@@ -197,15 +201,7 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
                         else
                             cm = SVector{D,T}(ntuple(_ -> sidemax * (T(2) * rand(task_rng, T) - one(T)), D))
                         end
-                        angles = SVector{D,T}(ntuple(D) do d
-                            bounds = st.rotation_bounds[d]
-                            if isnothing(bounds)
-                                T(2π) * rand(task_rng, T)
-                            else
-                                angle_lo, angle_hi = bounds
-                                angle_lo + rand(task_rng, T) * (angle_hi - angle_lo)
-                            end
-                        end)
+                        angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(task_rng, T), D))
                         packmol_system.molecule_positions[imol_local] = MoleculePosition(cm, angles)
                     end
                 end

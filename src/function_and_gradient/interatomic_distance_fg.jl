@@ -364,6 +364,11 @@ function _compute_positions_and_constraints_for_mols!(
                     end
                     fg_output.gxcar[iat] = gxc
                 end
+                if !isempty(st.rotation_constraints)
+                    p = _rotation_fg!(fg_output.gxcar, st, R, iat_first)
+                    f_local += p
+                    fmol_local += p
+                end
                 fg_output.fmol[imol] = fmol_local
                 max_penalty_local = max(max_penalty_local, fmol_local)
             end
@@ -501,10 +506,48 @@ function constraint_fg!(
     # (`Val(true)`/`Val(false)` in separate branches, rather than `Val(has_pbc)`, for the call
     # to be resolved at compile time.)
     if has_pbc
-        return _constraint_fg!(fg_output, atom_positions, packmol_system, Val(true), unitcell, unitcell_center)
+        _constraint_fg!(fg_output, atom_positions, packmol_system, Val(true), unitcell, unitcell_center)
     else
-        return _constraint_fg!(fg_output, atom_positions, packmol_system, Val(false), unitcell, unitcell_center)
+        _constraint_fg!(fg_output, atom_positions, packmol_system, Val(false), unitcell, unitcell_center)
     end
+    return _rotation_constraints_fg!(fg_output, packmol_system)
+end
+
+#
+# Rotation constraints (`constrain_rotation`, see constraints/rotations.jl) of all
+# free molecules: penalties added to `f` and `fmol`, gradients to `gxcar`.
+#
+function _rotation_constraints_fg!(fg_output::InteratomicDistanceFG{D,T}, packmol_system::PackmolSystem{D,T}) where {D,T}
+    lk = ReentrantLock()
+    imol_offset = 0
+    iat_offset = 0
+    for st in packmol_system.structure_types
+        nmols = st.fixed.fixed ? 1 : st.number_of_molecules
+        if !st.fixed.fixed && !isempty(st.rotation_constraints)
+            mol_offset, at_offset = imol_offset, iat_offset
+            @_sync for irange in index_chunks(1:nmols; n=Threads.nthreads())
+                @spawn begin
+                    f_local = zero(T)
+                    max_local = zero(T)
+                    for i in irange
+                        imol = mol_offset + i
+                        R = eulermat(packmol_system.molecule_positions[imol].angles)
+                        p = _rotation_fg!(fg_output.gxcar, st, R, at_offset + (i - 1) * st.natoms + 1)
+                        fg_output.fmol[imol] += p
+                        f_local += p
+                        max_local = max(max_local, p)
+                    end
+                    @lock lk begin
+                        fg_output.f += f_local
+                        fg_output.max_constraint_penalty = max(fg_output.max_constraint_penalty, max_local)
+                    end
+                end
+            end
+        end
+        imol_offset += nmols
+        iat_offset += nmols * st.natoms
+    end
+    return fg_output
 end
 
 # See the comment on _compute_positions_and_constraints_for_mols! above: HASPBC

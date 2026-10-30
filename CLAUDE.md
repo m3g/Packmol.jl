@@ -58,6 +58,7 @@ src/
     planes.jl                         # Plane (Above/Over/Below)
     cylinders.jl                      # Cylinder (Inside/Outside)
     ellipsoids.jl                     # Ellipsoid (Inside/Outside)
+    rotations.jl                      # RotationConstraint (constrain_rotation): axis–vector angle penalty
   rigid_body/
     rigid_body.jl                     # Euler angles, rotations, translations
     chain_rule.jl                     # Gradient chain rule for rigid bodies
@@ -264,8 +265,9 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       coordinate files only (PDB/XYZ/mmCIF): `restart_from` rigid-body-aligns each molecule's
       template to the observed atom positions. Fortran's raw restart files are not supported.
 - [N] Short-range tolerance (`use_short_tol`, `short_tol_dist`, etc.): deprecated, warned and ignored
-- [x] Rotation constraints (`constrain_rotation`) - implemented as hard bounds on the rotation-angle
-      optimization variables (matching Fortran's own `pgencan` bound-setting), not a soft penalty.
+- [x] Rotation constraints (`constrain_rotation`, `src/constraints/rotations.jl`): a penalty on the
+      angle between an axis and a vector of the molecule (between the centers of two atom sets, or the
+      longest principal axis). Not Fortran's bounds on Euler angles (by design).
 - [ ] Gradient checking mode (`chkgrad` - compare analytical vs numerical gradients) - This is not necessary in the code itself, but for testing, and if the user implements new constraints, we will provide the directives on how to test their gradients. 
 - [ ] 2D packing support (data structures support D=2, needs testing and validation)
 
