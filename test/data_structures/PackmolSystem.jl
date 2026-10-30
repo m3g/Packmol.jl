@@ -318,3 +318,15 @@ end
         packmol(sys; iprint=1000)
     end.status == :packing_ready
 end
+
+@testitem "read_packmol_input: periodic_boundary_style" setup=[TestFiles] begin
+    water = TestFiles.test_file("structure_files/water.pdb")
+    input(lines) = IOBuffer("tolerance 2.0\noutput out.pdb\n$lines\nstructure $water\n  number 10\nend structure\n")
+    @test read_packmol_input(input("pbc dodecahedral 0. 0. 0. 20.")).periodic_boundary_style == :triclinic
+    for style in (:triclinic, :dodecahedral, :octahedral)
+        sys = read_packmol_input(input("pbc dodecahedral 0. 0. 0. 20.\nperiodic_boundary_style $style"))
+        @test sys.periodic_boundary_style == style
+    end
+    @test_throws ArgumentError read_packmol_input(input("pbc 20. 20. 20.\nperiodic_boundary_style compact"))
+    @test_throws ArgumentError read_packmol_input(input("periodic_boundary_style dodecahedral"))
+end

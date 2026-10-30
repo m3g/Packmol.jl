@@ -7,6 +7,7 @@
 | `filetype pdb\|xyz` | Format of the structure and output files (default `pdb`). Files with the extensions `.pdb`, `.xyz`, `.cif` or `.mmcif` (mmCIF, structure files only) are read and written in that format, whatever the `filetype`. |
 | `seed <int>` | Random number generator seed (default `1234567`). |
 | `movefrac <value>` | Maximum fraction of the molecules of each type moved by the bad-molecule heuristic in each loop (default `0.05`). The `movefrac` keyword argument of [`packmol`](@ref) takes precedence. |
+| `periodic_boundary_style <triclinic\|dodecahedral\|octahedral>` | Shape in which the molecules are written, with periodic boundary conditions: the parallelepiped of the cell (`triclinic`, the default), or the compact rhombic dodecahedron or truncated octahedron (see the [Output shape](../periodic_boundary_conditions/rhombic_dodecahedral_box.md#Output-shape)). |
 | `nthreads <n>` | Maximum number of threads used (default: all). The `nthreads` keyword argument of [`packmol`](@ref) and the `-t` flag of the executable take precedence. |
 | `nloop <int>` | Maximum number of packing loops (default `200`). The `nloop` keyword argument of [`packmol`](@ref) takes precedence. |
 | `maxit <int>` | Optimizer iterations per packing loop (default `800`). The `maxit` keyword argument of [`packmol`](@ref) takes precedence. |

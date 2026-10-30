@@ -75,5 +75,9 @@ default). Both functions also convert coordinates directly:
 `triclinic_to_dodecahedral(x, unitcell, center)` and `dodecahedral_to_triclinic(x, unitcell, center)`
 map a position, or a vector of positions, `x` between the two shapes.
 
-The output shape is chosen in the Julia API only: the output of an input file is always
-in the parallelepiped shape.
+In an input file, the output shape is chosen with the `periodic_boundary_style` keyword:
+
+```
+pbc dodecahedral 0. 0. 0. 30.
+periodic_boundary_style dodecahedral
+```
