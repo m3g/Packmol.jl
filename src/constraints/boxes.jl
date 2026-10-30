@@ -8,7 +8,10 @@ export Box, InsideBox, OutsideBox
 weight_default[:box] = 5.0
 
 #
-# Base constraint functions for cubes and boxes
+# Base constraint functions for cubes and boxes. Inside: a wall for each dimension.
+# Outside: a point is outside the box if it is outside in any dimension, so the penalty
+# is zero unless the point is inside in all of them; then it is the squared distance to
+# the nearest face (the shortest way out), and the gradient is along that dimension.
 #
 function orthogonal_wall(::Type{Inside}, center, side, weight, x)
     xc = x - center
@@ -17,15 +20,6 @@ function orthogonal_wall(::Type{Inside}, center, side, weight, x)
         return weight * (xc - half)^2
     elseif xc < -half
         return weight * (xc + half)^2
-    else
-        return zero(x)
-    end
-end
-
-function orthogonal_wall(::Type{Outside}, center, side, weight, x)
-    xc = x - center
-    if -side / 2 < xc < side / 2
-        return weight * (xc - side / 2)^2
     else
         return zero(x)
     end
@@ -44,20 +38,29 @@ function orthogonal_wall_derivative(::Type{Inside}, center, side, weight, x)
     return dcdx
 end
 
-function orthogonal_wall_derivative(::Type{Outside}, center, side, weight, x)
+# Distance to the nearest face of a box (`sides` a vector, or the side of a cube), positive
+# for points inside the box in all the dimensions, and the dimension of that face
+function _outside_box_depth(center, sides, x)
     xc = x - center
-    if xc < side / 2 && xc > -side / 2
-        if xc < side / 2
-            dcdx = 2 * weight * (xc - side / 2)
-        elseif xc > -side / 2
-            dcdx = 2 * weight * (side / 2 - xc)
-        else
-            dcdx = zero(x)
-        end
-        return dcdx
-    else
-        return zero(x)
+    half(i) = (sides isa Number ? sides : sides[i]) / 2
+    depth, k = half(1) - abs(xc[1]), 1
+    for i in 2:length(xc)
+        d = half(i) - abs(xc[i])
+        d < depth && ((depth, k) = (d, i))
     end
+    return depth > 0 ? (depth, k) : (zero(depth), 0)
+end
+
+function _outside_box_penalty(center, sides, weight, x)
+    depth, _ = _outside_box_depth(center, sides, x)
+    return weight * depth^2
+end
+
+function _outside_box_gradient(center, sides, weight, x)
+    depth, k = _outside_box_depth(center, sides, x)
+    k == 0 && return zero(x)
+    s = x[k] >= center[k] ? one(depth) : -one(depth)
+    return typeof(x)(ntuple(i -> i == k ? -2 * weight * depth * s : zero(depth), length(x)))
 end
 
 #
@@ -111,10 +114,12 @@ Keeps the atoms outside an axis-aligned cube, given as in [`InsideCube`](@ref).
 """
 OutsideCube(args...; kargs...) = Cube{Outside}(args...; kargs...)
 
-constraint_penalty(c::Cube{Placement}, x) where {Placement} =
-    sum(orthogonal_wall(Placement, c.center[i], c.side, c.weight, x[i]) for i in eachindex(x,c.center))
-constraint_gradient(c::Cube{Placement}, x) where {Placement} =
-    orthogonal_wall_derivative.(Placement, c.center, c.side, c.weight, x)
+constraint_penalty(c::Cube{Inside}, x) =
+    sum(orthogonal_wall(Inside, c.center[i], c.side, c.weight, x[i]) for i in eachindex(x,c.center))
+constraint_gradient(c::Cube{Inside}, x) =
+    orthogonal_wall_derivative.(Inside, c.center, c.side, c.weight, x)
+constraint_penalty(c::Cube{Outside}, x) = _outside_box_penalty(c.center, c.side, c.weight, x)
+constraint_gradient(c::Cube{Outside}, x) = _outside_box_gradient(c.center, c.side, c.weight, x)
 
 #
 # Box
@@ -174,10 +179,12 @@ Keeps the atoms outside an axis-aligned box, given as in [`InsideBox`](@ref).
 """
 OutsideBox(args...; kargs...) = Box{Outside}(args...; kargs...)
 
-constraint_penalty(c::Box{Placement}, x) where {Placement} =
-    sum(orthogonal_wall(Placement, c.center[i], c.sides[i], c.weight, x[i]) for i in eachindex(x,c.center,c.sides))
-constraint_gradient(c::Box{Placement}, x) where {Placement} =
-    orthogonal_wall_derivative.(Placement, c.center, c.sides, c.weight, x)
+constraint_penalty(c::Box{Inside}, x) =
+    sum(orthogonal_wall(Inside, c.center[i], c.sides[i], c.weight, x[i]) for i in eachindex(x,c.center,c.sides))
+constraint_gradient(c::Box{Inside}, x) =
+    orthogonal_wall_derivative.(Inside, c.center, c.sides, c.weight, x)
+constraint_penalty(c::Box{Outside}, x) = _outside_box_penalty(c.center, c.sides, c.weight, x)
+constraint_gradient(c::Box{Outside}, x) = _outside_box_gradient(c.center, c.sides, c.weight, x)
 
 #
 # Input parsing functions: methods of `parse_constraint`, whose keywords must also be

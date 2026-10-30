@@ -42,3 +42,25 @@ end
     c = OutsideBox([0.2, 0., 0.1], [0.5, 0.7, 1.0])
     @test ForwardDiff.gradient(x -> Packmol.constraint_penalty(c,x), x) ≈ Packmol.constraint_gradient(c,x)
 end
+
+@testitem "Outside box and cube" begin
+    using ForwardDiff
+    using StaticArrays
+    # Outside if outside in any dimension: a slab |z| < 24 excluded from a large box
+    c = OutsideBox([-100., -100., -24.], [100., 100., 24.])
+    @test Packmol.constraint_penalty(c, SVector(5.0, 3.0, 40.0)) == 0
+    @test Packmol.constraint_penalty(c, SVector(5.0, 3.0, -30.0)) == 0
+    @test Packmol.constraint_gradient(c, SVector(5.0, 3.0, 40.0)) == zeros(3)
+    # Inside: the squared distance to the nearest face, pushed out through it
+    @test Packmol.constraint_penalty(c, SVector(5.0, 3.0, 20.0)) ≈ 5 * 4^2
+    @test Packmol.constraint_gradient(c, SVector(5.0, 3.0, 20.0)) ≈ [0, 0, -2 * 5 * 4]
+    @test Packmol.constraint_gradient(c, SVector(5.0, 3.0, -20.0)) ≈ [0, 0, 2 * 5 * 4]
+    cube = OutsideCube([0., 0., 0.], 10.)
+    @test Packmol.constraint_penalty(cube, SVector(1.0, 5.0, 5.0)) ≈ 5 * 1^2
+    @test Packmol.constraint_penalty(cube, SVector(11.0, 5.0, 5.0)) == 0
+    for c in (cube, OutsideBox([0.2, 0., 0.1], [0.5, 0.7, 1.0]), OutsideBox([-1., -2., -3.], [1., 2., 3.]))
+        for x in (SVector(0.25, 0.2, 0.5), SVector(-0.5, 1.1, 0.0), SVector(3.0, 0.1, 0.3), SVector(2.0, 6.0, 4.5))
+            @test ForwardDiff.gradient(y -> Packmol.constraint_penalty(c, y), x) ≈ Packmol.constraint_gradient(c, x)
+        end
+    end
+end
