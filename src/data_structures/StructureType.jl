@@ -64,6 +64,12 @@ function _show(s::StructureType{D,T}) where {D,T}
 end
 Base.show(io::IO, ::MIME"text/plain", s::StructureType) = print(io, _show(s))
 
+# One-line summary of a structure type (in the `show` of a `PackmolSystem`)
+_summary(s::StructureType) = string(
+    "\"", basename(s.filename), "\" - n_atoms = ", s.natoms, " - n_mols = ", s.number_of_molecules,
+    s.fixed.fixed ? " - fixed" : "", " - n_constraints = ", length(s.constraints),
+)
+
 function Base.show(io::IO, ::MIME"text/plain", v::AbstractVector{<:StructureType})
     print(io, chomp("""
         Vector{StructureType} with $(length(v)) structure(s).

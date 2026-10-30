@@ -238,21 +238,16 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", sys::PackmolSystem{D,T}) where {D,T}
     printstyled(io, "PackmolSystem{$D,$T}"; bold=true, color=:blue)
-    if length(sys.input_file) > 0 
-        printstyled(" - read from: $(basename(sys.input_file))"; color=:blue) 
+    if length(sys.input_file) > 0
+        printstyled(io, " - read from: $(basename(sys.input_file))"; color=:blue)
     end
     println(io)
     printstyled(io, _indent("Number of types of structures: $(length(sys.structure_types))\n"); bold=true)
     printstyled(io, _indent("Total number of molecules: $(sys.nmols)\n"); bold=true)
     printstyled(io, _indent("Structure types:\n"); bold=true)
-    for (i,st) in enumerate(sys.structure_types)
-        print(io, _indent("$i."*_show(st)))
-    end
-    printstyled(io, _indent("Options:\n"); bold=true)
-    for field in fieldnames(PackmolSystem)
-        if !(field in (:structure_types, :input_file, :atoms, :molecule_positions, :nmols))
-            print(io, _indent("$field: $(getfield(sys, field))"; n=8))
-        end
+    for (i, st) in enumerate(sys.structure_types)
+        print(io, "    $i. ", _summary(st))
+        i < length(sys.structure_types) && println(io)
     end
 end
 
