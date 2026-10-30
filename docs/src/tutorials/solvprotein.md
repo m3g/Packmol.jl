@@ -107,4 +107,4 @@ structure types.
 !!! tip
     The `SolutionBoxUWI` recipe solvates a protein with water and ions from a
     target ionic concentration (neutralizing its charge), in a periodic box. See
-    [Recipes](../experimental/recipes.md).
+    [Recipes](../recipes.md).

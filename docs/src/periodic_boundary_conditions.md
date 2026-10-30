@@ -1,12 +1,8 @@
 # Periodic boundary conditions
 
-!!! warning "Experimental"
-    This documents the native Julia packing engine's periodic boundary
-    syntax, shared between [input files](input_files.md) and the
-    [Julia API](julia_api.md). It tracks the original Fortran
-    [Packmol](http://github.com/m3g/packmol) keywords where they exist, but
-    is not yet a complete port — see [Home](index.md) for what's covered so
-    far.
+This page documents the periodic boundary conditions, shared between
+[input files](input_files.md) and the [Julia API](julia_api.md). They follow the
+keywords of Fortran [Packmol](http://github.com/m3g/packmol), and add new cell shapes.
 
 ```
 pbc a b c

@@ -1,11 +1,9 @@
 # Defining systems in Julia
 
-!!! warning "Experimental"
-    This documents building and packing a system entirely from Julia code,
-    without a text input file. See [Input files](input_files.md) for the
-    text-file equivalent, and [Constraints](constraints.md) for the full
-    list of constraint constructors (`InsideBox`, `OutsideSphere`,
-    `InsideCylinder`, ...) used below.
+This page documents building and packing a system entirely from Julia code, without a
+text input file. See [Input files](input_files.md) for the text-file equivalent, and
+[Constraints](constraints.md) for the full list of constraint constructors
+(`InsideBox`, `OutsideSphere`, `InsideCylinder`, ...) used below.
 
 A system is built from the bottom up: one [`structure_type`](@ref) per kind
 of molecule, collected into a [`PackmolSystem`](@ref), then packed with
@@ -106,7 +104,7 @@ structure palmitoil.pdb
 end structure
 ```
 
-See the [Lipid bilayer](../tutorials/bilayer.md) tutorial.
+See the [Lipid bilayer](tutorials/bilayer.md) tutorial.
 
 ## Global options
 
