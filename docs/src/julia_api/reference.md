@@ -5,7 +5,7 @@ CollapsedDocStrings = true
 # Reference
 
 These are the public functions of Packmol.jl. The functions of the recipes are
-documented on the [Recipes](recipes.md) page.
+documented on the [Recipes](../recipes/index.md) page.
 
 ## Packing engine
 
