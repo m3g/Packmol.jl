@@ -126,6 +126,9 @@ the packed coordinates, or to convert their representation, as with
 The packing outcome is recorded in `packmol_system.status`: `:packing_ready` if
 it converged within `nloop` loops (both `tolerance_precision` and
 `constraint_precision` satisfied), `:failed_packing` if it did not, or
+`:failed_initial_approximation` if the initial approximation could not satisfy the
+constraints (written to the output file; the packing continues only if
+`packmol_system.continue_failed_initial_packing` is set), or
 `:not_packed` if `packmol_system.check` was set (initial approximation written,
 no packing attempted).
 
@@ -244,7 +247,7 @@ function _packmol(
     end
 
     # Pre-optimization: set initial approximation (random placement + constraint fitting)
-    set_initial_approximation!(packmol_system, free_mol_indices, RNG; restart, buffers)
+    initial_converged = set_initial_approximation!(packmol_system, free_mol_indices, RNG; restart, buffers)
 
     imol_offset = 0
     for st in packmol_system.structure_types
@@ -260,6 +263,23 @@ function _packmol(
             packmol_system.molecule_positions[imol_offset+1:imol_offset+st.number_of_molecules] .= positions
         end
         imol_offset += st.number_of_molecules
+    end
+
+    # The constraints could not be satisfied even without the distances between the
+    # molecules: they are probably wrong (incompatible, or too tight for the molecules),
+    # and packing would not converge. Stop, unless asked to continue.
+    if !initial_converged && !packmol_system.check && !packmol_system.continue_failed_initial_packing
+        _println()
+        _println("  ERROR: the initial approximation does not satisfy the constraints (or overlaps")
+        _println("  the fixed molecules). The constraints are probably wrong: incompatible with each")
+        _println("  other, or too tight for the molecules. The initial approximation is written to the")
+        _println("  output file, for inspection. To pack anyway, use the keyword")
+        _println("  `continue_failed_initial_packing`.")
+        if !isempty(packmol_system.output_file)
+            write_output(packmol_system)
+        end
+        packmol_system.status = :failed_initial_approximation
+        return packmol_system
     end
 
     # check mode: write the initial approximation and return

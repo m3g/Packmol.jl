@@ -144,6 +144,7 @@ function (@main)(ARGS)
     catch e
         return _error_exit(e, exit_code_general_error)
     end
+    system.status == :failed_initial_approximation && return exit_code_input_error
     return system.status == :failed_packing ? exit_code_failed_to_converge : exit_code_success
 end
 

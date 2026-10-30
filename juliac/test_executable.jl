@@ -134,6 +134,25 @@ end
         @test code == 173
         @test occursin("FORCED", out)
         @test isfile(read_packmol_input(input_file).output_file * "_FORCED")
+        # Constraints that the initial approximation cannot satisfy: an input error,
+        # unless continue_failed_initial_packing is set
+        bad = joinpath(dir, "bad_constraints.inp")
+        write(bad, """
+            tolerance 2.0
+            output $(joinpath(dir, "bad_constraints.pdb"))
+            nloop 5
+            structure $(joinpath(inputs, "water.pdb"))
+              number 10
+              inside box 0. 0. 0. 10. 10. 10.
+              outside box -1. -1. -1. 11. 11. 11.
+            end structure
+            """)
+        code, out = run_packmol("-i", bad)
+        @test code == 171
+        @test occursin("continue_failed_initial_packing", out)
+        write(bad, replace(read(bad, String), "nloop 5" => "nloop 5\ncontinue_failed_initial_packing"))
+        code, _ = run_packmol("-i", bad)
+        @test code == 173
         # Input error
         code, out = run_packmol("-i", joinpath(inputs, "protein_outside_pbc_error.inp"))
         @test code == 171

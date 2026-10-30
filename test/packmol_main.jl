@@ -402,3 +402,31 @@ end
     @test isfile(system.output_file)
     @test pwd() == current_dir
 end
+
+@testitem "initial approximation that does not satisfy the constraints" setup=[TestFiles] begin
+    water = TestFiles.test_file("structure_files/water.pdb")
+    output = tempname() * ".pdb"
+    # Incompatible constraints: inside a box, and outside a larger box around it
+    input(extra) = IOBuffer("""
+        tolerance 2.0
+        output $output
+        $extra
+        structure $water
+          number 10
+          inside box 0. 0. 0. 10. 10. 10.
+          outside box -1. -1. -1. 11. 11. 11.
+        end structure
+        """)
+    sys = redirect_stdout(devnull) do
+        packmol(read_packmol_input(input("")); nloop=5, iprint=1000)
+    end
+    @test sys.status == :failed_initial_approximation
+    @test isfile(output) # the initial approximation, for inspection
+    rm(output)
+    sys = read_packmol_input(input("continue_failed_initial_packing"))
+    @test sys.continue_failed_initial_packing
+    sys = redirect_stdout(devnull) do
+        packmol(sys; nloop=5, iprint=1000)
+    end
+    @test sys.status == :failed_packing
+end
