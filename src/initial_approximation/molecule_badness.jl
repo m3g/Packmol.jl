@@ -24,7 +24,7 @@ function molecule_badness(
         badness = buffers.badness
         fill!(badness, zero(T))
     end
-    ntasks = Threads.nthreads()
+    ntasks = _nbatches()
 
     # Phase 1: constraint penalties (parallel over molecule ranges)
     # (`Val(true)`/`Val(false)` in separate branches, rather than `Val(has_pbc)`, for the call
@@ -245,7 +245,7 @@ function _molecule_badness_constraints_for_mols!(
     unitcell::Matrix{T},
     unitcell_center::SVector{D,T},
 ) where {D,T,HASPBC}
-    @_sync for (_, mrange) in enumerate(chunks(1:length(mol_list); n=Threads.nthreads()))
+    @_sync for (_, mrange) in enumerate(chunks(1:length(mol_list); n=_nbatches()))
         @spawn for k in mrange
             imol = mol_list[k]
             st = packmol_system.structure_types[mol_structure_type[imol]]

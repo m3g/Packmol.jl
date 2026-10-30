@@ -26,6 +26,8 @@
     # Maximum fraction of the molecules of each type moved by `movebad!` per
     # loop (input keyword `movefrac`): `nothing` means unset, as above.
     movefrac::Union{Nothing,T} = nothing
+    # Maximum number of threads used (input keyword `nthreads`): `nothing` means all.
+    nthreads::Union{Nothing,Int} = nothing
     max_random_init::Int=20
     adjust_constraints_on_init::Bool=true
     add_amber_ter::Bool = false
@@ -326,6 +328,12 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.nloop = _parse_value(Int, "nloop", val)
     elseif keyword == "movefrac"
         sys.movefrac = _parse_value(T, "movefrac", val)
+    elseif keyword == "nthreads"
+        sys.nthreads = _parse_value(Int, "nthreads", val)
+        sys.nthreads >= 1 || throw(ArgumentError("""\n
+            nthreads must be at least 1, got $(sys.nthreads).
+
+        """))
     elseif keyword == "max_random_init"
         sys.max_random_init = _parse_value(Int, "max_random_init", val)
     elseif keyword == "adjust_constraints_on_init"
@@ -425,7 +433,7 @@ const packmol_unimplemented_keywords = Dict{String,String}(
 # Global keywords (see `_set_input_keyword!` and `_read_packmol_input`)
 const _global_keywords = (
     "filetype", "output", "tolerance", "radscale", "discale", "tolerance_precision",
-    "constraint_precision", "stall_tolerance", "maxit", "nloop", "movefrac", "max_random_init",
+    "constraint_precision", "stall_tolerance", "maxit", "nloop", "movefrac", "nthreads", "max_random_init",
     "adjust_constraints_on_init", "add_amber_ter", "amber_ter_preserve", "add_box_sides",
     "ignore_conect", "randominitialpoint", "seed", "avoid_overlap", "writeout", "writebad",
     "optimization_print_level", "chkgrad", "check", "pbc", "unitcell",

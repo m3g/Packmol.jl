@@ -1,6 +1,7 @@
 module CLI
 
 import ..Packmol
+using LinearAlgebra: BLAS
 
 const usage = """
     Usage: packmol input.inp
@@ -14,6 +15,8 @@ const usage = """
     Options:
       -i <file>      input file
       -o <file>      output file (overrides the input file's `output`)
+      -t <n>         maximum number of threads (overrides the input file's
+                     `nthreads`; default: JULIA_NUM_THREADS if set, else all)
       -h, --help     show this help
       -v, --version  show the version
     """
@@ -48,6 +51,15 @@ function _read_stdin()
     return seekstart(io)
 end
 
+# The executable is built with all threads (see juliac/build.jl), so JULIA_NUM_THREADS
+# does not set their number: it limits the number of threads used, as `-t`. Its
+# "auto" and "n,m" (interactive threads) forms are accepted.
+function _env_nthreads()
+    s = something(Base.get(ENV, "JULIA_NUM_THREADS", nothing), "")
+    n = tryparse(Int, first(split(s, ',')))
+    return isnothing(n) || n < 1 ? nothing : n
+end
+
 function _print_error(@nospecialize(e))
     # The messages are narrowed to `String` (fields typed `AbstractString`)
     msg = e isa ArgumentError ? e.msg :
@@ -69,8 +81,11 @@ end
 function (@main)(ARGS)
     # Print to the `Core` streams (see `src/io/terminal.jl`)
     Packmol._use_core_streams[] = true
+    # Packmol makes no BLAS calls: don't let OpenBLAS start its own threads
+    BLAS.set_num_threads(1)
     input_file = ""
     output_file = ""
+    nthreads = ""
     positional = 0
     i = 1
     while i <= length(ARGS)
@@ -81,8 +96,14 @@ function (@main)(ARGS)
         elseif arg == "-v" || arg == "--version"
             Packmol._println("packmol ", Packmol._packmol_version)
             return exit_code_success
-        elseif (arg == "-i" || arg == "-o") && i < length(ARGS)
-            arg == "-i" ? (input_file = ARGS[i+1]) : (output_file = ARGS[i+1])
+        elseif (arg == "-i" || arg == "-o" || arg == "-t" || arg == "--threads") && i < length(ARGS)
+            if arg == "-i"
+                input_file = ARGS[i+1]
+            elseif arg == "-o"
+                output_file = ARGS[i+1]
+            else
+                nthreads = ARGS[i+1]
+            end
             i += 2
             continue
         elseif !startswith(arg, "-") && positional == 0
@@ -94,6 +115,11 @@ function (@main)(ARGS)
             return exit_code_command_line_error
         end
         i += 1
+    end
+    ntasks = isempty(nthreads) ? 0 : something(tryparse(Int, nthreads), 0)
+    if !isempty(nthreads) && ntasks < 1
+        Packmol._println("ERROR: the number of threads (-t) must be a positive integer, got: ", nthreads)
+        return exit_code_command_line_error
     end
     # Dimension and number type given as types, so that the parser is type-stable
     system = try
@@ -108,6 +134,11 @@ function (@main)(ARGS)
         return _error_exit(e, exit_code_input_error)
     end
     isempty(output_file) || (system.output_file = output_file)
+    if ntasks > 0
+        system.nthreads = ntasks
+    elseif isnothing(system.nthreads)
+        system.nthreads = _env_nthreads()
+    end
     try
         Packmol.packmol(system)
     catch e

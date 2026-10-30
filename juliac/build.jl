@@ -25,6 +25,10 @@ image = ImageRecipe(
     file=joinpath(@__DIR__, "app.jl"),
     project=repo,
     trim_mode="safe",
+    # All the threads of the CPUs available (the number used is set by `-t`, `nthreads` or
+    # JULIA_NUM_THREADS, see src/CLI.jl), and no interactive thread: on a single core, the
+    # idle interactive thread makes the packing up to 3 times slower.
+    jl_options=Dict("threads" => "auto,0"),
     verbose=true,
 )
 link = LinkRecipe(

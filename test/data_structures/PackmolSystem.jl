@@ -119,6 +119,7 @@ end
     nloop 37
     maxit 15
     movefrac 0.1
+    nthreads 2
     movebadrandom
     short_tol_dist 1.0
     sidemax 1000.
@@ -137,6 +138,7 @@ end
     @test sys.nloop == 37
     @test sys.max_iter == 15
     @test sys.movefrac == 0.1
+    @test sys.nthreads == 2
     @test sys.structure_types[1].segid == "WAT"
     @test sys.nmols == 10
     @test length(sys.structure_types[1].constraints) == 1
@@ -145,6 +147,7 @@ end
     @test isnothing(sys.nloop)
     @test isnothing(sys.max_iter)
     @test isnothing(sys.movefrac)
+    @test isnothing(sys.nthreads)
     @test isnothing(sys.structure_types[1].segid)
     # segid has at most 4 characters
     write(input, "tolerance 2.0\nstructure $water\n  number 1\n  segid TOOLONG\nend structure\n")

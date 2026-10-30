@@ -14,6 +14,11 @@
     result = Packmol.packmol(sys; nloop=200, maxit=20, iprint=10)
     @test result === sys
     @test sys.status == :packing_ready
+    # Limited number of threads (restored afterwards)
+    sys1 = Packmol.read_packmol_input(input_file)
+    Packmol.packmol(sys1; nloop=200, maxit=20, iprint=1000, nthreads=1)
+    @test sys1.status == :packing_ready
+    @test Packmol._ntasks[] == 0
 
     # Compute final atom positions
     atom_positions = Vector{SVector{3,Float64}}(undef, length(sys.atoms))

@@ -89,7 +89,7 @@ end
 
 function _build_fixed_particle_system(
     fixed_atom_positions::Vector{SVector{D,T}}, tol::T, nmols::Int;
-    nthreads=Threads.nthreads(), parallel::Bool=nthreads > 1,
+    parallel::Bool=_nbatches() > 1,
     unitcell::Union{Nothing,AbstractVecOrMat}=nothing,
 ) where {D,T}
     isempty(fixed_atom_positions) && return nothing
@@ -102,6 +102,7 @@ function _build_fixed_particle_system(
         cutoff=tol,
         output=output,
         parallel=parallel,
+        nbatches=_cl_nbatches(),
         unitcell=unitcell,
         validate_coordinates=_validate_positions,
     )
@@ -146,7 +147,7 @@ end
 #
 function build_fixed_particle_system(
     packmol_system::PackmolSystem{D,T};
-    nmols::Int=packmol_system.nmols, parallel::Bool=Threads.nthreads() > 1,
+    nmols::Int=packmol_system.nmols, parallel::Bool=_nbatches() > 1,
     unitcell::Union{Nothing,AbstractVecOrMat}=nothing,
     cutoff::T=packmol_system.tolerance,
 ) where {D,T}

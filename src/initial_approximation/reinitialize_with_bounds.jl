@@ -34,7 +34,7 @@ function reinitialize_with_bounds!(
     tol = packmol_system.radscale * packmol_system.tolerance
     has_pbc, uc, center = _typed_unitcell(packmol_system)
     max_natoms = maximum(st.natoms for st in packmol_system.structure_types if !st.fixed.fixed; init=0)
-    ntasks = Threads.nthreads()
+    ntasks = _nbatches()
 
     # Build the fixed-atom overlap-check system once per thread (see
     # `_task_overlap_check_systems`) — not once per structure type, and not once per trial molecule.

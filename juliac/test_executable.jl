@@ -64,6 +64,18 @@ end
         @test occursin("-i", out)
         code, _ = run_packmol("--not-an-option")
         @test code == 174
+        code, _ = run_packmol("-t", "0", "-i", joinpath(inputs, "water_box.inp"))
+        @test code == 174
+    end
+
+    @testset "threads" begin
+        input_file = joinpath(inputs, "water_box.inp")
+        for (args, env, n) in [(("-t", "1"), nothing, 1), (("-t", "2"), "1", 2), ((), "2", 2)]
+            cmd = Cmd(`$exe $args -i $input_file`; ignorestatus=true)
+            cmd = addenv(cmd, "JULIA_NUM_THREADS" => something(env, ""))
+            out = read(cmd, String)
+            @test occursin(Regex("Number of threads:\\s+$n\\b"), out)
+        end
     end
 
     @testset "$name" for name in [

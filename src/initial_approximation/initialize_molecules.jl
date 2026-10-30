@@ -180,7 +180,7 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
     @_sync for st in packmol_system.structure_types
         st_offset = imol_offset
         has_direct_region, direct_region, direct_constraints = _direct_placement(st, has_pbc)
-        for (_, irange) in enumerate(chunks(1:st.number_of_molecules; n=Threads.nthreads()))
+        for (_, irange) in enumerate(chunks(1:st.number_of_molecules; n=_nbatches()))
             task_seed = rand(RNG, UInt64)
             @spawn begin
                 task_rng = typeof(RNG)(task_seed)
