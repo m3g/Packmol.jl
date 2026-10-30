@@ -28,8 +28,8 @@ In the [Julia API](../julia_api/index.md), `fixed = (position, angles)` and
 
 ## Example
 
-A protein fixed with its geometric center at the origin, surrounded by 1000 water
-molecules in a sphere with a radius of 30 Å:
+A protein fixed with its geometric center at the origin, surrounded by 5460 water
+molecules (about 1 g/mL) in a sphere with a radius of 35 Å:
 
 ```
 structure protein.pdb
@@ -39,8 +39,8 @@ structure protein.pdb
 end structure
 
 structure water.pdb
-    number 1000
-    inside sphere 0. 0. 0. 30.
+    number 5460
+    inside sphere 0. 0. 0. 35.
 end structure
 ```
 
@@ -61,8 +61,8 @@ protein = structure_type("protein.pdb";
     center = :geometric,
 )
 water = structure_type("water.pdb";
-    number = 1000,
-    constraints = [InsideSphere([0., 0., 0.], 30.)],
+    number = 5460,
+    constraints = [InsideSphere([0., 0., 0.], 35.)],
 )
 system = PackmolSystem([protein, water]; tolerance = 2.0, output = "fixed.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide

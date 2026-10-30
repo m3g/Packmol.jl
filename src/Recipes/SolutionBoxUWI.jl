@@ -487,9 +487,11 @@ end # function write_packmol_input
         kwargs...,
     )
 
-Builds and packs a Solute + Water + Ions system directly, entirely in memory: equivalent
-to calling [`write_packmol_input`](@ref write_packmol_input(::SolutionBoxUWI)) followed by
-`packmol` on the resulting file, except no `.inp` file is ever written.
+Builds and packs a Solute + Water + Ions system, without writing an input file.
+
+It is equivalent to calling
+[`write_packmol_input`](@ref write_packmol_input(::SolutionBoxUWI)) followed by `packmol` on the
+resulting file.
 
 `ionic_concentration`, `output`, `box_sides`, `margin`, and `pbc` behave as in
 `write_packmol_input`. Any other keyword (`nloop`, `iprint`, `seed`, `optimizer`, ...) is

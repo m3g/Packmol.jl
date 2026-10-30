@@ -51,12 +51,12 @@ API](../julia_api/index.md), it is the `constrain_rotation` keyword of
 
 ## Example
 
-40 octane molecules in a box, with their longest axis within 10° of the z axis:
+44 octane molecules (about 0.70 g/mL, the density of liquid octane) in a box, with their longest axis within 10° of the z axis:
 
 ```
 structure octane.pdb
-    number 40
-    inside box 0. 0. 0. 30. 30. 30.
+    number 44
+    inside box 0. 0. 0. 20. 20. 30.
     constrain_rotation z 0. 10.
 end structure
 ```
@@ -72,13 +72,13 @@ cp(joinpath(Packmol.RecipesDirectory, "test", "data", "octane.pdb"), "octane.pdb
 ```@example rotation
 using Packmol, PDBTools
 octane = structure_type("octane.pdb";
-    number = 40,
-    constraints = [InsideBox([0., 0., 0.], [30., 30., 30.])],
+    number = 44,
+    constraints = [InsideBox([0., 0., 0.], [20., 20., 30.])],
     constrain_rotation = Dict(:z => (0.0, 10.0)),
 )
 system = PackmolSystem([octane]; tolerance = 2.0, output = "rotation.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system); unitcell = UnitCell([30., 30., 30.]))
+visualize(get_atoms(system); unitcell = UnitCell([20., 20., 30.]))
 ```

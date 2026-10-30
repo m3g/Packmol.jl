@@ -13,11 +13,11 @@ reference structure) be grown or shrunk without recomputing `a`, `b`, `c`.
 
 ## Example
 
-60 water molecules in an ellipsoid with semi-axes of 12, 8 and 6 Å:
+81 water molecules (about 1 g/mL) in an ellipsoid with semi-axes of 12, 8 and 6 Å:
 
 ```
 structure water.pdb
-    number 60
+    number 81
     inside ellipsoid 0. 0. 0. 12. 8. 6. 1.0
 end structure
 ```
@@ -33,7 +33,7 @@ cp(joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb"), "water.pdb";
 ```@example ellipsoid
 using Packmol, PDBTools
 water = structure_type("water.pdb";
-    number = 60,
+    number = 81,
     constraints = [InsideEllipsoid([0., 0., 0.], 12., 8., 6., 1.0)],
 )
 system = PackmolSystem([water]; tolerance = 2.0, output = "ellipsoid.pdb")

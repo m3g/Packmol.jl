@@ -32,11 +32,11 @@ where `s = along·x` (using the normalized `along`).
 
 ## Example
 
-300 water molecules in a box, above a Gaussian bump of height 6 Å and width 4 Å along x:
+390 water molecules (about 1 g/mL) in a box, above a Gaussian bump of height 6 Å and width 4 Å along x:
 
 ```
 structure water.pdb
-    number 300
+    number 390
     inside box -15. -15. 0. 15. 15. 15.
     above gaussian 0. 0. 1. 1. 0. 0. 0. 6. 0. 4.
 end structure
@@ -53,7 +53,7 @@ cp(joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb"), "water.pdb";
 ```@example gaussian
 using Packmol, PDBTools
 water = structure_type("water.pdb";
-    number = 300,
+    number = 390,
     constraints = [InsideBox([-15., -15., 0.], [15., 15., 15.]), AboveGaussian([0., 0., 1.], [1., 0., 0.], 0., 6., 0., 4.)],
 )
 system = PackmolSystem([water]; tolerance = 2.0, output = "gaussian.pdb")

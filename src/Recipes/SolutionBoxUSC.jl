@@ -105,10 +105,11 @@ _with_units(c::Number, units::String) =
 """
     convert_concentration(system::SolutionBoxUSC, concentration, units::Pair{String,String})
 
-Converts the `concentration` of the cossolvent from one unit to another, as
-`first(units) => last(units)`, using the density of the solution at that concentration
-(interpolated from the density table of the `system`) and the molar masses of the
-solvent and the cossolvent. The units are `"mol/L"` (molarity), `"x"` (molar fraction),
+Converts the `concentration` of the cossolvent between units.
+
+The conversion is `first(units) => last(units)`, using the density of the solution at
+that concentration (interpolated from the density table of the `system`) and the molar
+masses of the solvent and the cossolvent. The units are `"mol/L"` (molarity), `"x"` (molar fraction),
 `"w/w"` or `"mm"` (mass fraction), `"v/v"` or `"vv"` (volume fraction), or any of their
 aliases (see [Concentration Unit Conversion](@ref)). Molarities are returned with units.
 
@@ -154,9 +155,11 @@ end
 """
     get_density_table(system::SolutionBoxUSC)
 
-The density table of the `system`, as a matrix with the concentrations of the cossolvent
-(in the units of the system, see [`convert_density_table!`](@ref)) in the first column
-and the densities of the solution (in g/mL) in the second one.
+Returns the density table of the `system`, as a matrix.
+
+The first column has the concentrations of the cossolvent, in the units of the system
+(see [`convert_density_table!`](@ref)), and the second one the densities of the solution,
+in g/mL.
 """
 function get_density_table(system::SolutionBoxUSC)
     (; concentration, density) = system.density_table
@@ -407,10 +410,11 @@ end # function write_packmol_input
         kwargs...,
     )
 
-Builds and packs a Solute + Solvent + Cossolvent system directly, entirely in memory:
-equivalent to calling
-[`write_packmol_input`](@ref write_packmol_input(::SolutionBoxUSC)) followed by `packmol`
-on the resulting file, except no `.inp` file is ever written.
+Builds and packs a Solute + Solvent + Cossolvent system, without writing an input file.
+
+It is equivalent to calling
+[`write_packmol_input`](@ref write_packmol_input(::SolutionBoxUSC)) followed by `packmol` on the
+resulting file.
 
 `concentration`, `concentration_units`, `output`, `box_sides`, `margin`, and `pbc`
 behave as in `write_packmol_input`. Any other keyword (`nloop`, `iprint`, `seed`,

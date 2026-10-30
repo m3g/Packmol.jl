@@ -9,12 +9,12 @@ A sphere of the given `radius` centered at `(x,y,z)`.
 
 ## Example
 
-200 water molecules in a sphere with a radius of 12 Å:
+242 water molecules (about 1 g/mL) in a sphere with a radius of 12 Å:
 
 ```
 structure water.pdb
-    number 200
-    inside sphere 0. 0. 0. 12. # adjust for correct water density
+    number 242
+    inside sphere 0. 0. 0. 12.
 end structure
 ```
 
@@ -29,7 +29,7 @@ cp(joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb"), "water.pdb";
 ```@example sphere
 using Packmol, PDBTools
 water = structure_type("water.pdb";
-    number = 200,
+    number = 242,
     constraints = [InsideSphere([0., 0., 0.], 12.)],
 )
 system = PackmolSystem([water]; tolerance = 2.0, output = "sphere.pdb")

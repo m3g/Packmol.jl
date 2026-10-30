@@ -12,11 +12,11 @@ the cylinder extends from the given end, along the axis, to the other cap.
 
 ## Example
 
-100 water molecules in a cylinder along x, with a radius of 8 Å and a length of 20 Å:
+134 water molecules (about 1 g/mL) in a cylinder along x, with a radius of 8 Å and a length of 20 Å:
 
 ```
 structure water.pdb
-    number 100
+    number 134
     inside cylinder 0. 0. 0. 1. 0. 0. 8. 20.
 end structure
 ```
@@ -32,7 +32,7 @@ cp(joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb"), "water.pdb";
 ```@example cylinder
 using Packmol, PDBTools
 water = structure_type("water.pdb";
-    number = 100,
+    number = 134,
     constraints = [InsideCylinder([0., 0., 0.], [1., 0., 0.], 8., 20.)],
 )
 system = PackmolSystem([water]; tolerance = 2.0, output = "cylinder.pdb")

@@ -289,10 +289,11 @@ end
 """
     get_atoms(packmol_system::PackmolSystem)
 
-Compute the packed system's current atomic coordinates and return them as a
-`Vector{PDBToolsBase.Atom}` — generated fresh from `packmol_system.molecule_positions`
-each call (never cached on `packmol_system` itself), the same way `write_output`
-computes what it writes to file. Residue numbering follows each structure
+Returns the atoms of the packed system, with their current coordinates.
+
+The result is a `Vector{PDBToolsBase.Atom}`, generated from
+`packmol_system.molecule_positions` on each call (never cached on `packmol_system`
+itself), the same way `write_output` computes what it writes to file. Residue numbering follows each structure
 type's `residue_numbering` (`resnumbers`) setting, and chain identifiers
 follow `chain`/`changechains`.
 

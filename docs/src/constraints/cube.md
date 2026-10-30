@@ -12,12 +12,12 @@ rather than a side length).
 
 ## Example
 
-200 water molecules in a cube with sides of 20 Å, with a corner at the origin:
+267 water molecules (about 1 g/mL) in a cube with sides of 20 Å, with a corner at the origin:
 
 ```
 structure water.pdb
-    number 200
-    inside cube 0. 0. 0. 20. # adjust for correct water density
+    number 267
+    inside cube 0. 0. 0. 20.
 end structure
 ```
 
@@ -32,7 +32,7 @@ cp(joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb"), "water.pdb";
 ```@example cube
 using Packmol, PDBTools
 water = structure_type("water.pdb";
-    number = 200,
+    number = 267,
     constraints = [InsideCube([0., 0., 0.], 20.)],
 )
 system = PackmolSystem([water]; tolerance = 2.0, output = "cube.pdb")

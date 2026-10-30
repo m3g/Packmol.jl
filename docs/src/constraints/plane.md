@@ -13,11 +13,11 @@ Packmol); `below` is the complementary half-space.
 
 ## Example
 
-100 water molecules in the half of a box below the diagonal plane `x + y = 20`:
+134 water molecules (about 1 g/mL) in the half of a box below the diagonal plane `x + y = 20`:
 
 ```
 structure water.pdb
-    number 100
+    number 134
     inside box 0. 0. 0. 20. 20. 20.
     below plane 1. 1. 0. 20.
 end structure
@@ -34,7 +34,7 @@ cp(joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb"), "water.pdb";
 ```@example plane
 using Packmol, PDBTools
 water = structure_type("water.pdb";
-    number = 100,
+    number = 134,
     constraints = [InsideBox([0., 0., 0.], [20., 20., 20.]), BelowPlane([1., 1., 0.], 20.)],
 )
 system = PackmolSystem([water]; tolerance = 2.0, output = "plane.pdb")
