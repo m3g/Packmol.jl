@@ -66,28 +66,33 @@ function constraint_gradient(c::Cylinder{Inside}, x)
     return c.weight * (2 * v * (t2 - t1) + 4 * t3 * r)
 end
 
-# Outside: zero unless the point is simultaneously past the near cap, before
-# the far cap, and within the radius (i.e. genuinely inside the forbidden
-# cylinder); grows toward the interior. Matches the original Fortran
-# Packmol's `outside cylinder` penalty (product of the three violations).
+# Outside: zero unless the point is inside the forbidden cylinder (past the near cap,
+# before the far cap, and within the radius); then the squared distance to the nearest
+# way out (through either cap, or through the side), with the gradient along it. (Fortran
+# Packmol uses the product of the three violations, whose scale grows with the length of
+# the cylinder: for long cylinders, such as those crossing a periodic box, it is huge in
+# the middle of the cylinder, and the packing converges slowly.)
+function _outside_cylinder_depth(c::Cylinder, x)
+    v, w, r = _cylinder_axial_radial(c, x)
+    rr = norm(r)
+    depths = (w, c.length - w, c.radius - rr)
+    k = argmin(depths)
+    depth = depths[k]
+    return depth > 0 ? (depth, k) : (zero(depth), 0), v, r, rr
+end
+
 function constraint_penalty(c::Cylinder{Outside}, x)
-    _, w, r = _cylinder_axial_radial(c, x)
-    s1 = min(-w, zero(w))
-    s2 = min(w - c.length, zero(w))
-    s3 = min(sum(abs2, r) - c.radius^2, zero(w))
-    return c.weight * (s1^2 * s2^2 * s3^2)
+    (depth, _), _ = _outside_cylinder_depth(c, x)
+    return c.weight * depth^2
 end
 
 function constraint_gradient(c::Cylinder{Outside}, x)
-    v, w, r = _cylinder_axial_radial(c, x)
-    s1 = min(-w, zero(w))
-    s2 = min(w - c.length, zero(w))
-    s3 = min(sum(abs2, r) - c.radius^2, zero(w))
-    return c.weight * (
-        -2 * s1 * s2^2 * s3^2 * v +
-        2 * s1^2 * s2 * s3^2 * v +
-        4 * s1^2 * s2^2 * s3 * r
-    )
+    (depth, k), v, r, rr = _outside_cylinder_depth(c, x)
+    k == 0 && return zero(x)
+    # gradient of the depth: v through the near cap, -v through the far cap, and
+    # minus the radial direction through the side (zero exactly on the axis)
+    ddepth = k == 1 ? v : k == 2 ? -v : (rr > 0 ? -r / rr : zero(r))
+    return 2 * c.weight * depth * ddepth
 end
 
 #
