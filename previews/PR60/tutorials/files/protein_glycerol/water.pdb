@@ -1,5 +1,0 @@
-HEADER    PDBTools.jl - 3 atoms                   30-Oct-26
-ATOM      1  OH2 TIP3A   1       0.161   0.336   0.095  1.00  0.00           O
-ATOM      2  H1  TIP3A   1      -0.620   0.222  -0.519  1.00  0.00           H
-ATOM      3  H2  TIP3A   1       0.460  -0.559   0.425  1.00  0.00           H
-END
