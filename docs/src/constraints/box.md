@@ -9,12 +9,12 @@ An axis-aligned rectangular box spanning the given corners.
 
 ## Example
 
-267 water molecules (about 1 g/mL) in a box with sides of 20 Å:
+300 water molecules (about 1 g/mL) in a box with sides of 30, 20 and 15 Å:
 
 ```
 structure water.pdb
-    number 267
-    inside box 0. 0. 0. 20. 20. 20.
+    number 300
+    inside box 0. 0. 0. 30. 20. 15.
 end structure
 ```
 
@@ -29,12 +29,12 @@ cp(joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb"), "water.pdb";
 ```@example box
 using Packmol, PDBTools
 water = structure_type("water.pdb";
-    number = 267,
-    constraints = [InsideBox([0., 0., 0.], [20., 20., 20.])],
+    number = 300,
+    constraints = [InsideBox([0., 0., 0.], [30., 20., 15.])],
 )
 system = PackmolSystem([water]; tolerance = 2.0, output = "box.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system); unitcell = UnitCell([20., 20., 20.]))
+visualize(get_atoms(system); unitcell = UnitCell([30., 20., 15.]))
 ```

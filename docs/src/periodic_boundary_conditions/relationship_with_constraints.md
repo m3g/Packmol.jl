@@ -15,7 +15,7 @@ opposite face, as if the cell tiled space. This wrapping always uses the
 ordinary skewed-parallelepiped image (the same one `unitcell`/CRYST1
 describes) — it is entirely independent of `periodic_boundary_style`, which
 only affects how `get_atoms`/`write_output` present the *final* coordinates
-(see above). A molecule is always wrapped as a rigid unit, never atom by
+(see the output shapes of the [rhombic dodecahedral](rhombic_dodecahedral_box.md#Output-shape) and [truncated octahedral](truncated_octahedral_box.md#Output-shape) boxes). A molecule is always wrapped as a rigid unit, never atom by
 atom, so it can never be torn across a periodic boundary in a way that
 would leave part of it overlapping unrelated atoms.
 

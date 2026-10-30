@@ -38,8 +38,8 @@ makedocs(
         "Constraints" => [
             "Overview" => "constraints/index.md",
             "Fixed molecules" => "constraints/fixed.md",
-            "Box" => "constraints/box.md",
             "Cube" => "constraints/cube.md",
+            "Box" => "constraints/box.md",
             "Sphere" => "constraints/sphere.md",
             "Plane" => "constraints/plane.md",
             "Cylinder" => "constraints/cylinder.md",
@@ -54,7 +54,6 @@ makedocs(
             "Triclinic box" => "periodic_boundary_conditions/triclinic_box.md",
             "Rhombic dodecahedral box" => "periodic_boundary_conditions/rhombic_dodecahedral_box.md",
             "Truncated octahedral box" => "periodic_boundary_conditions/truncated_octahedral_box.md",
-            "Choosing the output shape" => "periodic_boundary_conditions/choosing_the_output_shape.md",
             "Relationship with constraints" => "periodic_boundary_conditions/relationship_with_constraints.md",
         ],
         "Julia API" => [
