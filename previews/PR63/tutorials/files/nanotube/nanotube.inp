@@ -1,0 +1,27 @@
+#
+# A carbon nanotube (armchair, (12,12), radius 8.14 Å) filled with water, in
+# water (1 g/mL), in a periodic box. The nanotube is along z, and crosses the
+# periodic boundary: it is infinite.
+#
+tolerance 2.0
+output nanotube.pdb
+pbc -20. -20. -24.6 20. 20. 24.6
+
+# The nanotube, kept at the coordinates of the file
+structure cnt.pdb
+  number 1
+  fixed 0. 0. 0. 0. 0. 0.
+end structure
+
+# Water inside the tube. The cylinders start at z = -100 with a length of 200,
+# longer than the box: they cross the periodic boundary along z.
+structure water.pdb
+  number 150
+  inside cylinder 0. 0. -100. 0. 0. 1. 6. 200.
+end structure
+
+# Water outside the tube
+structure water.pdb
+  number 2060
+  outside cylinder 0. 0. -100. 0. 0. 1. 10.5 200.
+end structure
