@@ -46,8 +46,8 @@ _format_dmin(dmin, cutoff) = dmin >= cutoff ? "> " * @sprintf("%.6f", cutoff) : 
 function _nonperiodic_unitcell(packmol_system::PackmolSystem{D,T}, atom_positions::Vector{SVector{D,T}}) where {D,T}
     # Range of the current centers of the free molecules (`compute_cm_bounds` without
     # a `precision`, so not filtered by constraint satisfaction: no molecule is
-    # projected onto its constraint region).
-    cm_lo, cm_hi = compute_cm_bounds(packmol_system)
+    # projected onto its constraint region; not extrapolated: the actual range).
+    cm_lo, cm_hi = compute_cm_bounds(packmol_system; extrapolate=false)
     # Overall bounds across all structure types
     all_lo = reduce((a,b) -> min.(a,b), cm_lo)
     all_hi = reduce((a,b) -> max.(a,b), cm_hi)
