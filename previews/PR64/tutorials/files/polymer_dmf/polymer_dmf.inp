@@ -1,0 +1,15 @@
+#
+# A polyacrylamide chain in N,N-dimethylformamide (DMF, 0.944 g/mL), in a
+# periodic cubic box with sides of 40 Å.
+#
+tolerance 2.0
+output polymer_dmf.pdb
+pbc -20. -20. -20. 20. 20. 20.
+
+structure polyacrylamide.pdb
+  number 1
+end structure
+
+structure dmf.pdb
+  number 495
+end structure
