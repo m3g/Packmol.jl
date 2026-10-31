@@ -235,6 +235,28 @@ function PackmolSystem(
     )
 end
 
+# A vector of structure types and of vectors of them (the conformations of a molecule,
+# from `structure_type`), as `[lipids, water]`
+function PackmolSystem(structure_types::AbstractVector; kargs...)
+    sts = StructureType[]
+    for s in structure_types
+        if s isa StructureType
+            push!(sts, s)
+        elseif s isa AbstractVector{<:StructureType}
+            append!(sts, s)
+        else
+            throw(ArgumentError("""\n
+                PackmolSystem: expected structure types (see `structure_type`), got a $(typeof(s)).
+
+            """))
+        end
+    end
+    isempty(sts) && throw(ArgumentError("PackmolSystem: no structure types given."))
+    sts = [s for s in sts] # narrowed to Vector{StructureType{D,T}}
+    isconcretetype(eltype(sts)) || throw(ArgumentError("PackmolSystem: structure types of different dimensions or precisions."))
+    return PackmolSystem(sts; kargs...)
+end
+
 function _indent(s::AbstractString; n=4)
     indented_str = IOBuffer()
     for line in eachline(IOBuffer(s))
@@ -249,12 +271,13 @@ function Base.show(io::IO, ::MIME"text/plain", sys::PackmolSystem{D,T}) where {D
         printstyled(io, " - read from: $(basename(sys.input_file))"; color=:blue)
     end
     println(io)
-    printstyled(io, _indent("Number of types of structures: $(length(sys.structure_types))\n"); bold=true)
+    groups = _molecule_groups(sys.structure_types)
+    printstyled(io, _indent("Number of types of structures: $(length(groups))\n"); bold=true)
     printstyled(io, _indent("Total number of molecules: $(sys.nmols)\n"); bold=true)
     printstyled(io, _indent("Structure types:\n"); bold=true)
-    for (i, st) in enumerate(sys.structure_types)
-        print(io, "    $i. ", _summary(st))
-        i < length(sys.structure_types) && println(io)
+    for (i, group) in enumerate(groups)
+        print(io, "    $i. ", _summary(@view(sys.structure_types[group])))
+        i < length(groups) && println(io)
     end
 end
 
@@ -601,8 +624,8 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
         end
         if words[1] == "end" && length(words) > 1 && words[2] == "structure"
             print(structure_input, line, "\n")
-            push!(sys.structure_types, 
-                read_structure_data(structure_input, sys.tolerance, Val(D), T; path=input_dir, filetype=sys.filetype)
+            append!(sys.structure_types,
+                _read_structure_types(structure_input, sys.tolerance, Val(D), T; path=input_dir, filetype=sys.filetype)
             )
             continue
         end

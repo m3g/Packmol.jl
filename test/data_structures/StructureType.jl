@@ -225,3 +225,72 @@ end
     @test st.atom_constraints[10] == [1]
     @test_throws ArgumentError structure_type(file; number=1, atom_constraints=[[1000] => BelowPlane([0., 0., 1.], 2.0)])
 end
+
+@testitem "structure_type: several conformations" setup=[TestFiles] begin
+    using PDBToolsBase: read_pdb
+    water = TestFiles.test_file("structure_files/water.pdb")
+    lines = filter(l -> startswith(l, "ATOM") || startswith(l, "HETATM"), readlines(water))
+    dir = mktempdir()
+    # Three models of water (the same coordinates: only the models matter here)
+    models = joinpath(dir, "water_models.pdb")
+    open(models, "w") do io
+        for k in 1:3
+            println(io, "MODEL     ", lpad(k, 4))
+            foreach(l -> println(io, l), lines)
+            println(io, "ENDMDL")
+        end
+        println(io, "END")
+    end
+    sts = structure_type(models; number=7, constraints=[InsideBox([0., 0., 0.], [20., 20., 20.])])
+    @test sts isa Vector{<:Packmol.StructureType}
+    @test [st.number_of_molecules for st in sts] == [3, 2, 2]
+    @test [st.conformation for st in sts] == [(1, 3), (2, 3), (3, 3)]
+    @test all(st.natoms == length(lines) for st in sts)
+    @test all(st.constraints == sts[1].constraints && st.constraints !== sts[1].constraints for st in sts[2:end])
+    # Fewer molecules than conformations
+    sts2 = structure_type(models; number=2)
+    @test [st.conformation for st in sts2] == [(1, 2), (2, 2)]
+    # A vector of files
+    sts3 = structure_type([water, water]; number=4)
+    @test [st.number_of_molecules for st in sts3] == [2, 2]
+    # A single conformation is a single structure type
+    @test structure_type(water; number=4) isa Packmol.StructureType
+    # Errors: different atoms, fixed molecules, restart files
+    other = TestFiles.test_file("structure_files/palmitoil.pdb")
+    @test_throws ArgumentError structure_type([water, other]; number=2)
+    @test_throws ArgumentError structure_type(models; number=1, fixed=([0., 0., 0.], [0., 0., 0.]))
+    @test_throws ArgumentError structure_type(models; number=3, restart_to=joinpath(dir, "r.pdb"))
+
+    # The same in an input file, packed: the conformations are a single structure type
+    # in the show of the system, and the molecules are numbered as a single type
+    write(joinpath(dir, "conformations.inp"), """
+        tolerance 2.0
+        output conformations.pdb
+        structure water_models.pdb
+          number 7
+          inside box 0. 0. 0. 20. 20. 20.
+        end structure
+        structure $water
+          number 5
+          inside box 0. 0. 0. 20. 20. 20.
+        end structure
+        """)
+    sys = Packmol.read_packmol_input(joinpath(dir, "conformations.inp"))
+    @test length(sys.structure_types) == 4
+    @test sys.nmols == 12
+    shown = sprint(show, MIME"text/plain"(), sys)
+    @test occursin("Number of types of structures: 2", shown)
+    @test occursin("\"water_models.pdb\" - 3 conformations", shown)
+    @test occursin("n_mols = 7", shown)
+    redirect_stdout(devnull) do
+        packmol(sys)
+    end
+    @test sys.status == :packing_ready
+    out = read_pdb(joinpath(dir, "conformations.pdb"))
+    resnums = [at.resnum for at in out if at.name == "OH2" || at.name == "O"]
+    @test resnums[1:7] == 1:7
+    @test resnums[8:12] == 1:5
+    # PackmolSystem from a vector of structure types and vectors of them
+    sys2 = PackmolSystem([sts, structure_type(water; number=5)]; output="")
+    @test length(sys2.structure_types) == 4
+end

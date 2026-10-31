@@ -330,7 +330,13 @@ function get_atoms(packmol_system::PackmolSystem{D,T}) where {D,T}
     iimol = 0       # molecule index across the whole system (fixed + free) — resnumbers mode 3
     irescount = 1   # running residue-number offset across the whole system — resnumbers mode 2
     ichain = 0      # count of auto-assigned chain letter groups so far, across all structure types
+    # The conformations of a molecule (consecutive structure types, see `conformation`)
+    # are numbered, and get chains, as a single structure type: `imol_offset` is the
+    # number of molecules of the previous conformations of the set
+    imol_offset = 0
+    odd_chain = even_chain = ' '
     for st in packmol_system.structure_types
+        st.conformation[1] == 1 && (imol_offset = 0)
         ifres = st.atoms[1].resnum
         ilres = st.atoms[end].resnum
         nres = ilres - ifres + 1
@@ -357,8 +363,8 @@ function get_atoms(packmol_system::PackmolSystem{D,T}) where {D,T}
             end
             irescount += nres
         else
-            odd_chain = even_chain = ' '
-            for imol_local in 1:st.number_of_molecules
+            for imol_in_type in 1:st.number_of_molecules
+                imol_local = imol_offset + imol_in_type
                 iimol += 1
                 if isnothing(st.chain)
                     if imol_local == 1 || mod(imol_local, 9999) == 1
@@ -391,6 +397,7 @@ function get_atoms(packmol_system::PackmolSystem{D,T}) where {D,T}
                 end
                 irescount += nres
             end
+            imol_offset += st.number_of_molecules
         end
     end
 
