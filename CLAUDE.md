@@ -46,6 +46,7 @@ src/
     pick_file.jl                      # File dialog via OS tools (osascript/PowerShell/zenity/kdialog), run with libc `popen`
     write_output.jl                   # Output writing
   random.jl                           # Random number generation
+  shape.jl                            # shape_descriptors, select_conformations
   interatomic_distance_fg.jl          # Distance function & gradient computation
   data_structures/
     atoms_and_molecules.jl            # AtomData, MoleculePosition, FixedMoleculeData
@@ -180,6 +181,9 @@ These are the building blocks everything else depends on.
       vector of files in `structure_type`, expands into consecutive structure types (one per conformation,
       `number` split evenly, marked by `StructureType.conformation = (i, n)`); `show` and the output
       numbering treat each set as a single structure type
+- [x] Shape of molecules (`src/shape.jl`): `shape_descriptors` (gyration tensor: asphericity, acylindricity,
+      relative shape anisotropy) and `select_conformations` (writes the most rod-like or sphere-like
+      conformations of a multi-model file, e.g. frames of a single-molecule simulation)
 
 ---
 

@@ -31,3 +31,26 @@ lipids = structure_type(["popc_1.pdb", "popc_2.pdb", "popc_3.pdb"];
 water = structure_type("water.pdb"; number = 1000, constraints = [InsideBox([-30.,-30.,20.], [30.,30.,40.])])
 sys = PackmolSystem([lipids, water]; output = "membrane.pdb")
 ```
+
+### Choosing the conformations
+
+Molecules are rigid in Packmol, so the shape of their conformations affects how densely
+they pack. Elongated (rod-like) conformations pack best in membranes, and compact
+(sphere-like) ones in homogeneous mixtures. [`shape_descriptors`](@ref) gives the shape
+of a molecule, or of each conformation of a structure file, from its gyration tensor, and
+[`select_conformations`](@ref) writes the most rod-like or sphere-like conformations of a
+set to a structure file with several models.
+
+The conformations can come from a short simulation of a single molecule (in vacuum, at
+a high temperature, to sample many conformations), with its frames saved as the models
+of a PDB file, or from the molecules of an equilibrated system (for example, the lipids
+of a membrane):
+
+```julia
+indices, descriptors = select_conformations("popc_conformations.pdb", "popc_rods.pdb"; n = 5)
+lipids = structure_type("popc_rods.pdb"; number = 60, atom_constraints = [...])
+```
+
+For example, a bilayer of POPC, constraining only the head and the ends of the chains
+of the lipids, packs at the actual area per lipid of POPC (64 Å²) from copies of the
+most rod-like of 60 conformations of an equilibrated membrane, but not from all of them.
