@@ -6,9 +6,9 @@
 # individually (e.g. packmol_main.jl fattens their atom radii back up).
 # Following the Fortran Packmol heuristic (heuristics.f90 movebad subroutine).
 #
-# On top of that per-candidate probabilistic selection, each structure type's
-# single worst-offending molecule is additionally force-moved about half the
-# time (one extra `rand()` draw per type, independent of the probabilistic
+# On top of that per-candidate probabilistic selection, the single
+# worst-offending molecule of the system is additionally force-moved about
+# half the time (one extra `rand()` draw, independent of the probabilistic
 # scan below) — insurance against a molecule (or a pair of molecules tangled
 # with each other) stuck at a persistent, but comparatively mild, violation
 # that would otherwise keep drawing an arbitrarily small move probability
@@ -47,118 +47,94 @@ function movebad!(
     ntypes = length(packmol_system.structure_types)
     bad_threshold = precision / packmol_system.nmols
 
-    # Group free molecules by structure type once, so badness, quota and
-    # selection are all computed *per type* below, rather than pooled across
-    # the whole system. Pooling is what caused a real bug: with a single
-    # system-wide quota (movefrac of the total free count) and one combined
-    # scan that stops as soon as the quota is filled, a large structure type
-    # (e.g. 1000 water molecules) fills that quota on its own almost every
-    # call, so a much smaller type (e.g. 100 lipids) never gets scanned at
-    # all — its worst molecules are never relocated and can get permanently
-    # stuck at the same constraint violation. Confirmed by instrumentation on
-    # `bilayer-pbc.inp`: one lipid atom's constraint violation stayed
-    # bit-for-bit frozen across hundreds of outer loops. Giving each type its
-    # own quota (movefrac of *that type's* free count) guarantees every type
-    # gets a proportional share of moves every call, regardless of how the
-    # other types are sized.
-    free_by_type = [Int[] for _ in 1:ntypes]
+    # The bad molecules of all types, and the worst one of each type and of
+    # the whole system.
+    candidates = Int[]
+    fmol_max_now = zeros(T, ntypes)
+    worst_imol = 0
     for imol in free_mol_indices
-        push!(free_by_type[mol_structure_type[imol]], imol)
-    end
-
-    moved = Int[]
-    for ist in 1:ntypes
-        candidates = free_by_type[ist]
-        nfree_type = length(candidates)
-        nfree_type == 0 && continue
-
-        nbad_type = 0
-        fmol_max_now = zero(T)
-        worst_imol = 0
-        for imol in candidates
-            if fmol[imol] > bad_threshold
-                nbad_type += 1
-                if fmol[imol] > fmol_max_now
-                    fmol_max_now = fmol[imol]
-                    worst_imol = imol
-                end
-            end
+        fmol[imol] > bad_threshold || continue
+        push!(candidates, imol)
+        ist = mol_structure_type[imol]
+        fmol_max_now[ist] = max(fmol_max_now[ist], fmol[imol])
+        if worst_imol == 0 || fmol[imol] > fmol[worst_imol]
+            worst_imol = imol
         end
-        nbad_type == 0 && continue
-        # `fmol_max_type` (owned and persisted by the caller across loops)
-        # tracks the worst fmol ever observed for this type, not just this
-        # call's own candidates: once the population of bad molecules of this
-        # type becomes homogeneous late in the packing (all clustered near
-        # the same, small fmol), using *this call's* max as the probability's
-        # reference would make every candidate look nearly as bad as the
-        # worst one, driving most of their move probabilities back up toward
-        # 0.5 even though none of them is actually far from converged.
-        # Anchoring instead to the historical worst-ever value keeps that
-        # ratio — and thus the probability — small for a mildly-bad,
-        # tightly-clustered population, exactly as it should be.
-        fmol_max_type[ist] = max(fmol_max_type[ist], fmol_max_now)
+    end
+    nbad = length(candidates)
+    nbad == 0 && return Int[]
+    # `fmol_max_type` (owned and persisted by the caller across loops)
+    # tracks the worst fmol ever observed for each type, not just this
+    # call's own candidates: once the population of bad molecules of a type
+    # becomes homogeneous late in the packing (all clustered near the same,
+    # small fmol), using *this call's* max as the probability's reference
+    # would make every candidate look nearly as bad as the worst one, driving
+    # most of their move probabilities back up toward 0.5 even though none of
+    # them is actually far from converged. Anchoring instead to the
+    # historical worst-ever value keeps that ratio — and thus the
+    # probability — small for a mildly-bad, tightly-clustered population,
+    # exactly as it should be.
+    fmol_max_type .= max.(fmol_max_type, fmol_max_now)
 
-        # Number of molecules of this type to move
-        frac = min(movefrac, nbad_type / nfree_type)
-        nmove = max(1, min(nbad_type, round(Int, frac * nfree_type)))
+    # A single quota for the whole system: `movefrac` of the free molecules.
+    # A quota per structure type (at least one molecule each) moves far more
+    # molecules than that in systems of many small types (ten types of 6
+    # molecules would move 10 molecules per call, instead of 3 if they were a
+    # single type), disrupting the packing of the molecules that are almost
+    # done, while a molecule stuck far from its region competes for its
+    # type's quota only with its few siblings.
+    nfree = length(free_mol_indices)
+    nmove = max(1, min(nbad, round(Int, min(movefrac, nbad / nfree) * nfree)))
 
-        st = packmol_system.structure_types[ist]
+    # Each moved molecule is placed within the center-of-mass bounds of its type
+    function place!(imol)
+        ist = mol_structure_type[imol]
         lo, hi = if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
             l, h = cm_lo_type[ist], cm_hi_type[ist]
             all(l .< h) ? (l, h) : (nothing, nothing)
         else
             (nothing, nothing)
         end
+        _movebad_place_molecule!(
+            packmol_system, imol, packmol_system.structure_types[ist], RNG;
+            cm_lo=lo, cm_hi=hi,
+            fixed_sys, fixed_lo, fixed_hi, overlap_tol,
+            fg_output, atom_positions, mol_structure_type, mol_iat_first,
+            precision, opt_nit, max_guess_try,
+        )
+    end
 
-        # On top of the probabilistic selection below — which, for a type
-        # whose `fmol_max_type` was set by a since-resolved early spike, can
-        # go arbitrarily many calls without moving anything, since a
-        # persistently-stuck-but-comparatively-mild offender then gets an
-        # arbitrarily small move probability — force-move this type's single
-        # worst-offending molecule about half the time, unconditionally.
-        # This is cheap insurance against exactly that stuck case (e.g. two
-        # molecules genuinely tangled with each other, unable to separate on
-        # their own) without making every call deterministic.
-        n_moved_type = 0
-        forced_worst = rand(RNG, T) > T(0.5)
-        if forced_worst
-            _movebad_place_molecule!(
-                packmol_system, worst_imol, st, RNG;
-                cm_lo=lo, cm_hi=hi,
-                fixed_sys, fixed_lo, fixed_hi, overlap_tol,
-                fg_output, atom_positions, mol_structure_type, mol_iat_first,
-                precision, opt_nit, max_guess_try,
-            )
-            push!(moved, worst_imol)
-            n_moved_type += 1
-        end
+    # On top of the probabilistic selection below — in which a persistently
+    # stuck but comparatively mild offender can get an arbitrarily small move
+    # probability, call after call — force-move the worst molecule of the
+    # system about half the time. This is cheap insurance against exactly
+    # that stuck case (e.g. two molecules genuinely tangled with each other,
+    # unable to separate on their own) without making every call
+    # deterministic.
+    moved = Int[]
+    forced_worst = rand(RNG, T) > T(0.5)
+    if forced_worst
+        place!(worst_imol)
+        push!(moved, worst_imol)
+    end
 
-        # Move molecules of this type randomly: probability of moving is
-        # proportional to fmol value (worse molecules are more likely to be
-        # moved). Scanned in a shuffled order (not `candidates`' own
-        # molecule-index order) so that, within this type, the early-exit
-        # once `nmove` is filled doesn't systematically favor whichever
-        # molecules happen to sit first.
-        for imol in Random.shuffle(RNG, candidates)
-            n_moved_type >= nmove && break
-            forced_worst && imol == worst_imol && continue
-            if fmol[imol] > bad_threshold
-                # Probability increases with fmol value: move the worst-ever
-                # molecule of this type with 0.5 probability, linearly
-                # decreasing probability for better molecules.
-                prob = 0.5 * fmol[imol] / fmol_max_type[ist]
-                if rand(RNG, T) < prob
-                    _movebad_place_molecule!(
-                        packmol_system, imol, st, RNG;
-                        cm_lo=lo, cm_hi=hi,
-                        fixed_sys, fixed_lo, fixed_hi, overlap_tol,
-                        fg_output, atom_positions, mol_structure_type, mol_iat_first,
-                        precision, opt_nit, max_guess_try,
-                    )
-                    push!(moved, imol)
-                    n_moved_type += 1
-                end
-            end
+    # Move bad molecules randomly: probability of moving is proportional to
+    # fmol, relative to the worst-ever fmol of the molecule's type (the worst
+    # molecule of a type is moved with probability 0.5). The candidates of all
+    # types are scanned in a shuffled order, not by molecule index: a scan
+    # in index order that stops when the quota is filled would almost never
+    # reach the types listed last when the first ones are large (e.g. 100
+    # lipids after 1000 water molecules), leaving their molecules stuck
+    # (confirmed on `bilayer-pbc.inp`: a lipid atom's constraint violation
+    # stayed frozen over hundreds of loops). Shuffled, every type gets a share
+    # of the moves proportional to its number of bad molecules.
+    for imol in Random.shuffle(RNG, candidates)
+        length(moved) >= nmove && break
+        forced_worst && imol == worst_imol && continue
+        prob = 0.5 * fmol[imol] / fmol_max_type[mol_structure_type[imol]]
+        if rand(RNG, T) < prob
+            place!(imol)
+            push!(moved, imol)
         end
     end
     return moved
