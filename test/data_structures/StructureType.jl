@@ -336,6 +336,9 @@ end
     sts = structure_type(out; number=4)
     @test length(sts) == 2
     @test shape_descriptors(out)[1].asphericity ≈ ds[2].asphericity rtol = 1e-3
+    indices, _ = select_conformations(models, joinpath(dir, "rod.pdb")) # n = 1 by default
+    @test indices == [2]
+    @test structure_type(joinpath(dir, "rod.pdb"); number=4) isa Packmol.StructureType
     indices, _ = select_conformations(models, joinpath(dir, "spheres.pdb"); n=1, shape=:sphere)
     @test length(indices) == 1
     @test_throws ArgumentError select_conformations(models, out; n=1, shape=:disc)

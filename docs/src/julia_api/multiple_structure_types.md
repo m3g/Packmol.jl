@@ -47,10 +47,11 @@ of a PDB file, or from the molecules of an equilibrated system (for example, the
 of a membrane):
 
 ```julia
-indices, descriptors = select_conformations("popc_conformations.pdb", "popc_rods.pdb"; n = 5)
-lipids = structure_type("popc_rods.pdb"; number = 60, atom_constraints = [...])
+select_conformations("popc_conformations.pdb", "popc_rod.pdb") # the most rod-like one
+lipids = structure_type("popc_rod.pdb"; number = 60, atom_constraints = [...])
 ```
 
 For example, a bilayer of POPC, constraining only the head and the ends of the chains
 of the lipids, packs at the actual area per lipid of POPC (64 Å²) from copies of the
-most rod-like of 60 conformations of an equilibrated membrane, but not from all of them.
+most rod-like of 60 conformations of an equilibrated membrane, but not from all of them:
+a single, well chosen conformation packs best (the default of `select_conformations`).

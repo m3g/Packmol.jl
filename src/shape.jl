@@ -69,12 +69,13 @@ function shape_descriptors(filename::String; filetype::String="pdb")
 end
 
 """
-    select_conformations(input, output; n, shape=:rod, filetype="pdb")
+    select_conformations(input, output; n=1, shape=:rod, filetype="pdb")
 
-Write to `output` a structure file with the `n` conformations of a molecule, from those
-of `input` (a structure file with several models, or a vector of files), that are most
-rod-like (`shape = :rod`: greatest asphericity) or most sphere-like (`shape = :sphere`:
-smallest relative shape anisotropy), as models, the best first. The output file can be
+Write to `output` a structure file with the `n` (by default, one) conformations of a
+molecule, from those of `input` (a structure file with several models, or a vector of
+files), that are most rod-like (`shape = :rod`: greatest asphericity) or most
+sphere-like (`shape = :sphere`: smallest relative shape anisotropy), as models, the
+best first. The output file can be
 used in a structure block of an input file, or in [`structure_type`](@ref), for a
 molecule packed in these conformations. Returns the indices of the selected
 conformations in `input`, and their shape descriptors (see [`shape_descriptors`](@ref)).
@@ -86,17 +87,18 @@ or the molecules of an equilibrated system.
 Rod-like conformations pack best in membranes: a POPC bilayer packs at its actual area
 per lipid (64 Å²) from copies of the most rod-like conformation of an equilibrated
 membrane, but not from all its conformations. Sphere-like conformations pack best in
-homogeneous mixtures.
+homogeneous mixtures. A single conformation packs best: the same bilayer packs less
+often from the 5 most rod-like conformations, and even less from the 10 most rod-like.
 
 # Example
 
 ```julia-repl
-julia> indices, descriptors = select_conformations("popc_conformations.pdb", "popc_rods.pdb"; n=5)
+julia> index, descriptors = select_conformations("popc_conformations.pdb", "popc_rod.pdb")
 ```
 """
 function select_conformations(
     input::Union{String,AbstractVector{String}}, output::String;
-    n::Int, shape::Symbol=:rod, filetype::String="pdb",
+    n::Int=1, shape::Symbol=:rod, filetype::String="pdb",
 )
     shape in (:rod, :sphere) || throw(ArgumentError("""\n
         select_conformations: shape must be :rod or :sphere, got :$shape.
