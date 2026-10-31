@@ -42,3 +42,32 @@ end structure
 Constraint lines (`inside box`, `outside sphere`, `above plane`, ...) are
 documented on the [Constraints](../constraints/index.md) page — any number of them can
 appear in a structure block, optionally inside an `atoms ... end` block.
+
+## Several conformations of a molecule
+
+A structure file with several models (`MODEL` ... `ENDMDL` records of a PDB file)
+provides several conformations of the same molecule: the `number` of molecules is
+divided among them as evenly as possible, and every constraint of the structure block
+applies to all of them. The models must have the same atoms, in the same order (the
+atom indices of `atoms` blocks refer to all of them).
+
+```
+structure popc_conformations.pdb # 30 models
+  number 60                      # 2 molecules of each conformation
+  atoms 1
+    above plane 0. 0. 1. 19.5
+  end atoms
+  atoms 88 131
+    below plane 0. 0. 1. 6.
+  end atoms
+end structure
+```
+
+Molecules are rigid in Packmol: several conformations of a flexible molecule pack
+more densely than copies of a single one, since the molecules fill the space between
+each other better. Lipid membranes, for example, pack at their actual density from
+conformations taken from an equilibrated membrane, but not from copies of a single
+extended lipid. In the output, the molecules of all conformations are numbered as
+those of a single structure type. A fixed molecule has a single conformation, and
+`restart_from` and `restart_to` are not available inside a structure block with
+several conformations (use them for the whole system).

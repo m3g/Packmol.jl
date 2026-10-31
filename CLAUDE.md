@@ -176,6 +176,10 @@ These are the building blocks everything else depends on.
       are always moved randomly), `segid` (written to PDB columns 73-76)
 - [x] CONECT options: `connect yes|no` (global and per structure), `ignore_conect`; `non_standard_conect`,
       `hexadecimal_indices` deprecated
+- [x] Several conformations of a molecule (Packmol.jl-only): a structure file with several models, or a
+      vector of files in `structure_type`, expands into consecutive structure types (one per conformation,
+      `number` split evenly, marked by `StructureType.conformation = (i, n)`); `show` and the output
+      numbering treat each set as a single structure type
 
 ---
 

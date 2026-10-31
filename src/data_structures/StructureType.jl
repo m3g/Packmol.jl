@@ -48,6 +48,11 @@ Structure that contains the input data for a structure block in the input file.
     constraints::Vector{AnyConstraint{T}}
     atom_constraints::Vector{Vector{Int}} = Vector{Int}[]
     move_bad_molecules::Symbol = :low_density_region
+    # Conformations: a molecule given in several conformations (a structure file
+    # with several models, or a vector of files) is packed as consecutive structure
+    # types, one per conformation; `conformation = (i, n)` marks this one as the
+    # i-th of a set of n (`(1, 1)` for a molecule with a single conformation).
+    conformation::Tuple{Int,Int} = (1, 1)
 end
 
 function _show(s::StructureType{D,T}) where {D,T}
@@ -58,17 +63,39 @@ function _show(s::StructureType{D,T}) where {D,T}
             natoms: $(s.natoms)
             number_of_molecules: $(s.number_of_molecules)
             fixed: $(s.fixed.fixed)
-            number of constraints: $(length(s.constraints))
+            number of constraints: $(length(s.constraints))$(s.conformation[2] > 1 ? "\n    conformation: $(s.conformation[1]) of $(s.conformation[2])" : "")
         """
     )
 end
 Base.show(io::IO, ::MIME"text/plain", s::StructureType) = print(io, _show(s))
 
-# One-line summary of a structure type (in the `show` of a `PackmolSystem`)
-_summary(s::StructureType) = string(
-    "\"", basename(s.filename), "\" - n_atoms = ", s.natoms, " - n_mols = ", s.number_of_molecules,
-    s.fixed.fixed ? " - fixed" : "", " - n_constraints = ", length(s.constraints),
-)
+# One-line summary of a structure type (in the `show` of a `PackmolSystem`), or of a
+# set of conformations of a molecule (`sts`, consecutive structure types), as a single
+# structure type
+_summary(s::StructureType) = _summary([s])
+function _summary(sts::AbstractVector{<:StructureType})
+    s = first(sts)
+    n = length(sts)
+    return string(
+        "\"", basename(s.filename), "\"", n > 1 ? " - $n conformations" : "",
+        " - n_atoms = ", s.natoms, " - n_mols = ", sum(st.number_of_molecules for st in sts),
+        s.fixed.fixed ? " - fixed" : "", " - n_constraints = ", length(s.constraints),
+    )
+end
+
+# The structure types grouped by molecule: each set of conformations of a molecule is
+# one group (ranges of indices of `structure_types`)
+function _molecule_groups(structure_types::AbstractVector{<:StructureType})
+    groups = UnitRange{Int}[]
+    for (i, st) in enumerate(structure_types)
+        if st.conformation[1] == 1 || isempty(groups)
+            push!(groups, i:i)
+        else
+            groups[end] = first(groups[end]):i
+        end
+    end
+    return groups
+end
 
 function Base.show(io::IO, ::MIME"text/plain", v::AbstractVector{<:StructureType})
     print(io, chomp("""
@@ -128,6 +155,12 @@ the `atoms ... end atoms` blocks of an input file): a vector of `indices => cons
 pairs, with the indices of the atoms in the structure file and one constraint or a
 vector of them. For example, `atom_constraints = [[31, 32] => BelowPlane([0,0,1], 2.0)]`.
 
+`filename` can also be a vector of structure files, or a file with several models, for
+several conformations of the molecule (they must have the same atoms, in the same
+order): a vector of structure types is then returned, one per conformation, among
+which `number` is divided as evenly as possible, and which `PackmolSystem` takes as a
+single structure type (e.g. `PackmolSystem([lipids, water]; ...)`).
+
 `radius` sets a uniform atom radius; if not given, it defaults to `tolerance/2` (so
 that two touching atoms' radii sum to `tolerance`, matching the input file default).
 
@@ -144,7 +177,7 @@ julia> using Packmol
 julia> st = structure_type("water.pdb"; number=1000, constraints=[InsideBox([0,0,0],[40,40,40])])
 ```
 """
-function structure_type(filename::String;
+function structure_type(filename::Union{String,AbstractVector{String}};
     number::Int,
     constraints::Vector{<:Constraint} = Constraint[],
     atom_constraints::AbstractVector{<:Pair} = Pair[],
@@ -169,7 +202,9 @@ function structure_type(filename::String;
 )
     changechains && !isnothing(chain) &&
         error("'changechains' and 'chain' are not compatible for a single structure.")
-    atoms, connectivity = _read_structure_file(filename, filetype)
+    conformations, conformation_files, connectivity = _read_conformations(filename, filetype)
+    atoms = conformations[1]
+    filename = conformation_files[1]
     connect || (connectivity = nothing)
     natoms = length(atoms)
     reference_coordinates = [_atom_position(at, Val(D), T) for at in atoms]
@@ -212,11 +247,44 @@ function structure_type(filename::String;
     end
     _check_rotation_constraints(rotation_constraints, fixed_data, natoms)
 
-    return StructureType{D,T}(;
+    st = StructureType{D,T}(;
         filename, natoms, atoms, number_of_molecules=number, rotation_constraints, restart_from=_restart_source(restart_from), restart_to,
         fixed=fixed_data, reference_coordinates, radii,
         residue_numbering, chain, changechains, segid=_check_segid(segid), connectivity, constraints, atom_constraints,
     )
+    types = _conformation_types(st, conformations, conformation_files)
+    return length(types) == 1 ? only(types) : types
+end
+
+#
+# The conformations of a molecule (see `_conformations`), from one structure file or
+# from several, with the file of each conformation, and the connectivity of the first.
+#
+function _read_conformations(filenames::Union{String,AbstractVector{String}}, filetype::String)
+    filenames isa String && (filenames = [filenames])
+    isempty(filenames) && throw(ArgumentError("""\n
+        No structure file given.
+
+    """))
+    conformations = Vector{Atom{Nothing}}[]
+    conformation_files = String[]
+    connectivity = nothing
+    for (i, file) in enumerate(filenames)
+        atoms, conn = _read_structure_file(file, filetype)
+        i == 1 && (connectivity = conn)
+        for conf in _conformations(atoms)
+            push!(conformations, conf)
+            push!(conformation_files, file)
+        end
+    end
+    # The bonds of the first conformation (the CONECT records of a file with several
+    # models refer to the atoms of the first one)
+    n = length(conformations[1])
+    if !isnothing(connectivity) && length(connectivity) != n
+        connectivity = length(connectivity) > n && all(all(<=(n), c) for c in @view(connectivity[1:n])) ?
+            connectivity[1:n] : nothing
+    end
+    return conformations, conformation_files, connectivity
 end
 
 read_structure_data(input_file_block::AbstractString, args...; kargs...) = 
@@ -239,6 +307,77 @@ function _read_structure_file(filename::String, filetype::String)
         read_pdb(filename)
     end
     return Vector{Atom{Nothing}}(structure.atoms), structure.connectivity
+end
+
+#
+# The conformations of the molecule of a structure file: the atoms of each of its
+# models (`MODEL` records of a PDB file), or all its atoms if it has a single model.
+#
+function _conformations(atoms::Vector{Atom{Nothing}})
+    models = Int32[]
+    for at in atoms
+        at.model in models || push!(models, at.model)
+    end
+    length(models) == 1 && return [atoms]
+    conformations = [Atom{Nothing}[] for _ in models]
+    for at in atoms
+        at = copy(at)
+        k = findfirst(==(at.model), models)
+        at.model = 1
+        push!(conformations[k], at)
+    end
+    return conformations
+end
+
+#
+# A molecule given in several conformations is packed as consecutive structure
+# types, one per conformation, marked by their `conformation` field: copies of `st`
+# (built from the first conformation) with the coordinates of each conformation,
+# and the number of molecules split as evenly as possible among them (conformations
+# left without molecules are dropped). Each copy has its own constraint vectors,
+# since constraints may be added to each structure type later (e.g. the periodic
+# cell confinement).
+#
+function _conformation_types(
+    st::StructureType{D,T}, conformations::Vector{Vector{Atom{Nothing}}}, filenames::Vector{String},
+) where {D,T}
+    nconf = length(conformations)
+    nconf == 1 && return [st]
+    st.fixed.fixed && throw(ArgumentError("""\n
+        Structure $(basename(st.filename)): a fixed molecule cannot have several conformations (models).
+
+    """))
+    (isnothing(st.restart_from) && isnothing(st.restart_to)) || throw(ArgumentError("""\n
+        Structure $(basename(st.filename)): restart_from and restart_to are not supported for a molecule
+        with several conformations (models) in the structure block; use them for the whole system.
+
+    """))
+    for (k, conf) in enumerate(conformations)
+        if length(conf) != st.natoms || any(conf[i].name != st.atoms[i].name for i in 1:st.natoms)
+            throw(ArgumentError("""\n
+                Structure $(basename(st.filename)): conformation $k ($(basename(filenames[k]))) does not have the
+                same atoms, in the same order, as the first one.
+
+            """))
+        end
+    end
+    q, r = divrem(st.number_of_molecules, nconf)
+    keep = [k for k in 1:nconf if q + (k <= r) > 0]
+    types = StructureType{D,T}[]
+    for (i, k) in enumerate(keep)
+        atoms = conformations[k]
+        push!(types, StructureType{D,T}(;
+            filename=filenames[k], natoms=st.natoms, atoms,
+            number_of_molecules=q + (k <= r), fixed=st.fixed,
+            reference_coordinates=[_atom_position(at, Val(D), T) for at in atoms],
+            radii=copy(st.radii), residue_numbering=st.residue_numbering, chain=st.chain,
+            changechains=st.changechains, segid=st.segid, rotation_constraints=copy(st.rotation_constraints),
+            restart_from=nothing, restart_to=nothing, connectivity=st.connectivity,
+            constraints=copy(st.constraints), atom_constraints=[copy(ac) for ac in st.atom_constraints],
+            move_bad_molecules=st.move_bad_molecules, conformation=(i, length(keep)),
+        ))
+    end
+    return types
 end
 
 function _file_format(filename::AbstractString, filetype::String)
@@ -352,7 +491,18 @@ function _check_rotation_constraints(rotation_constraints, fixed, natoms::Int)
 end
 
 function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::Type{T}; path::String="", filetype::String="pdb") where {D,T}
+    types = _read_structure_types(input_file_block, tolerance, Val(D), T; path, filetype)
+    return length(types) == 1 ? only(types) : types
+end
+
+#
+# The structure types of a structure block of an input file: one, or one per
+# conformation if the structure file has several models (see `_conformation_types`).
+#
+function _read_structure_types(input_file_block::IOBuffer, tolerance, ::Val{D}, ::Type{T}; path::String="", filetype::String="pdb") where {D,T}
     filename = ""
+    conformations = Vector{Atom{Nothing}}[]
+    conformation_files = String[]
     atoms = Atom{Nothing}[]
     connectivity = nothing
     connect = true
@@ -390,7 +540,8 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
         end
         if keyword == "structure"
             filename = joinpath(path, expanduser(String(values[1])))
-            atoms, connectivity = _read_structure_file(filename, filetype)
+            conformations, conformation_files, connectivity = _read_conformations(filename, filetype)
+            atoms = conformations[1]
             reference_coordinates = [_atom_position(at, Val(D), T) for at in atoms]
             radii = fill(T(tolerance / 2), length(atoms))
             atom_constraints = [Int[] for _ in eachindex(atoms)]
@@ -473,10 +624,11 @@ function read_structure_data(input_file_block::IOBuffer, tolerance, ::Val{D}, ::
         error("'changechains' and 'chain' input parameters are not compatible for a single structure.")
     end
     _check_rotation_constraints(rotation_constraints, fixed, length(atoms))
-    return StructureType{D,T}(;
+    st = StructureType{D,T}(;
         filename, natoms=length(atoms), atoms, number_of_molecules, fixed, reference_coordinates, radii,
         residue_numbering, chain, changechains, segid, rotation_constraints, restart_from, restart_to,
         connectivity=connect ? connectivity : nothing,
         constraints, atom_constraints,
     )
+    return _conformation_types(st, conformations, conformation_files)
 end
