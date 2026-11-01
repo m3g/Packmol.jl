@@ -154,3 +154,23 @@ function _cm_half_extent(packmol_system::PackmolSystem{D,T}) where {D,T}
     end
     return half_extent
 end
+
+#
+# Replace the centers of mass of the molecules `imols` by their images in the cell (see
+# `_wrap_cm`), which the objective function evaluates. The optimizer bounds the stored
+# centers of mass to the box of `_cm_half_extent`, and a stored center of mass on a face
+# of that box blocks the motion of its image in the direction of the face, even if the
+# image is in the middle of the cell (as a molecule pulled toward the center of a
+# truncated octahedron, stuck while its stored center is at the opposite corner of the
+# box), so the stored centers of mass are kept at their images.
+#
+function _wrap_molecule_positions!(packmol_system::PackmolSystem{D,T}, imols::AbstractVector{Int}) where {D,T}
+    unitcell, center = packmol_system.unitcell, packmol_system.unitcell_center
+    (isnothing(unitcell) || isnothing(center)) && return packmol_system
+    for imol in imols
+        mp = packmol_system.molecule_positions[imol]
+        cm = _wrap_cm(mp.cm, unitcell, center, packmol_system.wigner_seitz_cell)
+        packmol_system.molecule_positions[imol] = MoleculePosition(cm, mp.angles)
+    end
+    return packmol_system
+end

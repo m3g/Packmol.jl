@@ -48,3 +48,35 @@ end
     # images of the positions drawn in the parallelepiped
     @test maximum(abs(a.z) for a in atoms) > 0.55 * d
 end
+
+@testitem "centers of mass kept in the truncated octahedron" setup=[TestFiles] begin
+    using LinearAlgebra: norm
+    # A packed sphere of water, restarted from coordinates shifted by a cell vector: the
+    # stored centers of mass would be outside the optimizer bounds, stuck on a face of
+    # the bounds while their images (in the cell) still have to move. They are replaced
+    # by their images, so the packing converges
+    uc = octahedral_unitcell(Float64, 40.0)
+    water() = structure_type(TestFiles.test_file("structure_files/water.pdb");
+        number = 100,
+        constraints = [InsideSphere([0.0, 0.0, 0.0], 10.0)],
+    )
+    system = PackmolSystem([water()]; output = tempname() * ".pdb", tolerance = 2.0, unitcell = uc)
+    redirect_stdout(devnull) do
+        packmol(system)
+    end
+    atoms = get_atoms(system)
+    for a in atoms
+        a.x += uc[1, 3]; a.y += uc[2, 3]; a.z += uc[3, 3]
+    end
+    system = PackmolSystem([water()];
+        output = tempname() * ".pdb", tolerance = 2.0, unitcell = uc, restart_from = atoms,
+    )
+    redirect_stdout(devnull) do
+        packmol(system; nloop = 5)
+    end
+    @test system.status == :packing_ready
+    @test maximum(norm([a.x, a.y, a.z]) for a in get_atoms(system)) < 10.1
+    @test all(system.molecule_positions) do mp
+        Packmol._wrap_cm(mp.cm, system.unitcell, system.unitcell_center, true) == mp.cm
+    end
+end

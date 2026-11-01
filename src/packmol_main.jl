@@ -354,6 +354,7 @@ function _packmol(
     )
 
     # Set up optimization variables: only free molecule DOFs (reuse pre-allocated buffer)
+    _wrap_molecule_positions!(packmol_system, free_mol_indices)
     x = buffers.x
     x_mol = reinterpret(MoleculePosition{D,T}, x)
     for (k, imol) in enumerate(free_mol_indices)
@@ -537,6 +538,7 @@ function _packmol(
         for (k, imol) in enumerate(free_mol_indices)
             packmol_system.molecule_positions[imol] = x_mol[k]
         end
+        _wrap_molecule_positions!(packmol_system, free_mol_indices)
 
         # True (floor) objective value at the position this loop ends at,
         # paired with f_true_loop_start above: this isolates what this
