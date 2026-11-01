@@ -59,6 +59,9 @@ function set_initial_approximation!(
     # Step 2: Constraint-only optimization (no movebad) to push molecules
     # toward feasible regions, then compute CM bounds from the result.
     converged = adjust_constraints!(packmol_system, free_mol_indices, RNG; domovebad=false, buffers)
+    # Under PBC, the centers of mass are where the constraints are evaluated (see
+    # `_wrap_molecule_positions!`), so that the bounds are those of the constraints
+    _wrap_molecule_positions!(packmol_system, free_mol_indices)
     # Use only constraint-satisfying molecules for bounds: outliers still at
     # sidemax (±1000 Å) would otherwise produce a huge bounding box, causing
     # CellListMap to allocate a ~10⁹-cell grid in subsequent steps.
@@ -79,10 +82,12 @@ function set_initial_approximation!(
         converged = adjust_constraints!(packmol_system, free_mol_indices, RNG;
             nloop, cm_lo_type=cm_min, cm_hi_type=cm_max, buffers,
         )
+        _wrap_molecule_positions!(packmol_system, free_mol_indices)
     end
 
-    # Step 5: Clamp any molecules whose CMs are still far outside the
-    # constraint bounds (can happen when adjustment doesn't converge).
+    # Step 5: Clamp any molecules that do not satisfy the constraints and whose CMs
+    # are still far outside the constraint bounds (can happen when adjustment
+    # doesn't converge).
     # This prevents a huge bounding box that would blow up CellListMap memory.
     _clamp_molecules_to_bounds!(packmol_system, free_mol_indices, cm_min, cm_max, RNG)
 

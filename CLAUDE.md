@@ -229,7 +229,8 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       bounds cover both shapes (`_cm_half_extent`), independently of `periodic_boundary_style`. Placement
       scores constraints at the wrapped center of mass too (`constraint_penalty_sum(mp, st, system)`).
       The stored centers of mass of all PBC cells are replaced by these images after every packing
-      loop (`_wrap_molecule_positions!`): one stored on a face of the optimizer bounds blocks its image.
+      loop (`_wrap_molecule_positions!`), and after the constraint adjustments of the initial approximation
+      (its bounds come from them): one stored on a face of the optimizer bounds blocks its image.
 - [ ] New feature: Recipes for icosaedric boxes.
 
 ---
