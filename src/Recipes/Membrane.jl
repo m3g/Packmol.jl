@@ -13,10 +13,12 @@
 #
 export Membrane
 
-# One lipid molecule's placement within one leaflet: `zlo`/`zhi` bound the
-# whole molecule (all atoms), and the head/tail atoms are additionally
-# pinned within `flex` Å of whichever edge (`head_low` selects which) faces
-# this leaflet's solvent-facing anchor plane. All z values are already
+# One lipid molecule's placement within one leaflet: `zlo`/`zhi` are the
+# edges of the leaflet, and the head/tail atoms are pinned within `flex` Å
+# of them (`head_low` selects which edge faces the solvent). The rest of the
+# molecule is not bounded: a whole-molecule slab as thick as the head-to-tail
+# distance would force every lipid to tilt, since the molecule is longer
+# than that distance, and lipids pack much worse. All z values are already
 # shifted so that z=0 is the box center (matching `_recipe_unitcell`'s
 # `unitcell_center = (0,0,0)`).
 struct _LipidPlacement
@@ -71,7 +73,7 @@ _mandatory_keywords(::Type{Membrane}) = (:lipids, :lipid_head, :lipid_tail, :lip
         area_per_lipid::Number,
         total_area::Union{Nothing,Number} = nothing, # xor total_lipids
         total_lipids::Union{Nothing,Integer} = nothing, # xor total_area
-        flexibility::Real = 0.25,
+        flexibility::Real = 0.025,
         solvent::Union{String,Vector{String}},
         solvent_molar_ratio = nothing, # optional, defaults to equal weights
         solvent_molar_mass = nothing, # optional
@@ -91,13 +93,19 @@ oriented, PDB template) is taken as that lipid's intrinsic head-to-tail length; 
 membrane's own thickness is set by the *longest* such length among all the lipids
 given (so a shorter lipid mixed in with longer ones simply doesn't reach all the way
 to the bilayer's midplane, which is physically reasonable). Each lipid is packed
-with two whole-molecule `plane` constraints bounding it to its leaflet's slab, plus
-two per-atom `plane` constraints (applied via `atoms <idx> ... end atoms`, exactly as
-in a hand-written Packmol input file) pinning its head atom near the leaflet's
+with two per-atom `plane` constraints (applied via `atoms <idx> ... end atoms`, exactly
+as in a hand-written Packmol input file) pinning its head atom near the leaflet's
 solvent-facing edge and its tail atom near the leaflet's inner edge, each within
 `flexibility` (a fraction, `0 < flexibility < 0.5`, of that lipid's own head-to-tail
-length) of the exact edge — this is what gives the packing "room" to tilt/wobble each
-lipid instead of forcing it rigidly upright.
+length) of the exact edge. The rest of the molecule is not constrained.
+
+Narrow bands pack best: with the head atoms spread over a wide band, the lipids slide
+along their axes, the chains of one leaflet push into the other, and the packing jams.
+An all-atom POPC bilayer at 64 Å² per lipid packs with `flexibility = 0.025` (the
+default) in about 130 loops, needs about 200 with `0.075`, and does not pack with
+`0.25`. Lipids in conformations that pack well in membranes (extended and compact, with
+the chains side by side) are in the `packmol_lipids` set of
+[MolSimTestFiles](https://github.com/m3g/MolSimTestFiles).
 
 For `type = :bilayer`, solvent fills the box above the top leaflet's heads and below
 the bottom leaflet's heads (both leaflets share the same composition/counts); for
@@ -131,7 +139,7 @@ function Membrane(;
     area_per_lipid::Number = _missing_keyword(Membrane, :area_per_lipid),
     total_area::Union{Nothing,Number}=nothing,
     total_lipids::Union{Nothing,Integer}=nothing,
-    flexibility::Real=0.25,
+    flexibility::Real=0.025,
     solvent::Union{String,Vector{String}} = _missing_keyword(Membrane, :solvent),
     solvent_molar_ratio::Union{Nothing,Vector{<:Real}}=nothing,
     solvent_molar_mass::Union{Nothing,Vector{<:Number}}=nothing,
@@ -384,7 +392,6 @@ function write_packmol_input(
             add_box_sides 1.0
             filetype pdb
             seed -1
-            packall
             unitcell $a $b $c $α $β $γ
             """)
         for lp in lipid_placements
@@ -396,8 +403,6 @@ function write_packmol_input(
                 """
                 structure $(lp.pdbfile)
                     number $(lp.number)
-                    above plane 0. 0. 1. $(lp.zlo)
-                    below plane 0. 0. 1. $(lp.zhi)
                     atoms $(lp.head_idx)
                         $head_line
                     end atoms
@@ -465,19 +470,17 @@ function packmol(
         natoms = length(atoms)
         reference_coordinates = [SVector{3,Float64}(a.x, a.y, a.z) for a in atoms]
         radii = fill(1.0, natoms)
-        c1 = AbovePlane([0.0, 0.0, 1.0], lp.zlo)
-        c2 = BelowPlane([0.0, 0.0, 1.0], lp.zhi)
         head_c = lp.head_low ?
             BelowPlane([0.0, 0.0, 1.0], lp.zlo + lp.flex) : AbovePlane([0.0, 0.0, 1.0], lp.zhi - lp.flex)
         tail_c = lp.head_low ?
             AbovePlane([0.0, 0.0, 1.0], lp.zhi - lp.flex) : BelowPlane([0.0, 0.0, 1.0], lp.zlo + lp.flex)
-        atom_constraints = [Int[1, 2] for _ in 1:natoms]
-        push!(atom_constraints[lp.head_idx], 3)
-        push!(atom_constraints[lp.tail_idx], 4)
+        atom_constraints = [Int[] for _ in 1:natoms]
+        push!(atom_constraints[lp.head_idx], 1)
+        push!(atom_constraints[lp.tail_idx], 2)
         push!(structure_types, StructureType{3,Float64}(;
             filename=lp.pdbfile, natoms, atoms, number_of_molecules=lp.number,
             reference_coordinates, radii,
-            constraints=AnyConstraint{Float64}[c1, c2, head_c, tail_c],
+            constraints=AnyConstraint{Float64}[head_c, tail_c],
             atom_constraints,
         ))
     end

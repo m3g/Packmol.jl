@@ -108,8 +108,11 @@ systems first show the `check` output (the initial approximation), then the pack
 ## Running Tests
 
 ```bash
-julia --project -e 'using TestItemRunner; @run_package_tests'
+julia --project -e 'using Pkg; Pkg.test()'
 ```
+
+(`TestItemRunner` is a test dependency only, so `using TestItemRunner` fails in the package
+environment.)
 
 Individual test items are defined with `@testitem` in `test/`, mirroring the `src/` layout
 (e.g. tests for `src/constraints/boxes.jl` live in `test/constraints/boxes.jl`). The exception
@@ -329,11 +332,11 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 - [x] `Membrane` - lipid bilayer/monolayer setup, one or more lipids (`lipid_molar_ratio`) solvated by
       one or more solvents (`solvent_molar_ratio`), always orthorhombic PBC with the membrane normal
       along z. Each lipid's single head/tail atom indices give its intrinsic head-to-tail length (the
-      longest one sets the membrane's nominal thickness); each copy is packed with two whole-molecule
-      `plane` constraints bounding it to its leaflet's slab plus two per-atom `plane` constraints (via
-      `atoms <idx> ... end atoms`) pinning head/tail near their target planes within `flexibility` (a
-      fraction of that lipid's own length) for tilt/wobble. Box lateral size and lipid count are tied
-      together via `area_per_lipid` plus exactly one of `total_area`/`total_lipids` (mirroring
+      longest one sets the membrane's nominal thickness); each copy is packed with two per-atom
+      `plane` constraints only (via `atoms <idx> ... end atoms`), pinning head/tail near their
+      target planes within `flexibility` (a fraction of that lipid's own length, default 0.025:
+      narrow bands pack far better; no whole-molecule slab, which forced every lipid to tilt).
+      Box lateral size and lipid count are tied together via `area_per_lipid` plus exactly one of `total_area`/`total_lipids` (mirroring
       `box_sides`/`margin` elsewhere); solvent slab thickness/density/mixture are independent knobs.
       Every parameter is given up front in the constructor (no separate box-sizing args at
       `write_packmol_input`/`packmol` call time, unlike the solvation recipes below).

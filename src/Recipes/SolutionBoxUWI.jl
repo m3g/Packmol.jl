@@ -430,7 +430,6 @@ function write_packmol_input(
             add_box_sides 1.0
             filetype pdb
             seed -1
-            packall
             unitcell $a $b $c $α $β $γ
 
             structure $solute_pdbfile

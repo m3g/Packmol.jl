@@ -18,7 +18,7 @@
     @test isnothing(sys.total_area)
     @test sys.lipid_weight == [1.0]
     @test sys.solvent_weight == [1.0]
-    @test sys.flexibility == 0.25
+    @test sys.flexibility == 0.025
     @test sys.lipid_head_tail_length[1] ≈ 11.574471473693848u"Å" rtol = 1e-6
 
     # invalid type
@@ -106,7 +106,7 @@ end
         Solvent layer width: 15.0 Å
         Area per lipid: 60.0 Å^2
         Total lipids: 20
-        Flexibility: 0.25
+        Flexibility: 0.025
     ==================================================================
     """
 end
@@ -151,6 +151,13 @@ end
     # The generated input file must be valid Packmol syntax for the native engine.
     psys = Packmol.read_packmol_input(tmp_input_file)
     @test psys.nmols == sum(lp.number for lp in lipid_placements) + sum(sp.number for sp in solvent_placements)
+    # Only the head and tail atoms of the lipids are constrained (no whole-molecule slab)
+    blocks = [m.match for m in eachmatch(r"structure [^\n]*palmitoil\.pdb.*?end structure"s, read(tmp_input_file, String))]
+    @test length(blocks) == 2
+    for block in blocks
+        @test count("plane", block) == 2
+        @test count("end atoms", block) == 2
+    end
     rm(tmp_input_file, force=true)
 end
 

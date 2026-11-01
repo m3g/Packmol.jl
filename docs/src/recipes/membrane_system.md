@@ -44,9 +44,9 @@ Mixing lipids or solvents just means passing `Vector`s of the same length to
 `lipids`/`lipid_head`/`lipid_tail`/`lipid_molar_ratio` (and, respectively,
 `solvent`/`solvent_molar_ratio`) instead of scalars/single files — see the
 `Membrane` docstring above for the full parameter list, including
-`flexibility` (how much tilt/wobble each lipid is allowed while its head and
-tail are pinned near their target planes) and the `total_area`/
-`total_lipids` either-or.
+`flexibility` (the width of the bands, as a fraction of the head-to-tail length,
+in which the head and tail atoms are pinned; narrow bands pack best) and the
+`total_area`/`total_lipids` either-or.
 
 Finally, generate the input file, or pack it directly:
 
