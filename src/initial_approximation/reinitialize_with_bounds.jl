@@ -159,7 +159,7 @@ function _place_molecules!(
                         # Evaluate constraint penalty. When the running best still
                         # overlaps (best_fx == typemax(T)), this first non-overlapping
                         # trial always wins outright, regardless of its own fx.
-                        fx = constraint_penalty_sum(mp, st)
+                        fx = constraint_penalty_sum(mp, st, packmol_system)
                         if fx < best_fx
                             best_fx = fx
                             best_mp = mp

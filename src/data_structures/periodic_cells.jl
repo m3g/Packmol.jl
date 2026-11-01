@@ -84,3 +84,73 @@ function _inside_cell(x::SVector{D,T}, ucell::SMatrix{D,D,T}, inv_ucell::SMatrix
     D == 3 || return false
     return norm(_nearest_periodic_image(x, ucell, center) - x) <= tol
 end
+
+#
+# Whether `unitcell` is a dodecahedral or octahedral cell, as built by
+# `dodecahedral_unitcell`/`octahedral_unitcell` (and the `pbc dodecahedral`/`pbc
+# octahedral` keywords). The system is then the rhombic dodecahedron or the truncated
+# octahedron (the Wigner-Seitz cell of the lattice) centered at `unitcell_center`:
+# the constraints are evaluated, and the molecules confined, in that shape, not in the
+# parallelepiped of the cell vectors.
+#
+function _is_wigner_seitz_cell(unitcell::AbstractMatrix{T}) where {T}
+    size(unitcell) == (3, 3) || return false
+    d = norm(view(unitcell, :, 1))
+    return isapprox(unitcell, octahedral_unitcell(T, d); rtol=1e-6) ||
+           isapprox(unitcell, dodecahedral_unitcell(T, d); rtol=1e-6)
+end
+
+#
+# The lattice vectors `u` whose bisecting planes (`u⋅x = |u|²/2`, relative to the
+# center) are the faces of the Wigner-Seitz cell: those whose midpoint is closer to
+# the origin (and to `u`) than to any other lattice point. 14 for the truncated
+# octahedron, 12 for the rhombic dodecahedron.
+#
+function _wigner_seitz_face_vectors(unitcell::AbstractMatrix{T}) where {T}
+    v1 = SVector{3,T}(unitcell[1, 1], unitcell[2, 1], unitcell[3, 1])
+    v2 = SVector{3,T}(unitcell[1, 2], unitcell[2, 2], unitcell[3, 2])
+    v3 = SVector{3,T}(unitcell[1, 3], unitcell[2, 3], unitcell[3, 3])
+    lattice = [n1 * v1 + n2 * v2 + n3 * v3 for n1 in -2:2, n2 in -2:2, n3 in -2:2]
+    faces = SVector{3,T}[]
+    for n1 in -1:1, n2 in -1:1, n3 in -1:1
+        (n1 == 0 && n2 == 0 && n3 == 0) && continue
+        u = n1 * v1 + n2 * v2 + n3 * v3
+        h = u / 2
+        r = norm(h) * (1 + sqrt(eps(T)))
+        all(w -> iszero(w) || w == u || norm(h - w) > r, lattice) && push!(faces, u)
+    end
+    return faces
+end
+
+#
+# Half of the axis-aligned extent of the Wigner-Seitz cell: the largest coordinate,
+# relative to the center, of its vertices (the points where three faces meet).
+#
+function _wigner_seitz_half_extent(unitcell::AbstractMatrix{T}) where {T}
+    faces = _wigner_seitz_face_vectors(unitcell)
+    extent = zero(SVector{3,T})
+    nf = length(faces)
+    for i in 1:nf, j in i+1:nf, k in j+1:nf
+        A = SMatrix{3,3,T}(vcat(faces[i]', faces[j]', faces[k]'))
+        abs(det(A)) < sqrt(eps(T)) && continue
+        x = A \ SVector{3,T}(sum(abs2, faces[i]) / 2, sum(abs2, faces[j]) / 2, sum(abs2, faces[k]) / 2)
+        all(u -> dot(u, x) <= sum(abs2, u) / 2 * (1 + sqrt(eps(T))), faces) || continue
+        extent = max.(extent, abs.(x))
+    end
+    return extent
+end
+
+#
+# Half of the axis-aligned extent of the region of the centers of mass under PBC (the
+# bounds of the optimizer, see `packmol`): the box of the parallelepiped of the cell
+# vectors, where random positions are drawn, and, for dodecahedral and octahedral
+# cells, of the Wigner-Seitz cell, where the constraints are evaluated.
+#
+function _cm_half_extent(packmol_system::PackmolSystem{D,T}) where {D,T}
+    unitcell = packmol_system.unitcell
+    half_extent = SVector{D,T}(ntuple(i -> sum(abs(unitcell[i, j]) for j in 1:D) / 2, D))
+    if D == 3 && packmol_system.wigner_seitz_cell
+        half_extent = max.(half_extent, SVector{D,T}(_wigner_seitz_half_extent(unitcell)))
+    end
+    return half_extent
+end

@@ -76,6 +76,11 @@
     # `dodecahedral_to_triclinic(::PackmolSystem)` (or their `octahedral`
     # counterparts) rather than directly.
     periodic_boundary_style::Symbol = :triclinic
+    # Whether the cell is dodecahedral or octahedral (see `_is_wigner_seitz_cell`): the
+    # constraints are then evaluated, and the molecules confined, in the rhombic
+    # dodecahedron or truncated octahedron centered at `unitcell_center`, instead of in
+    # the parallelepiped of the cell vectors. Set with the confinement constraints.
+    wigner_seitz_cell::Bool = false
     # Internal data for the optimization
     nmols::Int = 0
     atoms::Vector{AtomData{T}} = AtomData{T}[]
@@ -150,7 +155,11 @@ end
 # For an orthorhombic cell (diagonal `unitcell`) this reduces to a single
 # `InsideBox` spanning the cell; the general (triclinic) case needs one
 # inward-facing `Plane` pair per pair of opposing cell faces instead, since a
-# box's axis-aligned edges can't represent a sheared cell.
+# box's axis-aligned edges can't represent a sheared cell. For dodecahedral and
+# octahedral cells (`wigner_seitz = true`), the system is the rhombic dodecahedron or
+# the truncated octahedron centered at `unitcell_center`, and the molecules are confined
+# to it, by one plane per face (12 or 14), not to the parallelepiped of the cell
+# vectors, which doesn't contain the sphere inscribed in it.
 #
 # Each face is pushed outward by `tolerance / 2` (so the box/planes end up
 # `tolerance` larger than the literal cell, in total, along each axis): an
@@ -166,26 +175,31 @@ function _add_pbc_confinement_constraints!(
     structure_types::Vector{StructureType{D,T}},
     unitcell::Matrix{T},
     unitcell_center::SVector{D,T},
-    tolerance::T,
+    tolerance::T;
+    wigner_seitz::Bool = false,
 ) where {D,T}
     is_orthorhombic = D == 3 && all(i == j || unitcell[i, j] == zero(T) for i in 1:D, j in 1:D)
-    if is_orthorhombic
+    confinement = AnyConstraint{T}[]
+    if wigner_seitz
+        for u in _wigner_seitz_face_vectors(unitcell)
+            n = u / norm(u)
+            push!(confinement, BelowPlane(n, dot(n, unitcell_center) + norm(u) / 2 + tolerance / 2))
+        end
+    elseif is_orthorhombic
         sides = SVector{D,T}(ntuple(i -> unitcell[i, i] + tolerance, D))
-        confinement = (InsideBox(; center=unitcell_center, sides),)
+        push!(confinement, InsideBox(; center=unitcell_center, sides))
     else
         a = SVector{3,T}(unitcell[1, 1], unitcell[2, 1], unitcell[3, 1])
         b = SVector{3,T}(unitcell[1, 2], unitcell[2, 2], unitcell[3, 2])
         c = SVector{3,T}(unitcell[1, 3], unitcell[2, 3], unitcell[3, 3])
-        confinement = ntuple(3) do k
-            u, v, w = (a, b, c)[k], (b, c, a)[k], (c, a, b)[k]
+        for (u, v, w) in ((a, b, c), (b, c, a), (c, a, b))
             n = cross(v, w)
             n = n / norm(n)
             dot(u, n) < zero(T) && (n = -n)
             d0 = dot(n, unitcell_center)
             half = dot(n, u) / 2 + tolerance / 2
-            (BelowPlane(n, d0 + half), AbovePlane(n, d0 - half))
+            push!(confinement, BelowPlane(n, d0 + half), AbovePlane(n, d0 - half))
         end
-        confinement = (confinement[1]..., confinement[2]..., confinement[3]...)
     end
     for st in structure_types
         st.fixed.fixed && continue
@@ -218,7 +232,8 @@ function PackmolSystem(
         unitcell = Matrix{T}(unitcell_raw)
         unitcell_center = SVector{D,T}(get(kargs, :unitcell_center, zero(SVector{D,T})))
         tolerance = T(get(kargs, :tolerance, T(2.0)))
-        _add_pbc_confinement_constraints!(structure_types, unitcell, unitcell_center, tolerance)
+        wigner_seitz = _is_wigner_seitz_cell(unitcell)
+        _add_pbc_confinement_constraints!(structure_types, unitcell, unitcell_center, tolerance; wigner_seitz)
     end
     atoms, molecule_positions, nmols = _atoms_and_molecule_positions(structure_types)
     kw = values(kargs)
@@ -228,6 +243,9 @@ function PackmolSystem(
     # A unit cell without a center is centered at the origin (as `unitcell` in input files)
     if !isnothing(unitcell_raw) && !haskey(kw, :unitcell_center)
         kw = merge(kw, (; unitcell_center=zero(SVector{D,T})))
+    end
+    if !isnothing(unitcell_raw)
+        kw = merge(kw, (; wigner_seitz_cell=_is_wigner_seitz_cell(Matrix{T}(unitcell_raw))))
     end
     return PackmolSystem{D,T}(;
         structure_types, atoms, molecule_positions, nmols,
@@ -639,7 +657,10 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
     # `_add_pbc_confinement_constraints!`'s own docstring for why.
     unitcell, unitcell_center = sys.unitcell, sys.unitcell_center
     if !isnothing(unitcell) && !isnothing(unitcell_center)
-        _add_pbc_confinement_constraints!(sys.structure_types, unitcell, unitcell_center, sys.tolerance)
+        sys.wigner_seitz_cell = _is_wigner_seitz_cell(unitcell)
+        _add_pbc_confinement_constraints!(sys.structure_types, unitcell, unitcell_center, sys.tolerance;
+            wigner_seitz=sys.wigner_seitz_cell,
+        )
     end
     _check_fixed_inside_cell(sys)
     _check_restart_files(sys)

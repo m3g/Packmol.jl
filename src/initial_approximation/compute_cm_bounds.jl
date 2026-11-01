@@ -37,7 +37,7 @@ function compute_cm_bounds(
                 fb_min[ist] = min.(fb_min[ist], cm)
                 fb_max[ist] = max.(fb_max[ist], cm)
                 n_fb[ist] += 1
-                if precision == typemax(T) || constraint_penalty_sum(mp, st) ≤ precision
+                if precision == typemax(T) || constraint_penalty_sum(mp, st, packmol_system) ≤ precision
                     cm_min[ist] = min.(cm_min[ist], cm)
                     cm_max[ist] = max.(cm_max[ist], cm)
                     n_in[ist] += 1
@@ -64,7 +64,7 @@ function compute_cm_bounds(
         hi = cm_max[ist] .+ margin
         if !isnothing(unitcell)
             # Axis-aligned half-extent of the cell, as the bounds of `packmol`
-            half_extent = SVector{D,T}(ntuple(i -> sum(abs(unitcell[i, j]) for j in 1:D) / 2, D))
+            half_extent = _cm_half_extent(packmol_system)
             lo = max.(lo, min.(cm_min[ist], packmol_system.unitcell_center .- half_extent))
             hi = min.(hi, max.(cm_max[ist], packmol_system.unitcell_center .+ half_extent))
         end

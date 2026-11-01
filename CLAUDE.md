@@ -222,6 +222,12 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       `dodecahedron.jl`; both share the same "nearest periodic image" search in
       `src/data_structures/periodic_cells.jl`); recipes support it via their
       `pbc = :octahedral` keyword.
+- [x] Dodecahedral and octahedral cells (detected from the `unitcell` matrix, `_is_wigner_seitz_cell`,
+      `PackmolSystem.wigner_seitz_cell`) are the Wigner-Seitz cell centered at `unitcell_center`: the
+      centers of mass are wrapped to the image closest to the center (`_wrap_cm`), the molecules are
+      confined by one plane per face (12/14) instead of the parallelepiped's 3 pairs, and the optimizer
+      bounds cover both shapes (`_cm_half_extent`), independently of `periodic_boundary_style`. Placement
+      scores constraints at the wrapped center of mass too (`constraint_penalty_sum(mp, st, system)`).
 - [ ] New feature: Recipes for icosaedric boxes.
 
 ---

@@ -11,13 +11,27 @@ between two atoms is always the *minimum-image* distance: each molecule's
 center of mass is wrapped to the periodic image nearest the cell's
 center (`unitcell_center`) before distances are computed, so a molecule
 near one face of the cell interacts naturally with molecules near the
-opposite face, as if the cell tiled space. This wrapping always uses the
-ordinary skewed-parallelepiped image (the same one `unitcell`/CRYST1
-describes) — it is entirely independent of `periodic_boundary_style`, which
-only affects how `get_atoms`/`write_output` present the *final* coordinates
-(see the output shapes of the [rhombic dodecahedral](rhombic_dodecahedral_box.md#Output-shape) and [truncated octahedral](truncated_octahedral_box.md#Output-shape) boxes). A molecule is always wrapped as a rigid unit, never atom by
-atom, so it can never be torn across a periodic boundary in a way that
-would leave part of it overlapping unrelated atoms.
+opposite face, as if the cell tiled space. A molecule is always wrapped as a
+rigid unit, never atom by atom, so it can never be torn across a periodic
+boundary in a way that would leave part of it overlapping unrelated atoms.
+
+**The shape of the cell.** For orthorhombic and general triclinic cells, the
+molecules are wrapped into the parallelepiped of the cell vectors (the one
+`unitcell`/CRYST1 describes), centered at `unitcell_center`. Dodecahedral and
+octahedral cells (`pbc dodecahedral`/`pbc octahedral`, or a `unitcell` built with
+[`dodecahedral_unitcell`](@ref)/[`octahedral_unitcell`](@ref)) are, instead, the
+rhombic dodecahedron and the truncated octahedron centered at `unitcell_center`:
+the molecules are wrapped to their image closest to the center, which is in that
+shape. This is what the constraints of these cells refer to, and it is independent
+of `periodic_boundary_style`, which only affects how `get_atoms`/`write_output`
+present the *final* coordinates (see the output shapes of the [rhombic
+dodecahedral](rhombic_dodecahedral_box.md#Output-shape) and [truncated
+octahedral](truncated_octahedral_box.md#Output-shape) boxes). It matters for
+constraints on large regions: the sphere inscribed in a truncated octahedron of size
+`d` has radius `d/2`, while the one inscribed in the parallelepiped of its cell
+vectors has radius `0.408 d`, so, for example, `outside sphere` constraints around a
+solute (as the water around a vesicle) can use
+nearly all the cell.
 
 **Explicit constraints.** Any `inside`/`outside`/`above`/`below` constraint
 declared for a structure is checked against that same wrapped position —
@@ -32,11 +46,12 @@ constraint of its own:
 
   - For an orthorhombic cell this is a single `InsideBox` spanning the
     cell.
-  - For a general triclinic cell (including the dodecahedral and octahedral
-    ones above) it is, instead, one inward-facing `AbovePlane`/`BelowPlane`
-    pair per pair of opposing cell faces (three pairs in total) — a box's
-    axis-aligned edges can't represent a sheared cell, but three pairs of
-    half-space cuts can.
+  - For a general triclinic cell it is, instead, one inward-facing
+    `AbovePlane`/`BelowPlane` pair per pair of opposing cell faces (three pairs
+    in total) — a box's axis-aligned edges can't represent a sheared cell, but
+    three pairs of half-space cuts can.
+  - For dodecahedral and octahedral cells, it is one `BelowPlane` per face of the
+    rhombic dodecahedron (12) or of the truncated octahedron (14).
   - Each face is pushed outward by `tolerance / 2`, so the confining
     boundary ends up `tolerance` larger than the literal cell, in total,
     along each axis: an atom sitting exactly on the true cell boundary

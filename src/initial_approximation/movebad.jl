@@ -199,7 +199,7 @@ function _movebad_place_molecule!(
             packmol_system.molecule_positions[imol] = mp
             spgresult.f
         else
-            constraint_penalty_sum(mp, st)
+            constraint_penalty_sum(mp, st, packmol_system)
         end
         last_mp = mp
         overlaps = !isnothing(fixed_sys) &&

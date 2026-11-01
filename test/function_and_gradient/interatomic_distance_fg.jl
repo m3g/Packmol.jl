@@ -121,16 +121,16 @@ end
     # The upper faces of the cell are inside the bounds of the centers of mass:
     # `wrap_to_center` maps them to the lower faces, `_wrap_cm` keeps them
     @test Packmol.wrap_to_center(SVector(0.0, 0.0, 20.0), uc, c) ≈ SVector(0.0, 0.0, -20.0)
-    @test Packmol._wrap_cm(SVector(0.0, 0.0, 20.0), uc, c) == SVector(0.0, 0.0, 20.0)
-    @test Packmol._wrap_cm(SVector(20.0, -20.0, 20.0), uc, c) == SVector(20.0, -20.0, 20.0)
-    @test Packmol._wrap_cm(SVector(0.0, 0.0, 21.0), uc, c) ≈ SVector(0.0, 0.0, -19.0)
+    @test Packmol._wrap_cm(SVector(0.0, 0.0, 20.0), uc, c, false) == SVector(0.0, 0.0, 20.0)
+    @test Packmol._wrap_cm(SVector(20.0, -20.0, 20.0), uc, c, false) == SVector(20.0, -20.0, 20.0)
+    @test Packmol._wrap_cm(SVector(0.0, 0.0, 21.0), uc, c, false) ≈ SVector(0.0, 0.0, -19.0)
     # Triclinic cell, off-center
     uc = [10.0 5.0 0; 0 10 0; 0 0 10]
     c = SVector(1.0, 2.0, 3.0)
     x = c + uc * SVector(0.5, 0.5, -0.5)
-    @test Packmol._wrap_cm(x, uc, c) == x
+    @test Packmol._wrap_cm(x, uc, c, false) == x
     y = c + uc * SVector(0.3, 0.2, -0.1)
-    @test Packmol._wrap_cm(y + uc[:, 1] - uc[:, 3], uc, c) ≈ y
+    @test Packmol._wrap_cm(y + uc[:, 1] - uc[:, 3], uc, c, false) ≈ y
 end
 
 @testitem "mixture_pbc: water and urea separated by a plane under PBC" setup=[TestFiles] begin
