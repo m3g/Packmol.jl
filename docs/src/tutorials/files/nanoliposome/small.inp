@@ -1,10 +1,16 @@
 #
-# POPC vesicle with water inside and outside
+# Small POPC nanoliposome with water inside and outside
 #
 tolerance 2.0
-output vesicle.pdb
+output small.pdb
 
-# Water inside the vesicle: a sphere of radius 22 Å
+# Truncated octahedron periodic cell centered at the origin, with at least 10 Å of
+# water between the nanoliposome and the faces of the cell. The output is written in
+# the shape of the octahedron
+pbc octahedral 0. 0. 0. 186.
+periodic_boundary_style octahedral
+
+# Water inside the nanoliposome: a sphere of radius 22 Å
 structure water.pdb
   number 1492
   inside sphere 0. 0. 0. 22.
@@ -35,9 +41,8 @@ structure popc.pdb
   end atoms
 end structure
 
-# Water outside the vesicle: a shell from 83 to 95 Å
+# Water outside the nanoliposome, filling the rest of the periodic cell
 structure water.pdb
-  number 40009
+  number 85567
   outside sphere 0. 0. 0. 83.
-  inside sphere 0. 0. 0. 95.
 end structure

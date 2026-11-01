@@ -1,6 +1,6 @@
 #
 # Images of the classic tutorials (the examples of the Packmol site): the packed system,
-# and the initial approximation written with `check` (the bilayer and the vesicle are in
+# and the initial approximation written with `check` (the bilayer and the nanoliposomes are in
 # lipids.jl). Run from the root of the repository, with the packmol executable built
 # (juliac/build.jl):
 #

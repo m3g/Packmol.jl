@@ -26,7 +26,7 @@ makedocs(
             "Water and urea" => "tutorials/mixture.md",
             "Water–chloroform interface" => "tutorials/interface.md",
             "Lipid bilayer" => "tutorials/bilayer.md",
-            "Spherical vesicle" => "tutorials/spherical.md",
+            "Nanoliposomes" => "tutorials/nanoliposome.md",
             "Solvated protein" => "tutorials/solvprotein.md",
             "Protein in glycerol and water" => "tutorials/protein_glycerol.md",
             "Water drop on graphite" => "tutorials/water_drop.md",

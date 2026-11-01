@@ -2,7 +2,7 @@
 
 The first tutorials are the classic examples of
 [Packmol](https://m3g.github.io/packmol/examples.shtml) (the bilayer and the vesicle redone
-with an all-atom lipid, at realistic densities), followed by systems that use more of its
+with an all-atom lipid, at realistic densities, the vesicle as nanoliposomes), followed by systems that use more of its
 features. Each one shows the same system built in two ways:
 
 - **Command line:** an input file, run with the `packmol` executable, as with Fortran
@@ -16,7 +16,7 @@ features. Each one shows the same system built in two ways:
 | [Water and urea](mixture.md) | A mixture of two molecules in a box |
 | [Water–chloroform interface](interface.md) | Two solvents in adjacent boxes and a fixed molecule at the interface |
 | [Lipid bilayer](bilayer.md) | A POPC bilayer in water, with periodic boundary conditions: lipids oriented by constraints on two of their atoms |
-| [Spherical vesicle](spherical.md) | A POPC vesicle in water: lipid layers and water in spherical shells, and how many lipids fit in each curved leaflet |
+| [Nanoliposomes](nanoliposome.md) | Two POPC nanoliposomes in water, in a truncated octahedron periodic cell: lipid layers in spherical shells, and how curvature limits how many lipids fit in each leaflet |
 | [Solvated protein](solvprotein.md) | A fixed protein in a sphere of water and ions |
 | [Protein in glycerol and water](protein_glycerol.md) | A fixed protein in a mixture, in a periodic box |
 | [Water drop on graphite](water_drop.md) | A fixed surface, and a drop shaped by constraints |
@@ -27,7 +27,7 @@ features. Each one shows the same system built in two ways:
 
 ## Getting the files
 
-The input and structure files of the classic examples (except the bilayer and the vesicle)
+The input and structure files of the classic examples (except the bilayer and the nanoliposomes)
 can be downloaded at once from the Packmol site
 ([examples.tar.gz](https://m3g.github.io/packmol/examples/examples.tar.gz) or
 [examples.zip](https://m3g.github.io/packmol/examples/examples.zip)). Each tutorial links

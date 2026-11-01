@@ -1,7 +1,7 @@
 #
-# Images of the lipid tutorials (POPC bilayer and vesicle): the packed system, and the
+# Images of the lipid tutorials (POPC bilayer and nanoliposomes): the packed system, and the
 # initial approximation written with `check`. The inputs are those of
-# docs/src/tutorials/files/{bilayer,vesicle}. Run from the root of the repository:
+# docs/src/tutorials/files/{bilayer,nanoliposome}. Run from the root of the repository:
 #
 #     julia --project=docs -t 8 dev/tutorials/lipids.jl
 #
@@ -12,20 +12,23 @@ const files = joinpath(@__DIR__, "..", "..", "docs", "src", "tutorials", "files"
 const images = joinpath(@__DIR__, "..", "..", "docs", "src", "tutorials", "images")
 const work = mktempdir()
 
-# Runs the example (and its `check` version) and returns the output files
-function pack(name, output)
+# Runs the example `input` of the files of `name` (and its `check` version, unless
+# `check = false`) and returns the output files
+function pack(name, output; input = name, check = true)
     for f in readdir(joinpath(files, name))
         cp(joinpath(files, name, f), joinpath(work, f); force=true)
     end
-    input = read(joinpath(work, "$name.inp"), String)
-    write(joinpath(work, "check_$name.inp"), replace(input, "output $output" => "output check_$output\ncheck"))
-    packmol(joinpath(work, "check_$name.inp"))
-    packmol(joinpath(work, "$name.inp"))
+    if check
+        text = read(joinpath(work, "$input.inp"), String)
+        write(joinpath(work, "check_$input.inp"), replace(text, "output $output" => "output check_$output\ncheck"))
+        packmol(joinpath(work, "check_$input.inp"))
+    end
+    packmol(joinpath(work, "$input.inp"))
     return joinpath(work, output), joinpath(work, "check_$output")
 end
 
-function both(name, output, image; kargs...)
-    final, check = pack(name, output)
+function both(name, output, image; input = name, kargs...)
+    final, check = pack(name, output; input)
     render(final, joinpath(images, "$image.webp"); kargs...)
     render(check, joinpath(images, "$(image)_check.webp"); kargs...)
 end
@@ -40,11 +43,15 @@ both("bilayer", "bilayer.pdb", "bilayer";
     cell = :origin,
 )
 
-# A slab through the center of the vesicle, to show the layers
-both("vesicle", "vesicle.pdb", "spherical";
+# A slab through the center of the nanoliposomes, to show the layers (the larger one
+# without the image of its initial approximation, which the tutorial does not show)
+const slab = (
     reps = [
         (selection = "water and same residue as (abs(y) < 3)", style = "Licorice 0.2 12 12"),
         (selection = "not water and same residue as (abs(y) < 3)", style = "Licorice 0.3 12 12"),
     ],
     rotate = [(:x, -90)],
 )
+both("nanoliposome", "small.pdb", "nanoliposome_small"; input = "small", slab...)
+final, _ = pack("nanoliposome", "large.pdb"; input = "large", check = false)
+render(final, joinpath(images, "nanoliposome_large.webp"); slab...)
