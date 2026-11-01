@@ -247,7 +247,7 @@ function _packmol(
     end
 
     # Pre-optimization: set initial approximation (random placement + constraint fitting)
-    initial_converged = set_initial_approximation!(packmol_system, free_mol_indices, RNG; restart, buffers)
+    initial_converged = set_initial_approximation!(packmol_system, free_mol_indices, RNG; restart, nloop, buffers)
 
     imol_offset = 0
     for st in packmol_system.structure_types
