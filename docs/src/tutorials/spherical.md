@@ -1,19 +1,60 @@
 # Spherical vesicle
 
-A vesicle with a double layer of lipids, water inside it and water around it. Every
-component is placed in a spherical shell, and constraints on the atoms of the polar
-heads and of the tails orient the lipids of each layer.
+A POPC vesicle with water inside and around it. The water and the two leaflets of the
+vesicle are placed in spherical shells, and constraints on the polar heads and on the
+ends of the chains orient the lipids of each leaflet.
 
 ![Spherical vesicle](images/spherical.webp)
 
-*A slab through the center of the vesicle: the water inside, the two layers of lipids, and the water outside.*
+*A slab through the center of the vesicle: the water inside, the two leaflets, and the
+water outside.*
 
-Files: [`palmitoil.pdb`](https://m3g.github.io/packmol/examples/palmitoil.pdb),
-[`water.pdb`](https://m3g.github.io/packmol/examples/water.pdb) and the input file
-[`spherical.inp`](https://m3g.github.io/packmol/examples/spherical-comment.inp).
+Files: [`popc.pdb`](files/vesicle/popc.pdb), [`water.pdb`](files/vesicle/water.pdb) and
+the input file [`vesicle.inp`](files/vesicle/vesicle.inp).
 
-In `palmitoil.pdb`, atom 37 belongs to the polar head of the lipid, and atom 5 to its
-hydrophobic tail. The system has about 70 thousand atoms.
+The lipid is the POPC of the [Lipid bilayer](bilayer.md) tutorial (from the
+`packmol_lipids` set of [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles)): atom
+1 is the nitrogen of the polar head, and atoms 88 and 131 are the ends of the two
+chains, 26 Å from the head.
+
+## The size of the vesicle
+
+Real vesicles are large: the smallest have diameters of about 20 nm. A POPC bilayer is
+about 55 Å thick (with its head groups), so a vesicle with some water inside is already
+a system of about 200 thousand atoms. Here, the vesicle has 25 Å of water inside, and
+an outer radius of about 81 Å: a diameter of 16 nm, a little smaller than the smallest
+real vesicles.
+
+The leaflets are placed as in the flat bilayer: the head atoms in a narrow band, and
+the chain ends within 6 Å of the middle of the bilayer, at r = 53 Å:
+
+| Leaflet | Heads (atom 1) | Chain ends (atoms 88, 131) |
+|:--------|:---------------|:---------------------------|
+| inner   | r < 25 Å       | r > 47 Å                   |
+| outer   | r > 81 Å       | r < 59 Å                   |
+
+The heads and the chain ends of each leaflet are 22 Å apart, 85% of the length of the
+lipid, as in the bilayer.
+
+## The numbers of lipids
+
+In a curved leaflet, the area available to each lipid is not the same at the heads and
+at the chain ends: it is smaller at the heads of the inner leaflet, and at the chain
+ends of the outer leaflet. The lipids are rigid in the packing, so the number of lipids
+of each leaflet is limited by its most crowded surface, with the 64 Å² per lipid of
+the flat bilayer:
+
+- inner leaflet: the surface of the heads, 4π × 25² / 64 = 123 lipids;
+- outer leaflet: the surface of the middle of the bilayer, 4π × 53² / 64 = 552 lipids.
+
+The other ends of the lipids are then less dense than in a flat bilayer, which a
+simulation relaxes. Computing the numbers of lipids from the area at the heads of the
+outer leaflet (4π × 81² / 64 = 1288) would put twice as many lipids in it as fit at
+its chain ends, and the packing would fail.
+
+The water inside is a sphere of radius 22 Å, with 4/3 π 22³ / 29.9 = 1492 molecules
+(29.9 Å³ per molecule at 1 g/mL), and the water outside a shell from 83 Å to 95 Å,
+with 40009 molecules.
 
 ## Command line
 
@@ -21,97 +62,75 @@ The input file:
 
 ```
 #
-# Double layered vesicle with water inside and outside
+# POPC vesicle with water inside and outside
 #
-
-# All the atoms from different molecules will be at least 2.0 Angstroms
-# apart in the solution
-
 tolerance 2.0
+output vesicle.pdb
 
-# The output file name
-
-output spherical.pdb
-
-# File types are in pdb format
-
-filetype pdb
-
-# A small sphere of water molecules that will be inside the vesicle:
-# 308 water molecules will be put in a sphere of radius 13 centered
-# at the origin.
-
+# Water inside the vesicle: a sphere of radius 22 Å
 structure water.pdb
-   number 308
-   inside sphere 0. 0. 0. 13.
+  number 1492
+  inside sphere 0. 0. 0. 22.
 end structure
 
-# 90 lipids will be put around the small water sphere. The polar heads
-# of these lipids will point to the water (that's why atom 37 of the
-# molecule is constrained to be inside the sphere of radius 14), while
-# the hydrophobic ends of the lipids will point outwards (that's why
-# atom 5 of the lipid is constrained to be outside the sphere of
-# radius 26).
-
-structure palmitoil.pdb
-  number 90
-  atoms 37
-    inside sphere 0. 0. 0. 14.
+# Inner leaflet: the heads (atom 1, N) inside the sphere of radius 25 Å, pointing to
+# the water inside, and the ends of the chains (atoms 88 and 131) outside the sphere
+# of radius 47 Å, near the middle of the bilayer (r = 53 Å)
+structure popc.pdb
+  number 123
+  atoms 1
+    inside sphere 0. 0. 0. 25.
   end atoms
-  atoms 5
-    outside sphere 0. 0. 0. 26.
+  atoms 88 131
+    outside sphere 0. 0. 0. 47.
   end atoms
 end structure
 
-# Now, 300 lipids will form a new, larger layer. The hydrophobic ends of
-# these lipids will point inwards, in such a way that they interact
-# with the hydrophobic part of the lipids of the smaller layer. The
-# polar heads will point outwards.
-
-structure palmitoil.pdb
-  number 300
-  atoms 5
-    inside sphere 0. 0. 0. 29.
+# Outer leaflet: the ends of the chains inside the sphere of radius 59 Å, and the
+# heads outside the sphere of radius 81 Å, pointing to the water outside
+structure popc.pdb
+  number 552
+  atoms 88 131
+    inside sphere 0. 0. 0. 59.
   end atoms
-  atoms 37
-    outside sphere 0. 0. 0. 41.
+  atoms 1
+    outside sphere 0. 0. 0. 81.
   end atoms
 end structure
 
-# Finally, 17536 water molecules will form the outer solvation shell.
-# These molecules are put outside the sphere that contains the whole
-# system defined before (a sphere of radius 43) and inside a box of
-# side 95 Angstroms, defined by the minimum coordinates x, y, z = -47.5
-# and maximum coordinates x, y, z = 47.5
-
+# Water outside the vesicle: a shell from 83 to 95 Å
 structure water.pdb
-   number 17536
-   inside box -47.5 -47.5 -47.5 47.5 47.5 47.5
-   outside sphere 0. 0. 0. 43.
+  number 40009
+  outside sphere 0. 0. 0. 83.
+  inside sphere 0. 0. 0. 95.
 end structure
 ```
 
-The lipids have no constraint on the whole molecule: only atoms 37 and 5 are
-constrained, and the rest of each molecule follows them. The outer water has two
-constraints on every atom, which together carve a spherical hole in the box.
+The lipids have no constraint on the whole molecule: only the head and the chain ends
+are constrained, and the rest of each molecule follows them. The outer water has two
+constraints on every atom, which together define a spherical shell. A thicker layer of
+water, or a periodic box around the vesicle, can be built the same way, with many more
+water molecules.
 
 ### Check the initial approximation first
 
-For a system with spherical shells and lipids oriented by constraints on some of their atoms, first check that the constraints place the molecules where
-intended. Add the `check` keyword to the input file:
+For a system with spherical shells and lipids oriented by constraints on some of their
+atoms, first check that the constraints place the molecules where intended. Add the
+`check` keyword to the input file:
 
 ```
 check
 ```
 
-and run it as below. Packmol then only builds the initial approximation, in a fraction
-of a second: each molecule is placed in its region, satisfying the constraints, but the
-molecules may still overlap. It is written to the output file (`spherical.pdb`). Look at it in
-a molecular visualization program:
+and run it as below. Packmol then only builds the initial approximation, in a few
+seconds: each molecule is placed in its region, satisfying the constraints, but the
+molecules may still overlap. It is written to the output file (`vesicle.pdb`). Look at
+it in a molecular visualization program:
 
 ![Initial approximation](images/spherical_check.webp)
 
-*A slab through the center of the initial approximation: the two lipid layers and the water are already in their shells, but molecules may overlap.*
+*A slab through the center of the initial approximation: the two leaflets and the water
+are already in their shells, but molecules may overlap.*
 
 When the molecules are where they should be, remove `check`, and run the packing.
 If the constraints cannot be satisfied at all, even without the distances between the
@@ -124,10 +143,11 @@ wrong constraints.
 Run it with:
 
 ```
-packmol spherical.inp
+packmol vesicle.inp
 ```
 
-The packed system is written to `spherical.pdb`.
+The packed system (about 215 thousand atoms) is written to `vesicle.pdb`, in about 10
+minutes with 8 threads.
 
 ## Julia
 
@@ -136,49 +156,39 @@ using Packmol
 
 origin = [0., 0., 0.]
 water_inside = structure_type("water.pdb";
-    number = 308,
-    constraints = [InsideSphere(origin, 13.0)],
+    number = 1492,
+    constraints = [InsideSphere(origin, 22.0)],
 )
-# Polar heads (atom 37) in, tails (atom 5) out
-inner_layer = structure_type("palmitoil.pdb";
-    number = 90,
+# Heads (atom 1) in, chain ends (atoms 88 and 131) out
+inner_leaflet = structure_type("popc.pdb";
+    number = 123,
     atom_constraints = [
-        [37] => InsideSphere(origin, 14.0),
-        [5] => OutsideSphere(origin, 26.0),
+        [1] => InsideSphere(origin, 25.0),
+        [88, 131] => OutsideSphere(origin, 47.0),
     ],
 )
-# Tails in, polar heads out
-outer_layer = structure_type("palmitoil.pdb";
-    number = 300,
+# Chain ends in, heads out
+outer_leaflet = structure_type("popc.pdb";
+    number = 552,
     atom_constraints = [
-        [5] => InsideSphere(origin, 29.0),
-        [37] => OutsideSphere(origin, 41.0),
+        [88, 131] => InsideSphere(origin, 59.0),
+        [1] => OutsideSphere(origin, 81.0),
     ],
 )
 water_outside = structure_type("water.pdb";
-    number = 17536,
-    constraints = [
-        InsideBox([-47.5, -47.5, -47.5], [47.5, 47.5, 47.5]),
-        OutsideSphere(origin, 43.0),
-    ],
+    number = 40009,
+    constraints = [OutsideSphere(origin, 83.0), InsideSphere(origin, 95.0)],
 )
 
-system = PackmolSystem([water_inside, inner_layer, outer_layer, water_outside];
-    output = "spherical.pdb",
+system = PackmolSystem([water_inside, inner_leaflet, outer_leaflet, water_outside];
+    output = "vesicle.pdb",
     tolerance = 2.0,
 )
 packmol(system)
 ```
 
-As with the input file, check the initial approximation first, by building the system
-with `check = true` (`PackmolSystem(...; check = true)`): `packmol(system)` then writes
-the initial approximation to the output file, and stops.
+As with the input file, check the initial approximation first, with
+`PackmolSystem(...; check = true)`.
 
 `InsideSphere(center, radius)` and `OutsideSphere(center, radius)` take the parameters
 of `inside sphere` and `outside sphere`.
-
-!!! tip "Threads"
-    Packmol runs in parallel. In Julia, it uses the threads of the session (start
-    Julia with `julia -t auto`); the `packmol` executable uses all the available cores.
-    `packmol(system; nthreads = 4)`, the input keyword `nthreads 4` or `packmol -t 4`
-    limit the number of threads used.

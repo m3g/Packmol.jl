@@ -1,17 +1,44 @@
 # Lipid bilayer
 
-A lipid bilayer with water above and below it. The lipids of each layer are packed in a
-slab, and constraints on some of their atoms orient them: the polar heads point to the
-water and the hydrophobic tails to the center of the bilayer.
+A POPC bilayer in water, with periodic boundary conditions. The lipids of each leaflet
+are oriented by constraints on two of their atoms: the polar heads point to the water,
+and the ends of the hydrophobic chains to the middle of the bilayer.
 
 ![Lipid bilayer](images/bilayer.webp)
 
-Files: [`palmitoil.pdb`](https://m3g.github.io/packmol/examples/palmitoil.pdb),
-[`water.pdb`](https://m3g.github.io/packmol/examples/water.pdb) and the input file
-[`bilayer.inp`](https://m3g.github.io/packmol/examples/bilayer-comment.inp).
+*The bilayer seen from the side, with the edges of the periodic cell.*
 
-In `palmitoil.pdb`, atoms 31 and 32 belong to the polar head of the lipid, and atoms 1
-and 2 are the end of its hydrophobic tail.
+Files: [`popc.pdb`](files/bilayer/popc.pdb), [`water.pdb`](files/bilayer/water.pdb) and
+the input file [`bilayer.inp`](files/bilayer/bilayer.inp).
+
+## The lipid
+
+How well lipids pack depends a lot on their conformation: extended, compact
+conformations, with the two chains side by side, pack at the densities of real
+membranes, while others do not pack at all. `popc.pdb` is one of the conformations of
+the `packmol_lipids` set of
+[MolSimTestFiles](https://github.com/m3g/MolSimTestFiles), which has conformations
+chosen to pack well for POPC, POPE, POPS, POPG, DPPC, DOPC and DMPC, and describes how
+they were obtained (download the whole set:
+[packmol_lipids.tar.gz](https://github.com/m3g/MolSimTestFiles/releases/download/packmol_lipids-v1/packmol_lipids.tar.gz)).
+
+In `popc.pdb`, atom 1 is the nitrogen of the choline (the polar head), and atoms 88 and
+131 are the ends of the two hydrophobic chains. The distance from the head to the
+middle of the chain ends is 26 Å.
+
+## The numbers
+
+The area per lipid in a fluid POPC bilayer is about 64 Å². With 60 lipids per leaflet,
+the membrane has 60 × 64 = 3840 Å², a square with sides of 61.96 Å. Each layer of water
+has 15 Å, with 61.96² × 15 = 57600 Å³: at 1 g/mL (29.9 Å³ per molecule), 1925 water
+molecules.
+
+The head atoms of the upper leaflet are constrained to be above z = 28 Å, and the chain
+ends below z = 6 Å. These planes are 22 Å apart, 85% of the length of the lipid, so the
+lipids stay nearly upright (they can tilt by about 30°), with their heads in a narrow
+band. Keep these planes close to the length of the lipid: with the heads only 50% of
+the length away from the chain ends, the lipids slide along their axes, the chains of
+one leaflet push into the other, and the packing gets stuck.
 
 ## Command line
 
@@ -19,96 +46,79 @@ The input file:
 
 ```
 #
-# Lipid double layer with water above and below
+# POPC bilayer in water, with periodic boundary conditions
 #
-
-# Atoms from different molecules will be at least 2.0 Angstroms apart
-# in the solution.
-
 tolerance 2.0
-
-# Coordinate files are in the pdb format (the default)
-
-filetype pdb
-
-# The output pdb file
-
 output bilayer.pdb
 
-# Water molecules below the lipids:
-# The first three numbers are the minimum x, y, z coordinates of these
-# molecules, and the last three are the maximum coordinates. The box
-# has sides of 40 Angstroms in the x and y directions, and of
-# 10 Angstroms in the z direction.
+# Periodic box: 60 lipids per leaflet at 64 Å² per lipid (61.96 Å sides in x and y),
+# membrane centered at z = 0, 15 Å of water above and below it
+pbc -30.98 -30.98 -45. 30.98 30.98 45.
+
+# Upper leaflet: the head (atom 1, N) above z = 28, the ends of the two chains
+# (atoms 88 and 131) below z = 6
+structure popc.pdb
+  number 60
+  atoms 1
+    above plane 0. 0. 1. 28.
+  end atoms
+  atoms 88 131
+    below plane 0. 0. 1. 6.
+  end atoms
+end structure
+
+# Lower leaflet: the same, mirrored
+structure popc.pdb
+  number 60
+  atoms 1
+    below plane 0. 0. 1. -28.
+  end atoms
+  atoms 88 131
+    above plane 0. 0. 1. -6.
+  end atoms
+end structure
+
+# Water: 15 Å above and below the membrane (the two slabs are continuous
+# through the periodic boundary in z)
+structure water.pdb
+  number 1925
+  above plane 0. 0. 1. 30.
+end structure
 
 structure water.pdb
-  number 500
-  inside box 0. 0. -10. 40. 40. 0.
-end structure
-
-# Water molecules above the lipids:
-# The same as above, but with the box in a different region of space.
-
-structure water.pdb
-  number 500
-  inside box 0. 0. 28. 40. 40. 38.
-end structure
-
-# First lipid layer: the polar heads point down, to the water below.
-# 50 lipids will be put inside a box of side 40 in the x and y
-# directions and 14 in the z direction (a little more than the length
-# of the lipid). Atoms 31 and 32, of the polar head, are constrained to
-# be below the plane z = 2, and atoms 1 and 2, the hydrophobic end of
-# the lipid, above the plane z = 12. Therefore, all the lipids will be
-# oriented, with their polar heads pointing to the water box below.
-
-structure palmitoil.pdb
-  number 50
-  inside box 0. 0. 0. 40. 40. 14.
-  atoms 31 32
-    below plane 0. 0. 1. 2.
-  end atoms
-  atoms 1 2
-    above plane 0. 0. 1. 12.
-  end atoms
-end structure
-
-# Second lipid layer: the polar heads point up, to the water above,
-# with the opposite orientation of the first layer.
-
-structure palmitoil.pdb
-  number 50
-  inside box 0. 0. 14. 40. 40. 28.
-  atoms 1 2
-    below plane 0. 0. 1. 16.
-  end atoms
-  atoms 31 32
-    above plane 0. 0. 1. 26
-  end atoms
+  number 1925
+  below plane 0. 0. 1. -30.
 end structure
 ```
 
-The constraints inside an `atoms ... end atoms` block apply only to the atoms listed,
-while those outside it (here, `inside box`) apply to all the atoms of the molecule.
-`below plane 0. 0. 1. 2.` is the half-space `0x + 0y + 1z ≤ 2`, that is, `z ≤ 2`.
+The constraints inside an `atoms ... end atoms` block apply only to the atoms listed:
+here, only the head and the chain ends of each lipid are constrained, and the rest of
+the molecule follows them. `above plane 0. 0. 1. 28.` is the half-space
+`0x + 0y + 1z ≥ 28`, that is, `z ≥ 28`. The chain ends of the two leaflets can meet
+anywhere between z = -6 and z = 6, so the leaflets interdigitate a little. The water is
+only constrained by one plane, and the box: the water above the membrane fills the box
+from z = 30 to its top face, at z = 45, which is in contact, through the periodic
+boundary, with the water below the membrane.
 
 ### Check the initial approximation first
 
-For a system with two lipid layers oriented by constraints on some of their atoms, first check that the constraints place the molecules where
-intended. Add the `check` keyword to the input file:
+For a system with two lipid layers oriented by constraints on some of their atoms,
+first check that the constraints place the molecules where intended. Add the `check`
+keyword to the input file:
 
 ```
 check
 ```
 
-and run it as below. Packmol then only builds the initial approximation, in a fraction
-of a second: each molecule is placed in its region, satisfying the constraints, but the
-molecules may still overlap. It is written to the output file (`bilayer.pdb`). Look at it in
-a molecular visualization program:
+and run it as below. Packmol then only builds the initial approximation, in a few
+seconds: each molecule is placed in its region, satisfying the constraints, but the
+molecules may still overlap. It is written to the output file (`bilayer.pdb`). Look at
+it in a molecular visualization program:
 
 ![Initial approximation](images/bilayer_check.webp)
 
-*The initial approximation: the lipids are already oriented by the constraints on their head and tail atoms, but molecules may overlap.*
+*The initial approximation: the lipids are already oriented by the constraints on their
+head and tail atoms, but molecules may overlap.*
 
 When the molecules are where they should be, remove `check`, and run the packing.
 If the constraints cannot be satisfied at all, even without the distances between the
@@ -124,7 +134,8 @@ Run it with:
 packmol bilayer.inp
 ```
 
-The packed system is written to `bilayer.pdb`.
+The packed system (about 28 thousand atoms) is written to `bilayer.pdb`, in about a
+minute and a half with 8 threads.
 
 ## Julia
 
@@ -134,36 +145,36 @@ The `atom_constraints` keyword of [`structure_type`](@ref) is the equivalent of 
 ```julia
 using Packmol
 
-water_below = structure_type("water.pdb";
-    number = 500,
-    constraints = [InsideBox([0., 0., -10.], [40., 40., 0.])],
+z = [0., 0., 1.] # the normal of the planes
+# Heads (atom 1) above z = 28, chain ends (atoms 88 and 131) below z = 6
+upper_leaflet = structure_type("popc.pdb";
+    number = 60,
+    atom_constraints = [
+        [1] => AbovePlane(z, 28.0),
+        [88, 131] => BelowPlane(z, 6.0),
+    ],
+)
+# The same, mirrored
+lower_leaflet = structure_type("popc.pdb";
+    number = 60,
+    atom_constraints = [
+        [1] => BelowPlane(z, -28.0),
+        [88, 131] => AbovePlane(z, -6.0),
+    ],
 )
 water_above = structure_type("water.pdb";
-    number = 500,
-    constraints = [InsideBox([0., 0., 28.], [40., 40., 38.])],
+    number = 1925,
+    constraints = [AbovePlane(z, 30.0)],
 )
-# Polar heads (atoms 31 and 32) down, tails (atoms 1 and 2) up
-lower_layer = structure_type("palmitoil.pdb";
-    number = 50,
-    constraints = [InsideBox([0., 0., 0.], [40., 40., 14.])],
-    atom_constraints = [
-        [31, 32] => BelowPlane([0., 0., 1.], 2.0),
-        [1, 2] => AbovePlane([0., 0., 1.], 12.0),
-    ],
-)
-# Tails down, polar heads up
-upper_layer = structure_type("palmitoil.pdb";
-    number = 50,
-    constraints = [InsideBox([0., 0., 14.], [40., 40., 28.])],
-    atom_constraints = [
-        [1, 2] => BelowPlane([0., 0., 1.], 16.0),
-        [31, 32] => AbovePlane([0., 0., 1.], 26.0),
-    ],
+water_below = structure_type("water.pdb";
+    number = 1925,
+    constraints = [BelowPlane(z, -30.0)],
 )
 
-system = PackmolSystem([water_below, water_above, lower_layer, upper_layer];
+system = PackmolSystem([upper_leaflet, lower_leaflet, water_above, water_below];
     output = "bilayer.pdb",
     tolerance = 2.0,
+    unitcell = [61.96 0. 0.; 0. 61.96 0.; 0. 0. 90.], # centered at the origin
 )
 packmol(system)
 ```

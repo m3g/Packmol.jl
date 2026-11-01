@@ -1,7 +1,8 @@
 #
 # Images of the classic tutorials (the examples of the Packmol site): the packed system,
-# and the initial approximation written with `check`. Run from the root of the
-# repository, with the packmol executable built (juliac/build.jl):
+# and the initial approximation written with `check` (the bilayer and the vesicle are in
+# lipids.jl). Run from the root of the repository, with the packmol executable built
+# (juliac/build.jl):
 #
 #     julia --project=docs dev/tutorials/classic.jl
 #
@@ -49,23 +50,6 @@ both("interface", "interface.xyz";
         (selection = "index >= 4052", style = "VDW 1.0 20", material = "Glossy"),
     ],
     rotate = [(:x, -30)],
-)
-
-both("bilayer", "bilayer.pdb";
-    reps = [
-        (selection = "water", style = "Licorice 0.2 12 12"),
-        (selection = "not water", style = "Licorice 0.3 12 12"),
-    ],
-    rotate = [(:x, -90), (:y, 20), (:x, 10)],
-)
-
-# A slab through the center of the vesicle, to show the layers
-both("spherical", "spherical.pdb";
-    reps = [
-        (selection = "water and same residue as (abs(y) < 3)", style = "Licorice 0.2 12 12"),
-        (selection = "not water and same residue as (abs(y) < 3)", style = "Licorice 0.3 12 12"),
-    ],
-    rotate = [(:x, -90)],
 )
 
 # The water behind the protein (y > 0, away from the viewer)
