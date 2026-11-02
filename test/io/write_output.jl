@@ -301,8 +301,9 @@ end
 @testitem "_FORCED output of a failed packing" setup=[TestFiles] begin
     water = TestFiles.test_file("structure_files/water.pdb")
     output = tempname() * ".pdb"
-    # Two molecules do not fit in this box (as Fortran's water_box_failed.inp)
-    st = structure_type(water; number=2, constraints=[InsideBox([0.0, 0.0, 0.0], [3.0, 3.0, 1.0])])
+    # Two molecules do not fit in this box: its diagonal (1.91 Å) is shorter than the
+    # tolerance, while one water molecule (H-H: 1.51 Å) fits in it
+    st = structure_type(water; number=2, constraints=[InsideBox([0.0, 0.0, 0.0], [1.1, 1.1, 1.1])])
     sys = PackmolSystem([st]; output, tolerance=2.0, nloop=1, max_iter=2)
     best_positions = copy(sys.molecule_positions)
     @test packmol(sys; iprint=1000).status == :failed_packing
