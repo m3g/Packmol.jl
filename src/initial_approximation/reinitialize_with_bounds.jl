@@ -123,19 +123,9 @@ function _place_molecules!(
             hi = SVector{D,T}(ntuple(_ -> sidemax, D))
             extent = hi - lo
         end
-        # The bounds are those of the centers of mass of the fit of step 2, which leaves
-        # them on the near side of the region of the constraints, and rarely at its
-        # extremes along the axes. For a thin region (as a spherical shell of rigid
-        # lipids), the faces of that box cut it, and the trials that the fit accepts
-        # (see below) would be rarer, or absent, there. The bounds are extended by the
-        # radius of the molecule (within the periodic cell).
-        if all(extent .> zero(T)) && !isempty(st.reference_coordinates)
-            r = maximum(norm, st.reference_coordinates)
-            lo, hi = lo .- r, hi .+ r
-            if has_pbc
-                half = _cm_half_extent(packmol_system)
-                lo, hi = max.(lo, center - half), min.(hi, center + half)
-            end
+        # Extended by the radius of the molecule (see `_extended_cm_bounds`)
+        if all(extent .> zero(T))
+            lo, hi = _extended_cm_bounds(packmol_system, st, lo, hi)
             extent = hi - lo
         end
         # (New names, assigned once, for the tasks below: capturing `lo`/`extent`,
@@ -280,4 +270,27 @@ function _task_overlap_check_systems(fixed_sys::S, packmol_system, tol, ntasks) 
         new_sys isa S && push!(task_fixed_syss, new_sys)
     end
     return task_fixed_syss
+end
+
+#
+# The bounds of the centers of mass of a structure type (`compute_cm_bounds`) are
+# those of its molecules, which the constraint fits leave on the near side of the
+# region of the constraints, and rarely at its extremes along the axes. For a thin
+# region (as a spherical shell of rigid lipids), the faces of that box cut it, and
+# the trials accepted near the region (see `_place_molecules!` and
+# `_movebad_place_molecule!`) would be rarer, or absent, there. The random trials are
+# drawn in the bounds extended by the radius of the molecule, within the periodic cell.
+#
+function _extended_cm_bounds(
+    packmol_system::PackmolSystem{D,T}, st::StructureType{D,T}, lo::SVector{D,T}, hi::SVector{D,T},
+) where {D,T}
+    isempty(st.reference_coordinates) && return lo, hi
+    r = maximum(norm, st.reference_coordinates)
+    lo, hi = lo .- r, hi .+ r
+    if !isnothing(packmol_system.unitcell)
+        half = _cm_half_extent(packmol_system)
+        center = packmol_system.unitcell_center
+        lo, hi = max.(lo, center - half), min.(hi, center + half)
+    end
+    return lo, hi
 end
