@@ -3,7 +3,7 @@
 # initial approximation written with `check`. The inputs are those of
 # docs/src/tutorials/files/{bilayer,nanoliposome}. Run from the root of the repository:
 #
-#     julia --project=docs -t 8 dev/tutorials/lipids.jl
+#     julia --project=docs -t 14 dev/tutorials/lipids.jl
 #
 using Packmol
 include("render.jl")
