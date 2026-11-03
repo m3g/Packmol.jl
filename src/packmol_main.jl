@@ -151,6 +151,10 @@ function packmol(packmol_system::PackmolSystem; nthreads::Union{Nothing,Int}=not
     end
 end
 
+# The local solver of the packing loop: SPGBox. A separate function so that the solver
+# experiments of `dev/solvers/` can replace it by redefining this method.
+_local_solver(fg!, x; kargs...) = spgbox!(fg!, x; kargs...)
+
 function _packmol(
     packmol_system::PackmolSystem{D,T};
     parallel::Bool=true,
@@ -517,7 +521,7 @@ function _packmol(
         # packmol_callback for why an unlatched version is a bug (a
         # one-way-true "still improving" veto that never expires).
         f_true_start_progress_used = Ref(false)
-        optresult = spgbox!(
+        optresult = _local_solver(
             fg_closure,
             x;
             callback=(result) -> packmol_callback(cl_system, tol, iprint,
