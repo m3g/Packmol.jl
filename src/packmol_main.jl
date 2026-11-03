@@ -129,7 +129,7 @@ it converged within `nloop` loops (both `tolerance_precision` and
 `:failed_initial_approximation` if the initial approximation could not satisfy the
 constraints (written to the output file; the packing continues only if
 `packmol_system.continue_failed_initial_packing` is set), or
-`:not_packed` if `packmol_system.check` was set (initial approximation written,
+`:not_packed` if `packmol_system.check_initial_placement` was set (initial approximation written,
 no packing attempted).
 
 `nloop` (maximum number of packing loops, default `500`), `maxit` (optimizer
@@ -268,7 +268,7 @@ function _packmol(
     # The constraints could not be satisfied even without the distances between the
     # molecules: they are probably wrong (incompatible, or too tight for the molecules),
     # and packing would not converge. Stop, unless asked to continue.
-    if !initial_converged && !packmol_system.check && !packmol_system.continue_failed_initial_packing
+    if !initial_converged && !packmol_system.check_initial_placement && !packmol_system.continue_failed_initial_packing
         _println()
         _println("  ERROR: the initial approximation does not satisfy the constraints (or overlaps")
         _println("  the fixed molecules). The constraints are probably wrong: incompatible with each")
@@ -283,7 +283,7 @@ function _packmol(
     end
 
     # check mode: write the initial approximation and return
-    if packmol_system.check
+    if packmol_system.check_initial_placement
         _println("  Check mode: writing initial approximation to $(packmol_system.output_file)")
         if !isempty(packmol_system.output_file)
             write_output(packmol_system)

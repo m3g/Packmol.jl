@@ -99,11 +99,19 @@ block of an input file, then the same system as an `@example` block that packs i
 fraction of a second) and shows it with `PDBTools.visualize` (structure files copied from
 `Packmol.RecipesDirectory` in a hidden `@setup` block). New constraints get one too.
 `docs/src/tutorials/` holds the classic Packmol examples (water–urea, interface, bilayer,
-vesicle, solvated protein), each with a command-line and a Julia section; keep both paths
-equivalent when changing the input syntax or the Julia API.
+vesicle, solvated protein; the bilayer and the vesicle redone with the all-atom POPC of the
+`packmol_lipids` set of MolSimTestFiles, the vesicle as two nanoliposomes in octahedral cells), each with a command-line and a Julia section; keep
+both paths equivalent when changing the input syntax or the Julia API.
 Tutorial images (`docs/src/tutorials/images/*.webp`) are rendered with VMD by the scripts of
-`dev/tutorials/` (`render.jl`; `classic.jl` for the classic examples). Tutorials of non-trivial
-systems first show the `check` output (the initial approximation), then the packing.
+`dev/tutorials/` (`render.jl`; `classic.jl` for the classic examples, `lipids.jl` for the
+bilayer and the nanoliposomes). Tutorials of non-trivial
+systems first show the initial placement (`check_initial_placement`), then the packing.
+The input files of the tutorials are files of `docs/src/tutorials/files/<tutorial>/`, shown in
+the pages with `@eval Main.input_file(path)` (`docs/make.jl`; in a `<details>` drop-down box
+when long), never written into the pages; every one has the line `# check_initial_placement`
+(commented), and the Julia code `# check_initial_placement = true`. The overview page
+(`tutorials/index.md`) explains how to follow the tutorials and how to check the initial
+placement.
 
 ## Running Tests
 

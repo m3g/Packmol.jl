@@ -1,6 +1,17 @@
 using Documenter, DocumenterCodeBlocks
+using Markdown
 using Packmol
 push!(LOAD_PATH, "../src/")
+
+# The input files of the tutorials are shown in the pages from the files themselves
+# (docs/src/tutorials/files), with an `@eval` block (in a drop-down box, between
+# `<details>` tags of `@raw html` blocks, when they are long):
+#
+#     ```@eval
+#     Main.input_file("files/bilayer/bilayer.inp")
+#     ```
+#
+input_file(file) = Markdown.MD(Markdown.Code("", read(file, String)))
 makedocs(
     modules = [Packmol],
     sitename = "Packmol.jl",
@@ -26,7 +37,7 @@ makedocs(
             "Water and urea" => "tutorials/mixture.md",
             "Water–chloroform interface" => "tutorials/interface.md",
             "Lipid bilayer" => "tutorials/bilayer.md",
-            "Spherical vesicle" => "tutorials/spherical.md",
+            "Nanoliposomes" => "tutorials/nanoliposome.md",
             "Solvated protein" => "tutorials/solvprotein.md",
             "Protein in glycerol and water" => "tutorials/protein_glycerol.md",
             "Water drop on graphite" => "tutorials/water_drop.md",

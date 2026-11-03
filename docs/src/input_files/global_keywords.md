@@ -26,7 +26,7 @@
 | `add_box_sides` | Flag: add a `CRYST1` record with the box dimensions. Added automatically (without needing this flag) whenever `pbc`/`unitcell` is set — with the real triclinic angles in that case, rather than the extrema-derived, always-orthorhombic box this flag alone falls back to. |
 | `optimization_print_level <int>` | Verbosity of the optimizer's own output. |
 | `chkgrad` | Flag: check analytical vs. numerical gradients (development use). |
-| `check` | Write the initial approximation only, then stop (no packing). |
+| `check_initial_placement` | Flag: write the initial placement of the molecules (the initial approximation) to the output file, then stop, without packing: to check that the constraints place the molecules where intended. `check`, Fortran's name, is accepted with a warning. |
 | `continue_failed_initial_packing` | Flag: pack even if the initial approximation does not satisfy the constraints. By default, Packmol stops there, writes the initial approximation to the output file and reports the error (exit code 171): constraints that cannot be satisfied even without the distances between the molecules are usually wrong. |
 | `pbc <a b c>` or `pbc <xmin ymin zmin xmax ymax zmax>` | Orthorhombic periodic box: either side lengths (the box from the origin to `(a, b, c)`, as in Fortran Packmol) or explicit min/max corners. |
 | `pbc dodecahedral <cx cy cz d>` | Rhombic dodecahedron periodic box of size `d` centered at `(cx,cy,cz)` — stored (and written out) as the equivalent triclinic cell. |

@@ -12,7 +12,7 @@
     # untouched instead of being redrawn uniformly. Reported in practice as a
     # wildly non-uniform solvent density profile in a `Membrane` bilayer
     # (dense near the membrane, empty near the box's outer PBC face) that
-    # persisted even after `check=true`-only (no optimization loop at all).
+    # persisted even after `check_initial_placement=true`-only (no optimization loop at all).
     using Packmol
     using StaticArrays
     using LinearAlgebra
@@ -26,7 +26,7 @@
 
     st = structure_type(water; number=600, constraints=[AbovePlane([0, 0, 1], zlo), BelowPlane([0, 0, 1], zhi)])
     unitcell = Matrix{Float64}(Diagonal([Lx, Ly, Lz]))
-    sys = PackmolSystem([st]; output="", unitcell, unitcell_center=zero(SVector{3,Float64}), check=true, seed=42)
+    sys = PackmolSystem([st]; output="", unitcell, unitcell_center=zero(SVector{3,Float64}), check_initial_placement=true, seed=42)
 
     Packmol.packmol(sys)
     @test sys.status == :not_packed # check mode: initial approximation only, no optimization loop

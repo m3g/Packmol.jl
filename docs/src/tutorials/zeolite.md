@@ -27,39 +27,19 @@ atoms, and 3 cages. [`cha.pdb`](files/zeolite/cha.pdb) has 2 × 2 × 2 unit cell
 atoms, 24 cages), centered at the origin, built with the Julia code at the end of this
 page.
 
+## The numbers of molecules
+
+A unit cell, Si₃₆O₇₂, has a mass of 2163 g/mol. Chabazite zeolites adsorb about 4.2 mmol
+of carbon dioxide per gram at 25 °C and 1 bar (4.24 mmol/g for the SSZ-13 of
+[Nanomaterials 10, 2298 (2020)](https://www.mdpi.com/2079-4991/10/11/2298)): 9 molecules
+per unit cell, 3 per cage. They adsorb carbon dioxide several times more than methane,
+which is why they are used to separate the two: one methane per cage is 1.4 mmol/g. The
+24 cages of `cha.pdb` hold 72 molecules of carbon dioxide and 24 of methane.
+
 ## Command line
 
-The input file:
-
-```
-#
-# Methane and carbon dioxide in the cages of the chabazite zeolite (CHA):
-# 2 x 2 x 2 hexagonal unit cells of the IZA database structure (24 cages), with
-# one molecule of each gas per cage, in the triclinic periodic cell of the
-# zeolite (a = b = 27.35 Å, c = 29.534 Å, gamma = 120 degrees).
-#
-tolerance 2.0
-output zeolite.pdb
-unitcell 27.350 27.350 29.534 90. 90. 120.
-
-# The zeolite, kept at the coordinates of the file (centered at the origin, as
-# the cell). The radius of the atoms (1.5 Å, here and in the gases) keeps the
-# gases 3 Å away from the framework.
-structure cha.pdb
-  number 1
-  fixed 0. 0. 0. 0. 0. 0.
-  radius 1.5
-end structure
-
-structure methane.pdb
-  number 24
-  radius 1.5
-end structure
-
-structure co2.pdb
-  number 24
-  radius 1.5
-end structure
+```@eval
+Main.input_file("files/zeolite/zeolite.inp")
 ```
 
 The periodic cell, given by `unitcell a b c alpha beta gamma` (see [Triclinic
@@ -70,19 +50,22 @@ atoms of the fixed zeolite are inside it. No constraint is needed for the gases:
 confines them, and the distances to the atoms of the fixed framework keep them in the
 cages.
 
-With the default `tolerance` of 2 Å, the atoms of the gases could get 2 Å from the
-oxygen atoms of the framework, close enough to fit in rings too small for any molecule.
 The `radius` of the atoms sets the minimum distance between atoms of different molecules
-to the sum of their radii: 3 Å here, a typical contact distance between these atoms. The
-`radius` keyword applies to the atoms of one structure, so the radii can be different for
-each molecule (see [Structure blocks](../input_files/structure_blocks.md)).
+to the sum of their radii: 3 Å here, a typical contact distance between the atoms of the
+gases and the oxygen atoms of the framework. With the default `tolerance` of 2 Å alone,
+the atoms of the gases get 2 Å from the oxygen atoms, and some molecules end up in the
+rings of the framework, with their carbon atoms 2.2 Å from silicon atoms (3.3 Å at least,
+with the radii). The `radius` keyword applies to the atoms of one structure, so the radii
+can be different for each molecule (see [Structure
+blocks](../input_files/structure_blocks.md)).
 
-### Check the initial approximation first
+### Check the initial placement first
 
-Add the `check` keyword to the input file, and run it as below. Packmol builds only the
-initial approximation, in a fraction of a second, and writes it to the output file
-(`zeolite.pdb`): look at it to see that the zeolite fills the periodic cell. When it does,
-remove `check`, and run the packing.
+Uncomment the `check_initial_placement` line of the input file, and run it as below
+(see [Checking the initial placement](@ref check_initial_placement)): the initial placement,
+written to the output file (`zeolite.pdb`) in a fraction of a second, shows whether the
+zeolite fills the periodic cell. When it does, comment the line again, and run the
+packing.
 
 ### Packing
 
@@ -110,11 +93,12 @@ cha = structure_type("cha.pdb";
     radius = 1.5,
 )
 methane = structure_type("methane.pdb"; number = 24, radius = 1.5)
-co2 = structure_type("co2.pdb"; number = 24, radius = 1.5)
+co2 = structure_type("co2.pdb"; number = 72, radius = 1.5)
 system = PackmolSystem([cha, methane, co2];
     output = "zeolite.pdb",
     tolerance = 2.0,
     unitcell = UnitCell(27.350, 27.350, 29.534, 90., 90., 120.), # centered at the origin
+    # check_initial_placement = true, # uncomment to only place the molecules
 )
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
@@ -124,7 +108,7 @@ system.status
 
 `UnitCell` (from [PDBTools.jl](https://github.com/m3g/PDBTools.jl)) builds the matrix of the
 cell vectors from its lattice parameters. As with the input file, check the initial
-approximation first, with `PackmolSystem(...; check = true)`.
+placement first, with `check_initial_placement = true` (commented in the code above).
 
 The packed system, with the `visualize` function of PDBTools.jl, and the edges of the
 triclinic cell (whose corner is at `-(a + b + c)/2`, since it is centered at the origin):
