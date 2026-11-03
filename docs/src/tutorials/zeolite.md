@@ -27,6 +27,15 @@ atoms, and 3 cages. [`cha.pdb`](files/zeolite/cha.pdb) has 2 × 2 × 2 unit cell
 atoms, 24 cages), centered at the origin, built with the Julia code at the end of this
 page.
 
+## The numbers of molecules
+
+A unit cell, Si₃₆O₇₂, has a mass of 2163 g/mol. Chabazite zeolites adsorb about 4.2 mmol
+of carbon dioxide per gram at 25 °C and 1 bar (4.24 mmol/g for the SSZ-13 of
+[Nanomaterials 10, 2298 (2020)](https://www.mdpi.com/2079-4991/10/11/2298)): 9 molecules
+per unit cell, 3 per cage. They adsorb carbon dioxide several times more than methane,
+which is why they are used to separate the two: one methane per cage is 1.4 mmol/g. The
+24 cages of `cha.pdb` hold 72 molecules of carbon dioxide and 24 of methane.
+
 ## Command line
 
 ```@eval
@@ -41,12 +50,14 @@ atoms of the fixed zeolite are inside it. No constraint is needed for the gases:
 confines them, and the distances to the atoms of the fixed framework keep them in the
 cages.
 
-With the default `tolerance` of 2 Å, the atoms of the gases could get 2 Å from the
-oxygen atoms of the framework, close enough to fit in rings too small for any molecule.
 The `radius` of the atoms sets the minimum distance between atoms of different molecules
-to the sum of their radii: 3 Å here, a typical contact distance between these atoms. The
-`radius` keyword applies to the atoms of one structure, so the radii can be different for
-each molecule (see [Structure blocks](../input_files/structure_blocks.md)).
+to the sum of their radii: 3 Å here, a typical contact distance between the atoms of the
+gases and the oxygen atoms of the framework. With the default `tolerance` of 2 Å alone,
+the atoms of the gases get 2 Å from the oxygen atoms, and some molecules end up in the
+rings of the framework, with their carbon atoms 2.2 Å from silicon atoms (3.3 Å at least,
+with the radii). The `radius` keyword applies to the atoms of one structure, so the radii
+can be different for each molecule (see [Structure
+blocks](../input_files/structure_blocks.md)).
 
 ### Check the initial placement first
 
@@ -82,7 +93,7 @@ cha = structure_type("cha.pdb";
     radius = 1.5,
 )
 methane = structure_type("methane.pdb"; number = 24, radius = 1.5)
-co2 = structure_type("co2.pdb"; number = 24, radius = 1.5)
+co2 = structure_type("co2.pdb"; number = 72, radius = 1.5)
 system = PackmolSystem([cha, methane, co2];
     output = "zeolite.pdb",
     tolerance = 2.0,
