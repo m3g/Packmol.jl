@@ -96,8 +96,21 @@ end
 function _is_wigner_seitz_cell(unitcell::AbstractMatrix{T}) where {T}
     size(unitcell) == (3, 3) || return false
     d = norm(view(unitcell, :, 1))
-    return isapprox(unitcell, octahedral_unitcell(T, d); rtol=1e-6) ||
-           isapprox(unitcell, dodecahedral_unitcell(T, d); rtol=1e-6)
+    return _matrix_isapprox(unitcell, octahedral_unitcell(T, d), T(1e-6)) ||
+           _matrix_isapprox(unitcell, dodecahedral_unitcell(T, d), T(1e-6))
+end
+
+# `isapprox(A, B; rtol)` for matrices, with loops (`juliac --trim` does not resolve
+# the generic `mapreduce` of `isapprox` on two matrices)
+function _matrix_isapprox(A::AbstractMatrix{T}, B::AbstractMatrix{T}, rtol::T) where {T}
+    size(A) == size(B) || return false
+    dAB = zero(T); nA = zero(T); nB = zero(T)
+    for j in axes(A, 2), i in axes(A, 1)
+        dAB += abs2(A[i, j] - B[i, j])
+        nA += abs2(A[i, j])
+        nB += abs2(B[i, j])
+    end
+    return sqrt(dAB) <= rtol * sqrt(max(nA, nB))
 end
 
 #
@@ -147,12 +160,21 @@ end
 # cells, of the Wigner-Seitz cell, where the constraints are evaluated.
 #
 function _cm_half_extent(packmol_system::PackmolSystem{D,T}) where {D,T}
-    unitcell = packmol_system.unitcell
-    half_extent = SVector{D,T}(ntuple(i -> sum(abs(unitcell[i, j]) for j in 1:D) / 2, D))
-    if D == 3 && packmol_system.wigner_seitz_cell
-        half_extent = max.(half_extent, SVector{D,T}(_wigner_seitz_half_extent(unitcell)))
+    return _cm_half_extent(packmol_system.unitcell::Matrix{T}, packmol_system.wigner_seitz_cell, Val(D))
+end
+
+function _cm_half_extent(unitcell::Matrix{T}, wigner_seitz_cell::Bool, ::Val{D}) where {D,T}
+    half_extent = zero(MVector{D,T})
+    for j in 1:D, i in 1:D
+        half_extent[i] += abs(unitcell[i, j]) / 2
     end
-    return half_extent
+    if D == 3 && wigner_seitz_cell
+        ws = _wigner_seitz_half_extent(unitcell)
+        for i in 1:D
+            half_extent[i] = max(half_extent[i], ws[i])
+        end
+    end
+    return SVector{D,T}(half_extent)
 end
 
 #
