@@ -102,6 +102,7 @@ function _place_molecules!(
     # that reusing task_fixed_syss[ichunk] across structure types is race-free:
     # all of type A's tasks finish before type B's tasks — which touch the
     # same objects — are spawned.
+    wigner_seitz = packmol_system.wigner_seitz_cell
     imol_offset = 0
     for (ist, st) in enumerate(packmol_system.structure_types)
         st_offset = imol_offset
@@ -165,14 +166,20 @@ function _place_molecules!(
                     # while there is none (all overlap the fixed structure)
                     best_key = (2, typemax(T))
 
-                    for itry in 1:max_guess_try
+                    # Two phases: `max_guess_try` trials as drawn, the first satisfying
+                    # the constraints accepted (a uniform sample of the region), and only
+                    # if none does, `max_guess_try` fitted trials (see below). Fitting
+                    # every trial accepted those drawn up to `max_shift` outside the
+                    # region, moved onto its surface: 43% more water than uniform within
+                    # 3 Å of the outer surface of a vesicle (`outside sphere`).
+                    for itry in 1:(fit ? 2 : 1) * max_guess_try
                         # Random CM within per-type bounds
                         if has_pbc && any(cm_extent .≤ zero(T))
                             # PBC fallback: random within unit cell
                             frac = SVector{D,T}(ntuple(_ -> rand(task_rng, T) - T(0.5), D))
                             cm = SVector{D,T}(uc * frac) + center
                         else
-                            cm = cm_lo + SVector{D,T}(ntuple(d -> rand(task_rng, T) * cm_extent[d], D))
+                            cm = _random_cm_in_cell(task_rng, cm_lo, cm_extent, has_pbc, uc, center, wigner_seitz)
                         end
                         angles = _random_angles(task_rng, SVector{D,T})
                         mp = MoleculePosition(cm, angles)
@@ -197,7 +204,7 @@ function _place_molecules!(
                         # probability everywhere along it, as a uniform sample of it.
                         fx = constraint_penalty_sum(mp, st, packmol_system)
                         shift = zero(T)
-                        if fx >= ok_precision && fit
+                        if fx >= ok_precision && fit && itry > max_guess_try
                             fit_mp, fit_fx = _fit_to_constraints!(
                                 task_x, task_mol_list, packmol_system, imol, mp, task_fg_outputs[ichunk],
                                 task_atom_positions[ichunk], mol_structure_type, mol_iat_first, fit_precision, opt_nit,
