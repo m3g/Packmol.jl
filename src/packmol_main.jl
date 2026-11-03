@@ -376,7 +376,7 @@ function _packmol(
     # move over the course of the run, and reused on every relocation.
     movebad_overlap_tol = packmol_system.radscale * packmol_system.tolerance
     movebad_fixed_sys, movebad_fixed_lo, movebad_fixed_hi =
-        _build_overlap_check_system(packmol_system, movebad_overlap_tol)
+        _build_overlap_check_system(packmol_system, movebad_overlap_tol; avoid_overlap=true)
     movebad_fg_output = InteratomicDistanceFG{D,T}(packmol_system)
 
     # Under PBC, the centers of mass are hard-bounded — to exactly one

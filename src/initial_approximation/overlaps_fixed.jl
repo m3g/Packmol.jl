@@ -77,7 +77,22 @@ end
 # method always returns "no overlap", so no extra branching is needed at the
 # call site.
 #
-function _build_overlap_check_system(packmol_system::PackmolSystem{D,T}, tol::T) where {D,T}
+#
+# `avoid_overlap` (default: the system's) is `true` for the relocations of the packing
+# loop, which avoid the fixed atoms whatever the input says (see
+# `_collect_fixed_positions`).
+#
+# Under periodic boundary conditions, the system is built with the periodic cell of the
+# system, so that the periodic images of the fixed atoms count too: a fixed structure
+# crossing a face of the cell (a protein off the center of the cell, a nanotube, a
+# membrane) has atoms near the opposite face, through its images. The bounding box of
+# the fixed atoms then does not bound where they are found, and is returned infinite, so
+# that `overlaps_fixed` never rejects a trial by it. (The unit cell is a static matrix
+# in both cases, diagonal without PBC, for `fixed_sys` to have a single concrete type.)
+#
+function _build_overlap_check_system(
+    packmol_system::PackmolSystem{D,T}, tol::T; avoid_overlap::Bool=packmol_system.avoid_overlap,
+) where {D,T}
     max_extent = zero(T)
     for st in packmol_system.structure_types
         st.fixed.fixed && continue
@@ -85,13 +100,23 @@ function _build_overlap_check_system(packmol_system::PackmolSystem{D,T}, tol::T)
             max_extent = max(max_extent, norm(r))
         end
     end
-    fixed_atom_positions = _collect_fixed_positions(packmol_system)
+    fixed_atom_positions = _collect_fixed_positions(packmol_system; avoid_overlap)
     isempty(fixed_atom_positions) && return nothing, zero(SVector{D,T}), zero(SVector{D,T})
     lo, hi = compute_bounding_box(fixed_atom_positions)
-    margin = max_extent + tol
-    fixed_unitcell = T(1.2) * ((hi .+ margin) - (lo .- margin))
-    volume = prod(fixed_unitcell)
+    pbc_unitcell = packmol_system.unitcell
+    fixed_unitcell, volume = if !isnothing(pbc_unitcell)
+        lo = SVector{D,T}(ntuple(_ -> typemin(T), D))
+        hi = SVector{D,T}(ntuple(_ -> typemax(T), D))
+        uc = SMatrix{D,D,T}(pbc_unitcell)
+        uc, abs(det(uc))
+    else
+        margin = max_extent + tol
+        sides = T(1.2) * ((hi .+ margin) - (lo .- margin))
+        SMatrix{D,D,T}(Diagonal(sides)), prod(sides)
+    end
     cutoff = _capped_cutoff(volume, tol, length(fixed_atom_positions), D)
-    fixed_sys = build_fixed_particle_system(packmol_system; nmols=1, parallel=false, unitcell=fixed_unitcell, cutoff)
+    fixed_sys = build_fixed_particle_system(
+        packmol_system; nmols=1, parallel=false, unitcell=fixed_unitcell, cutoff, avoid_overlap,
+    )
     return fixed_sys, lo, hi
 end
