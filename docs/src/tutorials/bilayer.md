@@ -42,53 +42,14 @@ one leaflet push into the other, and the packing gets stuck.
 
 ## Command line
 
-The input file:
-
+```@raw html
+<details><summary>The input file <code>bilayer.inp</code> (click to expand)</summary>
 ```
-#
-# POPC bilayer in water, with periodic boundary conditions
-#
-tolerance 2.0
-output bilayer.pdb
-
-# Periodic box: 60 lipids per leaflet at 64 Å² per lipid (61.96 Å sides in x and y),
-# membrane centered at z = 0, 15 Å of water above and below it
-pbc -30.98 -30.98 -45. 30.98 30.98 45.
-
-# Upper leaflet: the head (atom 1, N) above z = 28, the ends of the two chains
-# (atoms 88 and 131) below z = 6
-structure popc.pdb
-  number 60
-  atoms 1
-    above plane 0. 0. 1. 28.
-  end atoms
-  atoms 88 131
-    below plane 0. 0. 1. 6.
-  end atoms
-end structure
-
-# Lower leaflet: the same, mirrored
-structure popc.pdb
-  number 60
-  atoms 1
-    below plane 0. 0. 1. -28.
-  end atoms
-  atoms 88 131
-    above plane 0. 0. 1. -6.
-  end atoms
-end structure
-
-# Water: 15 Å above and below the membrane (the two slabs are continuous
-# through the periodic boundary in z)
-structure water.pdb
-  number 1925
-  above plane 0. 0. 1. 30.
-end structure
-
-structure water.pdb
-  number 1925
-  below plane 0. 0. 1. -30.
-end structure
+```@eval
+Main.input_file("files/bilayer/bilayer.inp")
+```
+```@raw html
+</details><br>
 ```
 
 The constraints inside an `atoms ... end atoms` block apply only to the atoms listed:
@@ -100,31 +61,18 @@ only constrained by one plane, and the box: the water above the membrane fills t
 from z = 30 to its top face, at z = 45, which is in contact, through the periodic
 boundary, with the water below the membrane.
 
-### Check the initial approximation first
+### Check the initial placement first
 
-For a system with two lipid layers oriented by constraints on some of their atoms,
-first check that the constraints place the molecules where intended. Add the `check`
-keyword to the input file:
-
-```
-check
-```
-
-and run it as below. Packmol then only builds the initial approximation, in a few
-seconds: each molecule is placed in its region, satisfying the constraints, but the
-molecules may still overlap. It is written to the output file (`bilayer.pdb`). Look at
-it in a molecular visualization program:
+Uncomment the `check_initial_placement` line of the input file, and run it as below
+(see [Checking the initial placement](@ref check_initial_placement)): the initial
+placement of the molecules is written to the output file (`bilayer.pdb`):
 
 ![Initial approximation](images/bilayer_check.webp)
 
 *The initial approximation: the lipids are already oriented by the constraints on their
 head and tail atoms, but molecules may overlap.*
 
-When the molecules are where they should be, remove `check`, and run the packing.
-If the constraints cannot be satisfied at all, even without the distances between the
-molecules, Packmol stops after the initial approximation with an error (unless the
-`continue_failed_initial_packing` keyword is set): that is almost always a sign of
-wrong constraints.
+Then comment the line again, and run the packing.
 
 ### Packing
 
@@ -175,13 +123,13 @@ system = PackmolSystem([upper_leaflet, lower_leaflet, water_above, water_below];
     output = "bilayer.pdb",
     tolerance = 2.0,
     unitcell = [61.96 0. 0.; 0. 61.96 0.; 0. 0. 90.], # centered at the origin
+    # check_initial_placement = true, # uncomment to only place the molecules
 )
 packmol(system)
 ```
 
-As with the input file, check the initial approximation first, by building the system
-with `check = true` (`PackmolSystem(...; check = true)`): `packmol(system)` then writes
-the initial approximation to the output file, and stops.
+As with the input file, check the initial placement first, with
+`check_initial_placement = true` (commented in the code above).
 
 `BelowPlane(normal, d)` and `AbovePlane(normal, d)` take the parameters of
 `below plane` and `above plane`.

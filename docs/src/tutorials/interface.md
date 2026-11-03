@@ -6,87 +6,33 @@ position and orientation on that plane. The files are in the XYZ format.
 
 ![Water–chloroform interface](images/interface.webp)
 
-Files: [`water.xyz`](https://m3g.github.io/packmol/examples/water.xyz),
-[`chlor.xyz`](https://m3g.github.io/packmol/examples/chlor.xyz),
-[`t3.xyz`](https://m3g.github.io/packmol/examples/t3.xyz) and the input file
-[`interface.inp`](https://m3g.github.io/packmol/examples/interface-comment.inp).
+Files: [`water.xyz`](files/interface/water.xyz), [`chlor.xyz`](files/interface/chlor.xyz),
+[`t3.xyz`](files/interface/t3.xyz) and the input file
+[`interface.inp`](files/interface/interface.inp).
 
 ## Command line
 
-The input file:
-
+```@raw html
+<details><summary>The input file <code>interface.inp</code> (click to expand)</summary>
 ```
-#
-# Thyroid hormone in an interface of water and chloroform
-#
-
-# All atoms from different molecules will be at least 2.0 Angstroms apart
-# from each other in the solution.
-
-tolerance 2.0
-
-# The files are in the simple xyz format
-
-filetype xyz
-
-# The name of the output file.
-
-output interface.xyz
-
-# Water molecules will be inside a box that has 39 A of length in the y
-# and z directions and 20 A of length in the x direction. Waters will be
-# put in the box defined by the minimum x, y, and z coordinates -20. 0.
-# 0. and maximum x, y and z coordinates 0. 39. 39.
-
-structure water.xyz
-  number 1019
-  inside box -20. 0. 0. 0. 39. 39.
-end structure
-
-# Chloroform molecules will be in a box that has the same length as
-# the water box in the y and z directions. However, this box starts at
-# x = 0., in such a way that there will be an interface in that plane.
-
-structure chlor.xyz
-  number 199
-  inside box 0. 0. 0. 21. 39. 39.
-end structure
-
-# The hormone molecule will be fixed at the interface, in the center of
-# the box, rotated in such a way that it lies parallel to the
-# interface. The first three numbers are the position where the center
-# of mass of the hormone will be fixed, and the last three numbers
-# are its rotation.
-
-structure t3.xyz
-  centerofmass
-  fixed 0. 20. 20. 1.57 1.57 1.57
-end structure
+```@eval
+Main.input_file("files/interface/interface.inp")
+```
+```@raw html
+</details><br>
 ```
 
-### Check the initial approximation first
+### Check the initial placement first
 
-For a system with the two solvents and the fixed hormone, first check that the constraints place the molecules where
-intended. Add the `check` keyword to the input file:
-
-```
-check
-```
-
-and run it as below. Packmol then only builds the initial approximation, in a fraction
-of a second: each molecule is placed in its region, satisfying the constraints, but the
-molecules may still overlap. It is written to the output file (`interface.xyz`). Look at it in
-a molecular visualization program:
+Uncomment the `check_initial_placement` line of the input file, and run it as below
+(see [Checking the initial placement](@ref check_initial_placement)): the initial
+placement of the molecules is written to the output file (`interface.xyz`):
 
 ![Initial approximation](images/interface_check.webp)
 
 *Water (left) and chloroform (right) in the initial approximation: the molecules are in their boxes, but may overlap. The hormone is fixed at the interface.*
 
-When the molecules are where they should be, remove `check`, and run the packing.
-If the constraints cannot be satisfied at all, even without the distances between the
-molecules, Packmol stops after the initial approximation with an error (unless the
-`continue_failed_initial_packing` keyword is set): that is almost always a sign of
-wrong constraints.
+Then comment the line again, and run the packing.
 
 ### Packing
 
@@ -123,13 +69,16 @@ hormone = structure_type("t3.xyz";
     center = :mass,
 )
 
-system = PackmolSystem([water, chloroform, hormone]; output = "interface.xyz", tolerance = 2.0)
+system = PackmolSystem([water, chloroform, hormone];
+    output = "interface.xyz",
+    tolerance = 2.0,
+    # check_initial_placement = true, # uncomment to only place the molecules
+)
 packmol(system)
 ```
 
-As with the input file, check the initial approximation first, by building the system
-with `check = true` (`PackmolSystem(...; check = true)`): `packmol(system)` then writes
-the initial approximation to the output file, and stops.
+As with the input file, check the initial placement first, with
+`check_initial_placement = true` (commented in the code above).
 
 `fixed` is a `(position, angles)` pair, and `center = :mass` is the input's
 `centerofmass` (`center = :geometric` is `center`). The format of each file follows its

@@ -14,7 +14,8 @@ cp(joinpath(@__DIR__, "..", "..", "docs", "src", "tutorials", "files", "water_dr
 function pack(name; check=false)
     input = read(joinpath(work, "$name.inp"), String)
     out = check ? "$(name)_check" : name
-    check && (input = replace(input, "output $name.pdb" => "output $out.pdb\ncheck"))
+    check && (input = replace(input,
+        "# check_initial_placement" => "check_initial_placement", "output $name.pdb" => "output $out.pdb"))
     write(joinpath(work, "$out.inp"), input)
     run(pipeline(`$exe -i $(joinpath(work, "$out.inp"))`; stdout=devnull))
     return joinpath(work, "$out.pdb")

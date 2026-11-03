@@ -108,57 +108,14 @@ volume of the cell, 4√3/9 d³, minus that of the sphere of radius R + 58:
 
 ## Command line
 
-The input file of the small nanoliposome:
-
+```@raw html
+<details><summary>The input file <code>small.inp</code> (click to expand)</summary>
 ```
-#
-# Small POPC nanoliposome with water inside and outside
-#
-tolerance 2.0
-output small.pdb
-
-# Truncated octahedron periodic cell centered at the origin, with at least 10 Å of
-# water between the nanoliposome and the faces of the cell. The output is written in
-# the shape of the octahedron
-pbc octahedral 0. 0. 0. 186.
-periodic_boundary_style octahedral
-
-# Water inside the nanoliposome: a sphere of radius 22 Å
-structure water.pdb
-  number 1492
-  inside sphere 0. 0. 0. 22.
-end structure
-
-# Inner leaflet: the heads (atom 1, N) inside the sphere of radius 25 Å, pointing to
-# the water inside, and the ends of the chains (atoms 88 and 131) outside the sphere
-# of radius 47 Å, near the middle of the bilayer (r = 53 Å)
-structure popc.pdb
-  number 123
-  atoms 1
-    inside sphere 0. 0. 0. 25.
-  end atoms
-  atoms 88 131
-    outside sphere 0. 0. 0. 47.
-  end atoms
-end structure
-
-# Outer leaflet: the ends of the chains inside the sphere of radius 59 Å, and the
-# heads outside the sphere of radius 81 Å, pointing to the water outside
-structure popc.pdb
-  number 552
-  atoms 88 131
-    inside sphere 0. 0. 0. 59.
-  end atoms
-  atoms 1
-    outside sphere 0. 0. 0. 81.
-  end atoms
-end structure
-
-# Water outside the nanoliposome, filling the rest of the periodic cell
-structure water.pdb
-  number 85567
-  outside sphere 0. 0. 0. 83.
-end structure
+```@eval
+Main.input_file("files/nanoliposome/small.inp")
+```
+```@raw html
+</details><br>
 ```
 
 The lipids have no constraint on the whole molecule: only the head and the chain ends
@@ -172,31 +129,18 @@ box](../periodic_boundary_conditions/truncated_octahedral_box.md)).
 The input file of the larger nanoliposome, [`large.inp`](files/nanoliposome/large.inp),
 is the same, with the radii and numbers of the tables above.
 
-### Check the initial approximation first
+### Check the initial placement first
 
-For a system with spherical shells and lipids oriented by constraints on some of their
-atoms, first check that the constraints place the molecules where intended. Add the
-`check` keyword to the input file:
-
-```
-check
-```
-
-and run it as below. Packmol then only builds the initial approximation, in a few
-seconds: each molecule is placed in its region, satisfying the constraints, but the
-molecules may still overlap. It is written to the output file (`small.pdb`). Look at
-it in a molecular visualization program:
+Uncomment the `check_initial_placement` line of the input file, and run it as below
+(see [Checking the initial placement](@ref check_initial_placement)): the initial
+placement of the molecules is written to the output file (`small.pdb`):
 
 ![Initial approximation](images/nanoliposome_small_check.webp)
 
 *A slab through the center of the initial approximation of the small nanoliposome: the
 two leaflets and the water are already in their shells, but molecules may overlap.*
 
-When the molecules are where they should be, remove `check`, and run the packing.
-If the constraints cannot be satisfied at all, even without the distances between the
-molecules, Packmol stops after the initial approximation with an error (unless the
-`continue_failed_initial_packing` keyword is set): that is almost always a sign of
-wrong constraints.
+Then comment the line again, and run the packing.
 
 ### Packing
 
@@ -248,6 +192,7 @@ function nanoliposome(R, n_inner, n_outer, output)
     system = PackmolSystem([water_inside, inner_leaflet, outer_leaflet, water_outside];
         output, tolerance = 2.0,
         unitcell = octahedral_unitcell(Float64, d), # centered at the origin
+        # check_initial_placement = true, # uncomment to only place the molecules
     )
     # Write the output in the shape of the truncated octahedron
     triclinic_to_octahedral(system)
@@ -265,8 +210,8 @@ large = nanoliposome(40.0, 377, 1090, "large.pdb")
 packmol(large)
 ```
 
-As with the input file, check the initial approximation first, with
-`PackmolSystem(...; check = true)`.
+As with the input file, check the initial placement first, with
+`check_initial_placement = true` (commented in the code above).
 
 `InsideSphere(center, radius)` and `OutsideSphere(center, radius)` take the parameters
 of `inside sphere` and `outside sphere`.

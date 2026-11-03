@@ -8,6 +8,10 @@ tolerance 2.0
 output zeolite.pdb
 unitcell 27.350 27.350 29.534 90. 90. 120.
 
+# Uncomment to write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints):
+# check_initial_placement
+
 # The zeolite, kept at the coordinates of the file (centered at the origin, as
 # the cell). The radius of the atoms (1.5 Å, here and in the gases) keeps the
 # gases 3 Å away from the framework.

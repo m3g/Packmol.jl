@@ -1,6 +1,7 @@
 # Zika virion (a large system)
 
-A complete virion of the Zika virus, in a coarse-grained model (SIRAH): the protein shell
+A complete virion of the Zika virus, in a coarse-grained model
+([SIRAH](https://www.sirahff.com/)): the protein shell
 of the virion, fixed, with a membrane of two layers of lipids (POPC, POPE and POPS)
 beneath it, solvated by water and ions inside the membrane, between the membrane and the
 proteins, and outside. The system has 2.77 million particles and 549 thousand molecules,
@@ -16,8 +17,8 @@ The files are the `packmol_zika` set of
 [packmol_zika.tar.gz](https://github.com/m3g/MolSimTestFiles/releases/download/packmol_zika-v1/packmol_zika.tar.gz)
 (7 MB), which contains the input file `zika.inp` and the structures: `capsid.pdb` (the
 protein shell, 489960 particles), `popc.pdb`, `pope.pdb` and `pops.pdb` (the lipids),
-`wt4.pdb` and `wls.pdb` (two models of water of SIRAH), and `NaW.pdb` and `ClW.pdb` (the
-ions).
+`wt4.pdb` and `wls.pdb` (two models of water of [SIRAH](https://www.sirahff.com/)), and
+`NaW.pdb` and `ClW.pdb` (the ions).
 
 ## The regions of the system
 
@@ -42,81 +43,25 @@ length of the lipids, which leaves them room to bend and tilt while being packed
 
 ## Command line
 
-The input file (`zika.inp`), with the first structures of each kind (the complete file
-is in the tarball):
+The input file, [`zika.inp`](files/zika/zika.inp) (the one of the tarball, with the line of
+`check_initial_placement`):
 
+```@raw html
+<details><summary>The input file <code>zika.inp</code> (click to expand)</summary>
 ```
-tolerance 2.0
-output zika.pdb
-
-structure capsid.pdb
-  number 1
-  center
-  fixed 0. 0. 0. 0. 0. 0.
-end structure
-
-#
-# Outer layer of the membrane: heads (bead 1) outside r = 180 Å, ends of the
-# chains (bead 16, or 17 in POPS) inside r = 175 Å
-#
-structure popc.pdb
-  number 2185
-  atoms 16
-    inside sphere 0. 0. 0. 175.
-  end atoms
-  atoms 1
-    outside sphere 0. 0. 0. 180.
-  end atoms
-end structure
-
-# ... POPE and POPS in the outer layer
-
-#
-# Inner layer of the membrane: heads inside r = 160 Å, ends of the chains
-# outside r = 170 Å
-#
-structure popc.pdb
-  number 2855
-  atoms 16
-    outside sphere 0. 0. 0. 170.
-  end atoms
-  atoms 1
-    inside sphere 0. 0. 0. 160.
-  end atoms
-end structure
-
-# ... POPE and POPS in the inner layer
-
-#
-# Water inside the membrane: around and within the capsid
-#
-structure wt4.pdb
-  number 17903
-  inside sphere 0. 0. 0. 160.
-  outside sphere 0. 0. 0. 120.
-end structure
-
-structure wls.pdb
-  number 23500
-  inside sphere 0. 0. 0. 150.
-end structure
-
-# ... water between the membrane and the proteins, and outside
-
-structure wls.pdb
-  number 400000
-  inside box -337. -337. -337. 337. 337. 337.
-  outside sphere 0. 0. 0. 230.
-end structure
-
-# ... ions
+```@eval
+Main.input_file("files/zika/zika.inp")
+```
+```@raw html
+</details><br>
 ```
 
-### Check the initial approximation first
+### Check the initial placement first
 
-For a system of this size, checking the initial approximation is essential: the packing
-takes half an hour, but the initial approximation takes about 10 seconds. Add the `check`
-keyword to the input file, and run it:
+For a system of this size, checking the initial placement is essential: the packing takes
+half an hour to an hour, but the initial placement takes about 10 seconds (see
+[Checking the initial placement](@ref check_initial_placement)). Uncomment the
+`check_initial_placement` line of the input file, and run it:
 
 ```
 packmol zika.inp
@@ -129,7 +74,7 @@ center shows that every component is in its region:
 
 *The initial approximation: the molecules are in their regions, but may overlap.*
 
-Only then remove `check`, and run the packing.
+Only then comment the line again, and run the packing.
 
 ### Packing
 
@@ -143,8 +88,8 @@ about 2.3 GB). By default, the `packmol` executable
 uses all the cores of the machine; `packmol -t N` limits it to `N` threads.
 
 !!! tip "Large systems"
-    - Check the initial approximation first (`check`): mistakes in the constraints of a
-      system of this size are expensive to find after the packing.
+    - Check the initial placement first (`check_initial_placement`): mistakes in the
+      constraints of a system of this size are expensive to find after the packing.
     - `restart_to` writes the coordinates of a structure (or of the whole system) at the
       end of the packing, and `restart_from` reads them back, to pack the system in parts:
       for example, the membrane first, and then the solvent around it (see [Restarting a
@@ -200,7 +145,7 @@ ions = [
 system = PackmolSystem([capsid; lipids; solvent; ions];
     output = "zika.pdb",
     tolerance = 2.0,
-    check = true, # the initial approximation only; remove to pack
+    # check_initial_placement = true, # uncomment to only place the molecules
 )
 packmol(system)
 ```

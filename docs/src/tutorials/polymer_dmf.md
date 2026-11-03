@@ -23,27 +23,17 @@ the box holds (40³ − 400) × 0.00778 ≈ 495 molecules of DMF.
 
 ## Command line
 
-The input file:
-
-```
-#
-# A polyacrylamide chain in N,N-dimethylformamide (DMF, 0.944 g/mL), in a
-# periodic cubic box with sides of 40 Å.
-#
-tolerance 2.0
-output polymer_dmf.pdb
-pbc -20. -20. -20. 20. 20. 20.
-
-structure polyacrylamide.pdb
-  number 1
-end structure
-
-structure dmf.pdb
-  number 495
-end structure
+```@eval
+Main.input_file("files/polymer_dmf/polymer_dmf.inp")
 ```
 
-The periodic box confines all the molecules: no constraint is needed. Run it with:
+The polymer is fixed with its geometric center (`center`) at the origin, the center of
+the box (`fixed 0. 0. 0. 0. 0. 0.`: no translation and no rotation of the centered
+coordinates): it stays in the middle of the box, whole, and the solvent is packed around
+it. A free polymer would be packed as any other molecule, anywhere in the box, and, near
+a face, would stick out of the box in the output (see [Fixed
+molecules](../constraints/fixed.md)). The periodic box
+confines the DMF molecules: no constraint is needed. Run it with:
 
 ```
 packmol polymer_dmf.inp
@@ -62,12 +52,17 @@ end
 ```@example polymer
 using Packmol, PDBTools
 
-polymer = structure_type("polyacrylamide.pdb"; number = 1)
+polymer = structure_type("polyacrylamide.pdb";
+    number = 1,
+    fixed = ([0., 0., 0.], [0., 0., 0.]),
+    center = :geometric,
+)
 dmf = structure_type("dmf.pdb"; number = 495)
 system = PackmolSystem([polymer, dmf];
     output = "polymer_dmf.pdb",
     tolerance = 2.0,
     unitcell = [40. 0. 0.; 0. 40. 0.; 0. 0. 40.], # centered at the origin
+    # check_initial_placement = true, # uncomment to only place the molecules
 )
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)

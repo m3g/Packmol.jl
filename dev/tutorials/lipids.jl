@@ -1,6 +1,7 @@
 #
 # Images of the lipid tutorials (POPC bilayer and nanoliposomes): the packed system, and the
-# initial approximation written with `check`. The inputs are those of
+# initial placement, written with the `check_initial_placement` line of the input
+# uncommented. The inputs are those of
 # docs/src/tutorials/files/{bilayer,nanoliposome}. Run from the root of the repository:
 #
 #     julia --project=docs -t 14 dev/tutorials/lipids.jl
@@ -12,7 +13,7 @@ const files = joinpath(@__DIR__, "..", "..", "docs", "src", "tutorials", "files"
 const images = joinpath(@__DIR__, "..", "..", "docs", "src", "tutorials", "images")
 const work = mktempdir()
 
-# Runs the example `input` of the files of `name` (and its `check` version, unless
+# Runs the example `input` of the files of `name` (and its check version, unless
 # `check = false`) and returns the output files
 function pack(name, output; input = name, check = true)
     for f in readdir(joinpath(files, name))
@@ -20,7 +21,8 @@ function pack(name, output; input = name, check = true)
     end
     if check
         text = read(joinpath(work, "$input.inp"), String)
-        write(joinpath(work, "check_$input.inp"), replace(text, "output $output" => "output check_$output\ncheck"))
+        write(joinpath(work, "check_$input.inp"), replace(text,
+            "# check_initial_placement" => "check_initial_placement", "output $output" => "output check_$output"))
         packmol(joinpath(work, "check_$input.inp"))
     end
     packmol(joinpath(work, "$input.inp"))

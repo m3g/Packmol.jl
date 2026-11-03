@@ -5,46 +5,15 @@ which every molecule is placed in the same region.
 
 ![Water and urea](images/mixture.webp)
 
-Files: [`water.pdb`](https://m3g.github.io/packmol/examples/water.pdb),
-[`urea.pdb`](https://m3g.github.io/packmol/examples/urea.pdb) and the input file
-[`mixture.inp`](https://m3g.github.io/packmol/examples/mixture-comment.inp).
+Files: [`water.pdb`](files/mixture/water.pdb), [`urea.pdb`](files/mixture/urea.pdb) and
+the input file [`mixture.inp`](files/mixture/mixture.inp).
 
 ## Command line
 
 The input file:
 
-```
-#
-# A mixture of water and urea
-#
-
-# All the atoms from different molecules will be separated at least 2.0
-# Angstroms in the solution.
-
-tolerance 2.0
-
-# The file type of the input and output files is PDB
-
-filetype pdb
-
-# The name of the output file
-
-output mixture.pdb
-
-# 1000 water molecules and 400 urea molecules will be put in a box
-# defined by the minimum coordinates x, y and z = 0. 0. 0. and maximum
-# coordinates 40. 40. 40. That is, they will be put in a cube of side
-# 40. (the keyword "inside cube 0. 0. 0. 40." could be used as well).
-
-structure water.pdb
-  number 1000
-  inside box 0. 0. 0. 40. 40. 40.
-end structure
-
-structure urea.pdb
-  number 400
-  inside box 0. 0. 0. 40. 40. 40.
-end structure
+```@eval
+Main.input_file("files/mixture/mixture.inp")
 ```
 
 Run it with:
@@ -53,7 +22,10 @@ Run it with:
 packmol mixture.inp
 ```
 
-(or `packmol < mixture.inp`). The packed system is written to `mixture.pdb`.
+(or `packmol < mixture.inp`). The packed system is written to `mixture.pdb`. A system
+this simple needs no check of the initial placement, but the input has the
+`check_initial_placement` line, commented, as all the tutorials (see
+[Checking the initial placement](@ref check_initial_placement)).
 
 ## Julia
 
@@ -72,7 +44,11 @@ urea = structure_type("urea.pdb";
     constraints = [InsideBox([0., 0., 0.], [40., 40., 40.])],
 )
 
-system = PackmolSystem([water, urea]; output = "mixture.pdb", tolerance = 2.0)
+system = PackmolSystem([water, urea];
+    output = "mixture.pdb",
+    tolerance = 2.0,
+    # check_initial_placement = true, # uncomment to only place the molecules
+)
 packmol(system)
 ```
 

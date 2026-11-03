@@ -105,7 +105,13 @@ both paths equivalent when changing the input syntax or the Julia API.
 Tutorial images (`docs/src/tutorials/images/*.webp`) are rendered with VMD by the scripts of
 `dev/tutorials/` (`render.jl`; `classic.jl` for the classic examples, `lipids.jl` for the
 bilayer and the nanoliposomes). Tutorials of non-trivial
-systems first show the `check` output (the initial approximation), then the packing.
+systems first show the initial placement (`check_initial_placement`), then the packing.
+The input files of the tutorials are files of `docs/src/tutorials/files/<tutorial>/`, shown in
+the pages with `@eval Main.input_file(path)` (`docs/make.jl`; in a `<details>` drop-down box
+when long), never written into the pages; every one has the line `# check_initial_placement`
+(commented), and the Julia code `# check_initial_placement = true`. The overview page
+(`tutorials/index.md`) explains how to follow the tutorials and how to check the initial
+placement.
 
 ## Running Tests
 
