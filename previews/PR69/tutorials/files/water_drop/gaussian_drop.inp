@@ -8,6 +8,10 @@
 tolerance 2.0
 output gaussian_drop.pdb
 
+# Uncomment to write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints):
+# check_initial_placement
+
 structure graphite.pdb
   number 1
   fixed 0. 0. 0. 0. 0. 0.
