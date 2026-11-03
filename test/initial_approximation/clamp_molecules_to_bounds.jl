@@ -10,7 +10,7 @@
     inner = structure_type(water; number = 100, constraints = [InsideSphere([0.0, 0.0, 0.0], 10.0)])
     outer = structure_type(water; number = 1200, constraints = [OutsideSphere([0.0, 0.0, 0.0], 13.0)])
     system = PackmolSystem([inner, outer];
-        output = "", tolerance = 2.0, unitcell = octahedral_unitcell(Float64, 40.0), check = true, seed = 3,
+        output = "", tolerance = 2.0, unitcell = octahedral_unitcell(Float64, 40.0), check_initial_placement = true, seed = 3,
     )
     redirect_stdout(devnull) do
         packmol(system)

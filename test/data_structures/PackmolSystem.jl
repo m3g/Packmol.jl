@@ -81,6 +81,27 @@ end
     end
 end
 
+@testitem "check_initial_placement / check keyword" setup=[TestFiles] begin
+    using Packmol: read_packmol_input
+    dir = dirname(TestFiles.test_file("input_files/water_box.inp"))
+    original = read(TestFiles.test_file("input_files/water_box.inp"), String)
+    mktempdir() do tmp
+        cp(joinpath(dir, "water.pdb"), joinpath(tmp, "water.pdb"))
+        file = joinpath(tmp, "default.inp")
+        write(file, original)
+        @test !read_packmol_input(file).check_initial_placement
+        write(file, original * "\ncheck_initial_placement\n")
+        @test read_packmol_input(file).check_initial_placement
+        # Commented, as in the tutorials
+        write(file, original * "\n# check_initial_placement\n")
+        @test !read_packmol_input(file).check_initial_placement
+        # Fortran's name
+        write(file, original * "\ncheck\n")
+        sys = @test_warn r"check_initial_placement" read_packmol_input(file)
+        @test sys.check_initial_placement
+    end
+end
+
 @testitem "per-structure keyword does not leak into the global setting" setup=[TestFiles] begin
     using Packmol: read_packmol_input
     # `restart_from`/`restart_to` are valid both as a global keyword and as a

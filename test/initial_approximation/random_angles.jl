@@ -66,7 +66,7 @@ end
     )
     stat = Float64[]
     for seed in 1:6
-        system = PackmolSystem([st]; output = "", tolerance = 2.0, check = true, seed)
+        system = PackmolSystem([st]; output = "", tolerance = 2.0, check_initial_placement = true, seed)
         redirect_stdout(devnull) do
             packmol(system)
         end
