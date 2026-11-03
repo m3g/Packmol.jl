@@ -73,6 +73,7 @@ include("./rigid_body/rotation_metric.jl")
 
 # Function and gradient of the distance between atoms
 include("./function_and_gradient/interatomic_distance_fg.jl")
+include("./function_and_gradient/gauss_newton.jl")
 
 # Initial approximation: placement, constraint pre-optimization
 include("./initial_approximation/initial_approximation.jl")

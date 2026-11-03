@@ -169,8 +169,31 @@ _rotation_scaling(::PackmolSystem) = nothing
 # experiments of `dev/solvers/` can replace it by redefining this method. The bounds are
 # positional: they are `nothing` without PBC, and a keyword call with arguments of a
 # `Union` type is not resolved by `juliac --trim`.
-_local_solver(fg!, x, lower, upper; callback, vaux, nitmax, nfevalmax) =
+#
+# `hessian_product` (given with `gauss_newton = true`): `(Hv, y, v) -> Hv`, the product of
+# the Gauss-Newton approximation of the Hessian at the variables `y` of the optimizer with
+# `v` (see function_and_gradient/gauss_newton.jl), from the terms recorded by the last
+# evaluation of the objective function. Not used by SPGBox.
+_local_solver(fg!, x, lower, upper; callback, vaux, nitmax, nfevalmax, hessian_product=nothing) =
     spgbox!(fg!, x; callback, vaux, nitmax, nfevalmax, lower, upper)
+
+# The Gauss-Newton product (see `gauss_newton_product!`) in the variables of the
+# optimizer: the angles scaled when `scale_rotations` (`y` and `v` transformed as the
+# variables, `Hv` as the gradient).
+function _gauss_newton_product!(
+    Hv, y, v, x_gn, v_gn, scale_rotations, rot_scaling, fg_output,
+    packmol_system::PackmolSystem{D,T}, free_mol_indices, mol_structure_type, mol_iat_first, gn_buffers,
+) where {D,T}
+    if scale_rotations
+        _unscale_angles!(reinterpret(MoleculePosition{D,T}, x_gn), reinterpret(MoleculePosition{D,T}, y), rot_scaling)
+        _unscale_angles!(reinterpret(MoleculePosition{D,T}, v_gn), reinterpret(MoleculePosition{D,T}, v), rot_scaling)
+        gauss_newton_product!(Hv, x_gn, v_gn, fg_output, packmol_system, free_mol_indices, mol_structure_type, mol_iat_first, gn_buffers)
+        _scale_angle_gradient!(reinterpret(MoleculePosition{D,T}, Hv), rot_scaling)
+    else
+        gauss_newton_product!(Hv, y, v, fg_output, packmol_system, free_mol_indices, mol_structure_type, mol_iat_first, gn_buffers)
+    end
+    return Hv
+end
 
 function _packmol(
     packmol_system::PackmolSystem{D,T};
@@ -185,6 +208,7 @@ function _packmol(
     seed::Int=packmol_system.seed,
     restart::Bool=false,
     rotation_scaling::Bool=true,
+    gauss_newton::Bool=false,
 ) where {D,T}
     # Keyword arguments take precedence over the input file's `nloop`/`maxit`
     nloop = something(nloop, packmol_system.nloop, 500)
@@ -360,6 +384,9 @@ function _packmol(
 
     # Set up CellListMap
     fg_output = InteratomicDistanceFG{D,T}(packmol_system)
+    # Recording of the terms of the Gauss-Newton products (set before the system is built:
+    # its threaded copies of the output are made from this one)
+    fg_output.record = gauss_newton
     _println("  Total number of atoms: ", natoms)
     _println("  Number of free molecules: ", nfree)
     _println("  Number of variables: ", nfree * 2 * D)
@@ -395,6 +422,14 @@ function _packmol(
     # Placement region for movebad! randomization
     mol_structure_type = _build_mol_structure_type(packmol_system)
     mol_iat_first = _build_mol_iat_first(packmol_system)
+    # Gauss-Newton products, for the solvers that use them (`gauss_newton = true`)
+    gn_buffers = GaussNewtonBuffers{D,T}(natoms)
+    x_gn = similar(x)
+    v_gn = similar(x)
+    hessian_product = (Hv, y, v) -> _gauss_newton_product!(
+        Hv, y, v, x_gn, v_gn, scale_rotations, rot_scaling, cl_system.fg,
+        packmol_system, free_mol_indices, mol_structure_type, mol_iat_first, gn_buffers,
+    )
     precision = packmol_system.tolerance_precision
     # Worst fmol ever observed per structure type, across every movebad! call
     # over the whole run (see movebad.jl for why this must persist rather
@@ -566,6 +601,7 @@ function _packmol(
             vaux=auxvecs,
             nitmax=maxit,
             nfevalmax=10 * maxit,
+            hessian_product,
         )
 
         # Back to the Euler angles

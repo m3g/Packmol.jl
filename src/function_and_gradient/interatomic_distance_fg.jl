@@ -2,6 +2,24 @@ using CellListMap: ParticleSystem, NeighborPair, pairwise!
 using SPGBox: spgbox!
 
 #
+# Terms of the Gauss-Newton approximation of the Hessian (see gauss_newton.jl), recorded
+# by `fg!` when `record` is set: an overlapping pair of atoms `i`, `j`, with `u` the unit
+# vector from `i` to `j` (the gradient of its residual `d - tol` relative to the position
+# of `j`), and a violated constraint of atom `iat`, with its penalty `p` and the gradient
+# `g` of the penalty.
+#
+struct GaussNewtonPair{D,T}
+    i::Int32
+    j::Int32
+    u::SVector{D,T}
+end
+struct GaussNewtonConstraint{D,T}
+    iat::Int32
+    p::T
+    g::SVector{D,T}
+end
+
+#
 # Structure used to evaluate the function and gradient of the distance between atoms
 # in a single pass, using CellListMap.
 #
@@ -23,6 +41,10 @@ using SPGBox: spgbox!
     # actually written, not to the number of atoms (see `reduce_output!` below).
     touched_atoms::Vector{Int32} = Int32[]
     touched_mols::Vector{Int32} = Int32[]
+    # Recording of the Gauss-Newton terms (off by default)
+    record::Bool = false
+    gn_pairs::Vector{GaussNewtonPair{D,T}}
+    gn_constraints::Vector{GaussNewtonConstraint{D,T}}
 end
 
 function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
@@ -35,6 +57,8 @@ function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
         fmol = zeros(T, packmol_system.nmols),
         gxcar = fill(zero(SVector{D,T}), natoms),
         max_constraint_penalty = zero(T),
+        gn_pairs = GaussNewtonPair{D,T}[],
+        gn_constraints = GaussNewtonConstraint{D,T}[],
     )
 end
 
@@ -62,6 +86,9 @@ function CellListMap.copy_output(x::InteratomicDistanceFG{D,T}) where {D,T}
         zero(T),  # max_constraint_penalty — not used by CellListMap threads
         Int32[],
         Int32[],
+        x.record,
+        GaussNewtonPair{D,T}[],
+        GaussNewtonConstraint{D,T}[],
     )
 end
 function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,T}
@@ -69,6 +96,8 @@ function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,
     output.dmin = typemax(T)
     output.max_overlap = typemin(T)
     output.max_constraint_penalty = zero(T)
+    empty!(output.gn_pairs)
+    empty!(output.gn_constraints)
     if _is_thread_copy(output)
         _zero_touched!(output)
     else
@@ -97,6 +126,7 @@ function CellListMap.reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
     x.max_overlap = max(x.max_overlap, y.max_overlap)
     x.fmol .+= y.fmol
     x.gxcar .+= y.gxcar
+    append!(x.gn_pairs, y.gn_pairs)
     return x
 end
 
@@ -116,7 +146,9 @@ function CellListMap.reduce_output!(
     output.dmin = typemax(T)
     output.max_overlap = typemin(T)
     ntouched = 0
+    empty!(output.gn_pairs)
     for ot in output_threaded
+        append!(output.gn_pairs, ot.gn_pairs)
         output.f += ot.f
         output.dmin = min(output.dmin, ot.dmin)
         output.max_overlap = max(output.max_overlap, ot.max_overlap)
@@ -203,6 +235,7 @@ function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_sy
         dvdd = 2 * (d - tol) * dv / d
         _add_gxcar!(fg, i, -dvdd)
         _add_gxcar!(fg, j, dvdd)
+        fg.record && push!(fg.gn_pairs, GaussNewtonPair(Int32(i), Int32(j), dv / d))
     end
     return fg
 end
@@ -587,6 +620,8 @@ function _constraint_fg!(
             imol_last = atoms[last(iat_range)].molecule_index
             fmol_first = zero(T)
             fmol_last = zero(T)
+            record = fg_output.record
+            gn_local = GaussNewtonConstraint{D,T}[]
             for iat in iat_range
                 atom = packmol_system.atoms[iat]
                 x = atom_positions[iat]
@@ -613,7 +648,11 @@ function _constraint_fg!(
                     c = st.constraints[ic]
                     penalty::T = _constraint_dispatch(constraint_penalty, c, x)::T
                     atom_penalty += penalty
-                    fg_output.gxcar[iat]::SVector{D,T} += _constraint_dispatch(constraint_gradient, c, x)::SVector{D,T}
+                    gc = _constraint_dispatch(constraint_gradient, c, x)::SVector{D,T}
+                    fg_output.gxcar[iat]::SVector{D,T} += gc
+                    if record && penalty > zero(T)
+                        push!(gn_local, GaussNewtonConstraint(Int32(iat), penalty, gc))
+                    end
                 end
                 fg_local += atom_penalty
                 imol = atom.molecule_index
@@ -628,6 +667,7 @@ function _constraint_fg!(
             end
             @lock lk_fg begin
                 fg_output.f += fg_local
+                append!(fg_output.gn_constraints, gn_local)
                 fg_output.fmol[imol_first] += fmol_first
                 if imol_last != imol_first
                     fg_output.fmol[imol_last] += fmol_last
