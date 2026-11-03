@@ -1,8 +1,8 @@
 # Test files, from https://github.com/m3g/MolSimTestFiles (downloaded only when needed)
 [packmol_test_files]
-git-tree-sha1 = "3272bd2468cb4cabfce25d21083219f310d9ae9d"
+git-tree-sha1 = "3c5d9c988f2e0b491e7d81cf165165d3c3acd157"
 lazy = true
 
     [[packmol_test_files.download]]
-    url = "https://github.com/m3g/MolSimTestFiles/releases/download/packmol-v2/packmol.tar.gz"
-    sha256 = "cd8cd79630fac759eaed11d038de17744db321571d6ca9c55bf3a83a8191f450"
+    url = "https://github.com/m3g/MolSimTestFiles/releases/download/packmol-v3/packmol.tar.gz"
+    sha256 = "9a0c89dbf65337ad329e831a961a85abe95925f5ab23ac89a0642e563d1f68be"
