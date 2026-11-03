@@ -38,6 +38,7 @@ function set_initial_approximation!(
     free_mol_indices::Vector{Int},
     RNG;
     restart::Bool=false,
+    nloop::Int=500,
     buffers::Union{Nothing,MemoryBuffers{D,T}} = nothing,
 ) where {D,T}
     # Reference-coordinate centering must happen regardless of `restart`:
@@ -71,10 +72,12 @@ function set_initial_approximation!(
     )
 
     # Step 4: Full constraint adjustment with the solver and movebad,
-    # randomizing bad molecules within the CM bounds from step 2
+    # randomizing bad molecules within the CM bounds from step 2, for as many
+    # loops as the packing (molecules with constraints on some of their atoms,
+    # as lipids in curved layers, can take hundreds of loops to fit)
     if packmol_system.adjust_constraints_on_init
         converged = adjust_constraints!(packmol_system, free_mol_indices, RNG;
-            cm_lo_type=cm_min, cm_hi_type=cm_max, buffers,
+            nloop, cm_lo_type=cm_min, cm_hi_type=cm_max, buffers,
         )
     end
 
