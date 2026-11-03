@@ -19,4 +19,5 @@ test/input_files/mixture.pdb
 test/input_files/solvprotein.pdb
 test/run_packmol/ieee_signaling_box.pdb
 /juliac/Manifest.toml
+/dev/large_tests/Manifest.toml
 /juliac/build/

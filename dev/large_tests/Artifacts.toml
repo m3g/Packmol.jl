@@ -1,0 +1,8 @@
+# The Zika virion tutorial, from https://github.com/m3g/MolSimTestFiles (downloaded only when needed)
+[packmol_zika]
+git-tree-sha1 = "aced32457f788bce9f281fb938c1fda086b9abb3"
+lazy = true
+
+    [[packmol_zika.download]]
+    url = "https://github.com/m3g/MolSimTestFiles/releases/download/packmol_zika-v1/packmol_zika.tar.gz"
+    sha256 = "d567ae5022f72c1213963c70bf131a8e6e6a1f62e468037932935b4bc2db0847"
