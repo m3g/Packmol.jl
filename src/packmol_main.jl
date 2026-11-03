@@ -140,6 +140,11 @@ and `packmol_system.movefrac`).
 
 `nthreads` (maximum number of threads used, default: all the threads of the Julia
 session) takes precedence over `packmol_system.nthreads` (the input keyword `nthreads`).
+
+`rotation_scaling` (default `true`): the optimizer works on rotation variables scaled by
+the inertia of each molecule (a unit change moves its atoms by 1 Å RMS), instead of its
+Euler angles. With `false`, the Euler angles themselves, much slower for systems of
+elongated molecules (lipids, polymers); for comparisons only.
 """
 function packmol(packmol_system::PackmolSystem; nthreads::Union{Nothing,Int}=nothing, kargs...)
     ntasks = _ntasks[]
