@@ -8,8 +8,11 @@
     # `discale`): atom radii are inflated by this factor at the start of packing
     # (loop 0), then decayed exponentially toward 1.0 by loop `nloop`, the
     # same for every atom regardless of movebad! relocations (see
-    # `_radscale_at` and the outer packing loop in packmol_main.jl).
-    radscale::T = 1.2
+    # `_radscale_at` and the outer packing loop in packmol_main.jl). 1.0 (no scaling) by
+    # default: in dense systems (water, bilayers, vesicles) the inflated problem has no
+    # solution, and a larger scale took up to 40 times more function evaluations; the
+    # lipid shells of a nanoliposome, less dense, packed faster with 1.2.
+    radscale::T = 1.0
     structure_types::Vector{StructureType{D,T}} = StructureType{D,T}[]
     tolerance_precision::T = 1e-1
     constraint_precision::T = 1e-2
