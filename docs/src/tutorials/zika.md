@@ -4,8 +4,8 @@ A complete virion of the Zika virus, in a coarse-grained model
 ([SIRAH](https://www.sirahff.com/)): the protein shell
 of the virion, fixed, with a membrane of two layers of lipids (POPC, POPE and POPS)
 beneath it, solvated by water and ions inside the membrane, between the membrane and the
-proteins, and outside. The system has 2.77 million particles and 549 thousand molecules,
-in a box with sides of 674 Å, and packs in about half an hour to an hour.
+proteins, and outside, in a rhombic dodecahedron periodic cell with 674 Å between
+opposite faces. The system has 2.20 million particles and 407 thousand molecules.
 
 ![Zika virion](images/zika.webp)
 
@@ -14,7 +14,7 @@ membrane (orange), water (gray) and ions (red and blue).*
 
 The files are the `packmol_zika` set of
 [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles): download and extract
-[packmol_zika.tar.gz](https://github.com/m3g/MolSimTestFiles/releases/download/packmol_zika-v1/packmol_zika.tar.gz)
+[packmol_zika.tar.gz](https://github.com/m3g/MolSimTestFiles/releases/download/packmol_zika-v2/packmol_zika.tar.gz)
 (7 MB), which contains the input file `zika.inp` and the structures: `capsid.pdb` (the
 protein shell, 489960 particles), `popc.pdb`, `pope.pdb` and `pops.pdb` (the lipids),
 `wt4.pdb` and `wls.pdb` (two models of water of [SIRAH](https://www.sirahff.com/)), and
@@ -33,8 +33,15 @@ membrane:
 | Outer layer of the membrane | ends of the chains below 175, heads above 180 |
 | Water inside the membrane | WT4 between 120 and 160, WLS below 150 |
 | Water between the membrane and the proteins | WT4 between 175 and 195 |
-| Water outside | WT4 between 230 and 280, WLS outside 230, in the box |
+| Water outside | WT4 between 230 and 280, WLS outside 230 |
 | Ions | inside 180, between 180 and 215, and outside 220 |
+
+The periodic cell is a rhombic dodecahedron (`pbc dodecahedral 0. 0. 0. 674.`, see
+[Rhombic dodecahedron box](../periodic_boundary_conditions/rhombic_dodecahedral_box.md)):
+its periodic images are as far apart as those of a cubic box with sides of 674 Å, but it
+has 71% of the volume of that box, and the water and the ions outside the virion are
+only those that fill it. The regions outside the virion need no other constraint: the
+periodic cell bounds them.
 
 The lipids are oriented only by their extreme beads: the head (bead 1) and the end of a
 chain (bead 16, or 17 in POPS), which are 21 to 25 Å apart. The surfaces that bound them
@@ -43,8 +50,7 @@ length of the lipids, which leaves them room to bend and tilt while being packed
 
 ## Command line
 
-The input file, [`zika.inp`](files/zika/zika.inp) (the one of the tarball, with the line of
-`check_initial_placement`):
+The input file, [`zika.inp`](files/zika/zika.inp):
 
 ```@raw html
 <details><summary>The input file <code>zika.inp</code> (click to expand)</summary>
@@ -82,9 +88,9 @@ Only then comment the line again, and run the packing.
 packmol zika.inp
 ```
 
-The packing converged in 39 loops, which took 58 minutes with 14 threads, and about half
-an hour with 32 threads, using 3.7 GB of memory (the initial approximation alone uses
-about 2.3 GB). By default, the `packmol` executable
+The packing converged in 30 loops, which took 55 minutes with 14 threads, using 3.8 GB
+of memory (the check of the initial approximation takes 30 seconds and 3.6 GB). By
+default, the `packmol` executable
 uses all the cores of the machine; `packmol -t N` limits it to `N` threads.
 
 !!! tip "Large systems"
@@ -121,7 +127,6 @@ lipids = [
     layer("pops.pdb", 473, 17, inner...),
 ]
 
-box = InsideBox([-337., -337., -337.], [337., 337., 337.])
 solvent = [
     structure_type("wt4.pdb"; number = 17903,
         constraints = [InsideSphere(origin, 160.), OutsideSphere(origin, 120.)]),
@@ -130,22 +135,25 @@ solvent = [
         constraints = [OutsideSphere(origin, 175.), InsideSphere(origin, 195.)]),
     structure_type("wt4.pdb"; number = 85127,
         constraints = [OutsideSphere(origin, 230.), InsideSphere(origin, 280.)]),
-    structure_type("wls.pdb"; number = 400000, constraints = [box, OutsideSphere(origin, 230.)]),
+    structure_type("wls.pdb"; number = 259500, constraints = [OutsideSphere(origin, 230.)]),
 ]
 ions = [
     structure_type(ion; number, constraints)
-    for (ion, numbers) in (("NaW.pdb", (616, 256, 2908)), ("ClW.pdb", (531, 167, 2422)))
+    for (ion, numbers) in (("NaW.pdb", (616, 256, 2078)), ("ClW.pdb", (531, 167, 1592)))
     for (number, constraints) in zip(numbers, (
         [InsideSphere(origin, 180.)],
         [OutsideSphere(origin, 180.), InsideSphere(origin, 215.)],
-        [OutsideSphere(origin, 220.), box],
+        [OutsideSphere(origin, 220.)],
     ))
 ]
 
 system = PackmolSystem([capsid; lipids; solvent; ions];
     output = "zika.pdb",
     tolerance = 2.0,
+    unitcell = dodecahedral_unitcell(Float64, 674.0), # centered at the origin
     # check_initial_placement = true, # uncomment to only place the molecules
 )
+# Write the output in the shape of the rhombic dodecahedron
+triclinic_to_dodecahedral(system)
 packmol(system)
 ```
