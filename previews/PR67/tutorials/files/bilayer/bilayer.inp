@@ -4,6 +4,10 @@
 tolerance 2.0
 output bilayer.pdb
 
+# Uncomment to write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints):
+# check_initial_placement
+
 # Periodic box: 60 lipids per leaflet at 64 Å² per lipid (61.96 Å sides in x and y),
 # membrane centered at z = 0, 15 Å of water above and below it
 pbc -30.98 -30.98 -45. 30.98 30.98 45.

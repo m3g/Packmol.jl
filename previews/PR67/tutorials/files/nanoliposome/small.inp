@@ -4,6 +4,10 @@
 tolerance 2.0
 output small.pdb
 
+# Uncomment to write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints):
+# check_initial_placement
+
 # Truncated octahedron periodic cell centered at the origin, with at least 10 Å of
 # water between the nanoliposome and the faces of the cell. The output is written in
 # the shape of the octahedron
