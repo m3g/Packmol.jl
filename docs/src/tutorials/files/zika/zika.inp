@@ -7,6 +7,12 @@
 tolerance 2.0
 output zika.pdb
 
+# The periodic cell: a rhombic dodecahedron centered at the origin, with 674 Å
+# between opposite faces (and between periodic images). The output is written in
+# the shape of the dodecahedron.
+pbc dodecahedral 0. 0. 0. 674.
+periodic_boundary_style dodecahedral
+
 # Uncomment to write only the initial placement of the molecules to the output file,
 # without packing them (to check the constraints):
 # check_initial_placement
@@ -115,8 +121,7 @@ structure wt4.pdb
 end structure
 
 structure wls.pdb
-  number 400000
-  inside box -337. -337. -337. 337. 337. 337.
+  number 259500
   outside sphere 0. 0. 0. 230.
 end structure
 
@@ -135,9 +140,8 @@ structure NaW.pdb
 end structure
 
 structure NaW.pdb
-  number 2908
+  number 2078
   outside sphere 0. 0. 0. 220.
-  inside box -337. -337. -337. 337. 337. 337.
 end structure
 
 structure ClW.pdb
@@ -152,7 +156,6 @@ structure ClW.pdb
 end structure
 
 structure ClW.pdb
-  number 2422
+  number 1592
   outside sphere 0. 0. 0. 220.
-  inside box -337. -337. -337. 337. 337. 337.
 end structure
