@@ -70,6 +70,7 @@ end
 #
 struct RotationScaling{T}
     inertia::Vector{SMatrix{3,3,T,9}}
+    scaled::Vector{Bool}
     Lt::Vector{SMatrix{3,3,T,9}}
     Lt_inv::Vector{SMatrix{3,3,T,9}}
     L_inv::Vector{SMatrix{3,3,T,9}}
@@ -77,21 +78,38 @@ end
 
 function RotationScaling(packmol_system::PackmolSystem{3,T}) where {T}
     inertia = SMatrix{3,3,T,9}[]
+    scaled = Bool[]
     for st in packmol_system.structure_types
         st.fixed.fixed && continue
         Inp = _inertia_per_atom(st.reference_coordinates)
+        scale = _scales_rotations(st.reference_coordinates, Inp)
         for _ in 1:st.number_of_molecules
             push!(inertia, Inp)
+            push!(scaled, scale)
         end
     end
     n = length(inertia)
     id = one(SMatrix{3,3,T,9})
-    return RotationScaling{T}(inertia, fill(id, n), fill(id, n), fill(id, n))
+    return RotationScaling{T}(inertia, scaled, fill(id, n), fill(id, n), fill(id, n))
+end
+
+# Whether the rotations of a molecule are scaled: not for linear (or one-atom) molecules,
+# whose metric is singular. A rotation about the axis of a linear molecule moves none of
+# its atoms, so that a unit step of the scaled angles along it would be an arbitrarily
+# large rotation, changing the orientation (and thus the metric) of the molecule far from
+# the one the factors of the chunk were computed at.
+function _scales_rotations(ref::Vector{SVector{3,T}}, Inp::SMatrix{3,3,T}) where {T}
+    # The reference coordinates are aligned to their principal axes (see
+    # `set_reference_coordinates!`), so the diagonal of the inertia tensor holds the
+    # principal moments
+    moments = (Inp[1, 1], Inp[2, 2], Inp[3, 3])
+    return minimum(moments) >= T(0.05) * maximum(moments) && maximum(moments) > eps(T)
 end
 
 # Factors at the angles of `x_mol` (the free molecules, unscaled)
 function _update_rotation_scaling!(rs::RotationScaling{T}, x_mol::AbstractVector{MoleculePosition{3,T}}) where {T}
     for k in eachindex(x_mol, rs.inertia)
+        rs.scaled[k] || continue
         L = _rotation_metric_factor(rs.inertia[k], x_mol[k].angles)
         Lt = L'
         rs.Lt[k] = Lt

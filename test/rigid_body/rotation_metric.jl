@@ -47,7 +47,7 @@ end
     Inp = _inertia_per_atom(ref)
     n = 5
     id = one(SMatrix{3,3,Float64,9})
-    rs = RotationScaling{Float64}(fill(Inp, n), fill(id, n), fill(id, n), fill(id, n))
+    rs = RotationScaling{Float64}(fill(Inp, n), fill(true, n), fill(id, n), fill(id, n), fill(id, n))
     x = [MoleculePosition(SVector{3}(randn(rng, 3)), SVector{3}(randn(rng, 3))) for _ in 1:n]
     _update_rotation_scaling!(rs, x)
 
@@ -82,4 +82,20 @@ end
         ym = copy(y); ym[k] = MoleculePosition(y[k].cm, y[k].angles - e)
         @test isapprox((fy(yp) - fy(ym)) / 2h, g[k].angles[d]; rtol=1e-4, atol=1e-7)
     end
+end
+
+@testitem "rotation scaling of linear molecules" begin
+    using Packmol: _inertia_per_atom, _scales_rotations, set_reference_coordinates!
+    using StaticArrays
+    # CO2, along an arbitrary direction: aligned to its principal axes, not scaled
+    u = SVector(1.0, 2.0, -0.5) / sqrt(5.25)
+    co2 = [0.0 * u, 1.16 * u, -1.16 * u]
+    set_reference_coordinates!(co2)
+    @test !_scales_rotations(co2, _inertia_per_atom(co2))
+    # Water and a single atom
+    water = [SVector(0.0, 0.0, 0.0), SVector(0.96, 0.0, 0.0), SVector(-0.24, 0.93, 0.0)]
+    set_reference_coordinates!(water)
+    @test _scales_rotations(water, _inertia_per_atom(water))
+    atom = [SVector(0.0, 0.0, 0.0)]
+    @test !_scales_rotations(atom, _inertia_per_atom(atom))
 end
