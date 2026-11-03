@@ -128,7 +128,7 @@ function _molecule_badness_constraints!(
                     # touch into a spurious constraint violation.
                     cm_shift = if HASPBC
                         cm = packmol_system.molecule_positions[imol].cm
-                        _wrap_cm(cm, unitcell, unitcell_center) - cm
+                        _wrap_cm(cm, unitcell, unitcell_center, packmol_system.wigner_seitz_cell) - cm
                     else
                         zero(SVector{D,T})
                     end
@@ -256,7 +256,7 @@ function _molecule_badness_constraints_for_mols!(
                 # `_molecule_badness_constraints!` above — see its comment.
                 cm_shift = if HASPBC
                     cm = packmol_system.molecule_positions[imol].cm
-                    _wrap_cm(cm, unitcell, unitcell_center) - cm
+                    _wrap_cm(cm, unitcell, unitcell_center, packmol_system.wigner_seitz_cell) - cm
                 else
                     zero(SVector{D,T})
                 end

@@ -32,7 +32,7 @@ function _random_molecule_position(
         sidemax = T(DEFAULT_SIDEMAX)
         SVector{D,T}(ntuple(_ -> sidemax * (T(2) * rand(RNG, T) - one(T)), D))
     end
-    angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(RNG, T), D))
+    angles = _random_angles(RNG, SVector{D,T})
     return MoleculePosition(cm, angles)
 end
 
@@ -92,3 +92,13 @@ function _randomize_molecule!(
     packmol_system.molecule_positions[imol] = mp
     return nothing
 end
+
+#
+# Random Euler angles of a uniformly distributed rotation. With the convention of
+# `eulermat` (R = Rx(β) Ry(γ) Rz(θ)), β and θ are uniform in [0, 2π), and γ, in
+# [-π/2, π/2], has density cos(γ)/2. Uniform angles (all three in [0, 2π)) are not
+# uniform rotations: they leave the axes of the molecules depleted near the z axis.
+#
+_random_angles(rng, ::Type{SVector{3,T}}) where {T} =
+    SVector{3,T}(T(2π) * rand(rng, T), asin(T(2) * rand(rng, T) - one(T)), T(2π) * rand(rng, T))
+_random_angles(rng, ::Type{SVector{D,T}}) where {D,T} = SVector{D,T}(ntuple(_ -> T(2π) * rand(rng, T), D))

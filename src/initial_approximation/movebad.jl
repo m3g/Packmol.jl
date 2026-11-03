@@ -42,7 +42,8 @@ function movebad!(
     atom_positions::Union{Nothing,Vector{SVector{D,T}}} = nothing,
     mol_iat_first::Union{Nothing,Vector{Int}} = nothing,
     opt_nit::Int = 20,
-    max_guess_try::Int = 20,
+    max_guess_try::Int = 100,
+    max_shift::Union{Nothing,T} = nothing,
 ) where {D,T}
     ntypes = length(packmol_system.structure_types)
     bad_threshold = precision / packmol_system.nmols
@@ -91,7 +92,7 @@ function movebad!(
         ist = mol_structure_type[imol]
         lo, hi = if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
             l, h = cm_lo_type[ist], cm_hi_type[ist]
-            all(l .< h) ? (l, h) : (nothing, nothing)
+            all(l .< h) ? _extended_cm_bounds(packmol_system, packmol_system.structure_types[ist], l, h) : (nothing, nothing)
         else
             (nothing, nothing)
         end
@@ -100,7 +101,7 @@ function movebad!(
             cm_lo=lo, cm_hi=hi,
             fixed_sys, fixed_lo, fixed_hi, overlap_tol,
             fg_output, atom_positions, mol_structure_type, mol_iat_first,
-            precision, opt_nit, max_guess_try,
+            precision, opt_nit, max_guess_try, max_shift=something(max_shift, packmol_system.tolerance),
         )
     end
 
@@ -170,6 +171,7 @@ function _movebad_place_molecule!(
     precision::T,
     opt_nit::Int,
     max_guess_try::Int,
+    max_shift::T,
 ) where {D,T}
     do_fit = !isnothing(fg_output) && !isnothing(atom_positions) && !isnothing(mol_iat_first)
     mol_list = [imol]
@@ -177,10 +179,14 @@ function _movebad_place_molecule!(
     x = do_fit ? Vector{T}(undef, 2 * D) : T[]
 
     best_mp = packmol_system.molecule_positions[imol]
-    best_score = typemax(T)
+    # Trials ranked as in `_place_molecules!`: (0, shift of the center of mass by the
+    # fit) for those satisfying the constraints, (1, penalty) for the others, (2, ·)
+    # for those overlapping the fixed structure
+    best_key = (2, typemax(T))
     last_mp = best_mp
     for _ in 1:max_guess_try
         mp = _random_molecule_position(packmol_system, RNG; cm_lo, cm_hi)
+        mp_drawn = mp
         packmol_system.molecule_positions[imol] = mp
         score = if do_fit
             x_mol = reinterpret(MoleculePosition{D,T}, x)
@@ -199,18 +205,23 @@ function _movebad_place_molecule!(
             packmol_system.molecule_positions[imol] = mp
             spgresult.f
         else
-            constraint_penalty_sum(mp, st)
+            constraint_penalty_sum(mp, st, packmol_system)
         end
         last_mp = mp
         overlaps = !isnothing(fixed_sys) &&
             overlaps_fixed(mp, st.reference_coordinates, fixed_sys, overlap_positions, fixed_lo, fixed_hi, overlap_tol)
-        score = overlaps ? typemax(T) : score
-        if score < best_score
-            best_score = score
+        # As in `_place_molecules!`, a fitted trial is accepted only if the fit moved its
+        # center of mass less than `max_shift`: the fit alone moves it to the nearest
+        # point of its region, concentrating the molecules where the region is nearest
+        # to most random points
+        shift = norm(mp.cm - mp_drawn.cm)
+        key = overlaps ? (2, typemax(T)) : score < precision ? (0, shift) : (1, score)
+        if key < best_key
+            best_key = key
             best_mp = mp
         end
-        best_score < precision && break
+        key[1] == 0 && shift <= max_shift && break
     end
-    packmol_system.molecule_positions[imol] = best_score < typemax(T) ? best_mp : last_mp
+    packmol_system.molecule_positions[imol] = best_key[1] < 2 ? best_mp : last_mp
     return nothing
 end

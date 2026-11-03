@@ -128,8 +128,13 @@ end
     end
 
     @testset "exit codes" begin
-        # Failed packing: the best solution is written to <output>_FORCED (test_failed.sh)
-        input_file = joinpath(inputs, "water_box_failed.inp")
+        # Failed packing: the best solution is written to <output>_FORCED (test_failed.sh).
+        # The box of water_box_failed.inp (3 x 3 x 1 Å) holds the two molecules (they fail
+        # in Fortran with its `maxit 2`), so it is replaced by one that cannot: its
+        # diagonal (1.91 Å) is shorter than the tolerance
+        failed = joinpath(inputs, "water_box_failed.inp")
+        input_file = joinpath(inputs, "water_box_impossible.inp")
+        write(input_file, replace(read(failed, String), "inside box 0. 0. 0. 3.0 3.0 1.0" => "inside box 0. 0. 0. 1.1 1.1 1.1"))
         code, out = run_packmol("-i", input_file)
         @test code == 173
         @test occursin("FORCED", out)

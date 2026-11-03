@@ -354,6 +354,7 @@ function _packmol(
     )
 
     # Set up optimization variables: only free molecule DOFs (reuse pre-allocated buffer)
+    _wrap_molecule_positions!(packmol_system, free_mol_indices)
     x = buffers.x
     x_mol = reinterpret(MoleculePosition{D,T}, x)
     for (k, imol) in enumerate(free_mol_indices)
@@ -407,10 +408,10 @@ function _packmol(
     lower, upper = if has_pbc
         # Axis-aligned half-extent of the (possibly triclinic) periodic
         # cell — exact for an orthorhombic (diagonal) unitcell, and a
-        # (safe, if not perfectly tight) enclosing box for a sheared one.
-        half_extent = SVector{D,T}(
-            ntuple(i -> sum(abs(packmol_system.unitcell[i, j]) for j in 1:D) / 2, D)
-        )
+        # (safe, if not perfectly tight) enclosing box for a sheared one,
+        # and for the rhombic dodecahedron or truncated octahedron of
+        # dodecahedral and octahedral cells (see `_cm_half_extent`).
+        half_extent = _cm_half_extent(packmol_system)
         cm_lo = packmol_system.unitcell_center .- half_extent
         cm_hi = packmol_system.unitcell_center .+ half_extent
         ang_lo = SVector{D,T}(ntuple(_ -> T(-Inf), D))
@@ -537,6 +538,7 @@ function _packmol(
         for (k, imol) in enumerate(free_mol_indices)
             packmol_system.molecule_positions[imol] = x_mol[k]
         end
+        _wrap_molecule_positions!(packmol_system, free_mol_indices)
 
         # True (floor) objective value at the position this loop ends at,
         # paired with f_true_loop_start above: this isolates what this
