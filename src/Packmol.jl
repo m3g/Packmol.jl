@@ -69,6 +69,7 @@ include("./initial_approximation/random.jl")
 # Rigid body transformations
 include("./rigid_body/rigid_body.jl")
 include("./rigid_body/chain_rule.jl")
+include("./rigid_body/rotation_metric.jl")
 
 # Function and gradient of the distance between atoms
 include("./function_and_gradient/interatomic_distance_fg.jl")
