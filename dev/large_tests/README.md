@@ -27,4 +27,4 @@ repository to compare versions: commit it after a run on a clean working tree.
 The inputs are those of `docs/src/tutorials/files` (cases whose input is missing are
 skipped) and the Zika virion of the `packmol_zika` set of
 [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles), downloaded when first needed
-(37 MB, `Artifacts.toml`).
+(a 7 MB download, `Artifacts.toml`).
