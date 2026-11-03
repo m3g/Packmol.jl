@@ -83,7 +83,7 @@ packmol bilayer.inp
 ```
 
 The packed system (about 28 thousand atoms) is written to `bilayer.pdb`, in about a
-minute and a half with 8 threads.
+minute with 14 threads.
 
 ## Julia
 
