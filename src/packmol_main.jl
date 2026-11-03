@@ -132,7 +132,7 @@ constraints (written to the output file; the packing continues only if
 `:not_packed` if `packmol_system.check` was set (initial approximation written,
 no packing attempted).
 
-`nloop` (maximum number of packing loops, default `200`), `maxit` (optimizer
+`nloop` (maximum number of packing loops, default `500`), `maxit` (optimizer
 iterations per loop, default `800`) and `movefrac` (maximum fraction of the
 molecules of each type moved per loop, default `0.05`) take precedence over the
 values set in the input file (`packmol_system.nloop`, `packmol_system.max_iter`
@@ -165,7 +165,7 @@ function _packmol(
     restart::Bool=false,
 ) where {D,T}
     # Keyword arguments take precedence over the input file's `nloop`/`maxit`
-    nloop = something(nloop, packmol_system.nloop, 200)
+    nloop = something(nloop, packmol_system.nloop, 500)
     maxit = something(maxit, packmol_system.max_iter, 800)
     movefrac = T(something(movefrac, packmol_system.movefrac, 0.05))
     # Initialize RNG and molecule positions. Negative seed (Fortran Packmol's
@@ -247,7 +247,7 @@ function _packmol(
     end
 
     # Pre-optimization: set initial approximation (random placement + constraint fitting)
-    initial_converged = set_initial_approximation!(packmol_system, free_mol_indices, RNG; restart, buffers)
+    initial_converged = set_initial_approximation!(packmol_system, free_mol_indices, RNG; restart, nloop, buffers)
 
     imol_offset = 0
     for st in packmol_system.structure_types
@@ -354,6 +354,7 @@ function _packmol(
     )
 
     # Set up optimization variables: only free molecule DOFs (reuse pre-allocated buffer)
+    _wrap_molecule_positions!(packmol_system, free_mol_indices)
     x = buffers.x
     x_mol = reinterpret(MoleculePosition{D,T}, x)
     for (k, imol) in enumerate(free_mol_indices)
@@ -407,10 +408,10 @@ function _packmol(
     lower, upper = if has_pbc
         # Axis-aligned half-extent of the (possibly triclinic) periodic
         # cell — exact for an orthorhombic (diagonal) unitcell, and a
-        # (safe, if not perfectly tight) enclosing box for a sheared one.
-        half_extent = SVector{D,T}(
-            ntuple(i -> sum(abs(packmol_system.unitcell[i, j]) for j in 1:D) / 2, D)
-        )
+        # (safe, if not perfectly tight) enclosing box for a sheared one,
+        # and for the rhombic dodecahedron or truncated octahedron of
+        # dodecahedral and octahedral cells (see `_cm_half_extent`).
+        half_extent = _cm_half_extent(packmol_system)
         cm_lo = packmol_system.unitcell_center .- half_extent
         cm_hi = packmol_system.unitcell_center .+ half_extent
         ang_lo = SVector{D,T}(ntuple(_ -> T(-Inf), D))
@@ -537,6 +538,7 @@ function _packmol(
         for (k, imol) in enumerate(free_mol_indices)
             packmol_system.molecule_positions[imol] = x_mol[k]
         end
+        _wrap_molecule_positions!(packmol_system, free_mol_indices)
 
         # True (floor) objective value at the position this loop ends at,
         # paired with f_true_loop_start above: this isolates what this

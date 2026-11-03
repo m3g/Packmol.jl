@@ -2,7 +2,9 @@
 # Clamp molecules whose CMs are far outside the per-type constraint bounds.
 # After initial constraint adjustment, some molecules may still be at sidemax
 # coordinates if adjustment did not converge. We move those molecules randomly
-# inside the constraint bounds to prevent a huge bounding box.
+# inside the constraint bounds to prevent a huge bounding box. Molecules that
+# satisfy their constraints are kept where they are: the bounds are a box around
+# the region of the constraints, and a random point in it may not satisfy them.
 #
 function _clamp_molecules_to_bounds!(
     packmol_system::PackmolSystem{D,T},
@@ -23,7 +25,8 @@ function _clamp_molecules_to_bounds!(
             st.fixed.fixed && continue
             mp = packmol_system.molecule_positions[imol]
             cm = mp.cm
-            if has_valid_bounds && any(cm .< lo) || any(cm .> hi)
+            if has_valid_bounds && (any(cm .< lo) || any(cm .> hi)) &&
+               constraint_penalty_sum(mp, st, packmol_system) > packmol_system.constraint_precision
                 # Move to a random position within the bounds
                 new_cm = lo + SVector{D,T}(ntuple(d -> rand(RNG, T) * extent[d], D))
                 packmol_system.molecule_positions[imol] = MoleculePosition(new_cm, mp.angles)

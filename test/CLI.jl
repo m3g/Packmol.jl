@@ -20,7 +20,7 @@
     maxit 2
     structure $water
       number 2
-      inside box 0. 0. 0. 3. 3. 1.
+      inside box 0. 0. 0. 1.1 1.1 1.1
     end structure
     """)
     redirect_stdout(devnull) do
