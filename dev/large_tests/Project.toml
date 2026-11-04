@@ -1,0 +1,10 @@
+[deps]
+CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
+Packmol = "6cdf86f9-9676-4cea-a42d-19f9a563443f"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[sources]
+Packmol = {path = "../.."}
