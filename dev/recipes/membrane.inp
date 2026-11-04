@@ -10,7 +10,8 @@
 # Membrane type = bilayer (2 leaflet(s))
 # Area per lipid = 30.0 Å^2
 # Box lateral area = 1500.0 Å^2
-# Periodic box = a=38.72983346207417 Å, b=38.72983346207417 Å, c=75.67660150527954 Å, α=90.0°, β=90.0°, γ=90.0°
+# Periodic box = a = 38.73 Å, b = 38.73 Å, c = 75.677 Å
+#     α = 90.0°, β = 90.0°, γ = 90.0°
 # 
 # Lipids (per leaflet, 50 total, 100 overall):
 #     lipid.pdb: 50 per leaflet, head-to-tail length = 11.57 Å
