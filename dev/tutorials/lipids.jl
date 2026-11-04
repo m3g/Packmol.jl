@@ -1,8 +1,8 @@
 #
-# Images of the lipid tutorials (POPC bilayer and nanoliposomes): the packed system, and the
+# Images of the nanoliposome tutorial (the bilayer tutorial has live views): the packed system, and the
 # initial placement, written with the `check_initial_placement` line of the input
 # uncommented. The inputs are those of
-# docs/src/tutorials/files/{bilayer,nanoliposome}. Run from the root of the repository:
+# docs/src/tutorials/files/nanoliposome. Run from the root of the repository:
 #
 #     julia --project=docs -t 14 dev/tutorials/lipids.jl
 #
@@ -34,16 +34,6 @@ function both(name, output, image; input = name, kargs...)
     render(final, joinpath(images, "$image.webp"); kargs...)
     render(check, joinpath(images, "$(image)_check.webp"); kargs...)
 end
-
-# The bilayer seen from the side, with the edges of the periodic cell
-both("bilayer", "bilayer.pdb", "bilayer";
-    reps = [
-        (selection = "water", style = "Licorice 0.2 12 12"),
-        (selection = "not water", style = "Licorice 0.3 12 12"),
-    ],
-    rotate = [(:x, -90), (:y, 20), (:x, 10)],
-    cell = :origin,
-)
 
 # A slab through the center of the nanoliposomes, to show the layers (the larger one
 # without the image of its initial approximation, which the tutorial does not show)

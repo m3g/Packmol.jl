@@ -24,7 +24,7 @@ makedocs(
         size_threshold_ignore = [
             joinpath(dir, file) for dir in ("constraints", "periodic_boundary_conditions")
             for file in readdir(joinpath(@__DIR__, "src", dir)) if endswith(file, ".md")
-        ] ∪ ["tutorials/zeolite.md", "tutorials/polymer_dmf.md", "tutorials/nanotube.md", "tutorials/liquid_crystal.md"],
+        ] ∪ ["tutorials/zeolite.md", "tutorials/polymer_dmf.md", "tutorials/nanotube.md", "tutorials/liquid_crystal.md", "tutorials/bilayer.md"],
     ),
     plugins = [CodeBlocks()],
     pages = [

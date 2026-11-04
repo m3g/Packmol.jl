@@ -4,9 +4,33 @@ A POPC bilayer in water, with periodic boundary conditions. The lipids of each l
 are oriented by constraints on two of their atoms: the polar heads point to the water,
 and the ends of the hydrophobic chains to the middle of the bilayer.
 
-![Lipid bilayer](images/bilayer.webp)
+```@setup bilayer
+using Packmol, PDBTools
+# The input of the tutorial, packed, and with `check_initial_placement` (for the view of
+# the initial placement below), in a copy of its files
+dir = mktempdir()
+for file in readdir(joinpath("files", "bilayer"))
+    cp(joinpath("files", "bilayer", file), joinpath(dir, file))
+end
+input = read(joinpath(dir, "bilayer.inp"), String)
+write(joinpath(dir, "check.inp"), replace(input,
+    "# check_initial_placement" => "check_initial_placement", "output bilayer.pdb" => "output check.pdb"))
+final, check = redirect_stdio(stdout = devnull, stderr = devnull) do
+    packmol(joinpath(dir, "bilayer.inp")), packmol(joinpath(dir, "check.inp"))
+end
+show_system(system) = visualize(get_atoms(system),
+    "water" => (style = :sticks, water = true),
+    "resname POPC" => (style = :sticks,);
+    unitcell = UnitCell(system.unitcell),
+    unitcell_origin = system.unitcell_center - sum(eachcol(system.unitcell)) / 2,
+)
+```
 
-*The bilayer seen from the side, with the edges of the periodic cell.*
+```@example bilayer
+show_system(final) # hide
+```
+
+*The packed bilayer (drag to rotate, scroll to zoom), with the edges of the periodic cell.*
 
 Files: [`popc.pdb`](files/bilayer/popc.pdb), [`water.pdb`](files/bilayer/water.pdb) and
 the input file [`bilayer.inp`](files/bilayer/bilayer.inp).
@@ -70,10 +94,13 @@ Uncomment the `check_initial_placement` line of the input file, and run it as be
 (see [Checking the initial placement](@ref check_initial_placement)): the initial
 placement of the molecules is written to the output file (`bilayer.pdb`):
 
-![Initial approximation](images/bilayer_check.webp)
+```@example bilayer
+show_system(check) # hide
+```
 
 *The initial approximation: the lipids are already oriented by the constraints on their
-head and tail atoms, but molecules may overlap.*
+head and tail atoms, and spread over the area of the membrane, but molecules may
+overlap.*
 
 Then comment the line again, and run the packing.
 
