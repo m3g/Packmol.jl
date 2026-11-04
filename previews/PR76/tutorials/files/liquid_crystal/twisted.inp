@@ -1,0 +1,168 @@
+#
+# Twisted nematic cell of 5CB (4-cyano-4'-pentylbiphenyl): four layers of molecules
+# lying in the plane of the cell, with the director turning from x, in the bottom
+# layer, to y, in the top one. Periodic in x and y; the 10 Å of empty space above the
+# top layer separate it from the bottom one, in the periodic image along z.
+#
+tolerance 2.0
+output twisted.pdb
+
+# Uncomment to write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints):
+# check_initial_placement
+
+# Periodic box of 50 x 50 x 70 Å, centered at the origin: layers of 15 Å from
+# z = -35 to 25 Å, 92 molecules each (1.02 g/mL)
+pbc -25. -25. -35. 25. 25. 35.
+
+# Layer 1, from z = -35 to -20 Å: the director at 0° from x, in the xy plane. The
+# vector from the end of the chain (atom 1) to the cyano nitrogen (atom 19) of half
+# of the molecules at 0° from x, and of the other half at 180° (antiparallel)
+structure 5cb.pdb
+  number 46
+  above plane 0. 0. 1. -35.
+  below plane 0. 0. 1. -20.
+  constrain_rotation x 0.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation y 90.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation z 90. 10.
+    atoms 1
+    to 19
+  end constrain_rotation
+end structure
+structure 5cb.pdb
+  number 46
+  above plane 0. 0. 1. -35.
+  below plane 0. 0. 1. -20.
+  constrain_rotation x 180.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation y 90.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation z 90. 10.
+    atoms 1
+    to 19
+  end constrain_rotation
+end structure
+
+# Layer 2, from z = -20 to -5 Å: the director at 30° from x, in the xy plane. The
+# vector from the end of the chain (atom 1) to the cyano nitrogen (atom 19) of half
+# of the molecules at 30° from x, and of the other half at 150° (antiparallel)
+structure 5cb.pdb
+  number 46
+  above plane 0. 0. 1. -20.
+  below plane 0. 0. 1. -5.
+  constrain_rotation x 30.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation y 60.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation z 90. 10.
+    atoms 1
+    to 19
+  end constrain_rotation
+end structure
+structure 5cb.pdb
+  number 46
+  above plane 0. 0. 1. -20.
+  below plane 0. 0. 1. -5.
+  constrain_rotation x 150.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation y 120.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation z 90. 10.
+    atoms 1
+    to 19
+  end constrain_rotation
+end structure
+
+# Layer 3, from z = -5 to 10 Å: the director at 60° from x, in the xy plane. The
+# vector from the end of the chain (atom 1) to the cyano nitrogen (atom 19) of half
+# of the molecules at 60° from x, and of the other half at 120° (antiparallel)
+structure 5cb.pdb
+  number 46
+  above plane 0. 0. 1. -5.
+  below plane 0. 0. 1. 10.
+  constrain_rotation x 60.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation y 30.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation z 90. 10.
+    atoms 1
+    to 19
+  end constrain_rotation
+end structure
+structure 5cb.pdb
+  number 46
+  above plane 0. 0. 1. -5.
+  below plane 0. 0. 1. 10.
+  constrain_rotation x 120.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation y 150.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation z 90. 10.
+    atoms 1
+    to 19
+  end constrain_rotation
+end structure
+
+# Layer 4, from z = 10 to 25 Å: the director at 90° from x, in the xy plane. The
+# vector from the end of the chain (atom 1) to the cyano nitrogen (atom 19) of half
+# of the molecules at 90° from x, and of the other half at 90° (antiparallel)
+structure 5cb.pdb
+  number 46
+  above plane 0. 0. 1. 10.
+  below plane 0. 0. 1. 25.
+  constrain_rotation x 90.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation y 0.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation z 90. 10.
+    atoms 1
+    to 19
+  end constrain_rotation
+end structure
+structure 5cb.pdb
+  number 46
+  above plane 0. 0. 1. 10.
+  below plane 0. 0. 1. 25.
+  constrain_rotation x 90.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation y 180.0 15.
+    atoms 1
+    to 19
+  end constrain_rotation
+  constrain_rotation z 90. 10.
+    atoms 1
+    to 19
+  end constrain_rotation
+end structure
