@@ -406,6 +406,14 @@ end
 # (e.g. `over plane`) can be violated by a whole cell length, with a gradient
 # that the bound doesn't let it follow: the molecule is trapped.
 #
+# The fractional coordinates of a center of mass on a face of the cell (where the
+# optimizer projects the molecules pushed against a bound) are computed with a rounding
+# error: 0.5000000000000001 for the upper face of a cell of 90.67 Å, for example. The
+# test of the closed cell accepts that error, or the molecule would be evaluated on the
+# opposite face: in a water slab that ends at a face of the cell, every water molecule
+# pushed against that face was wrapped to the region of the other slab, and the
+# optimization stalled (no step accepted in a whole chunk).
+#
 # For dodecahedral and octahedral cells (`wigner_seitz = true`), the image is the one
 # closest to the center, in the rhombic dodecahedron or truncated octahedron (the
 # Wigner-Seitz cell) where the constraints are defined: a center of mass already in it
@@ -415,7 +423,7 @@ function _wrap_cm(cm::SVector{D,T}, unitcell::AbstractMatrix, center::SVector{D,
     wigner_seitz && return _wigner_seitz_image(cm, unitcell, center)
     uc = SMatrix{D,D,T}(unitcell)
     frac = uc \ (cm - center)
-    all(f -> abs(f) <= T(0.5), frac) && return cm
+    all(f -> abs(f) <= T(0.5) + 8 * eps(T), frac) && return cm
     return wrap_to_center(cm, unitcell, center)
 end
 _wigner_seitz_image(cm::SVector{3,T}, unitcell::AbstractMatrix, center::SVector{3,T}) where {T} =
