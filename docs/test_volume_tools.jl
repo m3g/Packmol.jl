@@ -18,7 +18,8 @@ open(ARGS[1], "w") do io
             free_volume(input; npoints)
         end
         items = join(["{\"volume\": $(json(x.volume)), \"error\": $(json(x.error)), \"density\": $(json(x.density))}" for x in r], ", ")
-        println(io, "  {\"input\": \"$input\", \"npoints\": $npoints, \"results\": [$items]}", k < length(inputs) ? "," : "")
+        # (the path escaped: the backslashes of Windows)
+        println(io, "  {\"input\": \"$(escape_string(input))\", \"npoints\": $npoints, \"results\": [$items]}", k < length(inputs) ? "," : "")
     end
     println(io, "]")
 end
