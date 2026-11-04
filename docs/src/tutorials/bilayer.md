@@ -13,9 +13,12 @@ the input file [`bilayer.inp`](files/bilayer/bilayer.inp).
 
 ## The lipid
 
-How well lipids pack depends a lot on their conformation: extended, compact
-conformations, with the two chains side by side, pack at the densities of real
-membranes, while others do not pack at all. `popc.pdb` is one of the conformations of
+How fast lipids pack depends on their conformation: straight, compact conformations,
+with the two chains side by side, pack the fastest at the densities of real membranes.
+What matters most is how narrow the lipid is across its length, since each lipid has to
+fit in its area of the membrane: a conformation a little wider than `popc.pdb` takes
+several times longer to pack, and much wider ones may not pack at the same area per
+lipid. `popc.pdb` is one of the conformations of
 the `packmol_lipids` set of
 [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles), which has conformations
 chosen to pack well for POPC, POPE, POPS, POPG, DPPC, DOPC and DMPC, and describes how
