@@ -192,4 +192,9 @@ input files (`write_packmol_input(recipe)`):
 - Large systems (millions of atoms) take minutes to hours and several GB of memory: check
   the initial placement first.
 - The packed system has no overlaps, but it is not equilibrated: minimize its energy and
-  equilibrate it before a production simulation.
+  equilibrate it at constant pressure (NPT; semi-isotropic for membranes) before a
+  production simulation, with position restraints on solutes such as proteins, released
+  gradually.
+- `MembraneProtein` inserts a membrane protein, oriented as in the OPM database (normal
+  along z, middle of the bilayer at z = 0, without its `DUM` atoms), in a bilayer of a given
+  composition, with water and ions.

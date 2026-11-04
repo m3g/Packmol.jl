@@ -20,6 +20,9 @@ solvation setups:
 - [Membrane system](@ref): a lipid bilayer or monolayer of one or more
   lipids, solvated above (and, for a bilayer, also below) the membrane. Seven
   common phospholipids are built in: only the composition and the size are needed.
+- [Membrane protein system](@ref): a membrane protein (oriented as in the OPM
+  database) in a lipid bilayer of a given composition, solvated by water and
+  ions.
 
 Vesicles and nanotubes are planned as future recipes; a rhombic
 dodecahedron or truncated octahedron box is already available today, for
@@ -44,6 +47,6 @@ used to convert between them.
 julia> using Packmol
 ```
 
-`SolutionBoxUS`, `SolutionBoxUSC`, `SolutionBoxUWI`, `Membrane`,
+`SolutionBoxUS`, `SolutionBoxUSC`, `SolutionBoxUWI`, `Membrane`, `MembraneProtein`,
 `write_packmol_input`, `convert_concentration`, `convert_density_table!` and
 `get_density_table` are exported directly from `Packmol`.

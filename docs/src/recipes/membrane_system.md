@@ -94,7 +94,8 @@ A monolayer is packed in the same way, from the bottom of the box.
 
 The built-in lipids are extended conformations, which pack well, but make a bilayer
 thicker than a relaxed one (and its area per lipid is that of the actual membrane): the
-equilibration of a molecular dynamics simulation brings it to its thickness.
+equilibration of a molecular dynamics simulation at constant pressure (NPT, with
+semi-isotropic pressure coupling) brings it to its thickness and area.
 
 ## Other lipids and solvents
 

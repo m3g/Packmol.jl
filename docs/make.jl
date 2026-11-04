@@ -97,6 +97,7 @@ makedocs(
             "Solute-Solvent-Cossolvent system" => "recipes/solute_solvent_cossolvent_system.md",
             "Solute-Water-Ions system" => "recipes/solute_water_ions_system.md",
             "Membrane system" => "recipes/membrane_system.md",
+            "Membrane protein system" => "recipes/membrane_protein_system.md",
             "Concentration units" => "recipes/concentration_units.md",
         ],
     ],

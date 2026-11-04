@@ -8,9 +8,11 @@
     shape_descriptors(atoms_or_coordinates)
     shape_descriptors(filename)
 
-Descriptors of the shape of a molecule, from the eigenvalues `λ₁ ≥ λ₂ ≥ λ₃` of its
-gyration tensor (the variances of the coordinates of its atoms along its principal
-axes, all atoms with the same weight). Returns a named tuple with:
+Descriptors of the shape of a molecule, from its gyration tensor.
+
+They are computed from the eigenvalues `λ₁ ≥ λ₂ ≥ λ₃` of the gyration tensor (the variances
+of the coordinates of its atoms along its principal axes, all atoms with the same weight).
+Returns a named tuple with:
 
 - `principal_variances`: `(λ₁, λ₂, λ₃)`, in Å²;
 - `radius_of_gyration`: `√(λ₁ + λ₂ + λ₃)`, in Å;
@@ -71,7 +73,9 @@ end
 """
     select_conformations(input, output; n=1, shape=:rod, filetype="pdb")
 
-Write to `output` a structure file with the `n` (by default, one) conformations of a
+The most rod-like (or sphere-like) conformations of a molecule, written to a file.
+
+Writes to `output` a structure file with the `n` (by default, one) conformations of a
 molecule, from those of `input` (a structure file with several models, or a vector of
 files), that are most rod-like (`shape = :rod`: greatest asphericity) or most
 sphere-like (`shape = :sphere`: smallest relative shape anisotropy), as models, the
