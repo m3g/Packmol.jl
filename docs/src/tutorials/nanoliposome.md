@@ -150,8 +150,8 @@ Run it with:
 packmol small.inp
 ```
 
-The packed system is written to `small.pdb`, in about 4 minutes with 14 threads.
-The larger nanoliposome (`packmol large.inp`) takes about 13 minutes.
+The packed system is written to `small.pdb`, in about 3 minutes with 14 threads.
+The larger nanoliposome (`packmol large.inp`) takes about 10 minutes.
 
 ## Julia
 
