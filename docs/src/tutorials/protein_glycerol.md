@@ -37,43 +37,21 @@ glycerol and 7630 of water.
 
 ## Command line
 
-The input file:
-
-```
-#
-# A protein in a mixture of glycerol and water, 50% in mass (1.126 g/mL),
-# in a periodic cubic box with sides of 76 Å.
-#
-tolerance 2.0
-output protein_glycerol.pdb
-pbc -38. -38. -38. 38. 38. 38.
-
-# The protein, fixed with its center at the center of the box
-structure protein.pdb
-  number 1
-  center
-  fixed 0. 0. 0. 0. 0. 0.
-end structure
-
-structure glycerol.pdb
-  number 1493
-end structure
-
-structure water.pdb
-  number 7630
-end structure
+```@eval
+Main.input_file("files/protein_glycerol/protein_glycerol.inp")
 ```
 
 The periodic box confines the molecules of the solvent, so they need no constraint. The
 protein is fixed with its geometric center (`center`) at the center of the box: all its
 atoms must be inside the periodic box (see [Fixed molecules](../constraints/fixed.md)).
 
-### Check the initial approximation first
+### Check the initial placement first
 
-Add the `check` keyword to the input file, and run it as below. Packmol builds only the
-initial approximation, in a fraction of a second, and writes it to the output file
-(`protein_glycerol.pdb`): look at it to see that the protein is at the center of the box,
-and the solvent around it. Then remove `check`, and run the packing.
+Uncomment the `check_initial_placement` line of the input file, and run it as below
+(see [Checking the initial placement](@ref check_initial_placement)): the initial placement,
+written to the output file (`protein_glycerol.pdb`) in a fraction of a second, shows the
+protein at the center of the box, and the solvent around it. Then comment the line again,
+and run the packing.
 
 ### Packing
 
@@ -99,9 +77,10 @@ system = PackmolSystem([protein, glycerol, water];
     output = "protein_glycerol.pdb",
     tolerance = 2.0,
     unitcell = [76. 0. 0.; 0. 76. 0.; 0. 0. 76.], # centered at the origin
+    # check_initial_placement = true, # uncomment to only place the molecules
 )
 packmol(system)
 ```
 
-As with the input file, check the initial approximation first, with
-`PackmolSystem(...; check = true)`.
+As with the input file, check the initial placement first, with
+`check_initial_placement = true` (commented in the code above).

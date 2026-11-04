@@ -38,7 +38,7 @@ end
 
     water = TestFiles.test_file("structure_files/water.pdb")
     sts = [structure_type(water; number=6, constraints=[InsideBox([0.0, 0.0, 0.0], [30.0, 30.0, 30.0])]) for _ in 1:10]
-    sys = PackmolSystem(sts; output="", check=true, seed=1)
+    sys = PackmolSystem(sts; output="", check_initial_placement=true, seed=1)
     Packmol.packmol(sys)
     fmol = ones(sys.nmols)
     free_mol_indices = collect(1:sys.nmols)

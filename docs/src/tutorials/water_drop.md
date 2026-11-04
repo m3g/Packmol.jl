@@ -18,28 +18,8 @@ page.
 
 ## Command line
 
-The input file:
-
-```
-#
-# A drop of water on graphite: the cap of a sphere with a radius of 30 Å,
-# above z = 2 (1700 water molecules, 1 g/mL), on three fixed layers of graphene.
-#
-tolerance 2.0
-output drop.pdb
-
-# Graphite, kept at the coordinates of the file (surface at z = 0)
-structure graphite.pdb
-  number 1
-  fixed 0. 0. 0. 0. 0. 0.
-end structure
-
-# The drop: inside a sphere centered on the surface, above the surface
-structure water.pdb
-  number 1700
-  inside sphere 0. 0. 0. 30.
-  above plane 0. 0. 1. 2.
-end structure
+```@eval
+Main.input_file("files/water_drop/drop.inp")
 ```
 
 `fixed 0. 0. 0. 0. 0. 0.` keeps the graphite at the coordinates of its file (see [Fixed
@@ -48,15 +28,16 @@ volume of the cap of the sphere above `z = 2`: ``\pi h^2 (3R - h)/3`` with `R = 
 `h = 28` Å, that is, about 50900 Å³, which holds 1700 water molecules at 1 g/mL (0.0334
 molecules per Å³).
 
-### Check the initial approximation first
+### Check the initial placement first
 
-Add the `check` keyword to the input file, and run it as below. Packmol builds only the
-initial approximation, in a fraction of a second: the molecules are in the drop, but may
-still overlap. It is written to the output file (`drop.pdb`):
+Uncomment the `check_initial_placement` line of the input file, and run it as below
+(see [Checking the initial placement](@ref check_initial_placement)): the initial placement,
+written to the output file (`drop.pdb`) in a fraction of a second, has the molecules in
+the drop, but they may still overlap:
 
 ![Initial approximation](images/drop_check.webp)
 
-When the drop has the intended shape, remove `check`, and run the packing.
+When the drop has the intended shape, comment the line again, and run the packing.
 
 ### Packing
 
@@ -104,12 +85,16 @@ water = structure_type("water.pdb";
     number = 1700,
     constraints = [InsideSphere([0., 0., 0.], 30.), AbovePlane([0., 0., 1.], 2.)],
 )
-system = PackmolSystem([graphite, water]; output = "drop.pdb", tolerance = 2.0)
+system = PackmolSystem([graphite, water];
+    output = "drop.pdb",
+    tolerance = 2.0,
+    # check_initial_placement = true, # uncomment to only place the molecules
+)
 packmol(system)
 ```
 
-As with the input file, check the initial approximation first, with
-`PackmolSystem(...; check = true)`.
+As with the input file, check the initial placement first, with
+`check_initial_placement = true` (commented in the code above).
 
 The Gaussian drop:
 
@@ -122,7 +107,11 @@ water = structure_type("water.pdb";
         InsideCylinder([0., 0., 0.], [0., 0., 1.], 35., 40.),
     ],
 )
-system = PackmolSystem([graphite, water]; output = "gaussian_drop.pdb", tolerance = 2.0)
+system = PackmolSystem([graphite, water];
+    output = "gaussian_drop.pdb",
+    tolerance = 2.0,
+    # check_initial_placement = true, # uncomment to only place the molecules
+)
 packmol(system)
 ```
 

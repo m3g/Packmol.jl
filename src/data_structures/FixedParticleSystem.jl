@@ -150,7 +150,8 @@ function build_fixed_particle_system(
     nmols::Int=packmol_system.nmols, parallel::Bool=_nbatches() > 1,
     unitcell::Union{Nothing,AbstractVecOrMat}=nothing,
     cutoff::T=packmol_system.tolerance,
+    avoid_overlap::Bool=packmol_system.avoid_overlap,
 ) where {D,T}
-    fixed_atom_positions = _collect_fixed_positions(packmol_system)
+    fixed_atom_positions = _collect_fixed_positions(packmol_system; avoid_overlap)
     return _build_fixed_particle_system(fixed_atom_positions, cutoff, nmols; parallel, unitcell)
 end

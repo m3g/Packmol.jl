@@ -21,8 +21,8 @@ function _random_molecule_position(
     cm_hi::Union{Nothing,SVector{D,T}} = nothing,
 ) where {D,T}
     cm = if !isnothing(cm_lo) && !isnothing(cm_hi)
-        extent = cm_hi - cm_lo
-        cm_lo + SVector{D,T}(ntuple(d -> rand(RNG, T) * extent[d], D))
+        has_pbc, uc, center = _typed_unitcell(packmol_system)
+        _random_cm_in_cell(RNG, cm_lo, cm_hi - cm_lo, has_pbc, uc, center, packmol_system.wigner_seitz_cell)
     elseif !isnothing(packmol_system.unitcell)
         uc = packmol_system.unitcell
         center = packmol_system.unitcell_center
@@ -32,8 +32,32 @@ function _random_molecule_position(
         sidemax = T(DEFAULT_SIDEMAX)
         SVector{D,T}(ntuple(_ -> sidemax * (T(2) * rand(RNG, T) - one(T)), D))
     end
-    angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(RNG, T), D))
+    angles = _random_angles(RNG, SVector{D,T})
     return MoleculePosition(cm, angles)
+end
+
+#
+# A uniform random center of mass in the box from `lo` to `lo + extent`. Under PBC, only
+# the part of the box inside the cell centered at `center` (the Wigner-Seitz cell for
+# dodecahedral and octahedral cells, see `_wrap_cm`) is sampled: a draw outside it is
+# drawn again (up to `max_tries` draws). Taken as drawn, it would be wrapped into the
+# cell later, adding its density to the region it maps to: the bounds of a type that
+# fills the cell are its bounding box, and wrapping uniform draws of the bounding box of a
+# truncated octahedron (46% of which fall outside it) gave 45% more water in some
+# regions of the cell than in others.
+#
+function _random_cm_in_cell(
+    rng, lo::SVector{D,T}, extent::SVector{D,T},
+    has_pbc::Bool, uc::AbstractMatrix, center::SVector{D,T}, wigner_seitz::Bool;
+    max_tries::Int = 100,
+) where {D,T}
+    cm = lo + SVector{D,T}(ntuple(d -> rand(rng, T) * extent[d], D))
+    has_pbc || return cm
+    for _ in 2:max_tries
+        _wrap_cm(cm, uc, center, wigner_seitz) == cm && return cm
+        cm = lo + SVector{D,T}(ntuple(d -> rand(rng, T) * extent[d], D))
+    end
+    return cm
 end
 
 #
@@ -92,3 +116,13 @@ function _randomize_molecule!(
     packmol_system.molecule_positions[imol] = mp
     return nothing
 end
+
+#
+# Random Euler angles of a uniformly distributed rotation. With the convention of
+# `eulermat` (R = Rx(β) Ry(γ) Rz(θ)), β and θ are uniform in [0, 2π), and γ, in
+# [-π/2, π/2], has density cos(γ)/2. Uniform angles (all three in [0, 2π)) are not
+# uniform rotations: they leave the axes of the molecules depleted near the z axis.
+#
+_random_angles(rng, ::Type{SVector{3,T}}) where {T} =
+    SVector{3,T}(T(2π) * rand(rng, T), asin(T(2) * rand(rng, T) - one(T)), T(2π) * rand(rng, T))
+_random_angles(rng, ::Type{SVector{D,T}}) where {D,T} = SVector{D,T}(ntuple(_ -> T(2π) * rand(rng, T), D))

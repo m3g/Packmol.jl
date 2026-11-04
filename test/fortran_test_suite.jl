@@ -38,9 +38,15 @@
             @test minimum_intermolecular_distance(sys) >= sys.tolerance - sys.tolerance_precision
         end
     end
-    # Failed packings write the _FORCED output (testing/test_failed.sh)
+    # Failed packings write the _FORCED output (testing/test_failed.sh). The box of
+    # water_box_failed.inp (3 x 3 x 1 Å) holds the two molecules (they fail in Fortran
+    # with its `maxit 2`), so it is replaced by one that cannot: its diagonal (1.91 Å)
+    # is shorter than the tolerance
+    failed = TestFiles.test_file("input_files/water_box_failed.inp")
+    failed_impossible = joinpath(dirname(failed), "water_box_impossible.inp")
+    write(failed_impossible, replace(read(failed, String), "inside box 0. 0. 0. 3.0 3.0 1.0" => "inside box 0. 0. 0. 1.1 1.1 1.1"))
     sys = redirect_stdout(devnull) do
-        packmol(TestFiles.test_file("input_files/water_box_failed.inp"); iprint=1000)
+        packmol(failed_impossible; iprint=1000)
     end
     @test sys.status == :failed_packing
     @test isfile(sys.output_file * "_FORCED")

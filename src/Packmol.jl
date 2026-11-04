@@ -1,7 +1,7 @@
 module Packmol
 
 using TestItems: @testitem, @testsnippet
-using StaticArrays: SVector, SMatrix, @SMatrix, MMatrix
+using StaticArrays: SVector, SMatrix, @SMatrix, MMatrix, MVector
 using LinearAlgebra: norm, eigen, eigvals, dot, det, Diagonal, svd, cross, Symmetric
 using Statistics: mean
 using Base: @kwdef
@@ -31,6 +31,7 @@ function test_file end
 export read_packmol_input
 export write_output
 export packmol
+export guess_volume, free_volume
 export PackmolSystem
 export StructureType
 export structure_type
@@ -70,6 +71,7 @@ include("./initial_approximation/random.jl")
 # Rigid body transformations
 include("./rigid_body/rigid_body.jl")
 include("./rigid_body/chain_rule.jl")
+include("./rigid_body/rotation_metric.jl")
 
 # Function and gradient of the distance between atoms
 include("./function_and_gradient/interatomic_distance_fg.jl")
@@ -84,6 +86,9 @@ include("./shape.jl")
 
 # Packing functions
 include("./packmol_main.jl")
+
+# Volume estimates for setting up a system
+include("./tools/volume.jl")
 
 # Runner for the legacy packmol (methods in the PackmolJLLExt extension)
 include("./packmol_runner.jl")

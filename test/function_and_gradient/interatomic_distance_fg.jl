@@ -121,16 +121,34 @@ end
     # The upper faces of the cell are inside the bounds of the centers of mass:
     # `wrap_to_center` maps them to the lower faces, `_wrap_cm` keeps them
     @test Packmol.wrap_to_center(SVector(0.0, 0.0, 20.0), uc, c) ≈ SVector(0.0, 0.0, -20.0)
-    @test Packmol._wrap_cm(SVector(0.0, 0.0, 20.0), uc, c) == SVector(0.0, 0.0, 20.0)
-    @test Packmol._wrap_cm(SVector(20.0, -20.0, 20.0), uc, c) == SVector(20.0, -20.0, 20.0)
-    @test Packmol._wrap_cm(SVector(0.0, 0.0, 21.0), uc, c) ≈ SVector(0.0, 0.0, -19.0)
+    @test Packmol._wrap_cm(SVector(0.0, 0.0, 20.0), uc, c, false) == SVector(0.0, 0.0, 20.0)
+    @test Packmol._wrap_cm(SVector(20.0, -20.0, 20.0), uc, c, false) == SVector(20.0, -20.0, 20.0)
+    @test Packmol._wrap_cm(SVector(0.0, 0.0, 21.0), uc, c, false) ≈ SVector(0.0, 0.0, -19.0)
     # Triclinic cell, off-center
     uc = [10.0 5.0 0; 0 10 0; 0 0 10]
     c = SVector(1.0, 2.0, 3.0)
     x = c + uc * SVector(0.5, 0.5, -0.5)
-    @test Packmol._wrap_cm(x, uc, c) == x
+    @test Packmol._wrap_cm(x, uc, c, false) == x
     y = c + uc * SVector(0.3, 0.2, -0.1)
-    @test Packmol._wrap_cm(y + uc[:, 1] - uc[:, 3], uc, c) ≈ y
+    @test Packmol._wrap_cm(y + uc[:, 1] - uc[:, 3], uc, c, false) ≈ y
+    # The fractional coordinate of a face is computed with a rounding error (0.5 + eps
+    # for 45.335 in a cell of 90.67 Å): the corners of the bounds of the optimizer are
+    # not wrapped, whatever the size of the cell
+    uc = [58.48 0 0; 0 58.48 0; 0 0 90.67]
+    c = SVector(0.0, 0.0, 0.0)
+    @test Packmol._wrap_cm(SVector(0.0, 0.0, 45.335), uc, c, false) == SVector(0.0, 0.0, 45.335)
+    wrapped = 0
+    for a in 10.0:0.37:120.0, b in (a, 1.3a)
+        uc = [a 0 0; 0 b 0; 0 0 a + 7.1]
+        for c in (SVector(0.0, 0.0, 0.0), SVector(1.7, -3.1, 0.4))
+            h = Packmol._cm_half_extent(uc, false, Val(3))
+            for s in Iterators.product((-1, 1), (-1, 1), (-1, 1))
+                x = c + SVector(s) .* h
+                Packmol._wrap_cm(x, uc, c, false) == x || (wrapped += 1)
+            end
+        end
+    end
+    @test wrapped == 0
 end
 
 @testitem "mixture_pbc: water and urea separated by a plane under PBC" setup=[TestFiles] begin

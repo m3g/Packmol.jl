@@ -98,6 +98,28 @@ end
         println("  $name: $(round(elapsed; digits=2)) s")
     end
 
+    @testset "volume estimates" begin
+        # The executable gives the estimates of the Julia functions (the same random points)
+        for name in ("water_box", "solvprotein_pbc")
+            input_file = joinpath(inputs, "$name.inp")
+            code, out = run_packmol("--guess-volume", "--density", "1.1", input_file)
+            @test code == 0
+            g = redirect_stdout(devnull) do
+                Packmol.guess_volume(input_file; density=1.1)
+            end
+            @test occursin("Volume:       $(Packmol._fmt(g.volume, 1)) Å³", out)
+            code, out = run_packmol("--free-volume", "--npoints", "20000", input_file)
+            @test code == 0
+            r = redirect_stdout(devnull) do
+                Packmol.free_volume(input_file; npoints=20000)
+            end
+            @test all(x -> occursin(Packmol._fmt(x.volume, 1), out), r)
+        end
+        code, _ = run_packmol("--free-volume", "--npoints", "0", joinpath(inputs, "water_box.inp"))
+        @test code == 174
+        code, _ = run_packmol("--guess-volume", "--density", "-1", joinpath(inputs, "water_box.inp"))
+        @test code == 174
+    end
     @testset "input from stdin, and -o" begin
         input_file = joinpath(inputs, "water_box.inp")
         code, _ = run_packmol(; stdin_file=input_file)
@@ -128,8 +150,13 @@ end
     end
 
     @testset "exit codes" begin
-        # Failed packing: the best solution is written to <output>_FORCED (test_failed.sh)
-        input_file = joinpath(inputs, "water_box_failed.inp")
+        # Failed packing: the best solution is written to <output>_FORCED (test_failed.sh).
+        # The box of water_box_failed.inp (3 x 3 x 1 Å) holds the two molecules (they fail
+        # in Fortran with its `maxit 2`), so it is replaced by one that cannot: its
+        # diagonal (1.91 Å) is shorter than the tolerance
+        failed = joinpath(inputs, "water_box_failed.inp")
+        input_file = joinpath(inputs, "water_box_impossible.inp")
+        write(input_file, replace(read(failed, String), "inside box 0. 0. 0. 3.0 3.0 1.0" => "inside box 0. 0. 0. 1.1 1.1 1.1"))
         code, out = run_packmol("-i", input_file)
         @test code == 173
         @test occursin("FORCED", out)

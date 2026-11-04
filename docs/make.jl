@@ -1,18 +1,30 @@
 using Documenter, DocumenterCodeBlocks
+using Markdown
 using Packmol
 push!(LOAD_PATH, "../src/")
+
+# The input files of the tutorials are shown in the pages from the files themselves
+# (docs/src/tutorials/files), with an `@eval` block (in a drop-down box, between
+# `<details>` tags of `@raw html` blocks, when they are long):
+#
+#     ```@eval
+#     Main.input_file("files/bilayer/bilayer.inp")
+#     ```
+#
+input_file(file) = Markdown.MD(Markdown.Code("", read(file, String)))
 makedocs(
     modules = [Packmol],
     sitename = "Packmol.jl",
     format = Documenter.HTML(
         top_menu = true,
-        assets = ["assets/custom.css"],
+        # volume_tools.js: the online calculators of the Recipes tab
+        assets = ["assets/custom.css", "assets/volume_tools.js"],
         # The interactive 3D views of the examples are embedded in the pages
         example_size_threshold = nothing,
         size_threshold_ignore = [
             joinpath(dir, file) for dir in ("constraints", "periodic_boundary_conditions")
             for file in readdir(joinpath(@__DIR__, "src", dir)) if endswith(file, ".md")
-        ] ∪ ["tutorials/zeolite.md", "tutorials/polymer_dmf.md", "tutorials/nanotube.md"],
+        ] ∪ ["tutorials/zeolite.md", "tutorials/polymer_dmf.md", "tutorials/nanotube.md", "tutorials/liquid_crystal.md"],
     ),
     plugins = [CodeBlocks()],
     pages = [
@@ -26,13 +38,14 @@ makedocs(
             "Water and urea" => "tutorials/mixture.md",
             "Water–chloroform interface" => "tutorials/interface.md",
             "Lipid bilayer" => "tutorials/bilayer.md",
-            "Spherical vesicle" => "tutorials/spherical.md",
+            "Nanoliposomes" => "tutorials/nanoliposome.md",
             "Solvated protein" => "tutorials/solvprotein.md",
             "Protein in glycerol and water" => "tutorials/protein_glycerol.md",
             "Water drop on graphite" => "tutorials/water_drop.md",
             "Polymer in DMF" => "tutorials/polymer_dmf.md",
             "Carbon nanotube filled with water" => "tutorials/nanotube.md",
             "Gases in a zeolite" => "tutorials/zeolite.md",
+            "Liquid crystals" => "tutorials/liquid_crystal.md",
             "Zika virion (a large system)" => "tutorials/zika.md",
         ],
         "Input files" => [
@@ -41,6 +54,7 @@ makedocs(
             "Structure blocks" => "input_files/structure_blocks.md",
             "Residue numbering" => "input_files/residue_numbering.md",
             "Restarting a run" => "input_files/restarting_a_run.md",
+            "Volume estimates" => "input_files/volume_estimates.md",
         ],
         "Constraints" => [
             "Overview" => "constraints/index.md",
@@ -74,6 +88,8 @@ makedocs(
             "Reference" => "julia_api/reference.md",
         ],
         "Recipes" => [
+            "Volume guesser" => "recipes/volume_guesser.md",
+            "Free volume" => "recipes/free_volume.md",
             "Overview" => "recipes/index.md",
             "Running Packmol" => "recipes/running_packmol.md",
             "Solute-Solvent system" => "recipes/solute_solvent_system.md",

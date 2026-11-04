@@ -129,10 +129,10 @@ it converged within `nloop` loops (both `tolerance_precision` and
 `:failed_initial_approximation` if the initial approximation could not satisfy the
 constraints (written to the output file; the packing continues only if
 `packmol_system.continue_failed_initial_packing` is set), or
-`:not_packed` if `packmol_system.check` was set (initial approximation written,
+`:not_packed` if `packmol_system.check_initial_placement` was set (initial approximation written,
 no packing attempted).
 
-`nloop` (maximum number of packing loops, default `200`), `maxit` (optimizer
+`nloop` (maximum number of packing loops, default `500`), `maxit` (optimizer
 iterations per loop, default `800`) and `movefrac` (maximum fraction of the
 molecules of each type moved per loop, default `0.05`) take precedence over the
 values set in the input file (`packmol_system.nloop`, `packmol_system.max_iter`
@@ -140,6 +140,11 @@ and `packmol_system.movefrac`).
 
 `nthreads` (maximum number of threads used, default: all the threads of the Julia
 session) takes precedence over `packmol_system.nthreads` (the input keyword `nthreads`).
+
+`rotation_scaling` (default `true`): the optimizer works on rotation variables scaled by
+the inertia of each molecule (a unit change moves its atoms by 1 Å RMS), instead of its
+Euler angles. With `false`, the Euler angles themselves, much slower for systems of
+elongated molecules (lipids, polymers); for comparisons only.
 """
 function packmol(packmol_system::PackmolSystem; nthreads::Union{Nothing,Int}=nothing, kargs...)
     ntasks = _ntasks[]
@@ -150,6 +155,27 @@ function packmol(packmol_system::PackmolSystem; nthreads::Union{Nothing,Int}=not
         _ntasks[] = ntasks
     end
 end
+
+# The objective function of the scaled variables `y` (see rigid_body/rotation_metric.jl):
+# evaluated at the Euler angles (in `x_unscaled`), with the gradient relative to the
+# scaled angles.
+function _scaled_fg!(g, y, x_unscaled, rot_scaling, cl_system, packmol_system::PackmolSystem{D,T}, atom_positions, free_mol_indices, atom_radii) where {D,T}
+    _unscale_angles!(reinterpret(MoleculePosition{D,T}, x_unscaled), reinterpret(MoleculePosition{D,T}, y), rot_scaling)
+    f = fg!(g, x_unscaled, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
+    _scale_angle_gradient!(reinterpret(MoleculePosition{D,T}, g), rot_scaling)
+    return f
+end
+
+# The scaling of the rotations exists for three-dimensional systems only
+_rotation_scaling(packmol_system::PackmolSystem{3}) = RotationScaling(packmol_system)
+_rotation_scaling(::PackmolSystem) = nothing
+
+# The local solver of the packing loop: SPGBox. A separate function so that the solver
+# experiments of `dev/solvers/` can replace it by redefining this method. The bounds are
+# positional: they are `nothing` without PBC, and a keyword call with arguments of a
+# `Union` type is not resolved by `juliac --trim`.
+_local_solver(fg!, x, lower, upper; callback, vaux, nitmax, nfevalmax) =
+    spgbox!(fg!, x; callback, vaux, nitmax, nfevalmax, lower, upper)
 
 function _packmol(
     packmol_system::PackmolSystem{D,T};
@@ -163,9 +189,10 @@ function _packmol(
     movebad_tolerance::T=T(0.10),
     seed::Int=packmol_system.seed,
     restart::Bool=false,
+    rotation_scaling::Bool=true,
 ) where {D,T}
     # Keyword arguments take precedence over the input file's `nloop`/`maxit`
-    nloop = something(nloop, packmol_system.nloop, 200)
+    nloop = something(nloop, packmol_system.nloop, 500)
     maxit = something(maxit, packmol_system.max_iter, 800)
     movefrac = T(something(movefrac, packmol_system.movefrac, 0.05))
     # Initialize RNG and molecule positions. Negative seed (Fortran Packmol's
@@ -247,7 +274,7 @@ function _packmol(
     end
 
     # Pre-optimization: set initial approximation (random placement + constraint fitting)
-    initial_converged = set_initial_approximation!(packmol_system, free_mol_indices, RNG; restart, buffers)
+    initial_converged = set_initial_approximation!(packmol_system, free_mol_indices, RNG; restart, nloop, buffers)
 
     imol_offset = 0
     for st in packmol_system.structure_types
@@ -268,7 +295,7 @@ function _packmol(
     # The constraints could not be satisfied even without the distances between the
     # molecules: they are probably wrong (incompatible, or too tight for the molecules),
     # and packing would not converge. Stop, unless asked to continue.
-    if !initial_converged && !packmol_system.check && !packmol_system.continue_failed_initial_packing
+    if !initial_converged && !packmol_system.check_initial_placement && !packmol_system.continue_failed_initial_packing
         _println()
         _println("  ERROR: the initial approximation does not satisfy the constraints (or overlaps")
         _println("  the fixed molecules). The constraints are probably wrong: incompatible with each")
@@ -283,7 +310,7 @@ function _packmol(
     end
 
     # check mode: write the initial approximation and return
-    if packmol_system.check
+    if packmol_system.check_initial_placement
         _println("  Check mode: writing initial approximation to $(packmol_system.output_file)")
         if !isempty(packmol_system.output_file)
             write_output(packmol_system)
@@ -354,12 +381,21 @@ function _packmol(
     )
 
     # Set up optimization variables: only free molecule DOFs (reuse pre-allocated buffer)
+    _wrap_molecule_positions!(packmol_system, free_mol_indices)
     x = buffers.x
     x_mol = reinterpret(MoleculePosition{D,T}, x)
     for (k, imol) in enumerate(free_mol_indices)
         x_mol[k] = packmol_system.molecule_positions[imol]
     end
     auxvecs = buffers.vaux
+
+    # Scaling of the rotations (see rigid_body/rotation_metric.jl): in each chunk, the
+    # optimizer works on the angles a′ = Lᵀ·a of each molecule, with which a unit change
+    # moves its atoms by 1 Å RMS. `x_unscaled` holds the variables in the original
+    # (Euler angles) form, for the objective function. Three-dimensional packings only.
+    scale_rotations = rotation_scaling && D == 3
+    rot_scaling = _rotation_scaling(packmol_system)
+    x_unscaled = similar(x)
 
     # Placement region for movebad! randomization
     mol_structure_type = _build_mol_structure_type(packmol_system)
@@ -375,7 +411,7 @@ function _packmol(
     # move over the course of the run, and reused on every relocation.
     movebad_overlap_tol = packmol_system.radscale * packmol_system.tolerance
     movebad_fixed_sys, movebad_fixed_lo, movebad_fixed_hi =
-        _build_overlap_check_system(packmol_system, movebad_overlap_tol)
+        _build_overlap_check_system(packmol_system, movebad_overlap_tol; avoid_overlap=true)
     movebad_fg_output = InteratomicDistanceFG{D,T}(packmol_system)
 
     # Under PBC, the centers of mass are hard-bounded — to exactly one
@@ -407,10 +443,10 @@ function _packmol(
     lower, upper = if has_pbc
         # Axis-aligned half-extent of the (possibly triclinic) periodic
         # cell — exact for an orthorhombic (diagonal) unitcell, and a
-        # (safe, if not perfectly tight) enclosing box for a sheared one.
-        half_extent = SVector{D,T}(
-            ntuple(i -> sum(abs(packmol_system.unitcell[i, j]) for j in 1:D) / 2, D)
-        )
+        # (safe, if not perfectly tight) enclosing box for a sheared one,
+        # and for the rhombic dodecahedron or truncated octahedron of
+        # dodecahedral and octahedral cells (see `_cm_half_extent`).
+        half_extent = _cm_half_extent(packmol_system)
         cm_lo = packmol_system.unitcell_center .- half_extent
         cm_hi = packmol_system.unitcell_center .+ half_extent
         ang_lo = SVector{D,T}(ntuple(_ -> T(-Inf), D))
@@ -471,7 +507,13 @@ function _packmol(
 
         # Run a short optimization (maxit iterations per loop)
         progress_meter = ProgressBar(maxit; desc=" Iterations: ", barlen=47)
-        fg_closure = (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
+        if scale_rotations
+            _update_rotation_scaling!(rot_scaling, reinterpret(MoleculePosition{D,T}, x))
+            _scale_angles!(reinterpret(MoleculePosition{D,T}, x), rot_scaling)
+        end
+        fg_closure = (g, y) -> scale_rotations ?
+            _scaled_fg!(g, y, x_unscaled, rot_scaling, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii) :
+            fg!(g, y, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
         # Fresh stall detectors per chunk: plateau state from the *previous*
         # chunk isn't meaningful here, since movebad! (or the initial
         # placement) just changed the starting point. `dmin_stalled_flag`/
@@ -516,9 +558,9 @@ function _packmol(
         # packmol_callback for why an unlatched version is a bug (a
         # one-way-true "still improving" veto that never expires).
         f_true_start_progress_used = Ref(false)
-        optresult = spgbox!(
+        optresult = _local_solver(
             fg_closure,
-            x;
+            x, lower, upper;
             callback=(result) -> packmol_callback(cl_system, tol, iprint,
                 packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
                 dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
@@ -529,14 +571,19 @@ function _packmol(
             vaux=auxvecs,
             nitmax=maxit,
             nfevalmax=10 * maxit,
-            lower, upper,
         )
+
+        # Back to the Euler angles
+        if scale_rotations
+            _unscale_angles!(reinterpret(MoleculePosition{D,T}, x), reinterpret(MoleculePosition{D,T}, x), rot_scaling)
+        end
 
         # Update molecule positions with optimized values
         x_mol = reinterpret(MoleculePosition{D,T}, x)
         for (k, imol) in enumerate(free_mol_indices)
             packmol_system.molecule_positions[imol] = x_mol[k]
         end
+        _wrap_molecule_positions!(packmol_system, free_mol_indices)
 
         # True (floor) objective value at the position this loop ends at,
         # paired with f_true_loop_start above: this isolates what this

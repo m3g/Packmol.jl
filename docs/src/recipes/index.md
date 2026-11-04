@@ -6,7 +6,9 @@ CollapsedDocStrings = true
 A recipe is a higher-level, parameter-driven system setup: instead of
 specifying molecule counts directly (as a `structure ... end structure`
 block does), a recipe takes target densities or concentrations and works out
-the molecule counts and box size itself. Recipes currently cover common
+the molecule counts and box size itself. Two online calculators, the
+[volume guesser](@ref "Volume guesser") and the [free volume](@ref "Free volume")
+calculator, help to choose them for any input. Recipes currently cover common
 solvation setups:
 
 - [Solute-Solvent system](@ref): a solute solvated by a single solvent.
@@ -15,9 +17,9 @@ solvation setups:
 - [Solute-Water-Ions system](@ref): a solute solvated by water and a
   background salt (e.g. NaCl) at a target ionic concentration, with
   automatic charge neutralization of the solute.
-- [Membrane system](@ref): a lipid bilayer or monolayer, optionally mixing
-  more than one lipid and more than one solvent, solvated above (and, for a
-  bilayer, also below) the membrane.
+- [Membrane system](@ref): a lipid bilayer or monolayer of one or more
+  lipids, solvated above (and, for a bilayer, also below) the membrane. Seven
+  common phospholipids are built in: only the composition and the size are needed.
 
 Vesicles and nanotubes are planned as future recipes; a rhombic
 dodecahedron or truncated octahedron box is already available today, for

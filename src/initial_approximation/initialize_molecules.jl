@@ -201,7 +201,7 @@ function initialize_molecules!(packmol_system::PackmolSystem{D,T}, RNG) where {D
                         else
                             cm = SVector{D,T}(ntuple(_ -> sidemax * (T(2) * rand(task_rng, T) - one(T)), D))
                         end
-                        angles = SVector{D,T}(ntuple(_ -> T(2π) * rand(task_rng, T), D))
+                        angles = _random_angles(task_rng, SVector{D,T})
                         packmol_system.molecule_positions[imol_local] = MoleculePosition(cm, angles)
                     end
                 end

@@ -47,6 +47,10 @@ src/
     write_output.jl                   # Output writing
   random.jl                           # Random number generation
   shape.jl                            # shape_descriptors, select_conformations
+  tools/
+    volume.jl                         # guess_volume (volume at a density), free_volume (Monte Carlo
+                                      # volume of the region of each structure type); CLI
+                                      # --guess-volume/--free-volume
   interatomic_distance_fg.jl          # Distance function & gradient computation
   data_structures/
     atoms_and_molecules.jl            # AtomData, MoleculePosition, FixedMoleculeData
@@ -63,6 +67,7 @@ src/
   rigid_body/
     rigid_body.jl                     # Euler angles, rotations, translations
     chain_rule.jl                     # Gradient chain rule for rigid bodies
+    rotation_metric.jl                # Rotation variables scaled by the inertia of each molecule
   Recipes/                            # Parameter-driven system setups (recipes)
     Recipes.jl
     SolutionBoxUS.jl                  # Solute + Solvent
@@ -100,11 +105,20 @@ block of an input file, then the same system as an `@example` block that packs i
 fraction of a second) and shows it with `PDBTools.visualize` (structure files copied from
 `Packmol.RecipesDirectory` in a hidden `@setup` block). New constraints get one too.
 `docs/src/tutorials/` holds the classic Packmol examples (water–urea, interface, bilayer,
-vesicle, solvated protein), each with a command-line and a Julia section; keep both paths
-equivalent when changing the input syntax or the Julia API.
+vesicle, solvated protein; the bilayer and the vesicle redone with the all-atom POPC of the
+`packmol_lipids` set of MolSimTestFiles, the vesicle as two nanoliposomes in octahedral cells) and others (liquid crystals of 5CB with
+`constrain_rotation`: a nematic phase and a cholesteric phase), each with a command-line and a Julia section; keep
+both paths equivalent when changing the input syntax or the Julia API.
 Tutorial images (`docs/src/tutorials/images/*.webp`) are rendered with VMD by the scripts of
-`dev/tutorials/` (`render.jl`; `classic.jl` for the classic examples). Tutorials of non-trivial
-systems first show the `check` output (the initial approximation), then the packing.
+`dev/tutorials/` (`render.jl`; `classic.jl` for the classic examples, `lipids.jl` for the
+bilayer and the nanoliposomes). Tutorials of non-trivial
+systems first show the initial placement (`check_initial_placement`), then the packing.
+The input files of the tutorials are files of `docs/src/tutorials/files/<tutorial>/`, shown in
+the pages with `@eval Main.input_file(path)` (`docs/make.jl`; in a `<details>` drop-down box
+when long), never written into the pages; every one has the line `# check_initial_placement`
+(commented), and the Julia code `# check_initial_placement = true`. The overview page
+(`tutorials/index.md`) explains how to follow the tutorials and how to check the initial
+placement.
 
 ## Running Tests
 
@@ -124,6 +138,12 @@ Test data files are not in this repository: they are the `packmol` set of
 Tests use `setup=[TestFiles]` and `TestFiles.test_file(name)` (`test/test_files.jl`), a writable
 copy of the set, since tests write output files next to their inputs. To add or change files,
 publish a new release of the set (see the MolSimTestFiles README) and update `Artifacts.toml`.
+
+The large examples (the tutorials, from seconds to hours: nanoliposomes, Zika virion) are a
+separate suite, `dev/large_tests/` (plain scripts, not `@testitem`s, so that the test suite
+does not pick them up; see its README). Run it only when the maintainer asks (e.g. before a
+release) or when studying one of those systems, one case at a time, never alongside other
+heavy jobs. New tutorials with non-trivial packings get a case there.
 
 ---
 
@@ -226,6 +246,15 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       `dodecahedron.jl`; both share the same "nearest periodic image" search in
       `src/data_structures/periodic_cells.jl`); recipes support it via their
       `pbc = :octahedral` keyword.
+- [x] Dodecahedral and octahedral cells (detected from the `unitcell` matrix, `_is_wigner_seitz_cell`,
+      `PackmolSystem.wigner_seitz_cell`) are the Wigner-Seitz cell centered at `unitcell_center`: the
+      centers of mass are wrapped to the image closest to the center (`_wrap_cm`), the molecules are
+      confined by one plane per face (12/14) instead of the parallelepiped's 3 pairs, and the optimizer
+      bounds cover both shapes (`_cm_half_extent`), independently of `periodic_boundary_style`. Placement
+      scores constraints at the wrapped center of mass too (`constraint_penalty_sum(mp, st, system)`).
+      The stored centers of mass of all PBC cells are replaced by these images after every packing
+      loop (`_wrap_molecule_positions!`), and after the constraint adjustments of the initial approximation
+      (its bounds come from them): one stored on a face of the optimizer bounds blocks its image.
 - [ ] New feature: Recipes for icosaedric boxes.
 
 ---
@@ -242,6 +271,11 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] SPGBox-based optimization (`packmol()` function)
 - [x] Multi-start strategy: initial placement + iterative repositioning of bad molecules (`movebad!`)
 - [x] `movefrac` control: fraction of bad molecules moved per iteration
+- [x] Rotations scaled by the inertia of each molecule (`src/rigid_body/rotation_metric.jl`): in each
+      chunk the optimizer works on a′ = Lᵀa (G/N = LLᵀ, G = JᵀIJ, the metric of the atom displacements
+      at the current orientation), so a unit step moves the atoms by 1 Å RMS; not for linear molecules.
+      ~10x fewer evaluations for lipids (bilayer, nanoliposomes, Zika). `packmol(sys; rotation_scaling=false)`
+      packs with the Euler angles. Solver experiments (GENCAN, L-BFGS: no gain) in `dev/solvers/`.
 - [x] `<output>_FORCED`: constraint-only adjustment of the best solution, written when packing fails
 - [ ] Convergence criteria based on `tolerance_precision` and `constraint_precision`
 - [N] `writeout` as a time interval and `writebad` (the output is written after every improved loop)
@@ -331,16 +365,15 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 - [x] `SolutionBoxUSC` - solute + solvent + cossolvent setup
 - [x] `SolutionBoxUWI` - solute + water + ions setup (target ionic concentration, automatic solute charge neutralization)
 - [x] `Membrane` - lipid bilayer/monolayer setup, one or more lipids (`lipid_molar_ratio`) solvated by
-      one or more solvents (`solvent_molar_ratio`), always orthorhombic PBC with the membrane normal
-      along z. Each lipid's single head/tail atom indices give its intrinsic head-to-tail length (the
-      longest one sets the membrane's nominal thickness); each copy is packed with two whole-molecule
-      `plane` constraints bounding it to its leaflet's slab plus two per-atom `plane` constraints (via
-      `atoms <idx> ... end atoms`) pinning head/tail near their target planes within `flexibility` (a
-      fraction of that lipid's own length) for tilt/wobble. Box lateral size and lipid count are tied
-      together via `area_per_lipid` plus exactly one of `total_area`/`total_lipids` (mirroring
-      `box_sides`/`margin` elsewhere); solvent slab thickness/density/mixture are independent knobs.
-      Every parameter is given up front in the constructor (no separate box-sizing args at
-      `write_packmol_input`/`packmol` call time, unlike the solvation recipes below).
+      one or more solvents (water by default), always orthorhombic PBC with the membrane normal along z.
+      Built-in lipids (`src/Recipes/lipids/`, from MolSimTestFiles `packmol_lipids`): POPC, POPE, POPS,
+      POPG, DPPC, DOPC, DMPC, given by name, with their head and chain-end atoms and area per lipid
+      (default: the molar average of the actual areas). Lipids given as files need `lipid_head`, `lipid_tail` (chain ends,
+      a vector per lipid) and `area_per_lipid`. Placement as in the bilayer tutorial: chain ends within
+      6 Å of the middle of the bilayer, the head of each lipid beyond 6 Å + (1 - `flexibility`) L
+      (L: head to midpoint of the chain ends; `flexibility` 0.15), no constraint on the whole molecule
+      (it made every lipid tilt), the solvent from 2 Å beyond the heads. Size: `total_lipids` xor
+      `total_area`. Examples (images by `dev/recipes/membrane.jl`) in `docs/src/recipes/membrane_system.md`.
 - [x] `packmol(recipe; ...)` - build and pack a recipe directly, without an explicit input file
 - [x] Concentration unit conversions (Molarity, Molality, MoleFraction, etc.)
 - [x] Ported from MolSimToolkit.jl's Packmol Input Creator (whose docs page is to be replaced by a pointer

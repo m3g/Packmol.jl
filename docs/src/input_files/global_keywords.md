@@ -9,14 +9,14 @@
 | `movefrac <value>` | Maximum fraction of the molecules of each type moved by the bad-molecule heuristic in each loop (default `0.05`). The `movefrac` keyword argument of [`packmol`](@ref) takes precedence. |
 | `periodic_boundary_style <triclinic\|dodecahedral\|octahedral>` | Shape in which the molecules are written, with periodic boundary conditions: the parallelepiped of the cell (`triclinic`, the default), or the compact rhombic dodecahedron or truncated octahedron (see the [Output shape](../periodic_boundary_conditions/rhombic_dodecahedral_box.md#Output-shape)). |
 | `nthreads <n>` | Maximum number of threads used (default: all). The `nthreads` keyword argument of [`packmol`](@ref) and the `-t` flag of the executable take precedence. |
-| `nloop <int>` | Maximum number of packing loops (default `200`). The `nloop` keyword argument of [`packmol`](@ref) takes precedence. |
+| `nloop <int>` | Maximum number of packing loops (default `500`). The `nloop` keyword argument of [`packmol`](@ref) takes precedence. |
 | `maxit <int>` | Optimizer iterations per packing loop (default `800`). The `maxit` keyword argument of [`packmol`](@ref) takes precedence. |
-| `radscale <value>` | Loose-start radius scale factor (see [`packmol`](@ref)); `discale` is accepted as a legacy alias. |
+| `radscale <value>` | Loose-start radius scale factor (see [`packmol`](@ref)): the radii of the atoms are multiplied by it at the start of the packing, decaying to their values along the packing loops. Default `1.0` (no scaling); a larger value (e.g. `1.2`) can be faster in systems that are not dense. `discale` is accepted as a legacy alias. |
 | `tolerance_precision <value>`, `constraint_precision <value>` | Convergence tolerances for the distance and constraint checks. |
 | `stall_tolerance <value>` | Relative-improvement threshold below which a packing chunk is considered stalled and cut short (default `1e-2 * tolerance_precision`). |
 | `max_random_init <int>` | Best-of-`N` random placements tried per molecule during initialization. |
 | `adjust_constraints_on_init yes\|no` | Whether to run constraint-only pre-optimization before packing. |
-| `avoid_overlap yes\|no` | Whether trial placements are rejected if they overlap fixed atoms. |
+| `avoid_overlap yes\|no` | Whether the initial placement avoids overlaps with the fixed molecules (default `yes`). The molecules moved during the packing always avoid them. |
 | `connect yes\|no` | Whether to write the connectivity of the structure files (their `CONECT` records) to the output, for every molecule (default `yes`). `ignore_conect` (no value) is the same as `connect no`. |
 | `writeout <int>` | Write intermediate output every `N` loops. |
 | `writebad` | Flag (no value): also write output if packing did not converge. |
@@ -26,7 +26,7 @@
 | `add_box_sides` | Flag: add a `CRYST1` record with the box dimensions. Added automatically (without needing this flag) whenever `pbc`/`unitcell` is set — with the real triclinic angles in that case, rather than the extrema-derived, always-orthorhombic box this flag alone falls back to. |
 | `optimization_print_level <int>` | Verbosity of the optimizer's own output. |
 | `chkgrad` | Flag: check analytical vs. numerical gradients (development use). |
-| `check` | Write the initial approximation only, then stop (no packing). |
+| `check_initial_placement` | Flag: write the initial placement of the molecules (the initial approximation) to the output file, then stop, without packing: to check that the constraints place the molecules where intended. `check`, Fortran's name, is accepted with a warning. |
 | `continue_failed_initial_packing` | Flag: pack even if the initial approximation does not satisfy the constraints. By default, Packmol stops there, writes the initial approximation to the output file and reports the error (exit code 171): constraints that cannot be satisfied even without the distances between the molecules are usually wrong. |
 | `pbc <a b c>` or `pbc <xmin ymin zmin xmax ymax zmax>` | Orthorhombic periodic box: either side lengths (the box from the origin to `(a, b, c)`, as in Fortran Packmol) or explicit min/max corners. |
 | `pbc dodecahedral <cx cy cz d>` | Rhombic dodecahedron periodic box of size `d` centered at `(cx,cy,cz)` — stored (and written out) as the equivalent triclinic cell. |
