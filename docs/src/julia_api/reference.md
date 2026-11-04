@@ -5,7 +5,8 @@ CollapsedDocStrings = true
 # Reference
 
 These are the public functions of Packmol.jl. The functions of the recipes are
-documented on the [Recipes](../recipes/index.md) page.
+documented on the [Recipes](../recipes/index.md) page, and the volume estimates,
+`guess_volume` and `free_volume`, on the [Volume estimates](@ref) page.
 
 ## Packing engine
 

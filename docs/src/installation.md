@@ -41,7 +41,9 @@ packmol input.inp
 (or `packmol -i input.inp`, or `packmol < input.inp`, as Fortran Packmol) as a standalone
 application. `-o output.pdb` overrides the output file of the input, and `-t N` limits the
 number of threads used (default: `JULIA_NUM_THREADS` if set, otherwise all the threads;
-the input keyword `nthreads` does the same). Without an input file
+the input keyword `nthreads` does the same). `--guess-volume` and `--free-volume` estimate
+the volume of the system and of the regions of its molecules, without packing it (see
+[Volume estimates](@ref)). Without an input file
 (and no input redirected), a file browser is opened to choose it. The exit codes are those
 of Fortran Packmol: `0` for success, `173` if the packing did not converge (the best
 solution is written to the output file, and a solution satisfying only the constraints to

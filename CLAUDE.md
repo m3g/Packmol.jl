@@ -46,6 +46,10 @@ src/
     pick_file.jl                      # File dialog via OS tools (osascript/PowerShell/zenity/kdialog), run with libc `popen`
     write_output.jl                   # Output writing
   random.jl                           # Random number generation
+  tools/
+    volume.jl                         # guess_volume (volume at a density), free_volume (Monte Carlo
+                                      # volume of the region of each structure type); CLI
+                                      # --guess-volume/--free-volume
   interatomic_distance_fg.jl          # Distance function & gradient computation
   data_structures/
     atoms_and_molecules.jl            # AtomData, MoleculePosition, FixedMoleculeData

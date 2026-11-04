@@ -19,6 +19,17 @@ const usage = """
                      `nthreads`; default: JULIA_NUM_THREADS if set, else all)
       -h, --help     show this help
       -v, --version  show the version
+
+    Volume estimates (the input file is not packed):
+      --guess-volume     the volume that the molecules of the input fill at a
+                         density (Å³), and the side of a cube of that volume
+      --density <d>      the density of the system for --guess-volume (g/mL,
+                         default 1.0)
+      --free-volume      the volume of the region available to the molecules
+                         of each structure type (Monte Carlo), and the
+                         density at which they fill it
+      --npoints <n>      the number of points of --free-volume (default
+                         1000000)
     """
 
 # Exit codes of Fortran Packmol (src/exit_codes.f90), kept for compatibility
@@ -86,6 +97,10 @@ function (@main)(ARGS)
     input_file = ""
     output_file = ""
     nthreads = ""
+    guess = false
+    free = false
+    density = "1.0"
+    npoints = "1000000"
     positional = 0
     i = 1
     while i <= length(ARGS)
@@ -96,11 +111,20 @@ function (@main)(ARGS)
         elseif arg == "-v" || arg == "--version"
             Packmol._println("packmol ", Packmol._packmol_version)
             return exit_code_success
-        elseif (arg == "-i" || arg == "-o" || arg == "-t" || arg == "--threads") && i < length(ARGS)
+        elseif arg == "--guess-volume"
+            guess = true
+        elseif arg == "--free-volume"
+            free = true
+        elseif (arg == "-i" || arg == "-o" || arg == "-t" || arg == "--threads" ||
+                arg == "--density" || arg == "--npoints") && i < length(ARGS)
             if arg == "-i"
                 input_file = ARGS[i+1]
             elseif arg == "-o"
                 output_file = ARGS[i+1]
+            elseif arg == "--density"
+                density = ARGS[i+1]
+            elseif arg == "--npoints"
+                npoints = ARGS[i+1]
             else
                 nthreads = ARGS[i+1]
             end
@@ -138,6 +162,29 @@ function (@main)(ARGS)
         system.nthreads = ntasks
     elseif isnothing(system.nthreads)
         system.nthreads = _env_nthreads()
+    end
+    if guess || free
+        dens = something(tryparse(Float64, density), -1.0)
+        if dens <= 0
+            Packmol._println("ERROR: the density (--density) must be a positive number, got: ", density)
+            return exit_code_command_line_error
+        end
+        np = something(tryparse(Int, npoints), 0)
+        if np < 1
+            Packmol._println("ERROR: the number of points (--npoints) must be a positive integer, got: ", npoints)
+            return exit_code_command_line_error
+        end
+        ntasks_session = Packmol._ntasks[]
+        Packmol._ntasks[] = something(system.nthreads, 0)
+        try
+            guess && Packmol.guess_volume(system; density=dens)
+            free && Packmol.free_volume(system; npoints=np)
+        catch e
+            return _error_exit(e, exit_code_general_error)
+        finally
+            Packmol._ntasks[] = ntasks_session
+        end
+        return exit_code_success
     end
     try
         Packmol.packmol(system)

@@ -52,6 +52,7 @@ makedocs(
             "Structure blocks" => "input_files/structure_blocks.md",
             "Residue numbering" => "input_files/residue_numbering.md",
             "Restarting a run" => "input_files/restarting_a_run.md",
+            "Volume estimates" => "input_files/volume_estimates.md",
         ],
         "Constraints" => [
             "Overview" => "constraints/index.md",
