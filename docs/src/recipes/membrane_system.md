@@ -92,6 +92,10 @@ keeps the lipids upright, which is what makes them pack. The solvent starts
 `flexibility` keyword: wider bands make the packing slower, or make it fail.
 A monolayer is packed in the same way, from the bottom of the box.
 
+The built-in lipids are extended conformations, which pack well, but make a bilayer
+thicker than a relaxed one (and its area per lipid is that of the actual membrane): the
+equilibration of a molecular dynamics simulation brings it to its thickness.
+
 ## Other lipids and solvents
 
 Any lipid can be given as a PDB file, with the index of its head atom

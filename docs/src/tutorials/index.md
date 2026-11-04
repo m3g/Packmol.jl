@@ -1,11 +1,12 @@
 # Tutorials
 
 The tutorials build complete systems, from a box with a mixture of two molecules to a
-virion with 2.8 million particles. The first ones are the classic examples of
+virion with 2.2 million particles. The first ones are the classic examples of
 [Packmol](https://m3g.github.io/packmol/examples.shtml) (the bilayer and the vesicle redone
 with an all-atom lipid, at realistic densities, the vesicle as nanoliposomes); the others
 use more of the features of Packmol.jl: fixed molecules, periodic cells of different
-shapes, curved surfaces, crystals.
+shapes, curved surfaces, crystals. To have an AI agent build a system for you, see
+[Using your AI agent](ai_agent.md).
 
 | Tutorial | System |
 |---|---|
