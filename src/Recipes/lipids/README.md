@@ -19,5 +19,4 @@ conformations of each lipid (`<lipid>_conformations.pdb`).
 | DOPC  | 1 (N)     | 88 (C218), 135 (C318) | 67 |
 | DMPC  | 1 (N)     | 78 (C214), 115 (C314) | 61 |
 
-The areas are those of the actual membranes; `Membrane` packs the lipids at 5% more by
-default.
+The areas are those of the actual membranes, the defaults of `Membrane`.

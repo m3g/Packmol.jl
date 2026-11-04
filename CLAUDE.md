@@ -353,8 +353,7 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       one or more solvents (water by default), always orthorhombic PBC with the membrane normal along z.
       Built-in lipids (`src/Recipes/lipids/`, from MolSimTestFiles `packmol_lipids`): POPC, POPE, POPS,
       POPG, DPPC, DOPC, DMPC, given by name, with their head and chain-end atoms and area per lipid
-      (default: 1.05 x the molar average of the actual areas; at the actual areas, packings of the rigid
-      lipids get stuck in some runs). Lipids given as files need `lipid_head`, `lipid_tail` (chain ends,
+      (default: the molar average of the actual areas). Lipids given as files need `lipid_head`, `lipid_tail` (chain ends,
       a vector per lipid) and `area_per_lipid`. Placement as in the bilayer tutorial: chain ends within
       6 Å of the middle of the bilayer, the head of each lipid beyond 6 Å + (1 - `flexibility`) L
       (L: head to midpoint of the chain ends; `flexibility` 0.15), no constraint on the whole molecule

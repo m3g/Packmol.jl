@@ -25,10 +25,6 @@ const _BUILTIN_LIPIDS = Dict(
     "DOPC" => (head=1, chain_ends=[88, 135], area=67.0),
     "DMPC" => (head=1, chain_ends=[78, 115], area=61.0),
 )
-# The default area per lipid is this much larger than that of the actual membrane: at the
-# actual areas, a packing of the rigid conformations gets stuck in some runs (DMPC, POPE,
-# and POPC/POPS 4:1 in both of two runs), at 5% more all of them pack in seconds.
-const _MEMBRANE_AREA_FACTOR = 1.05
 # Distance (Å) of the plane of the chain ends from the middle of a bilayer (from the
 # bottom of a monolayer), and of the solvent from the plane of the heads
 const _CHAIN_END_PLANE = 6.0
@@ -118,11 +114,9 @@ is a POPC/POPE 3:1 bilayer of 200 lipids in water.
 
 The size of the membrane is given by exactly one of `total_lipids` (the number of lipids,
 summed over both leaflets of a bilayer) or `total_area` (Å², the lateral area of the
-box), with `area_per_lipid` (Å²): by default (built-in lipids only), 5% more than the
-molar average of the areas per lipid of the actual membranes (POPC 64, POPE 57, POPS 63,
-POPG 66, DPPC 63, DOPC 67, DMPC 61 Å²). At the actual areas, the packing of rigid
-lipids gets stuck in some runs; a molecular dynamics simulation of the system then
-equilibrates the area. Both leaflets of a bilayer have the same composition.
+box), with `area_per_lipid` (Å²): by default (built-in lipids only), the molar average of the
+areas per lipid of the actual membranes (POPC 64, POPE 57, POPS 63, POPG 66, DPPC 63,
+DOPC 67, DMPC 61 Å²). Both leaflets of a bilayer have the same composition.
 
 For a lipid given as a PDB file, `lipid_head` (the index of an atom of the polar head in
 the file) and `lipid_tail` (the indices of the atoms at the ends of its chains, a vector
@@ -241,7 +235,7 @@ function Membrane(;
             ($(join(lipids[.!builtin], ", "))).
 
         """))
-        area_per_lipid = _MEMBRANE_AREA_FACTOR * sum(lipid_weight[i] * _builtin_lipid(lipids[i]).area for i in 1:nlip)
+        area_per_lipid = sum(lipid_weight[i] * _builtin_lipid(lipids[i]).area for i in 1:nlip)
     end
     area_per_lipid = _ensure_unit(area_per_lipid, u"Å^2")
     ustrip(area_per_lipid) > 0 || throw(ArgumentError("area_per_lipid must be positive."))

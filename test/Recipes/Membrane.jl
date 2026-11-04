@@ -12,7 +12,7 @@
     @test basename(only(sys.lipid_pdbfiles)) == "popc.pdb"
     @test sys.lipid_head == [1]
     @test sys.lipid_tail == [[88, 131]]
-    @test sys.area_per_lipid ≈ 1.05 * 64.0u"Å^2"
+    @test sys.area_per_lipid ≈ 64.0u"Å^2"
     @test sys.flexibility == 0.15
     @test basename(only(sys.solvent_pdbfiles)) == "water.pdb"
     @test sys.solvent_density == 1.0u"g/mL"
@@ -22,7 +22,7 @@
     sys = Membrane(lipids=["popc", "Pope"], lipid_molar_ratio=[3, 1], total_lipids=20)
     @test sys.lipid_names == ["POPC", "POPE"]
     @test sys.lipid_weight ≈ [0.75, 0.25]
-    @test sys.area_per_lipid ≈ 1.05 * (0.75 * 64.0 + 0.25 * 57.0) * u"Å^2"
+    @test sys.area_per_lipid ≈ (0.75 * 64.0 + 0.25 * 57.0) * u"Å^2"
     # equal amounts by default
     @test Membrane(lipids=["DPPC", "DOPC"], total_lipids=20).lipid_weight ≈ [0.5, 0.5]
 

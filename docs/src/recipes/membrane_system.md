@@ -26,12 +26,9 @@ using Packmol
 system = Membrane(lipids = "POPC", total_lipids = 128)
 ```
 
-The area per lipid is, by default, 5% larger than that of the actual
-membrane (64 Å² for POPC): at the actual areas, the packing of rigid
-lipids gets stuck in some runs. A short molecular dynamics simulation of the
-system brings the area to its equilibrium value. The size can also be given
-by the lateral area of the box, `total_area` (Å²), instead of the number of
-lipids.
+The area per lipid is, by default, that of the actual membrane (64 Å² for
+POPC). The size can also be given by the lateral area of the box,
+`total_area` (Å²), instead of the number of lipids.
 
 Generate the input file, or pack the system directly:
 
@@ -58,7 +55,7 @@ write_packmol_input(system; input = "mixture.inp", output = "mixture.pdb")
 ```
 
 Both leaflets have the same composition, and the area per lipid is the molar
-average of those of the lipids (5% larger). The system packs in about 40
+average of those of the lipids. The system packs in about 20
 seconds with 14 threads, and looks like this (the lipids colored by type):
 
 ![POPC/POPE/POPS/POPG bilayer](images/membrane_mixture.webp)

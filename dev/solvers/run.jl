@@ -38,6 +38,8 @@ SOLVER in (:spgbox, :gencan, :lbfgs) || error("unknown solver $SOLVER")
 
 # Objective evaluations of the packing loop, over all chunks
 const NEVAL = Ref(0)
+# Chunks so far (GRADCHECK=n checks the gradient at the start of chunk n)
+const NCHUNK = Ref(0)
 
 # Directional derivatives along -g (the steepest descent direction), along random
 # directions, and along the center-of-mass and the angle coordinates separately,
@@ -110,7 +112,8 @@ function Packmol._local_solver(
 )
     nf = Ref(0)
     counted = (g, x) -> (NEVAL[] += 1; nf[] += 1; fg!(g, x))
-    haskey(ENV, "GRADCHECK") && gradcheck(fg!, x)
+    NCHUNK[] += 1
+    haskey(ENV, "GRADCHECK") && NCHUNK[] == parse(Int, ENV["GRADCHECK"]) && gradcheck(fg!, x)
     haskey(ENV, "LSTRACE") && lstrace(fg!, x)
     if SOLVER === :spgbox
         r = SPGBox.spgbox!(counted, x; callback, vaux, nitmax, nfevalmax, lower, upper)
