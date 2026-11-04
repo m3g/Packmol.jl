@@ -24,7 +24,7 @@ Input files).
     Constraints are independent of, but interact with, periodic boundary
     conditions: setting `pbc`/`unitcell` changes how every constraint below
     is evaluated (atoms are wrapped to the periodic image nearest the cell
-    center first), and adds one implicit confinement constraint of its own
-    on top of whatever's declared explicitly. See [Periodic boundary
+    center first), and bounds the centers of mass of the molecules to the
+    cell. See [Periodic boundary
     conditions](../periodic_boundary_conditions/index.md) for the `pbc`/`unitcell`
     keywords themselves and the full relationship between the two.

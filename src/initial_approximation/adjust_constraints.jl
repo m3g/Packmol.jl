@@ -186,6 +186,12 @@ function adjust_constraints!(
         # size (loop 1, typically the one expensive pass); once it has
         # shrunk, allocate a right-sized one instead — cheap, since by then
         # nactive is small.
+        # The centers of mass at their images in the cell (see `_wrap_molecule_positions!`):
+        # with the bounds of the fit (`_fit_bounds`), a center of mass stored out of the
+        # cell (the first random positions, in the parallelepiped of the cell vectors, are
+        # not all in a dodecahedral or octahedral cell) is blocked by a bound while its
+        # image, where its constraints are evaluated, is pulled the other way.
+        _wrap_molecule_positions!(packmol_system, active_mols)
         x = (!isnothing(buffers) && nactive == nfree) ? buffers.x : Vector{T}(undef, nactive * 2 * D)
         x_mol = reinterpret(MoleculePosition{D,T}, x)
         for (k, imol) in enumerate(active_mols)
@@ -194,11 +200,13 @@ function adjust_constraints!(
         auxvecs = (!isnothing(buffers) && nactive == nfree) ? buffers.vaux : SPGBox.VAux(x, zero(T))
 
         # Run a short constraint-only optimization, touching only active_mols
+        lower, upper = _fit_bounds(packmol_system, nactive)
         spgresult = spgbox!(
             (g, x) -> constraint_only_fg_for_mols!(
                 g, x, fg_output, packmol_system, atom_positions, active_mols, mol_structure_type, mol_iat_first,
             ),
             x;
+            lower, upper,
             vaux=auxvecs,
             nitmax=opt_nit,
             nfevalmax=10 * opt_nit,

@@ -46,6 +46,7 @@ src/
     pick_file.jl                      # File dialog via OS tools (osascript/PowerShell/zenity/kdialog), run with libc `popen`
     write_output.jl                   # Output writing
   random.jl                           # Random number generation
+  shape.jl                            # shape_descriptors, select_conformations
   tools/
     volume.jl                         # guess_volume (volume at a density), free_volume (Monte Carlo
                                       # volume of the region of each structure type); CLI
@@ -200,6 +201,9 @@ These are the building blocks everything else depends on.
       vector of files in `structure_type`, expands into consecutive structure types (one per conformation,
       `number` split evenly, marked by `StructureType.conformation = (i, n)`); `show` and the output
       numbering treat each set as a single structure type
+- [x] Shape of molecules (`src/shape.jl`): `shape_descriptors` (gyration tensor: asphericity, acylindricity,
+      relative shape anisotropy) and `select_conformations` (writes the most rod-like or sphere-like
+      conformations of a multi-model file, e.g. frames of a single-molecule simulation)
 
 ---
 
@@ -244,13 +248,16 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       `pbc = :octahedral` keyword.
 - [x] Dodecahedral and octahedral cells (detected from the `unitcell` matrix, `_is_wigner_seitz_cell`,
       `PackmolSystem.wigner_seitz_cell`) are the Wigner-Seitz cell centered at `unitcell_center`: the
-      centers of mass are wrapped to the image closest to the center (`_wrap_cm`), the molecules are
-      confined by one plane per face (12/14) instead of the parallelepiped's 3 pairs, and the optimizer
+      centers of mass are wrapped to the image closest to the center (`_wrap_cm`), and the optimizer
       bounds cover both shapes (`_cm_half_extent`), independently of `periodic_boundary_style`. Placement
       scores constraints at the wrapped center of mass too (`constraint_penalty_sum(mp, st, system)`).
       The stored centers of mass of all PBC cells are replaced by these images after every packing
-      loop (`_wrap_molecule_positions!`), and after the constraint adjustments of the initial approximation
-      (its bounds come from them): one stored on a face of the optimizer bounds blocks its image.
+      loop (`_wrap_molecule_positions!`), and before every loop of the constraint fits of the initial
+      approximation: one stored on a face of the optimizer bounds blocks its image.
+- [x] No implicit confinement of the atoms to the cell (removed 2026-11-04: it pushed long molecules
+      away from the faces in the fits of the initial placement, the lipids of a bilayer crowded in the
+      middle). The centers of mass are bounded to the cell in the packing loop and in the fits of the
+      initial placement and of movebad (`_fit_bounds`, infinite bounds without PBC).
 - [ ] New feature: Recipes for icosaedric boxes.
 
 ---
@@ -372,9 +379,9 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       `total_area`. Examples (images by `dev/recipes/membrane.jl`) in `docs/src/recipes/membrane_system.md`.
 - [x] `packmol(recipe; ...)` - build and pack a recipe directly, without an explicit input file
 - [x] Concentration unit conversions (Molarity, Molality, MoleFraction, etc.)
-- [x] Ported from MolSimToolkit.jl's Packmol Input Creator (whose docs page is to be replaced by a pointer
-      here): `convert_concentration`, `convert_density_table!`, `get_density_table`, the `"vv"`/`"mm"` unit aliases
-      ("Coming from MolSimToolkit.jl" page of `docs/src/recipes/`)
+- [x] Ported from MolSimToolkit.jl's Packmol Input Creator: `convert_concentration`,
+      `convert_density_table!`, `get_density_table`, the `"vv"`/`"mm"` unit aliases (documented with
+      `SolutionBoxUSC`)
 - [x] DensityTable interpolation
 - [x] Documented in its own `docs/src/recipes/` section
 - [x] `pbc` keyword (`:cubic`/`:orthorhombic`/`:dodecahedral`/`:octahedral`) selecting the

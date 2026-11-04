@@ -177,6 +177,7 @@ function _movebad_place_molecule!(
     mol_list = [imol]
     overlap_positions = isnothing(fixed_sys) ? SVector{D,T}[] : Vector{SVector{D,T}}(undef, st.natoms)
     x = do_fit ? Vector{T}(undef, 2 * D) : T[]
+    fit_lower, fit_upper = _fit_bounds(packmol_system, 1)
 
     best_mp = packmol_system.molecule_positions[imol]
     # Trials ranked as in `_place_molecules!`: (0, shift of the center of mass by the
@@ -196,6 +197,7 @@ function _movebad_place_molecule!(
                     g, x, fg_output, packmol_system, atom_positions, mol_list, mol_structure_type, mol_iat_first,
                 ),
                 x;
+                lower=fit_lower, upper=fit_upper,
                 nitmax=opt_nit,
                 nfevalmax=10 * opt_nit,
                 callback=(result) -> result.f < precision,

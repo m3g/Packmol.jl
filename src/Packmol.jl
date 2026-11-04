@@ -2,7 +2,7 @@ module Packmol
 
 using TestItems: @testitem, @testsnippet
 using StaticArrays: SVector, SMatrix, @SMatrix, MMatrix, MVector
-using LinearAlgebra: norm, eigen, dot, det, Diagonal, svd, cross, Symmetric
+using LinearAlgebra: norm, eigen, eigvals, dot, det, Diagonal, svd, cross, Symmetric
 using Statistics: mean
 using Base: @kwdef
 using Base.Threads: @spawn
@@ -36,6 +36,7 @@ export PackmolSystem
 export StructureType
 export structure_type
 export get_atoms
+export shape_descriptors, select_conformations
 
 # Terminal input/output, progress bar and task synchronization (compatible with `juliac --trim`)
 include("./io/terminal.jl")
@@ -81,6 +82,7 @@ include("./initial_approximation/initial_approximation.jl")
 # Input and output
 include("./io/pick_file.jl")
 include("./io/write_output.jl")
+include("./shape.jl")
 
 # Packing functions
 include("./packmol_main.jl")

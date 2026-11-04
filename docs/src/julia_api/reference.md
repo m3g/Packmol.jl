@@ -18,6 +18,13 @@ get_atoms
 write_output
 ```
 
+## Shape of molecules
+
+```@docs
+shape_descriptors
+select_conformations
+```
+
 ## Box constraints
 
 ```@docs
