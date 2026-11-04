@@ -6,6 +6,10 @@ tolerance 2.0
 output protein_glycerol.pdb
 pbc -38. -38. -38. 38. 38. 38.
 
+# Uncomment to write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints):
+# check_initial_placement
+
 # The protein, fixed with its center at the center of the box
 structure protein.pdb
   number 1
