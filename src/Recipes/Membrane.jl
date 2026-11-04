@@ -452,32 +452,8 @@ function write_packmol_input(
             packall
             unitcell $a $b $c $α $β $γ
             """)
-        for lp in lipid_placements
-            head, tail = lp.upper ? ("above", "below") : ("below", "above")
-            floor_line = isnothing(lp.floor) ? "" : "    above plane 0. 0. 1. $(lp.floor)\n"
-            println(io,
-                """
-                structure $(lp.pdbfile)
-                    number $(lp.number)
-                $(floor_line)    atoms $(lp.head_idx)
-                        $head plane 0. 0. 1. $(lp.head_plane)
-                    end atoms
-                    atoms $(join(lp.tail_idx, " "))
-                        $tail plane 0. 0. 1. $(lp.tail_plane)
-                    end atoms
-                end structure
-                """)
-        end
-        for sp in solvent_placements
-            println(io,
-                """
-                structure $(sp.pdbfile)
-                    number $(sp.number)
-                    above plane 0. 0. 1. $(sp.zlo)
-                    below plane 0. 0. 1. $(sp.zhi)
-                end structure
-                """)
-        end
+        foreach(lp -> _write_block(io, lp), lipid_placements)
+        foreach(sp -> _write_block(io, sp), solvent_placements)
     end
     print(chomp(
         """
@@ -520,25 +496,62 @@ function packmol(
 )
     (; lipid_placements, solvent_placements, unitcell) = _setup(system)
     structure_types = StructureType{3,Float64}[]
-    z = [0.0, 0.0, 1.0]
-    for lp in lipid_placements
-        head_c = lp.upper ? AbovePlane(z, lp.head_plane) : BelowPlane(z, lp.head_plane)
-        tail_c = lp.upper ? BelowPlane(z, lp.tail_plane) : AbovePlane(z, lp.tail_plane)
-        # (a vector of structure types for a file of several conformations)
-        st = structure_type(lp.pdbfile;
-            number=lp.number,
-            constraints=isnothing(lp.floor) ? AnyConstraint{Float64}[] : [AbovePlane(z, lp.floor)],
-            atom_constraints=[[lp.head_idx] => [head_c], lp.tail_idx => [tail_c]],
-        )
-        st isa AbstractVector ? append!(structure_types, st) : push!(structure_types, st)
-    end
-    for sp in solvent_placements
-        push!(structure_types, structure_type(sp.pdbfile; number=sp.number,
-            constraints=[AbovePlane(z, sp.zlo), BelowPlane(z, sp.zhi)],
-        ))
-    end
+    foreach(lp -> _push_structure_types!(structure_types, lp), lipid_placements)
+    foreach(sp -> _push_structure_types!(structure_types, sp), solvent_placements)
     packmol_system = PackmolSystem(structure_types;
         output, tolerance=2.0, add_box_sides=true, seed=-1, _recipe_unitcell(unitcell)...,
     )
     return packmol(packmol_system; kwargs...)
+end
+
+#
+# The structure block of a lipid or a solvent in a slab, for the input files of the
+# membrane recipes (`Membrane`, `MembraneProtein`), and the same as structure types
+#
+function _write_block(io::IO, lp::_LipidPlacement)
+    head, tail = lp.upper ? ("above", "below") : ("below", "above")
+    floor_line = isnothing(lp.floor) ? "" : "    above plane 0. 0. 1. $(lp.floor)\n"
+    println(io,
+        """
+        structure $(lp.pdbfile)
+            number $(lp.number)
+        $(floor_line)    atoms $(lp.head_idx)
+                $head plane 0. 0. 1. $(lp.head_plane)
+            end atoms
+            atoms $(join(lp.tail_idx, " "))
+                $tail plane 0. 0. 1. $(lp.tail_plane)
+            end atoms
+        end structure
+        """)
+end
+function _write_block(io::IO, sp::_SolventPlacement)
+    println(io,
+        """
+        structure $(sp.pdbfile)
+            number $(sp.number)
+            above plane 0. 0. 1. $(sp.zlo)
+            below plane 0. 0. 1. $(sp.zhi)
+        end structure
+        """)
+end
+
+function _push_structure_types!(structure_types, lp::_LipidPlacement)
+    z = [0.0, 0.0, 1.0]
+    head_c = lp.upper ? AbovePlane(z, lp.head_plane) : BelowPlane(z, lp.head_plane)
+    tail_c = lp.upper ? BelowPlane(z, lp.tail_plane) : AbovePlane(z, lp.tail_plane)
+    # (a vector of structure types for a file of several conformations)
+    st = structure_type(lp.pdbfile;
+        number=lp.number,
+        constraints=isnothing(lp.floor) ? AnyConstraint{Float64}[] : [AbovePlane(z, lp.floor)],
+        atom_constraints=[[lp.head_idx] => [head_c], lp.tail_idx => [tail_c]],
+    )
+    st isa AbstractVector ? append!(structure_types, st) : push!(structure_types, st)
+    return structure_types
+end
+function _push_structure_types!(structure_types, sp::_SolventPlacement)
+    z = [0.0, 0.0, 1.0]
+    push!(structure_types, structure_type(sp.pdbfile; number=sp.number,
+        constraints=[AbovePlane(z, sp.zlo), BelowPlane(z, sp.zhi)],
+    ))
+    return structure_types
 end
