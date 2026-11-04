@@ -138,6 +138,12 @@ Tests use `setup=[TestFiles]` and `TestFiles.test_file(name)` (`test/test_files.
 copy of the set, since tests write output files next to their inputs. To add or change files,
 publish a new release of the set (see the MolSimTestFiles README) and update `Artifacts.toml`.
 
+The large examples (the tutorials, from seconds to hours: nanoliposomes, Zika virion) are a
+separate suite, `dev/large_tests/` (plain scripts, not `@testitem`s, so that the test suite
+does not pick them up; see its README). Run it only when the maintainer asks (e.g. before a
+release) or when studying one of those systems, one case at a time, never alongside other
+heavy jobs. New tutorials with non-trivial packings get a case there.
+
 ---
 
 ## Development Roadmap
