@@ -118,6 +118,12 @@ function Packmol._local_solver(
     if SOLVER === :spgbox
         r = SPGBox.spgbox!(counted, x; callback, vaux, nitmax, nfevalmax, lower, upper)
         NIT[] += r.nit
+        if haskey(ENV, "BOUNDCOUNT") && !isnothing(lower)
+            # centers of mass with a coordinate on a bound, at the end of the chunk
+            nmol = length(x) ÷ 6
+            onb = count(k -> any(d -> x[6(k-1)+d] <= lower[6(k-1)+d] || x[6(k-1)+d] >= upper[6(k-1)+d], 1:3), 1:nmol)
+            println("BOUNDCOUNT chunk $(NCHUNK[]): $onb of $nmol centers of mass on a bound")
+        end
         return r
     elseif SOLVER === :gencan
         xstop = similar(x)

@@ -3,7 +3,7 @@ Rhombic dodecahedron periodic box: `pbc dodecahedral cx cy cz d` (input file)
 or the `dodecahedral_unitcell` helper (Julia API) build the very same
 triclinic unit cell the general `unitcell` keyword does — just computed from
 a single "box size" `d` instead of six explicit CRYST1 parameters — so
-everything else (CellListMap PBC, implicit confinement, CRYST1 output) needs
+everything else (CellListMap PBC, bounds of the centers of mass, CRYST1 output) needs
 no changes at all to support it.
 
 This file also provides `triclinic_to_dodecahedral`/`dodecahedral_to_triclinic`,

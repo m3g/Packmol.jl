@@ -237,13 +237,16 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       `pbc = :octahedral` keyword.
 - [x] Dodecahedral and octahedral cells (detected from the `unitcell` matrix, `_is_wigner_seitz_cell`,
       `PackmolSystem.wigner_seitz_cell`) are the Wigner-Seitz cell centered at `unitcell_center`: the
-      centers of mass are wrapped to the image closest to the center (`_wrap_cm`), the molecules are
-      confined by one plane per face (12/14) instead of the parallelepiped's 3 pairs, and the optimizer
+      centers of mass are wrapped to the image closest to the center (`_wrap_cm`), and the optimizer
       bounds cover both shapes (`_cm_half_extent`), independently of `periodic_boundary_style`. Placement
       scores constraints at the wrapped center of mass too (`constraint_penalty_sum(mp, st, system)`).
       The stored centers of mass of all PBC cells are replaced by these images after every packing
-      loop (`_wrap_molecule_positions!`), and after the constraint adjustments of the initial approximation
-      (its bounds come from them): one stored on a face of the optimizer bounds blocks its image.
+      loop (`_wrap_molecule_positions!`), and before every loop of the constraint fits of the initial
+      approximation: one stored on a face of the optimizer bounds blocks its image.
+- [x] No implicit confinement of the atoms to the cell (removed 2026-11-04: it pushed long molecules
+      away from the faces in the fits of the initial placement, the lipids of a bilayer crowded in the
+      middle). The centers of mass are bounded to the cell in the packing loop and in the fits of the
+      initial placement and of movebad (`_fit_bounds`, infinite bounds without PBC).
 - [ ] New feature: Recipes for icosaedric boxes.
 
 ---

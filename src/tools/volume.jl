@@ -149,21 +149,16 @@ function free_volume(system::PackmolSystem{3,T}; npoints::Integer=1_000_000, see
         st.fixed.fixed && append!(fixed, st.reference_coordinates)
     end
     tol = system.tolerance
-    nconfinement = !has_pbc ? 0 : system.wigner_seitz_cell ? length(_wigner_seitz_face_vectors(uc)) :
-        all(i == j || uc[i, j] == zero(T) for i in 1:3, j in 1:3) ? 1 : 6
     results = NamedTuple{(:structure, :number, :volume, :error, :density, :note),Tuple{String,Int,Float64,Float64,Float64,String}}[]
     for st in system.structure_types
         st.fixed.fixed && continue
         name = basename(st.filename)
-        # The constraints of the whole molecule: those of every atom. Under PBC, the last
-        # ones are the implicit confinement to the cell (`_add_pbc_confinement_constraints!`),
-        # always satisfied by the points of the cell.
+        # The constraints of the whole molecule: those of every atom
         whole = isempty(st.atom_constraints) ? collect(1:length(st.constraints)) :
             reduce(intersect, st.atom_constraints)
         some_atoms = length(whole) < length(st.constraints)
-        nuser = length(st.constraints) - nconfinement
         constraints = st.constraints[whole]
-        if some_atoms && !any(<=(nuser), whole)
+        if some_atoms && isempty(whole)
             push!(results, (; structure=name, number=st.number_of_molecules, volume=NaN, error=NaN, density=NaN,
                 note="region set by constraints of some atoms only"))
             continue
