@@ -19,7 +19,7 @@ shapes, curved surfaces, crystals.
 | [Polymer in DMF](polymer_dmf.md) | A fixed polymer in a solvent, in a periodic box |
 | [Carbon nanotube filled with water](nanotube.md) | A fixed nanotube crossing the periodic boundary, with water inside and outside |
 | [Gases in a zeolite](zeolite.md) | A fixed crystal in its triclinic periodic cell, with gases in its pores |
-| [Liquid crystals](liquid_crystal.md) | Oriented molecules (rotation constraints): a nematic phase and a twisted nematic cell |
+| [Liquid crystals](liquid_crystal.md) | Oriented molecules (rotation constraints): a nematic phase and a cholesteric (twisted) phase |
 | [Zika virion](zika.md) | A large system: 2.2 million particles in membranes and spherical shells |
 
 ## How the tutorials are organized

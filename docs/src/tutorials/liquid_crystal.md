@@ -4,14 +4,14 @@ Liquid crystals are made of elongated molecules, which keep a common orientation
 *director*) while flowing like a liquid. Here, the molecule is 5CB
 (4-cyano-4'-pentylbiphenyl), the classic room-temperature nematic liquid crystal,
 packed in two arrangements: a nematic phase, with the molecules aligned along `z`, and a
-twisted nematic cell, the arrangement of a pixel of a liquid crystal display, with the
-director turning in the plane of the cell from one layer to the next. The orientations are
+cholesteric (twisted) phase, with the director turning in the xy plane from one layer to
+the next, along a helix. The orientations are
 set by the [rotation constraint](@ref "Rotation constraint"), `constrain_rotation`, which
 keeps the angle between an axis and a vector of the molecule within a range.
 
 Files: [`5cb.pdb`](files/liquid_crystal/5cb.pdb), and the input files
 [`nematic.inp`](files/liquid_crystal/nematic.inp) and
-[`twisted.inp`](files/liquid_crystal/twisted.inp).
+[`cholesteric.inp`](files/liquid_crystal/cholesteric.inp).
 
 ## The molecule
 
@@ -30,8 +30,8 @@ with the vector of the molecules along the director, and one with it opposite.
 
 The density of 5CB is 1.02 g/mL near room temperature, and its molar mass 249.35 g/mol:
 0.00246 molecules per Å³. The nematic phase fills a periodic cube of 50 Å
-(125000 Å³) with 308 molecules, 154 in each direction. Each layer of the twisted cell is
-50 × 50 × 15 Å (37500 Å³), with 92 molecules, 46 in each direction.
+(125000 Å³) with 308 molecules, 154 in each direction. Each layer of the cholesteric
+phase is 50 × 50 × 15 Å (37500 Å³), with 92 molecules, 46 in each direction.
 
 ## Nematic phase
 
@@ -94,83 +94,87 @@ visualize(get_atoms(nematic),
 )
 ```
 
-## Twisted nematic cell
+## Cholesteric phase
 
-In a twisted nematic cell, the molecules lie in the plane of the cell, and the director
-turns by 90° from one wall of the cell to the other: from `x` at the bottom to `y` at the
-top. Here, the cell has four layers of 15 Å, with the director at 0°, 30°, 60° and 90° from
-`x`. The cell is periodic in `x` and `y`; along `z`, 10 Å of empty space above the top
-layer separate it from the bottom one, in the periodic image of the cell.
+In a cholesteric (chiral nematic) phase, the director turns along a helix: the molecules
+of each layer lie in the xy plane, aligned along a director that turns from one layer to
+the next. 5CB forms it when a chiral molecule is added to it; in a twisted nematic cell,
+the arrangement of a pixel of a liquid crystal display, the twist is instead imposed by the
+walls of the cell. Here, the cell has four layers of 15 Å, with the director at 0°, 45°,
+90° and 135° from `x`: the next layer, through the periodic boundary along `z`, would be
+at 180°, the same as 0° for an apolar director, so the twist continues through the
+boundary, along a helix of a pitch of 120 Å (a full turn of the director).
 
-The direction of a molecule in a plane takes more than one angle: at 30° from `x`, the
-vector is also at 60° from `y` (at -30° from `x`, it would be at 120°), and at 90° from
-`z`. So each structure block has three rotation constraints, one for each axis: for a
-director at an angle φ from `x`, the vector is at φ from `x`, 90° - φ from `y`, and 90°
-from `z`, and the opposite one at 180° - φ, 90° + φ and 90°.
+The direction of a molecule in a plane takes more than one angle: at 45° from `x`, the
+vector is also at 45° from `y` (at -45° from `x`, it would be at 135° from `y`), and at
+90° from `z`. So each structure block has three rotation constraints, one for each axis:
+for a vector at an angle φ from `x` in the plane, `(cos φ, sin φ, 0)`, its angles are
+`acos(cos φ)` with `x`, `acos(sin φ)` with `y`, and 90° with `z`. The molecules pointing
+the other way are at φ + 180°.
 
 ### Command line
 
 ```@raw html
-<details><summary>The input file <code>twisted.inp</code> (click to expand)</summary>
+<details><summary>The input file <code>cholesteric.inp</code> (click to expand)</summary>
 ```
 ```@eval
-Main.input_file("files/liquid_crystal/twisted.inp")
+Main.input_file("files/liquid_crystal/cholesteric.inp")
 ```
 ```@raw html
 </details><br>
 ```
 
 ```
-packmol twisted.inp
+packmol cholesteric.inp
 ```
 
-It packs in about 15 seconds with 14 threads.
+It packs in about 10 seconds with 14 threads.
 
 ### Julia
 
 The same input, with the structure types of the layers built in a loop:
 
 ```@example liquid_crystal
-# The vector from atom 1 to atom 19 at angles (x, y, z) from the axes, within 15° of
-# the angles with x and y, and 10° of the plane
-function layer(z1, z2, (ax, ay, az))
+# The vector from atom 1 to atom 19 at the angle φ from x, in the xy plane: within 15°
+# of its angles with x and y, and 10° of the plane
+function layer(z1, z2, φ)
     return structure_type("5cb.pdb"; number = 46,
         constraints = [AbovePlane([0., 0., 1.], z1), BelowPlane([0., 0., 1.], z2)],
         constrain_rotation = Dict(
-            :x => (ax, 15.0, [1], [19]),
-            :y => (ay, 15.0, [1], [19]),
-            :z => (az, 10.0, [1], [19]),
+            :x => (acosd(cosd(φ)), 15.0, [1], [19]),
+            :y => (acosd(sind(φ)), 15.0, [1], [19]),
+            :z => (90.0, 10.0, [1], [19]),
         ),
     )
 end
 structure_types = Packmol.StructureType{3,Float64}[]
-for (k, φ) in enumerate((0.0, 30.0, 60.0, 90.0))
-    z1 = -35.0 + 15 * (k - 1)
-    push!(structure_types, layer(z1, z1 + 15, (φ, 90 - φ, 90.0)))
-    push!(structure_types, layer(z1, z1 + 15, (180 - φ, 90 + φ, 90.0)))
+for (k, φ) in enumerate((0.0, 45.0, 90.0, 135.0))
+    z1 = -30.0 + 15 * (k - 1)
+    push!(structure_types, layer(z1, z1 + 15, φ))
+    push!(structure_types, layer(z1, z1 + 15, φ + 180)) # antiparallel
 end
-twisted = PackmolSystem(structure_types;
-    output = "twisted.pdb",
+cholesteric = PackmolSystem(structure_types;
+    output = "cholesteric.pdb",
     tolerance = 2.0,
-    unitcell = [50. 0. 0.; 0. 50. 0.; 0. 0. 70.], # centered at the origin
+    unitcell = [50. 0. 0.; 0. 50. 0.; 0. 0. 60.], # centered at the origin
 )
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
-packmol(twisted)
+packmol(cholesteric)
 end # hide
-twisted.status
+cholesteric.status
 ```
 
 The layers, from the bottom to the top, in red, orange, green and blue (each structure
 type is written with a chain identifier of its own, from `A` to `H`): seen from above,
-the director turns from one layer to the next.
+the director turns by 45° from one layer to the next.
 
 ```@example liquid_crystal
-visualize(get_atoms(twisted),
+visualize(get_atoms(cholesteric),
     "chain A or chain B" => (style = :sticks, color = "red"),
     "chain C or chain D" => (style = :sticks, color = "orange"),
     "chain E or chain F" => (style = :sticks, color = "green"),
     "chain G or chain H" => (style = :sticks, color = "blue");
-    unitcell = UnitCell(twisted.unitcell),
-    unitcell_origin = -sum(eachcol(twisted.unitcell)) / 2,
+    unitcell = UnitCell(cholesteric.unitcell),
+    unitcell_origin = -sum(eachcol(cholesteric.unitcell)) / 2,
 )
 ```
