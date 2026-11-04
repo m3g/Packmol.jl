@@ -74,6 +74,7 @@ src/
     SolutionBoxUSC.jl                 # Solute + Solvent + Cossolvent
     SolutionBoxUWI.jl                 # Solute + Water + Ions
     Membrane.jl                       # Lipid bilayer/monolayer
+    MembraneProtein.jl                # Membrane protein in a bilayer, with water and ions
     DensityTable.jl
     concentration_units.jl
 ext/
@@ -377,6 +378,12 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       (L: head to midpoint of the chain ends; `flexibility` 0.15), no constraint on the whole molecule
       (it made every lipid tilt), the solvent from 2 Å beyond the heads. Size: `total_lipids` xor
       `total_area`. Examples (images by `dev/recipes/membrane.jl`) in `docs/src/recipes/membrane_system.md`.
+- [x] `MembraneProtein` - a membrane protein (pre-oriented as in OPM: normal along z, bilayer middle at
+      z = 0; kept fixed) in a bilayer of the lipids of `Membrane` (same placement rule; lipids per
+      leaflet from the cell area minus the protein cross-section), solvated by water and ions (free
+      volume of the slabs by Monte Carlo, salt concentration and counterions as `SolutionBoxUWI`);
+      the cell is a lateral `margin` around the protein. Example protein: `src/Recipes/test/data/
+      integrin_tm.pdb` (OPM 2K9J without DUM atoms).
 - [x] `packmol(recipe; ...)` - build and pack a recipe directly, without an explicit input file
 - [x] Concentration unit conversions (Molarity, Molality, MoleFraction, etc.)
 - [x] Ported from MolSimToolkit.jl's Packmol Input Creator: `convert_concentration`,

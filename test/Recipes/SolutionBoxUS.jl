@@ -149,7 +149,7 @@ end
     using Packmol
     # positional calls and missing mandatory keywords give an ArgumentError
     # listing the recipe's keywords, not a bare MethodError/UndefKeywordError
-    for R in (SolutionBoxUS, SolutionBoxUSC, SolutionBoxUWI, Membrane)
+    for R in (SolutionBoxUS, SolutionBoxUSC, SolutionBoxUWI, Membrane, MembraneProtein)
         err = try R("protein.pdb") catch e e end
         @test err isa ArgumentError
         @test contains(err.msg, "keyword arguments only")
