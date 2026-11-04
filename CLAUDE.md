@@ -101,7 +101,8 @@ fraction of a second) and shows it with `PDBTools.visualize` (structure files co
 `Packmol.RecipesDirectory` in a hidden `@setup` block). New constraints get one too.
 `docs/src/tutorials/` holds the classic Packmol examples (water–urea, interface, bilayer,
 vesicle, solvated protein; the bilayer and the vesicle redone with the all-atom POPC of the
-`packmol_lipids` set of MolSimTestFiles, the vesicle as two nanoliposomes in octahedral cells), each with a command-line and a Julia section; keep
+`packmol_lipids` set of MolSimTestFiles, the vesicle as two nanoliposomes in octahedral cells) and others (liquid crystals of 5CB with
+`constrain_rotation`: a nematic phase and a twisted nematic cell), each with a command-line and a Julia section; keep
 both paths equivalent when changing the input syntax or the Julia API.
 Tutorial images (`docs/src/tutorials/images/*.webp`) are rendered with VMD by the scripts of
 `dev/tutorials/` (`render.jl`; `classic.jl` for the classic examples, `lipids.jl` for the
