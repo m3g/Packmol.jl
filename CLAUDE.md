@@ -379,9 +379,9 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       `total_area`. Examples (images by `dev/recipes/membrane.jl`) in `docs/src/recipes/membrane_system.md`.
 - [x] `packmol(recipe; ...)` - build and pack a recipe directly, without an explicit input file
 - [x] Concentration unit conversions (Molarity, Molality, MoleFraction, etc.)
-- [x] Ported from MolSimToolkit.jl's Packmol Input Creator (whose docs page is to be replaced by a pointer
-      here): `convert_concentration`, `convert_density_table!`, `get_density_table`, the `"vv"`/`"mm"` unit aliases
-      ("Coming from MolSimToolkit.jl" page of `docs/src/recipes/`)
+- [x] Ported from MolSimToolkit.jl's Packmol Input Creator: `convert_concentration`,
+      `convert_density_table!`, `get_density_table`, the `"vv"`/`"mm"` unit aliases (documented with
+      `SolutionBoxUSC`)
 - [x] DensityTable interpolation
 - [x] Documented in its own `docs/src/recipes/` section
 - [x] `pbc` keyword (`:cubic`/`:orthorhombic`/`:dodecahedral`/`:octahedral`) selecting the

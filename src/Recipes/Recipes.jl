@@ -89,9 +89,10 @@ _recipe_unitcell(unitcell::AbstractMatrix{Float64}) = (
 
 # One-line human-readable description of a recipe's unit cell, for the
 # printed/written summary (`a=... Å, b=... Å, c=... Å, α=...°, β=...°, γ=...°`).
+# The sides and angles of the cell, in two lines (the second indented), with 3 decimals
 function _unitcell_description(unitcell::AbstractMatrix{Float64})
-    a, b, c, α, β, γ = _unitcell_abc_angles(unitcell)
-    return "a=$a Å, b=$b Å, c=$c Å, α=$(α)°, β=$(β)°, γ=$(γ)°"
+    a, b, c, α, β, γ = round.(_unitcell_abc_angles(unitcell); digits=3)
+    return "a = $a Å, b = $b Å, c = $c Å\n    α = $(α)°, β = $(β)°, γ = $(γ)°"
 end
 
 include("./DensityTable.jl")
