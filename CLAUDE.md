@@ -350,16 +350,15 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 - [x] `SolutionBoxUSC` - solute + solvent + cossolvent setup
 - [x] `SolutionBoxUWI` - solute + water + ions setup (target ionic concentration, automatic solute charge neutralization)
 - [x] `Membrane` - lipid bilayer/monolayer setup, one or more lipids (`lipid_molar_ratio`) solvated by
-      one or more solvents (`solvent_molar_ratio`), always orthorhombic PBC with the membrane normal
-      along z. Each lipid's single head/tail atom indices give its intrinsic head-to-tail length (the
-      longest one sets the membrane's nominal thickness); each copy is packed with two whole-molecule
-      `plane` constraints bounding it to its leaflet's slab plus two per-atom `plane` constraints (via
-      `atoms <idx> ... end atoms`) pinning head/tail near their target planes within `flexibility` (a
-      fraction of that lipid's own length) for tilt/wobble. Box lateral size and lipid count are tied
-      together via `area_per_lipid` plus exactly one of `total_area`/`total_lipids` (mirroring
-      `box_sides`/`margin` elsewhere); solvent slab thickness/density/mixture are independent knobs.
-      Every parameter is given up front in the constructor (no separate box-sizing args at
-      `write_packmol_input`/`packmol` call time, unlike the solvation recipes below).
+      one or more solvents (water by default), always orthorhombic PBC with the membrane normal along z.
+      Built-in lipids (`src/Recipes/lipids/`, from MolSimTestFiles `packmol_lipids`): POPC, POPE, POPS,
+      POPG, DPPC, DOPC, DMPC, given by name, with their head and chain-end atoms and area per lipid
+      (default: the molar average of the actual areas). Lipids given as files need `lipid_head`, `lipid_tail` (chain ends,
+      a vector per lipid) and `area_per_lipid`. Placement as in the bilayer tutorial: chain ends within
+      6 Å of the middle of the bilayer, the head of each lipid beyond 6 Å + (1 - `flexibility`) L
+      (L: head to midpoint of the chain ends; `flexibility` 0.15), no constraint on the whole molecule
+      (it made every lipid tilt), the solvent from 2 Å beyond the heads. Size: `total_lipids` xor
+      `total_area`. Examples (images by `dev/recipes/membrane.jl`) in `docs/src/recipes/membrane_system.md`.
 - [x] `packmol(recipe; ...)` - build and pack a recipe directly, without an explicit input file
 - [x] Concentration unit conversions (Molarity, Molality, MoleFraction, etc.)
 - [x] Ported from MolSimToolkit.jl's Packmol Input Creator (whose docs page is to be replaced by a pointer

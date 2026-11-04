@@ -15,9 +15,9 @@ solvation setups:
 - [Solute-Water-Ions system](@ref): a solute solvated by water and a
   background salt (e.g. NaCl) at a target ionic concentration, with
   automatic charge neutralization of the solute.
-- [Membrane system](@ref): a lipid bilayer or monolayer, optionally mixing
-  more than one lipid and more than one solvent, solvated above (and, for a
-  bilayer, also below) the membrane.
+- [Membrane system](@ref): a lipid bilayer or monolayer of one or more
+  lipids, solvated above (and, for a bilayer, also below) the membrane. Seven
+  common phospholipids are built in: only the composition and the size are needed.
 
 Vesicles and nanotubes are planned as future recipes; a rhombic
 dodecahedron or truncated octahedron box is already available today, for
