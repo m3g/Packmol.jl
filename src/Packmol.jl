@@ -31,6 +31,7 @@ function test_file end
 export read_packmol_input
 export write_output
 export packmol
+export guess_volume, free_volume
 export PackmolSystem
 export StructureType
 export structure_type
@@ -83,6 +84,9 @@ include("./io/write_output.jl")
 
 # Packing functions
 include("./packmol_main.jl")
+
+# Volume estimates for setting up a system
+include("./tools/volume.jl")
 
 # Runner for the legacy packmol (methods in the PackmolJLLExt extension)
 include("./packmol_runner.jl")

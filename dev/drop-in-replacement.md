@@ -587,3 +587,13 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   `packmol_zika-v1` release of MolSimTestFiles), zeolite with a live PDBTools view. The
   POPC membrane tutorial does not pack yet (see the memory notes / tutorials-status):
   lipids alone fail at 64–75 Å²/lipid with an extended POPC and permissive planes.
+- **2026-11-04** (Claude): two options of the CLI beyond Fortran, `--guess-volume`
+  (`--density`, g/mL) and `--free-volume` (`--npoints`), the volume estimates of
+  `src/tools/volume.jl` (`guess_volume`, `free_volume`): they read the input and don't
+  pack it. Trim-safe: no `lpad`/`rpad` (`_lpad`/`_rpad`), no non-periodic mode of
+  CellListMap (a diagonal cell larger than the points, as `_nonperiodic_unitcell`), and
+  Packmol's `_validate_positions` as the validator of CellListMap (its default prints an
+  `SVector`). Tested in `juliac/test_executable.jl` against the Julia functions. Merged
+  before, the same days: the scaled rotations of the packing loop (#73), centers of mass
+  on the faces of the cell no longer wrapped (#75), the Membrane recipe with built-in
+  lipids (#74), the liquid crystal tutorial (#76).

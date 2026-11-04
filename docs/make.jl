@@ -17,7 +17,8 @@ makedocs(
     sitename = "Packmol.jl",
     format = Documenter.HTML(
         top_menu = true,
-        assets = ["assets/custom.css"],
+        # volume_tools.js: the online calculators of the Recipes tab
+        assets = ["assets/custom.css", "assets/volume_tools.js"],
         # The interactive 3D views of the examples are embedded in the pages
         example_size_threshold = nothing,
         size_threshold_ignore = [
@@ -53,6 +54,7 @@ makedocs(
             "Structure blocks" => "input_files/structure_blocks.md",
             "Residue numbering" => "input_files/residue_numbering.md",
             "Restarting a run" => "input_files/restarting_a_run.md",
+            "Volume estimates" => "input_files/volume_estimates.md",
         ],
         "Constraints" => [
             "Overview" => "constraints/index.md",
@@ -86,6 +88,8 @@ makedocs(
             "Reference" => "julia_api/reference.md",
         ],
         "Recipes" => [
+            "Volume guesser" => "recipes/volume_guesser.md",
+            "Free volume" => "recipes/free_volume.md",
             "Overview" => "recipes/index.md",
             "Running Packmol" => "recipes/running_packmol.md",
             "Solute-Solvent system" => "recipes/solute_solvent_system.md",

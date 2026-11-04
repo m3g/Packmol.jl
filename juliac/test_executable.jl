@@ -98,6 +98,28 @@ end
         println("  $name: $(round(elapsed; digits=2)) s")
     end
 
+    @testset "volume estimates" begin
+        # The executable gives the estimates of the Julia functions (the same random points)
+        for name in ("water_box", "solvprotein_pbc")
+            input_file = joinpath(inputs, "$name.inp")
+            code, out = run_packmol("--guess-volume", "--density", "1.1", input_file)
+            @test code == 0
+            g = redirect_stdout(devnull) do
+                Packmol.guess_volume(input_file; density=1.1)
+            end
+            @test occursin("Volume:       $(Packmol._fmt(g.volume, 1)) Å³", out)
+            code, out = run_packmol("--free-volume", "--npoints", "20000", input_file)
+            @test code == 0
+            r = redirect_stdout(devnull) do
+                Packmol.free_volume(input_file; npoints=20000)
+            end
+            @test all(x -> occursin(Packmol._fmt(x.volume, 1), out), r)
+        end
+        code, _ = run_packmol("--free-volume", "--npoints", "0", joinpath(inputs, "water_box.inp"))
+        @test code == 174
+        code, _ = run_packmol("--guess-volume", "--density", "-1", joinpath(inputs, "water_box.inp"))
+        @test code == 174
+    end
     @testset "input from stdin, and -o" begin
         input_file = joinpath(inputs, "water_box.inp")
         code, _ = run_packmol(; stdin_file=input_file)
