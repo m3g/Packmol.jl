@@ -140,6 +140,11 @@ and `packmol_system.movefrac`).
 
 `nthreads` (maximum number of threads used, default: all the threads of the Julia
 session) takes precedence over `packmol_system.nthreads` (the input keyword `nthreads`).
+
+`rotation_scaling` (default `true`): the optimizer works on rotation variables scaled by
+the inertia of each molecule (a unit change moves its atoms by 1 Å RMS), instead of its
+Euler angles. With `false`, the Euler angles themselves, much slower for systems of
+elongated molecules (lipids, polymers); for comparisons only.
 """
 function packmol(packmol_system::PackmolSystem; nthreads::Union{Nothing,Int}=nothing, kargs...)
     ntasks = _ntasks[]
@@ -150,6 +155,27 @@ function packmol(packmol_system::PackmolSystem; nthreads::Union{Nothing,Int}=not
         _ntasks[] = ntasks
     end
 end
+
+# The objective function of the scaled variables `y` (see rigid_body/rotation_metric.jl):
+# evaluated at the Euler angles (in `x_unscaled`), with the gradient relative to the
+# scaled angles.
+function _scaled_fg!(g, y, x_unscaled, rot_scaling, cl_system, packmol_system::PackmolSystem{D,T}, atom_positions, free_mol_indices, atom_radii) where {D,T}
+    _unscale_angles!(reinterpret(MoleculePosition{D,T}, x_unscaled), reinterpret(MoleculePosition{D,T}, y), rot_scaling)
+    f = fg!(g, x_unscaled, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
+    _scale_angle_gradient!(reinterpret(MoleculePosition{D,T}, g), rot_scaling)
+    return f
+end
+
+# The scaling of the rotations exists for three-dimensional systems only
+_rotation_scaling(packmol_system::PackmolSystem{3}) = RotationScaling(packmol_system)
+_rotation_scaling(::PackmolSystem) = nothing
+
+# The local solver of the packing loop: SPGBox. A separate function so that the solver
+# experiments of `dev/solvers/` can replace it by redefining this method. The bounds are
+# positional: they are `nothing` without PBC, and a keyword call with arguments of a
+# `Union` type is not resolved by `juliac --trim`.
+_local_solver(fg!, x, lower, upper; callback, vaux, nitmax, nfevalmax) =
+    spgbox!(fg!, x; callback, vaux, nitmax, nfevalmax, lower, upper)
 
 function _packmol(
     packmol_system::PackmolSystem{D,T};
@@ -163,6 +189,7 @@ function _packmol(
     movebad_tolerance::T=T(0.10),
     seed::Int=packmol_system.seed,
     restart::Bool=false,
+    rotation_scaling::Bool=true,
 ) where {D,T}
     # Keyword arguments take precedence over the input file's `nloop`/`maxit`
     nloop = something(nloop, packmol_system.nloop, 500)
@@ -362,6 +389,14 @@ function _packmol(
     end
     auxvecs = buffers.vaux
 
+    # Scaling of the rotations (see rigid_body/rotation_metric.jl): in each chunk, the
+    # optimizer works on the angles a′ = Lᵀ·a of each molecule, with which a unit change
+    # moves its atoms by 1 Å RMS. `x_unscaled` holds the variables in the original
+    # (Euler angles) form, for the objective function. Three-dimensional packings only.
+    scale_rotations = rotation_scaling && D == 3
+    rot_scaling = _rotation_scaling(packmol_system)
+    x_unscaled = similar(x)
+
     # Placement region for movebad! randomization
     mol_structure_type = _build_mol_structure_type(packmol_system)
     mol_iat_first = _build_mol_iat_first(packmol_system)
@@ -472,7 +507,13 @@ function _packmol(
 
         # Run a short optimization (maxit iterations per loop)
         progress_meter = ProgressBar(maxit; desc=" Iterations: ", barlen=47)
-        fg_closure = (g, x) -> fg!(g, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
+        if scale_rotations
+            _update_rotation_scaling!(rot_scaling, reinterpret(MoleculePosition{D,T}, x))
+            _scale_angles!(reinterpret(MoleculePosition{D,T}, x), rot_scaling)
+        end
+        fg_closure = (g, y) -> scale_rotations ?
+            _scaled_fg!(g, y, x_unscaled, rot_scaling, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii) :
+            fg!(g, y, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
         # Fresh stall detectors per chunk: plateau state from the *previous*
         # chunk isn't meaningful here, since movebad! (or the initial
         # placement) just changed the starting point. `dmin_stalled_flag`/
@@ -517,9 +558,9 @@ function _packmol(
         # packmol_callback for why an unlatched version is a bug (a
         # one-way-true "still improving" veto that never expires).
         f_true_start_progress_used = Ref(false)
-        optresult = spgbox!(
+        optresult = _local_solver(
             fg_closure,
-            x;
+            x, lower, upper;
             callback=(result) -> packmol_callback(cl_system, tol, iprint,
                 packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
                 dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
@@ -530,8 +571,12 @@ function _packmol(
             vaux=auxvecs,
             nitmax=maxit,
             nfevalmax=10 * maxit,
-            lower, upper,
         )
+
+        # Back to the Euler angles
+        if scale_rotations
+            _unscale_angles!(reinterpret(MoleculePosition{D,T}, x), reinterpret(MoleculePosition{D,T}, x), rot_scaling)
+        end
 
         # Update molecule positions with optimized values
         x_mol = reinterpret(MoleculePosition{D,T}, x)

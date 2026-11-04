@@ -56,7 +56,7 @@ directory of the input file, and those in a Julia script to the current director
     Uncomment it (remove the `#`), and run the input file: Packmol then only places each
     molecule in its region, satisfying the constraints, writes this initial placement to
     the output file, and stops, without packing. This takes a fraction of the time of the
-    packing (seconds, for the virion that takes an hour). The molecules may still overlap,
+    packing (30 seconds, for the virion that takes 7 minutes). The molecules may still overlap,
     but a look at the output file in a molecular visualization program shows whether the
     constraints put them where intended. When they do, comment the line again, and run the
     packing.

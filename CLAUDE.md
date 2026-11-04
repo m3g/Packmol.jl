@@ -62,6 +62,7 @@ src/
   rigid_body/
     rigid_body.jl                     # Euler angles, rotations, translations
     chain_rule.jl                     # Gradient chain rule for rigid bodies
+    rotation_metric.jl                # Rotation variables scaled by the inertia of each molecule
   Recipes/                            # Parameter-driven system setups (recipes)
     Recipes.jl
     SolutionBoxUS.jl                  # Solute + Solvent
@@ -255,6 +256,11 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] SPGBox-based optimization (`packmol()` function)
 - [x] Multi-start strategy: initial placement + iterative repositioning of bad molecules (`movebad!`)
 - [x] `movefrac` control: fraction of bad molecules moved per iteration
+- [x] Rotations scaled by the inertia of each molecule (`src/rigid_body/rotation_metric.jl`): in each
+      chunk the optimizer works on a′ = Lᵀa (G/N = LLᵀ, G = JᵀIJ, the metric of the atom displacements
+      at the current orientation), so a unit step moves the atoms by 1 Å RMS; not for linear molecules.
+      ~10x fewer evaluations for lipids (bilayer, nanoliposomes, Zika). `packmol(sys; rotation_scaling=false)`
+      packs with the Euler angles. Solver experiments (GENCAN, L-BFGS: no gain) in `dev/solvers/`.
 - [x] `<output>_FORCED`: constraint-only adjustment of the best solution, written when packing fails
 - [ ] Convergence criteria based on `tolerance_precision` and `constraint_precision`
 - [N] `writeout` as a time interval and `writebad` (the output is written after every improved loop)

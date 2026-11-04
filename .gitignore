@@ -20,3 +20,5 @@ test/input_files/solvprotein.pdb
 test/run_packmol/ieee_signaling_box.pdb
 /juliac/Manifest.toml
 /juliac/build/
+/dev/solvers/Manifest.toml
+/dev/solvers/gencan/build/
