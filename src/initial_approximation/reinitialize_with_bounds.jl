@@ -93,6 +93,8 @@ function _place_molecules!(
     task_fg_outputs = [InteratomicDistanceFG{D,T}(packmol_system) for _ in 1:(fit ? ntasks : 0)]
     task_atom_positions = [Vector{SVector{D,T}}(undef, natoms) for _ in 1:(fit ? ntasks : 0)]
     mol_structure_type = _build_mol_structure_type(packmol_system)
+    # Bounds of the fit of a trial (see `_fit_bounds`), the same for all
+    fit_bounds = _fit_bounds(packmol_system, 1)
     mol_iat_first = _build_mol_iat_first(packmol_system)
     ok_precision = fit ? fit_precision : precision
     task_accepted = zeros(Int, ntasks)
@@ -208,6 +210,7 @@ function _place_molecules!(
                             fit_mp, fit_fx = _fit_to_constraints!(
                                 task_x, task_mol_list, packmol_system, imol, mp, task_fg_outputs[ichunk],
                                 task_atom_positions[ichunk], mol_structure_type, mol_iat_first, fit_precision, opt_nit,
+                                fit_bounds,
                             )
                             if fit_fx < fx && !(packmol_system.avoid_overlap &&
                                 overlaps_fixed(fit_mp, st.reference_coordinates, task_fixed_sys, mol_positions, fixed_lo, fixed_hi, tol))
@@ -249,14 +252,17 @@ function _fit_to_constraints!(
     x::Vector{T}, mol_list::Vector{Int}, packmol_system::PackmolSystem{D,T}, imol::Int,
     mp::MoleculePosition{D,T}, fg_output::InteratomicDistanceFG{D,T}, atom_positions::Vector{SVector{D,T}},
     mol_structure_type::Vector{Int}, mol_iat_first::Vector{Int}, precision::T, opt_nit::Int,
+    bounds::Tuple{Vector{T},Vector{T}},
 ) where {D,T}
     mol_list[1] = imol
     reinterpret(MoleculePosition{D,T}, x)[1] = mp
+    lower, upper = bounds
     spgresult = spgbox!(
         (g, x) -> constraint_only_fg_for_mols!(
             g, x, fg_output, packmol_system, atom_positions, mol_list, mol_structure_type, mol_iat_first,
         ),
         x;
+        lower, upper,
         nitmax=opt_nit,
         nfevalmax=10 * opt_nit,
         callback=(result) -> result.f < precision,

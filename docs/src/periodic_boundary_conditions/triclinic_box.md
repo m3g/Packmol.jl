@@ -14,7 +14,7 @@ below build exactly this kind of matrix from a single size parameter, as a
 convenience).
 
 An orthorhombic `pbc` is just the special case `alpha = beta = gamma = 90°`
-— everything below (minimum-image distances, implicit confinement, CRYST1
+— everything below (minimum-image distances, the bounds of the centers of mass, CRYST1
 output) is expressed in terms of the general triclinic cell and reduces to
 the simpler orthorhombic behavior automatically when the cell happens to be
 diagonal.
