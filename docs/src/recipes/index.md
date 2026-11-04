@@ -6,7 +6,9 @@ CollapsedDocStrings = true
 A recipe is a higher-level, parameter-driven system setup: instead of
 specifying molecule counts directly (as a `structure ... end structure`
 block does), a recipe takes target densities or concentrations and works out
-the molecule counts and box size itself. Recipes currently cover common
+the molecule counts and box size itself. Two online calculators, the
+[volume guesser](@ref "Volume guesser") and the [free volume](@ref "Free volume")
+calculator, help to choose them for any input. Recipes currently cover common
 solvation setups:
 
 - [Solute-Solvent system](@ref): a solute solvated by a single solvent.

@@ -12,7 +12,9 @@ packmol --free-volume input.inp
 ```
 
 and in Julia, with [`guess_volume`](@ref) and [`free_volume`](@ref), which take an input
-file or a [`PackmolSystem`](@ref).
+file or a [`PackmolSystem`](@ref). Both are also online calculators, in the browser: the
+[volume guesser](@ref "Volume guesser") and the [free volume](@ref "Free volume")
+calculator, at the top of the Recipes tab.
 
 ## The volume of the molecules at a density
 

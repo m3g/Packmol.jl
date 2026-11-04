@@ -70,3 +70,24 @@ end
     @test contains(r[1].note, "upper bound")
     @test abs(r[1].volume - 4π / 3 * 10^3) < 4 * r[1].error
 end
+
+@testitem "JavaScript volume tools agree with free_volume" begin
+    # docs/src/assets/volume_tools.js (the online calculators of the docs) against the
+    # Julia estimates, on the inputs of the tutorials (skipped without Node.js)
+    node = Sys.which("node")
+    if isnothing(node)
+        @info "Node.js not found: the JavaScript volume tools are not tested"
+    else
+        docs = joinpath(pkgdir(Packmol), "docs")
+        reference = tempname() * ".json"
+        run(pipeline(`$(Base.julia_cmd()) --project=$(pkgdir(Packmol)) $(joinpath(docs, "test_volume_tools.jl")) $reference`; stdout=devnull))
+        # JSON has no NaN (no estimate): null
+        write(reference, replace(read(reference, String), "\"NaN\"" => "null"))
+        out = IOBuffer()
+        p = run(pipeline(ignorestatus(`$node $(joinpath(docs, "test_volume_tools.js")) $reference`); stdout=out, stderr=out))
+        result = String(take!(out))
+        p.exitcode == 0 || println(result)
+        @test p.exitcode == 0
+        @test occursin("all tests passed", result)
+    end
+end
