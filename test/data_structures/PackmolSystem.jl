@@ -145,6 +145,11 @@ end
     short_tol_dist 1.0
     sidemax 1000.
     writecrd out.crd
+    randominitialpoint
+    optimization_print_level 2
+    chkgrad
+    writeout 10
+    writebad
     structure $water # the water
       number 10
       nloop 5
@@ -152,8 +157,14 @@ end
       inside box 0. 0. 0. 20. 20. 20. # inline comment
     end structure
     """)
-    sys = redirect_stderr(devnull) do
-        read_packmol_input(input)
+    warnings = joinpath(dir, "warnings.txt")
+    sys = open(warnings, "w") do io
+        redirect_stderr(io) do
+            read_packmol_input(input)
+        end
+    end
+    for keyword in ("randominitialpoint", "optimization_print_level", "chkgrad", "writeout", "writebad")
+        @test occursin("$keyword is a deprecated keyword and was ignored", read(warnings, String))
     end
     @test sys.tolerance == 2.0
     @test sys.nloop == 37

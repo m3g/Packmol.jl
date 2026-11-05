@@ -38,64 +38,49 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
 
 ## Release plan (2026-11-05)
 
-Goal: release Packmol.jl, its executable and its wheels as the successor of Fortran
-Packmol, breaking only where the differences are documented (D-doc). In order:
+Decisions of the maintainer (2026-11-05):
+- **Version `100.0.0`** for Packmol.jl, the executable and the wheels: a clear distinction
+  from the Fortran versions (21.x), which may still evolve.
+- **Conservative transition.** Fortran Packmol is not deprecated, and `run_packmol_legacy`
+  (Packmol_jll) stays. Release first through Julia (the package and the `packmol` app);
+  replace the pip/uvx binaries only after some days of feedback.
+- **No tag, release or registration without the maintainer's explicit consent.**
+- Keywords parsed without effect are deprecated (A5.8: done).
 
-**R1. Code (blocking)**
-1. Merge PR #83 (mmCIF output; `restart_to` removed, warned and ignored).
-2. A5.8: `randominitialpoint`, `optimization_print_level`, `chkgrad` are parsed without
-   effect. Move them to the deprecated tables (warned and ignored), or implement
-   `randominitialpoint` (skip the constraint fits of the initial point).
-3. Drop `run_packmol_legacy`: `ext/PackmolJLLExt.jl`, `src/packmol_runner.jl`, the
-   `Packmol_jll` weak dependency and compat, `docs/src/legacy.md`, the README section, the
-   export and its tests. This breaks the Julia API, so it goes in the major release.
-4. Fix `PakmolApp.yml` (and its name): it runs `test/input_files/water_box.inp`, which
-   is no longer in the repository (the test files are the MolSimTestFiles artifact).
-5. Version (C5, decision needed): one number for Packmol.jl, the executable
-   (`packmol --version`) and the wheel, sorting after the Fortran 21.2.3 on PyPI.
-   Proposal: `22.0.0` everywhere. The jump from 0.1.14 in General needs a manual
-   merge of the registration PR (AutoMerge rejects version skips). The alternative
-   (`1.0.0` for Julia, `22.0.0` for PyPI) makes `packmol --version` differ between the two.
+**Stage 1: the Julia release (package and app)**
+1. [x] Merge PR #83 (mmCIF output; `restart_to` deprecated) and #84 (`-s`/`--seed`).
+2. [x] A5.8: `randominitialpoint`, `optimization_print_level`, `chkgrad`, `writeout` and
+   `writebad` are deprecated (warned and ignored).
+3. [ ] Fix `PakmolApp.yml` (and its name): it runs `test/input_files/water_box.inp`,
+   which is no longer in the repository (the test files are the MolSimTestFiles artifact).
+4. [ ] D-doc: a page "Coming from Fortran Packmol" with the differences: paths relative
+   to the input (D1), `pbc a b c` (D11), the distance criterion (D12), restarts from
+   coordinate files and no `restart_to` (D13), `constrain_rotation` (D15), `centerofmass`
+   with atomic masses (D16), deprecated keywords (D4, D17), mmCIF input/output, no Tinker
+   or Moldy formats; and what only the Julia API has (recipes, user-defined constraints,
+   `get_atoms`).
+5. [ ] README and installation page: the Julia app and package now; the executable and
+   pip/uvx in stage 2. The legacy section stays.
+6. [ ] Validation: the test suite, the executable tests on the five platforms, the
+   Fortran test suite, and `dev/large_tests/` (the maintainer runs it).
+7. [ ] With the maintainer's consent: version `100.0.0` in `Project.toml`, registration
+   in General (the jump from 0.1.14 needs a manual merge of the registration PR: AutoMerge
+   rejects version skips), TagBot tag, stable docs deployed from the tag.
 
-**R2. Build and distribution**
-6. B5: build the Linux executables in a `manylinux_2_28` container (x86_64 and
-   aarch64), and check that they need no symbol newer than `GLIBC_2.28`; test them on
-   Rocky Linux 8 and Ubuntu 22.04 containers.
-7. C1: a release workflow, triggered by the tag: it attaches the archives of the B3
-   bundles (`packmol-<ver>-<os>-<arch>.tar.gz`, `.zip` on Windows) and their SHA256 sums
-   to the GitHub release (the one TagBot creates), with versionless aliases for
-   `releases/latest/download/`. Also a rolling `dev` pre-release from `main`.
-8. C2: `python/` (hatchling; `cli.py` execs the bundled binary, as the Fortran repo
-   does), with one wheel per platform built from the C1 bundles (real files in `lib/`,
-   no symlinks). Publish to TestPyPI first (D2), and test `pip install` and `uvx
-   packmol` on clean machines of the five platforms. Then the maintainer adds this
-   repository as a trusted publisher of the PyPI project `packmol`.
-9. macOS: no signing for the first release. pip/uvx installs are not quarantined;
-   for the archives, the installation page gives `xattr -d com.apple.quarantine`.
-   B6 (size) is not needed.
-
-**R3. Documentation**
-10. D-doc: a page "Coming from Fortran Packmol" listing the differences: paths relative to
-    the input (D1), `pbc a b c` (D11), the distance criterion (D12), restarts from
-    coordinate files and no `restart_to` (D13), `constrain_rotation` (D15),
-    `centerofmass` with atomic masses (D16), deprecated keywords (D4, D17), mmCIF
-    input/output, no Tinker or Moldy formats. It also covers what only the Julia API has
-    (recipes, user-defined constraints, `get_atoms`).
-11. Installation page and README: the executable (archives), `pip`/`uvx`, the Julia app,
-    and the Julia package, in that order for users coming from Fortran. Remove the
-    legacy sections.
-12. The stable docs deploy from the tag (CI runs on tag pushes). Check that the
-    `stable` link works after the release.
-
-**R4. Validation, then release**
-13. Before tagging: the test suite, the executable tests on the five platforms, the
-    Fortran test suite with the executable, and `dev/large_tests/` (the maintainer runs it).
-    Windows `pick_file` gets a manual test.
-14. Release: set the version, register it in General, let TagBot tag it, and let the
-    release workflow attach the binaries and publish the wheels.
-15. Outside this repository (maintainer): the Fortran repository's README and the
-    Packmol website point to the new version, and the Fortran code is kept for bug fixes
-    only, or archived.
+**Stage 2: the executable and the wheels (after feedback on stage 1)**
+8. [ ] B5: Linux executables built in a `manylinux_2_28` container (x86_64, aarch64), with
+   no symbol newer than `GLIBC_2.28`; tested on Rocky Linux 8 and Ubuntu 22.04.
+9. [ ] C1: a release workflow attaching the archives of the bundles
+   (`packmol-<ver>-<os>-<arch>.tar.gz`, `.zip` on Windows), SHA256 sums and versionless
+   aliases to the GitHub release; a rolling `dev` pre-release from `main`.
+10. [ ] C2: `python/` (hatchling, `cli.py` execs the bundled binary), one wheel per
+    platform from the C1 bundles. TestPyPI first (D2), `pip install`/`uvx packmol` tested
+    on clean machines; then the maintainer adds this repository as a trusted publisher of
+    the PyPI project `packmol`, and `100.0.0` replaces the Fortran wheels as the latest.
+11. [ ] macOS: no signing at first (pip/uvx installs are not quarantined; the archives
+    need `xattr -d com.apple.quarantine`). B6 (size) not needed. Windows `pick_file`:
+    manual test.
+12. [ ] Installation page: the executable and pip/uvx.
 
 ---
 
@@ -383,7 +368,7 @@ Fixed (branch `fixed-molecules-compat`):
   seconds (default 10) for writing the best solution so far, and `writebad` also writes
   worse points. Not needed (maintainer, 2026-10-30, D17): Packmol.jl parses both and
   keeps writing after every improved loop.
-- [ ] **A5.8 Parsed but without effect:** `randominitialpoint` (Fortran skips the
+- [x] **A5.8 Parsed but without effect** (deprecated 2026-11-05, with `writeout`/`writebad`): `randominitialpoint` (Fortran skips the
   constraint fit of the initial point), `optimization_print_level`, `chkgrad`.
   Implement them or deprecate them.
 - [x] **A5.9 `centerofmass` of fixed molecules:** Fortran sets all masses to 1, so its
