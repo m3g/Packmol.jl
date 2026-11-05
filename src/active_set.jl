@@ -75,9 +75,9 @@ end
 
 #
 # Builds the active subsystem from the contributions of the molecules to the objective
-# function (`fmol`, at the current positions), or returns `nothing` if the active
-# molecules are more than `max_fraction` of the free molecules (then the whole system is
-# optimized).
+# function (`fmol`, at the current positions), or `nothing` if the active molecules are
+# more than `max_fraction` of the free molecules (then the whole system is optimized),
+# with the number of active molecules.
 #
 function _active_subsystem(
     packmol_system::PackmolSystem{D,T}, fmol::Vector{T}, free_mol_indices::Vector{Int},
@@ -101,7 +101,7 @@ function _active_subsystem(
             push!(bad_atoms, cl_positions[iat])
         end
     end
-    nbad == 0 && return nothing
+    nbad == 0 && return nothing, 0
     # The molecules with any atom within active_radius of an atom of a bad molecule
     mol_of_atom = [a.molecule_index for a in atoms]
     active = Vector{Bool}(undef, nmols)
@@ -118,7 +118,7 @@ function _active_subsystem(
             push!(kfree, k)
         end
     end
-    length(mols) > max_fraction * length(free_mol_indices) && return nothing
+    length(mols) > max_fraction * length(free_mol_indices) && return nothing, length(mols)
     # Only free molecules move: the fixed ones are frozen even when near bad molecules
     for imol in 1:nmols
         is_free[imol] || (active[imol] = false)
@@ -155,7 +155,7 @@ function _active_subsystem(
         nbatches=_cl_nbatches(),
         validate_coordinates=_validate_positions,
     )
-    return ActiveSubsystem(mols, kfree, atom_map, mol_first, nmobile, frozen_map, cl, cl_frozen)
+    return ActiveSubsystem(mols, kfree, atom_map, mol_first, nmobile, frozen_map, cl, cl_frozen), length(mols)
 end
 
 # A pair of active atoms, as `cartesian_fg!`, with the local indices of the active atoms

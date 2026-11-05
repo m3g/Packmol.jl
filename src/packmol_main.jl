@@ -513,7 +513,7 @@ function _packmol(
         # On an active subset of the system (see active_set.jl): the bad molecules and
         # their neighbors, from the contributions to the objective function at the
         # start of the loop (`cl_system.fg.fmol`, of the evaluation above)
-        sub = if active_set && loop > 0
+        sub, nactive = if active_set && loop > 0
             _active_subsystem(packmol_system, cl_system.fg.fmol, free_mol_indices, cl_system.xpositions,
                 unitcell, cl_system.cutoff, mol_structure_type, mol_iat_first;
                 active_radius=T(active_radius), max_fraction=T(active_max_fraction),
@@ -522,7 +522,16 @@ function _packmol(
                 # constraint_precision)
                 bad_threshold=min(precision^2, T(packmol_system.constraint_precision)))
         else
-            nothing
+            nothing, 0
+        end
+        if active_set && loop > 0
+            if isnothing(sub)
+                @_printf("  Active molecules: %d of %d (%.2f%%): above active_max_fraction (%.2f%%), optimizing the whole system\n\n",
+                    nactive, nfree, 100 * nactive / nfree, 100 * active_max_fraction)
+            else
+                @_printf("  Active molecules: %d of %d (%.2f%%): optimizing the active subsystem (%d atoms)\n\n",
+                    nactive, nfree, 100 * nactive / nfree, sub.nmobile)
+            end
         end
         # Fresh stall detectors per chunk: plateau state from the *previous*
         # chunk isn't meaningful here, since movebad! (or the initial
@@ -597,7 +606,6 @@ function _packmol(
             res
         else
             na = length(sub.mols)
-            @_printf("  Active subsystem: %d of %d free molecules (%d atoms)\n\n", na, nfree, sub.nmobile)
             x_mol_full = reinterpret(MoleculePosition{D,T}, x)
             x_act = Vector{T}(undef, 2 * D * na)
             xa_mol = reinterpret(MoleculePosition{D,T}, x_act)
