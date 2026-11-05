@@ -155,28 +155,25 @@ end
     @test g ≈ gnum rtol = 1e-4
 end
 
-@testitem "restart_from / restart_to" setup=[TestFiles] begin
+@testitem "restart_from" setup=[TestFiles] begin
     water_pdb = TestFiles.test_file("structure_files/water.pdb")
     urea_pdb = TestFiles.test_file("structure_files/urea.pdb")
     uc = Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0)
 
-    restart_all = tempname() * ".pdb"
     restart_water = tempname() * ".xyz"
 
-    # First run: converge normally, writing the coordinates of the whole system (PDB)
-    # and of the water molecules (XYZ)
-    water = structure_type(water_pdb; number=4,
-        constraints=[InsideBox([0, 0, 0], [28, 28, 28])], restart_to=restart_water)
+    # First run: converge normally; its output (PDB) is the restart file of the whole
+    # system, and the coordinates of its water molecules (XYZ) that of the water
+    water = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
     urea = structure_type(urea_pdb; number=2, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
     sys1 = PackmolSystem([water, urea]; output=tempname() * ".pdb", tolerance=2.0,
-        unitcell=uc, unitcell_center=zeros(3), restart_to=restart_all,
+        unitcell=uc, unitcell_center=zeros(3),
     )
     @test packmol(sys1; nloop=20, maxit=100, iprint=1000, seed=1).status == :packing_ready
-    @test isfile(restart_all)
-    @test isfile(restart_water)
+    restart_all = sys1.output_file
+    Packmol.write_xyz(restart_water, Packmol.Structure(get_atoms(sys1)[1:12]))
     @test countlines(restart_water) == 2 + 4 * 3
     saved_water_cm = sys1.molecule_positions[1].cm
-    rm(sys1.output_file; force=true)
 
     # Second run: whole-system restart_from should skip initial placement
     # entirely and reproduce the exact same (already-converged) positions —
@@ -275,7 +272,7 @@ end
     # a pre-existing limitation for tiny fixed structures, unrelated to what
     # this test is actually checking (restart_from's atom bookkeeping).
     sys1 = PackmolSystem([fixed_water, water1]; output=tempname() * ".pdb", tolerance=2.0,
-        unitcell=uc, unitcell_center=zeros(3), restart_to=restart_all, avoid_overlap=false,
+        unitcell=uc, unitcell_center=zeros(3), avoid_overlap=false,
     )
     @test packmol(sys1; nloop=20, maxit=100, iprint=1000, seed=41).status == :packing_ready
     source_pdb = sys1.output_file
@@ -296,8 +293,10 @@ end
     end
     rm(sys2.output_file; force=true)
 
-    # Same, but restarting from the whole-system restart_to file (also
-    # written for the entire system, fixed molecule included).
+    # Same, but restarting from the output written as mmCIF (also for the
+    # entire system, fixed molecule included).
+    restart_all = tempname() * ".cif"
+    write_output(sys1; output_file=restart_all)
     fixed_water3 = structure_type(water_pdb; number=1, fixed=(zeros(3), zeros(3)))
     water3 = structure_type(water_pdb; number=4, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
     sys3 = PackmolSystem([fixed_water3, water3]; output=tempname() * ".pdb", tolerance=2.0,

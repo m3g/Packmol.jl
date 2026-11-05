@@ -9,7 +9,7 @@ better maintainability, and leveraging the Julia ecosystem.
 
 The package also includes:
 - `packmol(input_file)` / `packmol()` (file dialog): the simple user-facing entry point, running
-  the native engine. All paths in an input file (structures, `output`, `restart_from`/`restart_to`)
+  the native engine. All paths in an input file (structures, `output`, `restart_from`)
   are relative to its directory. (`run_packmol`, which used to run the Fortran binary, was removed.)
 - A **legacy runner** (`run_packmol_legacy`) that wraps the Fortran binary via `Packmol_jll`, a weak
   dependency: the methods live in the `PackmolJLLExt` extension (`ext/`), so it requires
@@ -318,16 +318,18 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 
 #### Other Output Formats
 - [ ] Tinker XYZ format (won't be supported)
-- [x] XYZ format (`filetype xyz`, or by file extension; also mmCIF structure files), via PDBToolsBase ≥ 1.1
+- [x] XYZ and mmCIF formats (`filetype xyz|mmcif`, or by the file extension `.xyz`, `.cif`), for structure
+      and output files, via PDBToolsBase ≥ 1.1 (mmCIF output with the cell in `_cell`)
 - [ ] Moldy format (won't be supported)
 
 ---
 
 ### Phase 5: Advanced Features
 
-- [x] Restart capability (`restart_from`, `restart_to`, whole-system and per structure type), with
-      coordinate files only (PDB/XYZ/mmCIF): `restart_from` rigid-body-aligns each molecule's
-      template to the observed atom positions. Fortran's raw restart files are not supported.
+- [x] Restart capability (`restart_from`, whole-system and per structure type), from coordinate files
+      (PDB/XYZ/mmCIF, e.g. a previous output): rigid-body-aligns each molecule's template to the observed
+      atom positions. `restart_to` removed (2026-11-05: ignored with a warning; the output is the restart
+      file). Fortran's raw restart files are not supported.
 - [N] Short-range tolerance (`use_short_tol`, `short_tol_dist`, etc.): deprecated, warned and ignored
 - [x] Rotation constraints (`constrain_rotation`, `src/constraints/rotations.jl`): a penalty on the
       angle between an axis and a vector of the molecule (between the centers of two atom sets, or the

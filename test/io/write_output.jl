@@ -200,8 +200,35 @@ end
     end
     # The restart files of Fortran Packmol are not supported
     @test_throws ArgumentError Packmol._check_restart_file("water.pack", "restart_from")
-    @test_throws ArgumentError Packmol._check_restart_file("restart", "restart_to")
-    @test isnothing(Packmol._check_restart_file(nothing, "restart_to"))
+    @test_throws ArgumentError Packmol._check_restart_file("restart", "restart_from")
+    @test isnothing(Packmol._check_restart_file(nothing, "restart_from"))
+end
+
+@testitem "mmCIF output, and restart_to ignored" setup=[TestFiles] begin
+    using PDBToolsBase: read_mmcif, read_unitcell
+    water = TestFiles.test_file("structure_files/water.pdb")
+    dir = mktempdir()
+    cp(water, joinpath(dir, "water.pdb"))
+    input = joinpath(dir, "box.inp")
+    write(input, """
+        tolerance 2.0
+        output box.cif
+        pbc 20. 20. 20.
+        restart_to old.pdb
+        structure water.pdb
+          number 50
+        end structure
+        """)
+    sys = redirect_stdout(devnull) do
+        packmol(input)
+    end
+    @test sys.status == :packing_ready
+    @test length(read_mmcif(joinpath(dir, "box.cif"))) == 150
+    @test read_unitcell(joinpath(dir, "box.cif")) ≈ [20 0 0; 0 20 0; 0 0 20] rtol = 1e-4
+    @test !isfile(joinpath(dir, "old.pdb"))
+    # also with `filetype mmcif`
+    sys = Packmol.read_packmol_input(input)
+    @test Packmol._file_format("box.out", "mmcif") == "mmcif"
 end
 
 @testitem "PDB-based restart" setup=[TestFiles] begin

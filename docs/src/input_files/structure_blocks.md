@@ -15,7 +15,6 @@ structure <pdb file>
        to <j> ...
      end constrain_rotation]]
     [restart_from <file>]
-    [restart_to <file>]
     <constraint lines...>
     [atoms <indices...>
         <per-atom overrides...>
@@ -36,7 +35,6 @@ end structure
 | `segid <id>` | Segment identifier (at most 4 characters) for every atom of this type, in columns 73-76 of the output PDB file. Without `segid`, the segment identifiers of the structure's own PDB file are kept (blank if it has none). |
 | `constrain_rotation <axis> <center_deg> <halfwidth_deg>` | Keep the angle between `<axis>` (`x`, `y` or `z`) and a vector of the molecule within `<center_deg> ± <halfwidth_deg>` degrees: the longest axis of the molecule, or, followed by `atoms <i> ...`, `to <j> ...` and `end constrain_rotation` lines, the vector between the centers of two sets of atoms. See [Rotation constraint](@ref). |
 | `restart_from <file>` | Restart only this structure type's molecules — see [Restarting a run](@ref). |
-| `restart_to <file>` | Write the coordinates of this structure type's molecules only — see [Restarting a run](@ref). |
 | `atoms <indices> ... end` | Restrict the enclosed lines (`radius`, constraints) to the listed 1-based atom indices instead of the whole molecule. |
 
 Constraint lines (`inside box`, `outside sphere`, `above plane`, ...) are
@@ -69,5 +67,5 @@ each other better. Lipid membranes, for example, pack at their actual density fr
 conformations taken from an equilibrated membrane, but not from copies of a single
 extended lipid. In the output, the molecules of all conformations are numbered as
 those of a single structure type. A fixed molecule has a single conformation, and
-`restart_from` and `restart_to` are not available inside a structure block with
-several conformations (use them for the whole system).
+`restart_from` is not available inside a structure block with several conformations
+(use it for the whole system).

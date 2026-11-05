@@ -98,6 +98,16 @@ end
         println("  $name: $(round(elapsed; digits=2)) s")
     end
 
+    @testset "mmCIF output" begin
+        input_file = joinpath(inputs, "water_box_pbc.inp")
+        output_file = joinpath(dir, "water_box_pbc.cif")
+        code, out = run_packmol("-i", input_file, "-o", output_file)
+        @test code == 0
+        @test isfile(output_file)
+        atoms = Packmol.PDBToolsBase.read_mmcif(output_file)
+        @test length(atoms) == length(read_packmol_input(input_file).atoms)
+        @test Packmol.PDBToolsBase.read_unitcell(output_file) ≈ read_packmol_input(input_file).unitcell rtol = 1e-3
+    end
     @testset "volume estimates" begin
         # The executable gives the estimates of the Julia functions (the same random points)
         for name in ("water_box", "solvprotein_pbc")

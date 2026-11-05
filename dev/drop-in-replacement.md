@@ -98,9 +98,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` open · `[N]` won't do · `[?]`
   now respected (it was ignored: overlaps of 0.25 Å were accepted), and a smaller
   `radius` allows closer pairs, as in Fortran.
 - **D13 (2026-10-29): no Fortran restart files.** Restarts use coordinate files only
-  (PDB, XYZ or mmCIF, by extension): `restart_to` writes the coordinates of the system
-  (or of one structure type), and `restart_from` recovers each molecule's position from
-  coordinates by rigid-body alignment to its template. The raw format of center of mass
+  (PDB, XYZ or mmCIF, by extension): `restart_from` recovers each molecule's position
+  from coordinates by rigid-body alignment to its template. Since 2026-11-05,
+  `restart_to` is ignored with a warning: the output (PDB, XYZ or mmCIF) is the restart
+  file. The raw format of center of mass
   and Euler angles was removed, so Fortran restart files are not read (a clear input
   error), and Fortran never reads Packmol.jl's.
 - **D14 (2026-10-29): Packmol.jl's own Euler angles (`eulermat`) are the only convention.**

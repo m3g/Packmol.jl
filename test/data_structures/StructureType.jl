@@ -259,7 +259,7 @@ end
     other = TestFiles.test_file("structure_files/palmitoil.pdb")
     @test_throws ArgumentError structure_type([water, other]; number=2)
     @test_throws ArgumentError structure_type(models; number=1, fixed=([0., 0., 0.], [0., 0., 0.]))
-    @test_throws ArgumentError structure_type(models; number=3, restart_to=joinpath(dir, "r.pdb"))
+    @test_throws ArgumentError structure_type(models; number=3, restart_from=joinpath(dir, "r.pdb"))
 
     # The same in an input file, packed: the conformations are a single structure type
     # in the show of the system, and the molecules are numbered as a single type

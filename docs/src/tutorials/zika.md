@@ -96,10 +96,9 @@ uses all the cores of the machine; `packmol -t N` limits it to `N` threads.
 !!! tip "Large systems"
     - Check the initial placement first (`check_initial_placement`): mistakes in the
       constraints of a system of this size are expensive to find after the packing.
-    - `restart_to` writes the coordinates of a structure (or of the whole system) at the
-      end of the packing, and `restart_from` reads them back, to pack the system in parts:
-      for example, the membrane first, and then the solvent around it (see [Restarting a
-      run](../input_files/restarting_a_run.md)).
+    - `restart_from` reads the coordinates of a previous output back, to pack the system
+      in parts: for example, the membrane first, and then the solvent around it (see
+      [Restarting a run](../input_files/restarting_a_run.md)).
     - The memory and the time grow roughly linearly with the number of particles.
 
 ## Julia

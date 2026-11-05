@@ -104,7 +104,7 @@ end
 
 @testitem "per-structure keyword does not leak into the global setting" setup=[TestFiles] begin
     using Packmol: read_packmol_input
-    # `restart_from`/`restart_to` are valid both as a global keyword and as a
+    # `restart_from` is valid both as a global keyword and as a
     # per-structure one (inside `structure ... end structure`); a
     # per-structure occurrence must only set that structure type's field,
     # not the whole-system `PackmolSystem` field of the same name —
