@@ -18,6 +18,15 @@ get_atoms
 write_output
 ```
 
+## Tools for building systems
+
+Public, but not exported: call them as `Packmol.cross_section`, `Packmol.builtin_lipid`.
+
+```@docs
+Packmol.cross_section
+Packmol.builtin_lipid
+```
+
 ## Shape of molecules
 
 ```@docs
