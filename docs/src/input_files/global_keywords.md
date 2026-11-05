@@ -5,7 +5,7 @@
 | `tolerance <value>` | Minimum distance between atoms of different molecules (required). |
 | `output <file>` | Path of the output structure file. |
 | `filetype pdb\|xyz\|mmcif` | Format of the structure and output files (default `pdb`). Files with the extensions `.pdb`, `.xyz`, `.cif` or `.mmcif` are read and written in that format, whatever the `filetype`: `output system.cif` writes the output as mmCIF, with the periodic cell in its `_cell` fields. |
-| `seed <int>` | Random number generator seed (default `1234567`). |
+| `seed <int>` | Random number generator seed (default `1234567`); `-1` takes a random seed at each run (see [Replicas of a system](@ref)). |
 | `movefrac <value>` | Maximum fraction of the molecules of each type moved by the bad-molecule heuristic in each loop (default `0.05`). The `movefrac` keyword argument of [`packmol`](@ref) takes precedence. |
 | `periodic_boundary_style <triclinic\|dodecahedral\|octahedral>` | Shape in which the molecules are written, with periodic boundary conditions: the parallelepiped of the cell (`triclinic`, the default), or the compact rhombic dodecahedron or truncated octahedron (see the [Output shape](../periodic_boundary_conditions/rhombic_dodecahedral_box.md#Output-shape)). |
 | `nthreads <n>` | Maximum number of threads used (default: all). The `nthreads` keyword argument of [`packmol`](@ref) and the `-t` flag of the executable take precedence. |

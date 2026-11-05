@@ -5,7 +5,7 @@ using LinearAlgebra: BLAS
 
 const usage = """
     Usage: packmol input.inp
-           packmol -i input.inp [-o output.pdb]
+           packmol -i input.inp [-o output.pdb] [-s seed]
            packmol < input.inp
 
     With no input file and no input redirected to stdin, a file dialog is
@@ -15,6 +15,8 @@ const usage = """
     Options:
       -i <file>      input file
       -o <file>      output file (overrides the input file's `output`)
+      -s, --seed <n> seed of the random number generator (overrides the
+                     input file's `seed`; -1: a random seed)
       -t <n>         maximum number of threads (overrides the input file's
                      `nthreads`; default: JULIA_NUM_THREADS if set, else all)
       -h, --help     show this help
@@ -97,6 +99,7 @@ function (@main)(ARGS)
     input_file = ""
     output_file = ""
     nthreads = ""
+    seed = ""
     guess = false
     free = false
     density = "1.0"
@@ -116,11 +119,14 @@ function (@main)(ARGS)
         elseif arg == "--free-volume"
             free = true
         elseif (arg == "-i" || arg == "-o" || arg == "-t" || arg == "--threads" ||
+                arg == "-s" || arg == "--seed" ||
                 arg == "--density" || arg == "--npoints") && i < length(ARGS)
             if arg == "-i"
                 input_file = ARGS[i+1]
             elseif arg == "-o"
                 output_file = ARGS[i+1]
+            elseif arg == "-s" || arg == "--seed"
+                seed = ARGS[i+1]
             elseif arg == "--density"
                 density = ARGS[i+1]
             elseif arg == "--npoints"
@@ -145,6 +151,11 @@ function (@main)(ARGS)
         Packmol._println("ERROR: the number of threads (-t) must be a positive integer, got: ", nthreads)
         return exit_code_command_line_error
     end
+    seed_value = isempty(seed) ? nothing : tryparse(Int, seed)
+    if !isempty(seed) && isnothing(seed_value)
+        Packmol._println("ERROR: the seed (-s) must be an integer, got: ", seed)
+        return exit_code_command_line_error
+    end
     # Dimension and number type given as types, so that the parser is type-stable
     system = try
         if !isempty(input_file)
@@ -158,6 +169,7 @@ function (@main)(ARGS)
         return _error_exit(e, exit_code_input_error)
     end
     isempty(output_file) || (system.output_file = output_file)
+    isnothing(seed_value) || (system.seed = seed_value)
     if ntasks > 0
         system.nthreads = ntasks
     elseif isnothing(system.nthreads)
