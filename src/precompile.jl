@@ -3,14 +3,13 @@
 # input parser, the constraints, periodic cells, the packing loop and the output formats,
 # so that the first packing of a Julia session does not wait for their compilation.
 #
-# Not run when building the executable (juliac/build.jl sets
-# PACKMOL_PRECOMPILE_WORKLOAD=false): `juliac --trim` would reuse the code compiled
+# Not run when building the executable (`_executable_build`, set by juliac/build.jl): `juliac --trim` would reuse the code compiled
 # here, and the trim verifier rejects some of it (error paths of SPGBox that build
 # their messages dynamically), while the same functions compiled for the executable pass.
 #
 using PrecompileTools: @setup_workload, @compile_workload
 
-if get(ENV, "PACKMOL_PRECOMPILE_WORKLOAD", "true") != "false"
+if !_executable_build
 @setup_workload begin
     data = joinpath(RecipesDirectory, "test", "data")
     water = joinpath(data, "water.pdb")

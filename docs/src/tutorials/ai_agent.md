@@ -117,6 +117,9 @@ pairs of atom indices and constraints); the input-file keywords are in parenthes
 - `AbovePlane(normal, d)`, `BelowPlane`: `normal ⋅ x ≥ d` (`above plane nx ny nz d`, also `over`)
 - Curved surfaces, Packmol.jl only: `AboveGaussian`, `AboveSin`, `AboveExponential`, their
   `Below...`, and the radial ones (`AboveRadialGaussian`, ...)
+- `CustomConstraint(f; gradient)`, Julia only: the region `f(x) ≤ 0` of any function of
+  the position (Å); the gradient by finite differences if not given, or, for example,
+  `gradient = x -> ForwardDiff.gradient(f, x)`
 - `constrain_rotation`: the angle between an axis (`:x`, `:y`, `:z`) and a vector of the
   molecule within `center ± halfwidth` degrees; the vector joins the centers of two sets of
   atoms, `(center, halfwidth, from, to)`, or is the longest axis of the molecule,

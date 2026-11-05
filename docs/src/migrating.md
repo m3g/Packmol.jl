@@ -97,7 +97,7 @@ In input files and on the command line:
 From Julia only: systems defined without input files (see
 [Defining systems in Julia](julia_api/index.md)), the [Recipes](recipes/index.md) (solvated
 systems and membranes from target densities and concentrations), new constraints
-defined by the user, and the packed atoms in memory (`get_atoms`), for analysis with
+defined by the user ([Custom constraints](constraints/custom.md)), and the packed atoms in memory (`get_atoms`), for analysis with
 [PDBTools.jl](https://github.com/m3g/PDBTools.jl) and other packages.
 
 ## Running the legacy Packmol

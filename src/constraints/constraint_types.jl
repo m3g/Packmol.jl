@@ -16,7 +16,7 @@
 # `constraint_keywords` below, and `parse_constraint` methods/exports to their
 # own file.
 #
-const AnyConstraint{T} = Union{
+const _BuiltinConstraint{T} = Union{
     Box{Inside,T}, Box{Outside,T},
     Cube{Inside,T}, Cube{Outside,T},
     Sphere{Inside,T}, Sphere{Outside,T},
@@ -30,6 +30,11 @@ const AnyConstraint{T} = Union{
     Exponential{Over,T}, Exponential{Below,T},
     RadialExponential{Over,T}, RadialExponential{Below,T},
 }
+# Constraints defined by functions of the user (CustomConstraint) exist only in Julia
+# code: they are left out of the executable (`_executable_build`), which `juliac --trim`
+# would not compile.
+const AnyConstraint{T} = _executable_build ? _BuiltinConstraint{T} :
+    Union{_BuiltinConstraint{T}, CustomConstraint{Inside,T}}
 
 #
 # `_constraint_dispatch(f, c, args...)` calls `f(c, args...)` for a constraint `c` of
