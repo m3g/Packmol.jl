@@ -18,14 +18,9 @@
 | `adjust_constraints_on_init yes\|no` | Whether to run constraint-only pre-optimization before packing. |
 | `avoid_overlap yes\|no` | Whether the initial placement avoids overlaps with the fixed molecules (default `yes`). The molecules moved during the packing always avoid them. |
 | `connect yes\|no` | Whether to write the connectivity of the structure files (their `CONECT` records) to the output, for every molecule (default `yes`). `ignore_conect` (no value) is the same as `connect no`. |
-| `writeout <int>` | Write intermediate output every `N` loops. |
-| `writebad` | Flag (no value): also write output if packing did not converge. |
-| `randominitialpoint` | Flag: force a fully random initial point instead of the direct-sampling shortcut. |
 | `add_amber_ter` | Flag: add a `TER` record after every molecule (AMBER convention). |
 | `amber_ter_preserve` | Flag: preserve the `TER` records of the structure files, in every copy of the molecule. |
 | `add_box_sides` | Flag: add a `CRYST1` record with the box dimensions. Added automatically (without needing this flag) whenever `pbc`/`unitcell` is set — with the real triclinic angles in that case, rather than the extrema-derived, always-orthorhombic box this flag alone falls back to. |
-| `optimization_print_level <int>` | Verbosity of the optimizer's own output. |
-| `chkgrad` | Flag: check analytical vs. numerical gradients (development use). |
 | `check_initial_placement` | Flag: write the initial placement of the molecules (the initial approximation) to the output file, then stop, without packing: to check that the constraints place the molecules where intended. `check`, Fortran's name, is accepted with a warning. |
 | `continue_failed_initial_packing` | Flag: pack even if the initial approximation does not satisfy the constraints. By default, Packmol stops there, writes the initial approximation to the output file and reports the error (exit code 171): constraints that cannot be satisfied even without the distances between the molecules are usually wrong. |
 | `pbc <a b c>` or `pbc <xmin ymin zmin xmax ymax zmax>` | Orthorhombic periodic box: either side lengths (the box from the origin to `(a, b, c)`, as in Fortran Packmol) or explicit min/max corners. |
@@ -41,8 +36,11 @@ inside `structure` blocks.
 
 Fortran Packmol keywords that have no use in Packmol.jl (`fscale`, `sidemax`,
 `maxmove`, `nloop0`, `movebadrandom`, `use_short_tol` and the other short-tolerance keywords,
-`hexadecimal_indices`, `non_standard_conect`, ...) are accepted with a
-deprecation warning and ignored, so that old input files still run. The other
+`hexadecimal_indices`, `non_standard_conect`, `randominitialpoint`,
+`optimization_print_level`, `chkgrad`, `restart_to`, ...) are accepted with a
+deprecation warning and ignored, so that old input files still run. `writeout` and
+`writebad` are ignored too: the output file is written after every loop that improves the
+solution, and the best solution is written when the packing does not converge. The other
 file formats of Fortran Packmol (`filetype tinker`, `filetype moldy`) are not
 supported. See
 [`dev/drop-in-replacement.md`](https://github.com/m3g/Packmol.jl/blob/main/dev/drop-in-replacement.md)

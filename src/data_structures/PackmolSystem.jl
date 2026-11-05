@@ -39,13 +39,8 @@
     # Write the connectivity of the structure files (CONECT records) to the output;
     # disabled with `ignore_conect` (or `connect no`).
     connect::Bool = true
-    random_initial_point::Bool = false
     seed::Int = 1234567
     avoid_overlap::Bool = true
-    writeout::Int = 20
-    writebad::Bool = false
-    optim_print_level::Int = 0
-    chkgrad::Bool = false
     # Write the initial approximation to the output file and stop, without packing (input
     # keyword `check_initial_placement`, or Fortran's `check`)
     check_initial_placement::Bool = false
@@ -264,7 +259,7 @@ _warn(msg::AbstractString) = _with_stderr(io -> println(io, "Warning: ", msg))
 #
 # Set the field of `sys` corresponding to a global keyword of the input file,
 # with value `val` (an empty string for the value-less flag keywords, e.g.
-# `randominitialpoint`). Returns `false` if `keyword` is not one of them. An
+# `add_box_sides`). Returns `false` if `keyword` is not one of them. An
 # explicit chain of comparisons, rather than a dictionary of closures, so
 # that each field is set with a value of its own (inferred) type.
 #
@@ -315,20 +310,10 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.connect = _parse_options("connect", val, _yes_no)
     elseif keyword == "ignore_conect"
         sys.connect = false
-    elseif keyword == "randominitialpoint"
-        sys.random_initial_point = true
     elseif keyword == "seed"
         sys.seed = _parse_value(Int, "seed", val)
     elseif keyword == "avoid_overlap"
         sys.avoid_overlap = _parse_options("avoid_overlap", val, _yes_no)
-    elseif keyword == "writeout"
-        sys.writeout = _parse_value(Int, "writeout", val)
-    elseif keyword == "writebad"
-        sys.writebad = true
-    elseif keyword == "optimization_print_level"
-        sys.optim_print_level = _parse_value(Int, "optimization_print_level", val)
-    elseif keyword == "chkgrad"
-        sys.chkgrad = true
     elseif keyword == "check_initial_placement"
         sys.check_initial_placement = true
     elseif keyword == "check"
@@ -373,9 +358,9 @@ end
 const packmol_legacy_keywords = Dict{String,String}(
     "fscale" => "fscale is a deprecated keyword and was ignored.",
     "fbins" => "fbins is a deprecated keyword and was ignored.",
-    "iprint1" => "iprint1 is a deprecated keyword and was ignored. Use instead: optimization_print_level",
-    "iprint2" => "iprint2 is a deprecated keyword and was ignored. Use instead: optimization_print_level",
-    "iprint3" => "iprint3 is a deprecated keyword and was ignored. Use instead: optimization_print_level",
+    "iprint1" => "iprint1 is a deprecated keyword and was ignored.",
+    "iprint2" => "iprint2 is a deprecated keyword and was ignored.",
+    "iprint3" => "iprint3 is a deprecated keyword and was ignored.",
     "precision" => "precision is a deprecated keyword and was ignored. Use instead: tolerance_precision and/or constraint_precision",
     "packall" => "packall is a deprecated keyword and was ignored (it is the only option).",
     "use_short_tol" => "use_short_tol is a deprecated keyword and was ignored.",
@@ -392,6 +377,11 @@ const packmol_legacy_keywords = Dict{String,String}(
     "hexadecimal_indices" => "hexadecimal_indices is a deprecated keyword and was ignored (atom indices above 99999 are always written in hexadecimal).",
     "movebadrandom" => "movebadrandom is a deprecated keyword and was ignored (bad molecules are always moved to random positions).",
     "restart_to" => "restart_to is a deprecated keyword and was ignored: to restart, give the output file (PDB, XYZ or mmCIF) to restart_from.",
+    "randominitialpoint" => "randominitialpoint is a deprecated keyword and was ignored.",
+    "optimization_print_level" => "optimization_print_level is a deprecated keyword and was ignored.",
+    "chkgrad" => "chkgrad is a deprecated keyword and was ignored.",
+    "writeout" => "writeout is a deprecated keyword and was ignored (the output is written after every loop that improves the solution).",
+    "writebad" => "writebad is a deprecated keyword and was ignored (the output is written after every loop that improves the solution).",
 )
 
 # Keywords recognized by Fortran Packmol but not yet wired into Packmol.jl
@@ -406,8 +396,8 @@ const _global_keywords = (
     "filetype", "output", "tolerance", "radscale", "discale", "tolerance_precision",
     "constraint_precision", "stall_tolerance", "maxit", "nloop", "movefrac", "nthreads", "periodic_boundary_style", "max_random_init",
     "adjust_constraints_on_init", "add_amber_ter", "amber_ter_preserve", "add_box_sides",
-    "ignore_conect", "randominitialpoint", "seed", "avoid_overlap", "writeout", "writebad",
-    "optimization_print_level", "chkgrad", "check_initial_placement", "check", "continue_failed_initial_packing", "pbc", "unitcell",
+    "ignore_conect", "seed", "avoid_overlap",
+    "check_initial_placement", "check", "continue_failed_initial_packing", "pbc", "unitcell",
 )
 
 # Keywords of a `structure ... end structure` block with no use in Packmol.jl
@@ -479,7 +469,7 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
         if structure_section
             continue
         end
-        # Value-less flag keywords (e.g. `randominitialpoint`, `add_box_sides`)
+        # Value-less flag keywords (e.g. `add_box_sides`)
         # appear on their own line with nothing after them; an empty string
         # is passed through for those.
         if _set_input_keyword!(sys, keyword, isempty(values) ? "" : first(values))

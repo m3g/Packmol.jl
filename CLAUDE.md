@@ -180,10 +180,9 @@ These are the building blocks everything else depends on.
 - [ ] 2D rigid body chain rule tests
 
 #### Input Parser
-- [x] Global keywords: `tolerance`, `output`, `filetype`, `seed`, `maxit`, `writeout`, `writebad`,
-      `randominitialpoint`, `avoid_overlap`, `add_amber_ter`, `amber_ter_preserve`, `add_box_sides`,
-      `connect`, `optimization_print_level`, `chkgrad`, `tolerance_precision`, `constraint_precision`,
-      `stall_tolerance`
+- [x] Global keywords: `tolerance`, `output`, `filetype`, `seed`, `maxit`, `avoid_overlap`,
+      `add_amber_ter`, `amber_ter_preserve`, `add_box_sides`, `connect`, `tolerance_precision`,
+      `constraint_precision`, `stall_tolerance`
 - [x] Structure blocks: `structure/end structure`, `number`, `fixed`, `center`, `radius`
 - [x] Constraint parsing: `inside/outside box`, `inside/outside cube`, `inside/outside sphere`,
       `inside/outside cylinder`, `inside/outside ellipsoid`, `above/over/below plane`
@@ -194,7 +193,8 @@ These are the building blocks everything else depends on.
 - [x] `nloop`, `maxit` (stored in `PackmolSystem.nloop`/`max_iter`; `packmol(sys; nloop, maxit)` takes precedence)
 - [x] Inline `#` comments stripped (as Fortran)
 - [x] Deprecated Fortran keywords (`fscale`, `fbins`, `precision`, `sidemax`, `maxmove`, `nloop0`,
-      `disable_movebad`, `writecrd`, `use_short_tol`/`short_*`, `iprint*`) accepted with a warning
+      `disable_movebad`, `writecrd`, `use_short_tol`/`short_*`, `iprint*`, `randominitialpoint`, `optimization_print_level`,
+      `chkgrad`, `writeout`, `writebad`, `restart_to`) accepted with a warning
 - [x] `movefrac` (`packmol(sys; movefrac)` takes precedence), `movebadrandom` (deprecated: bad molecules
       are always moved randomly), `segid` (written to PDB columns 73-76)
 - [x] CONECT options: `connect yes|no` (global and per structure), `ignore_conect`; `non_standard_conect`,
