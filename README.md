@@ -79,3 +79,15 @@ julia> using Packmol, Packmol_jll
 
 julia> run_packmol_legacy()
 ```
+
+## References
+
+If Packmol contributed to your work, please cite the following references:
+
+- L. Martínez, R. Andrade, E. G. Birgin, J. M. Martínez. Packmol: A package for building
+  initial configurations for molecular dynamics simulations. *Journal of Computational
+  Chemistry*, 30(13):2157-2164, 2009. [doi:10.1002/jcc.21224](https://doi.org/10.1002/jcc.21224)
+
+- J. M. Martínez and L. Martínez. Packing optimization for automated generation of complex
+  system's initial configurations for molecular dynamics and docking. *Journal of
+  Computational Chemistry*, 24(7):819-825, 2003. [doi:10.1002/jcc.10216](https://doi.org/10.1002/jcc.10216)
