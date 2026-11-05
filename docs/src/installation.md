@@ -50,6 +50,33 @@ solution is written to the output file, and a solution satisfying only the const
 `<output>_FORCED`), `171` for errors in the input, `172` if a file could not be opened,
 `174` for command-line errors, and `170` for other errors.
 
+### Replicas of a system
+
+`-o` writes the packed system to another file than the `output` of the input file, so the
+same input file can build several replicas of a system, for independent simulations. Each
+replica needs a different seed of the random number generator: set `seed -1` in the input
+file, which takes a new random seed at each run (with a fixed seed, every run gives the
+same configuration). For example, in a Linux or macOS shell:
+
+```bash
+for i in 1 2 3 4 5; do
+    packmol -i system.inp -o system_$i.pdb
+done
+```
+
+The same from Julia, with a reproducible seed for each replica:
+
+```julia
+using Packmol
+for i in 1:5
+    system = read_packmol_input("system.inp")
+    system.output_file = "system_$i.pdb"
+    packmol(system; seed = i)
+end
+```
+
+### File browser
+
 The file browser can be disabled by setting the environment variable
 `PACKMOL_GUI="false"`. It uses tools that come with the operating system (`osascript` on
 macOS, PowerShell on Windows, and `zenity` or `kdialog` on Linux); if none of them is
