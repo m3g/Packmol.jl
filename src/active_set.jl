@@ -75,9 +75,10 @@ end
 
 #
 # Builds the active subsystem from the contributions of the molecules to the objective
-# function (`fmol`, at the current positions), or `nothing` if the active molecules are
-# more than `max_fraction` of the free molecules (then the whole system is optimized),
-# with the number of active molecules.
+# function (`fmol`, at the current positions), or `nothing` if the atoms of the active
+# molecules are more than `max_fraction` of the atoms of the free molecules (the cost of
+# an evaluation goes with the number of atoms; then the whole system is optimized), with
+# the numbers of active molecules and of their atoms.
 #
 function _active_subsystem(
     packmol_system::PackmolSystem{D,T}, fmol::Vector{T}, free_mol_indices::Vector{Int},
@@ -101,7 +102,7 @@ function _active_subsystem(
             push!(bad_atoms, cl_positions[iat])
         end
     end
-    nbad == 0 && return nothing, 0
+    nbad == 0 && return nothing, 0, 0
     # The molecules with any atom within active_radius of an atom of a bad molecule
     mol_of_atom = [a.molecule_index for a in atoms]
     active = Vector{Bool}(undef, nmols)
@@ -118,7 +119,14 @@ function _active_subsystem(
             push!(kfree, k)
         end
     end
-    length(mols) > max_fraction * length(free_mol_indices) && return nothing, length(mols)
+    nfree_atoms = 0
+    nactive_atoms = 0
+    for imol in free_mol_indices
+        n = packmol_system.structure_types[mol_structure_type[imol]].natoms
+        nfree_atoms += n
+        active[imol] && (nactive_atoms += n)
+    end
+    nactive_atoms > max_fraction * nfree_atoms && return nothing, length(mols), nactive_atoms
     # Only free molecules move: the fixed ones are frozen even when near bad molecules
     for imol in 1:nmols
         is_free[imol] || (active[imol] = false)
@@ -155,7 +163,7 @@ function _active_subsystem(
         nbatches=_cl_nbatches(),
         validate_coordinates=_validate_positions,
     )
-    return ActiveSubsystem(mols, kfree, atom_map, mol_first, nmobile, frozen_map, cl, cl_frozen), length(mols)
+    return ActiveSubsystem(mols, kfree, atom_map, mol_first, nmobile, frozen_map, cl, cl_frozen), length(mols), nmobile
 end
 
 # A pair of active atoms, as `cartesian_fg!`, with the local indices of the active atoms

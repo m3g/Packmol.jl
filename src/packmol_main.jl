@@ -138,6 +138,13 @@ molecules of each type moved per loop, default `0.05`) take precedence over the
 values set in the input file (`packmol_system.nloop`, `packmol_system.max_iter`
 and `packmol_system.movefrac`).
 
+`active_set` (default `false`, experimental): after the first loop, optimize only the
+molecules with overlaps or constraint violations that may block the convergence, and the
+molecules with an atom within `active_radius` (default `6 * tolerance`) of them, with the
+other molecules frozen. Used in a loop when the atoms of the active molecules are at most
+`active_max_fraction` (default `0.5`) of the atoms of the free molecules; otherwise the
+whole system is optimized. Each loop reports the fractions of active molecules and atoms.
+
 `nthreads` (maximum number of threads used, default: all the threads of the Julia
 session) takes precedence over `packmol_system.nthreads` (the input keyword `nthreads`).
 
@@ -460,6 +467,9 @@ function _packmol(
         nothing, nothing
     end
 
+    # Atoms of the free molecules (for the report of the active subsystem)
+    nfree_atoms = sum(packmol_system.structure_types[mol_structure_type[imol]].natoms for imol in free_mol_indices; init=0)
+
     # Outer packing loop (following Fortran Packmol gencanloop):
     # Each iteration runs a short optimization, evaluates per-molecule
     # contributions, and randomly re-places the worst molecules.
@@ -513,7 +523,7 @@ function _packmol(
         # On an active subset of the system (see active_set.jl): the bad molecules and
         # their neighbors, from the contributions to the objective function at the
         # start of the loop (`cl_system.fg.fmol`, of the evaluation above)
-        sub, nactive = if active_set && loop > 0
+        sub, nactive, nactive_atoms = if active_set && loop > 0
             _active_subsystem(packmol_system, cl_system.fg.fmol, free_mol_indices, cl_system.xpositions,
                 unitcell, cl_system.cutoff, mol_structure_type, mol_iat_first;
                 active_radius=T(active_radius), max_fraction=T(active_max_fraction),
@@ -522,16 +532,12 @@ function _packmol(
                 # constraint_precision)
                 bad_threshold=min(precision^2, T(packmol_system.constraint_precision)))
         else
-            nothing, 0
+            nothing, 0, 0
         end
         if active_set && loop > 0
-            if isnothing(sub)
-                @_printf("  Active molecules: %d of %d (%.2f%%): above active_max_fraction (%.2f%%), optimizing the whole system\n\n",
-                    nactive, nfree, 100 * nactive / nfree, 100 * active_max_fraction)
-            else
-                @_printf("  Active molecules: %d of %d (%.2f%%): optimizing the active subsystem (%d atoms)\n\n",
-                    nactive, nfree, 100 * nactive / nfree, sub.nmobile)
-            end
+            @_printf("  Active molecules: %d of %d (%.2f%%), atoms: %d of %d (%.2f%%): %s\n\n",
+                nactive, nfree, 100 * nactive / nfree, nactive_atoms, nfree_atoms, 100 * nactive_atoms / nfree_atoms,
+                isnothing(sub) ? "above active_max_fraction, optimizing the whole system" : "optimizing the active subsystem")
         end
         # Fresh stall detectors per chunk: plateau state from the *previous*
         # chunk isn't meaningful here, since movebad! (or the initial
