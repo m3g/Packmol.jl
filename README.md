@@ -5,43 +5,106 @@
 
 # Packmol.jl
 
-This Julia package is a new implementation of [packmol](http://github.com/m3g/packmol),
-which can also run the classical Fortran program (see [Legacy (Fortran) Packmol](#legacy-fortran-packmol)).
+Packmol creates initial configurations for molecular dynamics simulations, by packing
+molecules in regions of space defined by geometric constraints, such that the atoms of
+different molecules are kept at a safe distance from each other.
+
+Packmol.jl is the new implementation of [Packmol](http://github.com/m3g/packmol). It reads
+the input files of the legacy (Fortran) Packmol and runs them with the same command line,
+and it can also be used from Julia code, where systems are defined without input files and
+can be built from target densities and concentrations (recipes). See the
+[documentation](https://m3g.github.io/Packmol.jl/stable).
+
+## New in Packmol.jl
+
+Relative to the legacy (Fortran) Packmol:
+
+- **Much faster**: 3 to 16 times faster in a single thread, and multithreaded, up to about
+  40 times faster on a multicore computer (see the table below). Large systems are packed in
+  minutes: nanoliposomes of 350 and 600 thousand atoms in 3 and 10 minutes, and a whole
+  Zika virion (2.2 million particles) in 7 minutes, with 14 threads.
+- **Periodic boundary conditions** in orthorhombic, triclinic, rhombic dodecahedral and
+  truncated octahedral cells.
+- **New constraints**: curved surfaces (Gaussian, waves, exponentials), and
+  `constrain_rotation` for the angle between an axis and a vector of the molecule (to
+  build oriented phases, such as liquid crystals).
+- **mmCIF** files, for structures, outputs and restarts, and restarts from the output of a
+  previous run.
+- **Several conformations** of a molecule, from a structure file with several models.
+- **Volume estimates**, to compute the numbers of molecules (`--guess-volume`,
+  `--free-volume`), and `check_initial_placement`, to check the constraints before packing.
+- **A Julia API**: systems defined without input files, **recipes** for solvated systems
+  and membranes built from target densities and concentrations, user-defined constraints,
+  and the packed atoms in memory, for analysis with
+  [PDBTools.jl](https://github.com/m3g/PDBTools.jl).
+
+Packing times of the examples of the legacy Packmol (seconds; the executable of
+Packmol.jl, and of Packmol 21.1.4, on an Intel Core i9-14900KF):
+
+| Input | Legacy Packmol | Packmol.jl, 1 thread | Packmol.jl, 14 threads |
+|:--|--:|--:|--:|
+| water and urea (`mixture`) | 1.4 | 0.14 | 0.16 |
+| solvated protein (`solvprotein`) | 13.1 | 1.1 | 0.48 |
+| lipid bilayer (`bilayer`) | 26.1 | 1.7 | 0.73 |
+| spherical vesicle (`spherical`) | 36.3 | 10.2 | 0.92 |
+
+The input files of the legacy Packmol run unchanged, with few exceptions: see
+[Migrating from legacy Packmol](https://m3g.github.io/Packmol.jl/stable/migrating/).
 
 ## Installation
 
-Install the latest Julia version in your system, with [juliaup](https://github.com/JuliaLang/juliaup#juliaup---julia-version-manager)
+Install the latest Julia version in your system, with
+[juliaup](https://github.com/JuliaLang/juliaup#juliaup---julia-version-manager).
 
-### Interactive use
+### Command line
 
-Install the Packmol package within Julia:
+Install the `packmol` app with:
+```
+julia -e 'import Pkg; Pkg.Apps.add("Packmol")'
+```
+
+Add the directory of julia binaries (`$HOME/.julia/bin`) to your path, and run:
+```
+packmol input.inp
+```
+or `packmol < input.inp`, as the legacy Packmol. `-o output.pdb` overrides the output file
+of the input, `-s N` its random seed, and `-t N` limits the number of threads; `packmol -h`
+lists the options. Without an input file (and no input redirected), a file browser is
+opened to choose it. The exit codes are those of the legacy Packmol: `0` for success,
+`173` if the packing did not converge (the best solution is written to the output file,
+and a solution satisfying only the constraints to `<output>_FORCED`), `171` for errors in
+the input, `172` if a file could not be opened, `174` for command-line errors, and `170`
+for other errors.
+
+The file browser uses tools that come with the operating system (`osascript` on macOS,
+PowerShell on Windows, and `zenity` or `kdialog` on Linux), and it can be disabled by
+setting the environment variable `PACKMOL_GUI="false"`.
+
+### Julia package
 
 ```julia-repl
 julia> import Pkg; Pkg.add("Packmol")
-```
 
-Run packmol in your input file with:
-
-```julia-repl
 julia> using Packmol
 
-julia> packmol()
+julia> packmol("input.inp")
 ```
 
-This will open a file browser, from which you can choose the input file for `packmol`. 
-Packmol will run immediately once the file is open.
+`packmol()`, without an input file, opens the file browser. Systems can also be defined
+in Julia, without input files, and built from densities and concentrations with the
+recipes: see the documentation.
 
-Alternatively, you can provide the path to the file explicitly, with:
+### Updating
 
-```julia-repl
-julia> packmol(raw"C:\users\my_user\my_files\my_input_file.inp")
+```
+julia -e 'import Pkg; Pkg.Apps.update("Packmol"); Pkg.update()'
 ```
 
 ### Legacy (Fortran) Packmol
 
-`packmol` runs the new Julia implementation of Packmol. The classical Fortran
-program can still be run, with `run_packmol_legacy`, which works in the same way.
-It requires the `Packmol_jll` package, which provides the Fortran binary:
+The legacy Packmol is still available from [m3g/packmol](http://github.com/m3g/packmol),
+and it can be run from Julia, with `run_packmol_legacy`, which works as `packmol`. It
+requires the `Packmol_jll` package, which provides the Fortran binary:
 
 ```julia-repl
 julia> import Pkg; Pkg.add("Packmol_jll")
@@ -51,42 +114,14 @@ julia> using Packmol, Packmol_jll
 julia> run_packmol_legacy()
 ```
 
-### Command line interface
+## References
 
-Install the `packmol` app with:
-```
-julia -e 'import Pkg; Pkg.Apps.add("Packmol")'
-```
+If Packmol contributed to your work, please cite the following references:
 
-Add the directory of julia binaries (`$HOME/.julia/bin`) to your path, and use packmol with:
-```
-packmol input.inp
-```
-(or `packmol -i input.inp`, or `packmol < input.inp`, as Fortran Packmol) as a standalone
-application. `-o output.pdb` overrides the output file of the input. Without an input file
-(and no input redirected), a file browser is opened to choose it. The exit codes are those
-of Fortran Packmol: `0` for success, `173` if the packing did not converge (the best
-solution is written to the output file, and a solution satisfying only the constraints to
-`<output>_FORCED`), `171` for errors in the input, `172` if a file could not be opened,
-`174` for command-line errors, and `170` for other errors.
+- L. Martínez, R. Andrade, E. G. Birgin, J. M. Martínez. Packmol: A package for building
+  initial configurations for molecular dynamics simulations. *Journal of Computational
+  Chemistry*, 30(13):2157-2164, 2009. [doi:10.1002/jcc.21224](https://doi.org/10.1002/jcc.21224)
 
-### Updating
-
-To keep Packmol up-to-date, use:
-```
-julia> import Pkg; Pkg.update()
-```
-
-(or type `] up`, at the `julia>` prompt). 
-
-Additionally, it is possible to disable the file browser by setting the system
-environment variable `PACKMOL_GUI="false"`. The file browser uses tools that come with
-the operating system (`osascript` on macOS, PowerShell on Windows, and `zenity` or
-`kdialog` on Linux); if none of them is available, the input file is asked for in the
-terminal.
-
-
-
-
-
-
+- J. M. Martínez and L. Martínez. Packing optimization for automated generation of complex
+  system's initial configurations for molecular dynamics and docking. *Journal of
+  Computational Chemistry*, 24(7):819-825, 2003. [doi:10.1002/jcc.10216](https://doi.org/10.1002/jcc.10216)
