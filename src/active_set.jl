@@ -106,8 +106,11 @@ function _active_subsystem(
     end
     length(mols) > max_fraction * length(free_mol_indices) && return nothing
     # The atoms of the active molecules, and the environment: the atoms of other
-    # molecules within the cutoff of the distances plus a margin (the active atoms move
-    # during the loop) of the active atoms
+    # molecules within the cutoff of the distances plus `active_radius` of the active
+    # atoms. The margin must cover how far the active atoms move during the loop: a
+    # rotation of a long molecule (a lipid) moves its ends by several Å, and frozen atoms
+    # missing from the environment are invisible to the optimization (the overlaps with
+    # them appear only in the evaluation of the whole system at the end of the loop).
     atom_map = Int[]
     mol_first = Int[]
     mobile_positions = SVector{D,T}[]
@@ -122,7 +125,7 @@ function _active_subsystem(
     end
     nmobile = length(atom_map)
     near = Vector{Bool}(undef, natoms)
-    _mark_within!(near, collect(1:natoms), mobile_positions, cl_positions, cutoff + 2 * packmol_system.tolerance, unitcell)
+    _mark_within!(near, collect(1:natoms), mobile_positions, cl_positions, cutoff + active_radius, unitcell)
     for iat in 1:natoms
         near[iat] && !active[atoms[iat].molecule_index] && push!(atom_map, iat)
     end
