@@ -49,6 +49,8 @@ src/
     write_output.jl                   # Output writing
   random.jl                           # Random number generation
   shape.jl                            # shape_descriptors, select_conformations
+  tools/system_building.jl            # public (not exported): cross_section (area of a protein in a leaflet),
+                                      # builtin_lipid (file, head, chain ends, area, length of the built-in lipids)
   tools/
     volume.jl                         # guess_volume (volume at a density), free_volume (Monte Carlo
                                       # volume of the region of each structure type); CLI

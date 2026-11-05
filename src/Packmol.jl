@@ -104,6 +104,9 @@ include("./CLI.jl")
 # Packmol input file creator
 include("./Recipes/Recipes.jl")
 
+# Tools for building systems by hand (public, not exported)
+include("./tools/system_building.jl")
+
 # Precompilation workload
 include("./precompile.jl")
 

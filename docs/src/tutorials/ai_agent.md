@@ -169,6 +169,21 @@ input files (`write_packmol_input(recipe)`):
 - From the command line: `packmol --guess-volume --density d input.inp` and
   `packmol --free-volume input.inp`.
 
+### Tools for building systems by hand
+
+Public functions, not exported (call them with the `Packmol.` prefix):
+
+- `Packmol.builtin_lipid(name)`: the structure file of a built-in lipid (POPC, POPE, POPS,
+  POPG, DPPC, DOPC, DMPC), the indices of its head atom and of its chain ends, its area
+  per lipid and its length: what the constraints of a membrane of any shape need (see
+  the Nanoliposomes tutorial for vesicles: heads in a narrow band, chain ends within 6 Å
+  of the middle of the bilayer).
+- `Packmol.cross_section(atoms; z = (z1, z2), radius = 2.0)`: the area (Å²) of the
+  projection on `xy` of the atoms in a slab; the area a membrane protein (oriented as in
+  OPM) takes from the lipids of a leaflet, to compute their number.
+- `shape_descriptors` and `select_conformations`: the shape of molecules (how elongated
+  or spherical), and the most extended conformations of a multi-model file.
+
 ### Workflow and checks
 
 1. Compute the numbers of molecules from the volumes of their regions (subtracting solutes)
