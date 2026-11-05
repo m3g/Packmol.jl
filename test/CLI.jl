@@ -34,6 +34,15 @@
         # -o overrides the output of the input file, in any argument order
         @test CLI.main(["-o", output, "-i", input]) == CLI.exit_code_success
         @test isfile(output)
+        # -s overrides the seed of the input file: the same seed gives the same
+        # configuration, another seed a different one
+        outputs = [joinpath(dir, "seed_$i.pdb") for i in 1:3]
+        for (out, seed) in zip(outputs, ["7", "7", "8"])
+            @test CLI.main(["-i", input, "-o", out, "--seed", seed]) == CLI.exit_code_success
+        end
+        @test read(outputs[1], String) == read(outputs[2], String)
+        @test read(outputs[1], String) != read(outputs[3], String)
+        @test CLI.main(["-i", input, "-s", "abc"]) == CLI.exit_code_command_line_error
         @test CLI.main([failing_input]) == CLI.exit_code_failed_to_converge
         @test isfile(joinpath(dir, "failed.pdb_FORCED"))
         write(input, "tolerance abc\n")

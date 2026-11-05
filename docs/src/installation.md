@@ -39,7 +39,8 @@ Add the directory of julia binaries (`$HOME/.julia/bin`) to your path, and use p
 packmol input.inp
 ```
 (or `packmol -i input.inp`, or `packmol < input.inp`, as Fortran Packmol) as a standalone
-application. `-o output.pdb` overrides the output file of the input, and `-t N` limits the
+application. `-o output.pdb` overrides the output file of the input, `-s N` (or `--seed N`)
+the seed of the random number generator, and `-t N` limits the
 number of threads used (default: `JULIA_NUM_THREADS` if set, otherwise all the threads;
 the input keyword `nthreads` does the same). `--guess-volume` and `--free-volume` estimate
 the volume of the system and of the regions of its molecules, without packing it (see
@@ -54,17 +55,20 @@ solution is written to the output file, and a solution satisfying only the const
 
 `-o` writes the packed system to another file than the `output` of the input file, so the
 same input file can build several replicas of a system, for independent simulations. Each
-replica needs a different seed of the random number generator: set `seed -1` in the input
-file, which takes a new random seed at each run (with a fixed seed, every run gives the
-same configuration). For example, in a Linux or macOS shell:
+replica needs a different seed of the random number generator (with the same seed, every
+run gives the same configuration), given with `-s` (or `--seed`). For example, in a Linux
+or macOS shell:
 
 ```bash
 for i in 1 2 3 4 5; do
-    packmol -i system.inp -o system_$i.pdb
+    packmol -i system.inp -o system_$i.pdb -s $i
 done
 ```
 
-The same from Julia, with a reproducible seed for each replica:
+Each replica can then be built again with its seed. Alternatively, `seed -1` in the input
+file (or `-s -1`) takes a new random seed at each run.
+
+The same from Julia:
 
 ```julia
 using Packmol
