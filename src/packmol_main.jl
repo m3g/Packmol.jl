@@ -597,8 +597,7 @@ function _packmol(
             res
         else
             na = length(sub.mols)
-            @_printf("  Active subsystem: %d of %d free molecules (%d atoms, and %d frozen atoms around them)\n\n",
-                na, nfree, sub.nmobile, length(sub.atom_map) - sub.nmobile)
+            @_printf("  Active subsystem: %d of %d free molecules (%d atoms)\n\n", na, nfree, sub.nmobile)
             x_mol_full = reinterpret(MoleculePosition{D,T}, x)
             x_act = Vector{T}(undef, 2 * D * na)
             xa_mol = reinterpret(MoleculePosition{D,T}, x_act)
