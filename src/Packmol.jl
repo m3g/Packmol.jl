@@ -97,4 +97,7 @@ include("./CLI.jl")
 # Packmol input file creator
 include("./Recipes/Recipes.jl")
 
+# Precompilation workload
+include("./precompile.jl")
+
 end

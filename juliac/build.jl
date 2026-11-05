@@ -38,6 +38,9 @@ link = LinkRecipe(
 )
 bundle = BundleRecipe(link_recipe=link, output_dir=outdir)
 
+# No precompilation workload (see src/precompile.jl)
+ENV["PACKMOL_PRECOMPILE_WORKLOAD"] = "false"
+
 rm(outdir; force=true, recursive=true)
 compile_products(image)
 link_products(link)

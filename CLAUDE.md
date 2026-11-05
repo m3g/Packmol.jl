@@ -40,6 +40,8 @@ src/
   packmol_runner.jl                   # run_packmol_legacy stub (methods in ext/)
   CLI.jl                              # Command-line interface, native engine
   threads.jl                          # `@_sync`: trim-safe `@sync`
+  precompile.jl                       # PrecompileTools workload: tiny systems (one loop) through the parser,
+                                      # the constraints, the periodic cells, the output formats and a recipe
   io/
     terminal.jl                       # Trim-safe stdout/stderr printing (`_print`, `_println`, `@_printf`)
     progress_bar.jl                   # Minimal progress bar (replaces ProgressMeter.jl)
@@ -451,6 +453,9 @@ reachable from it to be resolved at compile time. In the engine code:
   where the dimension must be static (use `SMatrix{D,D,T}`);
 - no `readlines` (use a `readline` loop); pass a caught exception (typed `Any`) only to
   `@nospecialize` functions, and narrow `AbstractString` fields (`e.msg`) to `String` before printing.
+The precompilation workload (`src/precompile.jl`) is skipped when building the executable
+(`juliac/build.jl` sets `PACKMOL_PRECOMPILE_WORKLOAD=false`): the trimmed build would reuse
+its compiled code, and the trim verifier rejects some of it.
 To check, build and test the executable (`juliac/`; the CI workflow `BuildExecutable.yml` does
 the same on Linux, macOS and Windows):
 `julia --project=juliac juliac/build.jl` (bundle in `juliac/build`), then
