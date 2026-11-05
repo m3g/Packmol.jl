@@ -79,3 +79,11 @@ If Packmol contributed to your work, please cite the following references:
 - J. M. Martínez and L. Martínez. Packing optimization for automated generation of complex
   system's initial configurations for molecular dynamics and docking. *Journal of
   Computational Chemistry*, 24(7):819-825, 2003. [doi:10.1002/jcc.10216](https://doi.org/10.1002/jcc.10216)
+
+## About the logo
+
+The logo is an image of the [Zika virion](tutorials/zika.md) built with Packmol.jl: a
+complete virion of the Zika virus, in a coarse-grained model, with its protein shell, a
+membrane of two layers of lipids beneath it, and water and ions inside and around it, in
+a rhombic dodecahedron periodic cell. The system has 2.2 million particles, and it is
+packed in a few minutes.
