@@ -51,15 +51,15 @@ Decisions of the maintainer (2026-11-05):
 1. [x] Merge PR #83 (mmCIF output; `restart_to` deprecated) and #84 (`-s`/`--seed`).
 2. [x] A5.8: `randominitialpoint`, `optimization_print_level`, `chkgrad`, `writeout` and
    `writebad` are deprecated (warned and ignored).
-3. [ ] Fix `PakmolApp.yml` (and its name): it runs `test/input_files/water_box.inp`,
+3. [x] Fix `PakmolApp.yml` (and its name): it runs `test/input_files/water_box.inp`,
    which is no longer in the repository (the test files are the MolSimTestFiles artifact).
-4. [ ] D-doc: a page "Coming from Fortran Packmol" with the differences: paths relative
+4. [x] D-doc: a page "Migrating from legacy Packmol" (`docs/src/migrating.md`) with the differences: paths relative
    to the input (D1), `pbc a b c` (D11), the distance criterion (D12), restarts from
    coordinate files and no `restart_to` (D13), `constrain_rotation` (D15), `centerofmass`
    with atomic masses (D16), deprecated keywords (D4, D17), mmCIF input/output, no Tinker
    or Moldy formats; and what only the Julia API has (recipes, user-defined constraints,
    `get_atoms`).
-5. [ ] README and installation page: the Julia app and package now; the executable and
+5. [x] README and installation page: the Julia app and package now; the executable and
    pip/uvx in stage 2. The legacy section stays.
 6. [ ] Validation: the test suite, the executable tests on the five platforms, the
    Fortran test suite, and `dev/large_tests/` (the maintainer runs it).
@@ -500,7 +500,7 @@ Fixed (branch `fixed-molecules-compat`):
 
 Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial list:
 
-- [ ] **D-doc** Write the page. Candidate contents:
+- [x] **D-doc** Written as `docs/src/migrating.md` (2026-11-05). Candidate contents:
   - **Recipes** (`SolutionBoxUS`, `SolutionBoxUSC`, `SolutionBoxUWI`, `Membrane`, with
     Unitful concentrations and `DensityTable`) are a Julia API only. *Option:* expose them
     as CLI subcommands later (`packmol solvate ...`), which would need a trim-safe argument
