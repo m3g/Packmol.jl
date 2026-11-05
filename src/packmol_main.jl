@@ -144,6 +144,10 @@ molecules with an atom within `active_radius` (default `6 * tolerance`) of them,
 other molecules frozen. Used in a loop when the atoms of the active molecules are at most
 `active_max_fraction` (default `0.5`) of the atoms of the free molecules; otherwise the
 whole system is optimized. Each loop reports the fractions of active molecules and atoms.
+With `active_update > 0`, the active subsystem is recomputed every `active_update` solver
+iterations within a loop (the `maxit` iterations of the loop are run in chunks of
+`active_update`), and the bad molecules are still moved once per loop; with the default
+`0`, it is computed once per loop.
 
 `nthreads` (maximum number of threads used, default: all the threads of the Julia
 session) takes precedence over `packmol_system.nthreads` (the input keyword `nthreads`).
@@ -200,6 +204,7 @@ function _packmol(
     active_set::Bool=false,
     active_radius::Real=6 * packmol_system.tolerance,
     active_max_fraction::Real=0.5,
+    active_update::Int=0,
 ) where {D,T}
     # Keyword arguments take precedence over the input file's `nloop`/`maxit`
     nloop = something(nloop, packmol_system.nloop, 500)
@@ -520,145 +525,164 @@ function _packmol(
 
         # Run a short optimization (maxit iterations per loop)
         progress_meter = ProgressBar(maxit; desc=" Iterations: ", barlen=47)
-        # On an active subset of the system (see active_set.jl): the bad molecules and
-        # their neighbors, from the contributions to the objective function at the
-        # start of the loop (`cl_system.fg.fmol`, of the evaluation above)
-        sub, nactive, nactive_atoms = if active_set && loop > 0
-            _active_subsystem(packmol_system, cl_system.fg.fmol, free_mol_indices, cl_system.xpositions,
-                unitcell, cl_system.cutoff, mol_structure_type, mol_iat_first;
-                active_radius=T(active_radius), max_fraction=T(active_max_fraction),
-                # (a molecule is bad if its contribution may block the convergence: an
-                # overlap of tolerance_precision, or a constraint violation of
-                # constraint_precision)
-                bad_threshold=min(precision^2, T(packmol_system.constraint_precision)))
-        else
-            nothing, 0, 0
-        end
-        if active_set && loop > 0
-            @_printf("  Active molecules: %d of %d (%.2f%%), atoms: %d of %d (%.2f%%): %s\n\n",
-                nactive, nfree, 100 * nactive / nfree, nactive_atoms, nfree_atoms, 100 * nactive_atoms / nfree_atoms,
-                isnothing(sub) ? "above active_max_fraction, optimizing the whole system" : "optimizing the active subsystem")
-        end
-        # Fresh stall detectors per chunk: plateau state from the *previous*
-        # chunk isn't meaningful here, since movebad! (or the initial
+        # Fresh stall detectors per loop: plateau state from the *previous*
+        # loop isn't meaningful here, since movebad! (or the initial
         # placement) just changed the starting point. `dmin_stalled_flag`/
         # `constraint_stalled_flag` are set by `packmol_callback` when it
-        # cuts the chunk short because of a stall in that metric (as opposed
-        # to full convergence or simply exhausting the maxit budget) — this
-        # only stops this chunk's SPGBox run early so it doesn't grind
-        # through the rest of its maxit/nfevalmax budget for nothing; the
-        # outer loop below reports why the chunk ended from them, but decides
-        # whether to move bad molecules separately, from the true
+        # cuts the optimization short because of a stall in that metric (as
+        # opposed to full convergence or simply exhausting the maxit budget);
+        # the outer loop below reports why the loop ended from them, but
+        # decides whether to move bad molecules separately, from the true
         # (floor-radii) objective's own improvement over the whole loop.
         dmin_stall_detector = StallDetector{T}(n_stall_iterations)
         constraint_stall_detector = StallDetector{T}(n_stall_iterations)
-        # dmin/max_const are each a worst-case-over-all-atoms extremum, not
-        # an aggregate, so whichever single pair currently holds that worst
-        # value routinely sits frozen for a while — stuck behind other
-        # molecules resolving their own, larger violations first — even
-        # while the coupled objective f is still falling sharply overall.
-        # That made every chunk on a large, realistic system report "stalled"
-        # within ~n_stall_iterations regardless of how much real progress f
-        # was making elsewhere. `f_stall_detector` tracks f over a much
-        # longer window (maxit/20, e.g. 40 iterations at the default
-        # maxit=800) — long enough to average out that per-pair noise — and
-        # packmol_callback only honors a dmin/const stall once f *also* shows
-        # no net improvement (< f_stall_tolerance, e.g. 5%) over that
-        # window: genuine overall progress vetoes a worst-case-metric stall.
-        f_stall_detector = StallDetector{T}(max(1, maxit ÷ 20))
         dmin_stalled_flag = Ref(false)
         constraint_stalled_flag = Ref(false)
-        # f as of the first callback invocation in this chunk (typemax(T)
-        # sentinel until then) — the reference packmol_callback compares
-        # against to see whether the *whole chunk so far*, not just its
-        # trailing f_stall_detector window, has made significant progress.
-        # See the comment above f_not_improving in packmol_callback for why
-        # the narrower window alone isn't enough to justify cutting a chunk
-        # short.
-        f_chunk_start = Ref(typemax(T))
-        # `progress_vs_true_start` (see packmol_callback) is a one-time grace
-        # period, not a standing veto: this flag latches once that signal has
-        # been used to excuse a plateau, so it can't keep excusing one for
-        # the rest of the chunk — see the comment above it in
-        # packmol_callback for why an unlatched version is a bug (a
-        # one-way-true "still improving" veto that never expires).
-        f_true_start_progress_used = Ref(false)
-        optresult = if isnothing(sub)
-            if scale_rotations
-                _update_rotation_scaling!(rot_scaling, reinterpret(MoleculePosition{D,T}, x))
-                _scale_angles!(reinterpret(MoleculePosition{D,T}, x), rot_scaling)
-            end
-            fg_closure = (g, y) -> scale_rotations ?
-                _scaled_fg!(g, y, x_unscaled, rot_scaling, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii) :
-                fg!(g, y, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
-            res = _local_solver(
-                fg_closure,
-                x, lower, upper;
-                callback=(result) -> packmol_callback(cl_system, tol, iprint,
-                    packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
-                    dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
-                    f_stall_detector, f=result.f, f_stall_tolerance, f_true_loop_start,
-                    dmin_stalled_flag, constraint_stalled_flag, f_chunk_start, f_true_start_progress_used,
-                    nfeval=result.nfeval, nfevalmax=10 * maxit, gnorm=result.gnorm,
-                ),
-                vaux=auxvecs,
-                nitmax=maxit,
-                nfevalmax=10 * maxit,
-            )
-            # Back to the Euler angles
-            if scale_rotations
-                _unscale_angles!(reinterpret(MoleculePosition{D,T}, x), reinterpret(MoleculePosition{D,T}, x), rot_scaling)
-            end
-            res
-        else
-            na = length(sub.mols)
-            x_mol_full = reinterpret(MoleculePosition{D,T}, x)
-            x_act = Vector{T}(undef, 2 * D * na)
-            xa_mol = reinterpret(MoleculePosition{D,T}, x_act)
-            for k in 1:na
-                xa_mol[k] = x_mol_full[sub.kfree[k]]
-            end
-            lower_act, upper_act = if isnothing(lower) || isnothing(upper)
-                nothing, nothing
+        # The maxit iterations of the loop are run in chunks: a single one, or, with
+        # `active_set` and `active_update > 0`, chunks of `active_update` iterations, the
+        # active subsystem (see active_set.jl: the bad molecules and their neighbors)
+        # recomputed before each from the contributions of the molecules to the objective
+        # function at the current positions (`cl_system.fg.fmol`). The decision to move
+        # bad molecules (below) is still taken once per loop.
+        nit_chunk = active_set && loop > 0 && active_update > 0 ? active_update : maxit
+        nit_loop = 0
+        nupdates = 0
+        nupdates_sub = 0
+        active_frac_min = T(Inf)
+        active_frac_max = zero(T)
+        local optresult
+        while true
+            sub, nactive, nactive_atoms = if active_set && loop > 0
+                # (fmol of the evaluation at the start of the loop, for the first chunk)
+                nit_loop > 0 && fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
+                _active_subsystem(packmol_system, cl_system.fg.fmol, free_mol_indices, cl_system.xpositions,
+                    unitcell, cl_system.cutoff, mol_structure_type, mol_iat_first;
+                    active_radius=T(active_radius), max_fraction=T(active_max_fraction),
+                    # (a molecule is bad if its contribution may block the convergence: an
+                    # overlap of tolerance_precision, or a constraint violation of
+                    # constraint_precision)
+                    bad_threshold=min(precision^2, T(packmol_system.constraint_precision)))
             else
-                collect(reinterpret(T, reinterpret(MoleculePosition{D,T}, lower)[sub.kfree])),
-                    collect(reinterpret(T, reinterpret(MoleculePosition{D,T}, upper)[sub.kfree]))
+                nothing, 0, 0
             end
-            rs_act = scale_rotations ? _subset(rot_scaling, sub.kfree) : nothing
-            if !isnothing(rs_act)
-                _update_rotation_scaling!(rs_act, xa_mol)
-                _scale_angles!(xa_mol, rs_act)
+            if active_set && loop > 0
+                nupdates += 1
+                isnothing(sub) || (nupdates_sub += 1)
+                active_frac_min = min(active_frac_min, T(nactive_atoms / nfree_atoms))
+                active_frac_max = max(active_frac_max, T(nactive_atoms / nfree_atoms))
+                if nupdates == 1
+                    @_printf("  Active molecules: %d of %d (%.2f%%), atoms: %d of %d (%.2f%%): %s\n\n",
+                        nactive, nfree, 100 * nactive / nfree, nactive_atoms, nfree_atoms, 100 * nactive_atoms / nfree_atoms,
+                        isnothing(sub) ? "above active_max_fraction, optimizing the whole system" : "optimizing the active subsystem")
+                end
             end
-            xu_act = similar(x_act)
-            fg_act = (g, y) -> if isnothing(rs_act)
-                _active_fg!(g, y, sub, packmol_system, atom_radii)
+            nit_this = min(nit_chunk, maxit - nit_loop)
+            # dmin/max_const are each a worst-case-over-all-atoms extremum, not
+            # an aggregate, so whichever single pair currently holds that worst
+            # value routinely sits frozen for a while — stuck behind other
+            # molecules resolving their own, larger violations first — even
+            # while the coupled objective f is still falling sharply overall.
+            # `f_stall_detector` tracks f over a longer window (maxit/20, e.g. 40
+            # iterations at the default maxit=800), and packmol_callback only
+            # honors a dmin/const stall once f *also* shows no net improvement
+            # (< f_stall_tolerance) over that window: genuine overall progress
+            # vetoes a worst-case-metric stall. These are reset in every chunk,
+            # since f is the objective of the (sub)system optimized in the chunk.
+            f_stall_detector = StallDetector{T}(max(1, maxit ÷ 20))
+            # f as of the first callback invocation in this chunk (typemax(T)
+            # sentinel until then) — the reference packmol_callback compares
+            # against to see whether the *whole chunk so far*, not just its
+            # trailing f_stall_detector window, has made significant progress.
+            f_chunk_start = Ref(typemax(T))
+            # `progress_vs_true_start` (see packmol_callback) is a one-time grace
+            # period, not a standing veto: this flag latches once that signal has
+            # been used to excuse a plateau.
+            f_true_start_progress_used = Ref(false)
+            optresult = if isnothing(sub)
+                if scale_rotations
+                    _update_rotation_scaling!(rot_scaling, reinterpret(MoleculePosition{D,T}, x))
+                    _scale_angles!(reinterpret(MoleculePosition{D,T}, x), rot_scaling)
+                end
+                fg_closure = (g, y) -> scale_rotations ?
+                    _scaled_fg!(g, y, x_unscaled, rot_scaling, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii) :
+                    fg!(g, y, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii)
+                res = _local_solver(
+                    fg_closure,
+                    x, lower, upper;
+                    callback=(result) -> packmol_callback(cl_system, tol, iprint,
+                        packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
+                        dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
+                        f_stall_detector, f=result.f, f_stall_tolerance, f_true_loop_start,
+                        dmin_stalled_flag, constraint_stalled_flag, f_chunk_start, f_true_start_progress_used,
+                        nfeval=result.nfeval, nfevalmax=10 * nit_this, gnorm=result.gnorm,
+                    ),
+                    vaux=auxvecs,
+                    nitmax=nit_this,
+                    nfevalmax=10 * nit_this,
+                )
+                # Back to the Euler angles
+                if scale_rotations
+                    _unscale_angles!(reinterpret(MoleculePosition{D,T}, x), reinterpret(MoleculePosition{D,T}, x), rot_scaling)
+                end
+                res
             else
-                _unscale_angles!(reinterpret(MoleculePosition{D,T}, xu_act), reinterpret(MoleculePosition{D,T}, y), rs_act)
-                fa = _active_fg!(g, xu_act, sub, packmol_system, atom_radii)
-                _scale_angle_gradient!(reinterpret(MoleculePosition{D,T}, g), rs_act)
-                fa
+                na = length(sub.mols)
+                x_mol_full = reinterpret(MoleculePosition{D,T}, x)
+                x_act = Vector{T}(undef, 2 * D * na)
+                xa_mol = reinterpret(MoleculePosition{D,T}, x_act)
+                for k in 1:na
+                    xa_mol[k] = x_mol_full[sub.kfree[k]]
+                end
+                lower_act, upper_act = if isnothing(lower) || isnothing(upper)
+                    nothing, nothing
+                else
+                    collect(reinterpret(T, reinterpret(MoleculePosition{D,T}, lower)[sub.kfree])),
+                        collect(reinterpret(T, reinterpret(MoleculePosition{D,T}, upper)[sub.kfree]))
+                end
+                rs_act = scale_rotations ? _subset(rot_scaling, sub.kfree) : nothing
+                if !isnothing(rs_act)
+                    _update_rotation_scaling!(rs_act, xa_mol)
+                    _scale_angles!(xa_mol, rs_act)
+                end
+                xu_act = similar(x_act)
+                fg_act = (g, y) -> if isnothing(rs_act)
+                    _active_fg!(g, y, sub, packmol_system, atom_radii)
+                else
+                    _unscale_angles!(reinterpret(MoleculePosition{D,T}, xu_act), reinterpret(MoleculePosition{D,T}, y), rs_act)
+                    fa = _active_fg!(g, xu_act, sub, packmol_system, atom_radii)
+                    _scale_angle_gradient!(reinterpret(MoleculePosition{D,T}, g), rs_act)
+                    fa
+                end
+                res = _local_solver(
+                    fg_act,
+                    x_act, lower_act, upper_act;
+                    callback=(result) -> packmol_callback(sub.cl, tol, iprint,
+                        packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
+                        dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
+                        f_stall_detector, f=result.f, f_stall_tolerance, f_true_loop_start,
+                        dmin_stalled_flag, constraint_stalled_flag, f_chunk_start, f_true_start_progress_used,
+                        nfeval=result.nfeval, nfevalmax=10 * nit_this, gnorm=result.gnorm,
+                    ),
+                    vaux=SPGBox.VAux(x_act, zero(T)),
+                    nitmax=nit_this,
+                    nfevalmax=10 * nit_this,
+                )
+                if !isnothing(rs_act)
+                    _unscale_angles!(xa_mol, xa_mol, rs_act)
+                end
+                for k in 1:na
+                    x_mol_full[sub.kfree[k]] = xa_mol[k]
+                end
+                res
             end
-            res = _local_solver(
-                fg_act,
-                x_act, lower_act, upper_act;
-                callback=(result) -> packmol_callback(sub.cl, tol, iprint,
-                    packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
-                    dmin_stall_detector, constraint_stall_detector, stall_tolerance=packmol_system.stall_tolerance,
-                    f_stall_detector, f=result.f, f_stall_tolerance, f_true_loop_start,
-                    dmin_stalled_flag, constraint_stalled_flag, f_chunk_start, f_true_start_progress_used,
-                    nfeval=result.nfeval, nfevalmax=10 * maxit, gnorm=result.gnorm,
-                ),
-                vaux=SPGBox.VAux(x_act, zero(T)),
-                nitmax=maxit,
-                nfevalmax=10 * maxit,
-            )
-            if !isnothing(rs_act)
-                _unscale_angles!(xa_mol, xa_mol, rs_act)
-            end
-            for k in 1:na
-                x_mol_full[sub.kfree[k]] = xa_mol[k]
-            end
-            res
+            nit_loop += max(1, optresult.nit)
+            # Done: the iterations of the loop used up, or the optimization stopped by the
+            # callback (convergence or stall) or by its own convergence criterion
+            (nit_loop >= maxit || optresult.ierr == 0) && break
+        end
+        if nupdates > 1
+            @_printf("\n  Active subsystem updates: %d (%d with the subsystem), active atoms: %.2f%% to %.2f%%\n",
+                nupdates, nupdates_sub, 100 * active_frac_min, 100 * active_frac_max)
         end
 
         # Update molecule positions with optimized values
