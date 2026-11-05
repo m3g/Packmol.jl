@@ -68,6 +68,7 @@ makedocs(
             "Ellipsoid" => "constraints/ellipsoid.md",
             "Gaussian, wave, and exponential surfaces" => "constraints/gaussian_wave_and_exponential_surfaces.md",
             "Rotation constraint" => "constraints/rotation_constraint.md",
+            "Custom constraints" => "constraints/custom.md",
             "Julia constructors" => "constraints/julia_constructors.md",
         ],
         "Periodic boundary conditions" => [

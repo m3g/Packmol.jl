@@ -38,8 +38,9 @@ link = LinkRecipe(
 )
 bundle = BundleRecipe(link_recipe=link, output_dir=outdir)
 
-# No precompilation workload (see src/precompile.jl)
-ENV["PACKMOL_PRECOMPILE_WORKLOAD"] = "false"
+# No precompilation workload, and no Julia-only constraints (see `_executable_build` in
+# src/Packmol.jl)
+ENV["PACKMOL_EXECUTABLE_BUILD"] = "true"
 
 rm(outdir; force=true, recursive=true)
 compile_products(image)

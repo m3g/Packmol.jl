@@ -22,6 +22,12 @@ import PDBToolsBase: get_atoms
 
 const src_dir = @__DIR__
 
+# Set when the `packmol` executable is built (juliac/build.jl): the precompilation
+# workload is skipped, and the constraints available only in Julia code (CustomConstraint)
+# are left out of the constraint union (see constraints/constraint_types.jl), since
+# `juliac --trim` does not compile them.
+const _executable_build = get(ENV, "PACKMOL_EXECUTABLE_BUILD", "false") == "true"
+
 # test_file(name): path of the test file `name` (e.g. "structure_files/water.pdb"). The
 # test files are a lazy artifact (see Artifacts.toml), downloaded on the first call. The
 # method is defined in the TestFilesExt extension, available after `using LazyArtifacts`.
@@ -53,6 +59,7 @@ include("./constraints/ellipsoids.jl")
 include("./constraints/gaussians.jl")
 include("./constraints/waves.jl")
 include("./constraints/exponentials.jl")
+include("./constraints/custom.jl")
 include("./constraints/constraint_types.jl")
 include("./constraints/rotations.jl")
 

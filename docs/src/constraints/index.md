@@ -20,6 +20,9 @@ a subset of lines in an `atoms <indices> ... end` block restricts a
 constraint to just those atoms (see [Structure blocks](../input_files/index.md) in
 Input files).
 
+In Julia code, a region can also be defined by any function of the position of the
+atoms, with [`CustomConstraint`](@ref) (see [Custom constraints](custom.md)).
+
 !!! note
     Constraints are independent of, but interact with, periodic boundary
     conditions: setting `pbc`/`unitcell` changes how every constraint below

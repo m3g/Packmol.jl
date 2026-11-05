@@ -34,7 +34,7 @@ Relative to the legacy (Fortran) Packmol:
 - **Volume estimates**, to compute the numbers of molecules (`--guess-volume`,
   `--free-volume`), and `check_initial_placement`, to check the constraints before packing.
 - **A Julia API**: systems defined without input files, **recipes** for solvated systems
-  and membranes built from target densities and concentrations, user-defined constraints,
+  and membranes built from target densities and concentrations, user-defined constraints (`CustomConstraint`),
   and the packed atoms in memory, for analysis with
   [PDBTools.jl](https://github.com/m3g/PDBTools.jl).
 

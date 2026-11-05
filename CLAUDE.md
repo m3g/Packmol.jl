@@ -66,6 +66,8 @@ src/
     cylinders.jl                      # Cylinder (Inside/Outside)
     ellipsoids.jl                     # Ellipsoid (Inside/Outside)
     rotations.jl                      # RotationConstraint (constrain_rotation): axis–vector angle penalty
+    custom.jl                         # CustomConstraint: region f(x) ≤ 0 of a user function (Julia only;
+                                      # FunctionWrappers; gradient given or by finite differences)
   rigid_body/
     rigid_body.jl                     # Euler angles, rotations, translations
     chain_rule.jl                     # Gradient chain rule for rigid bodies
@@ -231,6 +233,10 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       symmetric counterparts (`up·x = h(r)`, `r` = radial distance from the `up`-axis line through `center`,
       as in `Cylinder`): a smooth dome, concentric ripples, or a cone-like spike (the latter two have a
       genuine kink at `r=0`, handled by zeroing the gradient's radial component there)
+
+- [x] `CustomConstraint(f; gradient)` (Julia API only, not in input files or the executable): the
+      region `f(x) ≤ 0` of a user function, penalty `weight·f²`; gradient given (e.g. ForwardDiff) or
+      by central finite differences; stored as `FunctionWrapper`s so it fits the closed union
 
 #### Missing Constraints
 - [ ] Combined constraints per structure (already supported by architecture, needs testing)
@@ -453,9 +459,12 @@ reachable from it to be resolved at compile time. In the engine code:
   where the dimension must be static (use `SMatrix{D,D,T}`);
 - no `readlines` (use a `readline` loop); pass a caught exception (typed `Any`) only to
   `@nospecialize` functions, and narrow `AbstractString` fields (`e.msg`) to `String` before printing.
-The precompilation workload (`src/precompile.jl`) is skipped when building the executable
-(`juliac/build.jl` sets `PACKMOL_PRECOMPILE_WORKLOAD=false`): the trimmed build would reuse
-its compiled code, and the trim verifier rejects some of it.
+When building the executable, `juliac/build.jl` sets `PACKMOL_EXECUTABLE_BUILD=true`
+(`Packmol._executable_build`): the precompilation workload (`src/precompile.jl`) is skipped
+(the trimmed build would reuse its compiled code, and the trim verifier rejects some of it),
+and `CustomConstraint` (Julia-only, FunctionWrappers) is left out of the `AnyConstraint`
+union. Julia-only features need not be trim-compatible, as long as they are out of the
+executable's reach this way.
 To check, build and test the executable (`juliac/`; the CI workflow `BuildExecutable.yml` does
 the same on Linux, macOS and Windows):
 `julia --project=juliac juliac/build.jl` (bundle in `juliac/build`), then
