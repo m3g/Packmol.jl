@@ -13,6 +13,8 @@ and [SPGBox.jl](https://github.com/m3g/SPGBox.jl) as the optimizer.
 
 ## Documentation
 
+- [Migrating from legacy Packmol](migrating.md): what changed from the Fortran Packmol, what
+  is no longer supported, and what is new.
 - [Tutorials](tutorials/index.md): complete examples, each with an input file for the
   command line and the same system defined in Julia.
 - [Input files](input_files/index.md): the global keywords and the `structure ... end structure`

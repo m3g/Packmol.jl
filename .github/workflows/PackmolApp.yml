@@ -1,6 +1,12 @@
 name: packmol app
 on:
   workflow_dispatch:
+  # Also on pull requests that change the command line app or its dependencies
+  pull_request:
+    paths:
+      - 'src/CLI.jl'
+      - 'Project.toml'
+      - '.github/workflows/PackmolApp.yml'
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -26,27 +32,24 @@ jobs:
           # Pkg.Apps requires Julia 1.12+.
           version: '1'
       - uses: julia-actions/cache@v3
+      # The input of the water and urea tutorial (its structure files are in the
+      # repository); the output goes to the runner's temporary directory.
       - name: install and run packmol app (unix)
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          echo "Testing packmol APP ... "
           julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
           juliabin=`julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'`
-          echo "julia binary path: $juliabin"
-          cd ./test/input_files
-          $juliabin/packmol -i water_box.inp
-          julia -e 'using Test; @test isfile("water_box.pdb")'
-          echo "Testing packmol APP ... ok"
+          $juliabin/packmol --version
+          $juliabin/packmol -i docs/src/tutorials/files/mixture/mixture.inp -o "$RUNNER_TEMP/mixture.pdb" -s 1
+          test -s "$RUNNER_TEMP/mixture.pdb"
       - name: install and run packmol app (windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Write-Host "Testing packmol APP ... "
           julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
           $juliabin = julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'
-          Write-Host "julia binary path: ${juliabin}"
-          cd .\test\input_files
-          & "$juliabin\packmol" -i water_box.inp
-          julia -e 'using Test; @test isfile("water_box.pdb")'
-          Write-Host "Testing packmol APP ... ok"
+          & "$juliabin\packmol" --version
+          & "$juliabin\packmol" -i docs\src\tutorials\files\mixture\mixture.inp -o "$env:RUNNER_TEMP\mixture.pdb" -s 1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "$env:RUNNER_TEMP\mixture.pdb")) { exit 1 }

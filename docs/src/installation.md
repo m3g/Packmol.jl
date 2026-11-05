@@ -1,5 +1,8 @@
 # Installation
 
+Users of the legacy (Fortran) Packmol: see [Migrating from legacy Packmol](@ref) for the
+differences.
+
 Install the latest Julia version in your system, with [juliaup](https://github.com/JuliaLang/juliaup#juliaup---julia-version-manager)
 
 ## Interactive use
@@ -93,4 +96,7 @@ To keep Packmol up-to-date, use:
 julia> import Pkg; Pkg.update()
 ```
 
-(or type `] up`, at the `julia>` prompt).
+(or type `] up`, at the `julia>` prompt), and, for the `packmol` app:
+```
+julia -e 'import Pkg; Pkg.Apps.update("Packmol")'
+```
