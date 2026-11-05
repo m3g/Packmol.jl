@@ -11,7 +11,7 @@ packmol -i input.inp -o output.pdb
 
 Most input files run unchanged. This page lists the differences: what changed, what is no
 longer supported, and what is new. The legacy program is still available (see
-[Legacy (Fortran) Packmol](@ref)).
+[Running the legacy Packmol](@ref)).
 
 ## What stays the same
 
@@ -99,3 +99,18 @@ From Julia only: systems defined without input files (see
 systems and membranes from target densities and concentrations), new constraints
 defined by the user, and the packed atoms in memory (`get_atoms`), for analysis with
 [PDBTools.jl](https://github.com/m3g/PDBTools.jl) and other packages.
+
+## Running the legacy Packmol
+
+The legacy Packmol, the Fortran program, is still available from
+[m3g/packmol](http://github.com/m3g/packmol). It can also be run from Julia, with
+[`run_packmol_legacy`](@ref), which works as `packmol`. It requires the `Packmol_jll`
+package, which provides the Fortran binary:
+
+```julia-repl
+julia> import Pkg; Pkg.add("Packmol_jll")
+
+julia> using Packmol, Packmol_jll
+
+julia> run_packmol_legacy()
+```

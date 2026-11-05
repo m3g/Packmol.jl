@@ -32,7 +32,6 @@ makedocs(
             "Introduction" => "index.md",
             "Installation" => "installation.md",
             "Migrating from legacy Packmol" => "migrating.md",
-            "Legacy (Fortran) Packmol" => "legacy.md",
         ],
         "Tutorials" => [
             "Overview" => "tutorials/index.md",
