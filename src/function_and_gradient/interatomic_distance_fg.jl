@@ -23,6 +23,13 @@ using SPGBox: spgbox!
     # actually written, not to the number of atoms (see `reduce_output!` below).
     touched_atoms::Vector{Int32} = Int32[]
     touched_mols::Vector{Int32} = Int32[]
+    # Number of pairs of atoms overlapping by more than `overlap_precision` (the
+    # convergence criterion), for each pair of structure types (i ≤ j): counted only
+    # when `count_overlaps[]` is set (once per loop, for the report). The flag is shared
+    # with the threaded copies.
+    count_overlaps::Base.RefValue{Bool} = Ref(false)
+    overlap_precision::T = zero(T)
+    overlaps::Matrix{Int} = zeros(Int, 0, 0)
 end
 
 function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
@@ -35,6 +42,8 @@ function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
         fmol = zeros(T, packmol_system.nmols),
         gxcar = fill(zero(SVector{D,T}), natoms),
         max_constraint_penalty = zero(T),
+        overlap_precision = T(packmol_system.tolerance_precision),
+        overlaps = zeros(Int, length(packmol_system.structure_types), length(packmol_system.structure_types)),
     )
 end
 
@@ -62,6 +71,9 @@ function CellListMap.copy_output(x::InteratomicDistanceFG{D,T}) where {D,T}
         zero(T),  # max_constraint_penalty — not used by CellListMap threads
         Int32[],
         Int32[],
+        x.count_overlaps,  # shared flag
+        x.overlap_precision,
+        zero(x.overlaps),
     )
 end
 function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,T}
@@ -69,6 +81,7 @@ function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,
     output.dmin = typemax(T)
     output.max_overlap = typemin(T)
     output.max_constraint_penalty = zero(T)
+    fill!(output.overlaps, 0)
     if _is_thread_copy(output)
         _zero_touched!(output)
     else
@@ -97,6 +110,7 @@ function CellListMap.reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
     x.max_overlap = max(x.max_overlap, y.max_overlap)
     x.fmol .+= y.fmol
     x.gxcar .+= y.gxcar
+    x.overlaps .+= y.overlaps
     return x
 end
 
@@ -115,8 +129,10 @@ function CellListMap.reduce_output!(
     output.f = zero(T)
     output.dmin = typemax(T)
     output.max_overlap = typemin(T)
+    fill!(output.overlaps, 0)
     ntouched = 0
     for ot in output_threaded
+        output.overlaps .+= ot.overlaps
         output.f += ot.f
         output.dmin = min(output.dmin, ot.dmin)
         output.max_overlap = max(output.max_overlap, ot.max_overlap)
@@ -190,7 +206,12 @@ function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_sy
     tol = atom_radii[i] + atom_radii[j]
     d = sqrt(d2)
     fg.dmin = min(d, fg.dmin)
-    fg.max_overlap = max(fg.max_overlap, iatom.radius + jatom.radius - d)
+    overlap = iatom.radius + jatom.radius - d
+    fg.max_overlap = max(fg.max_overlap, overlap)
+    if fg.count_overlaps[] && overlap > fg.overlap_precision
+        it, jt = minmax(iatom.structure_type_index, jatom.structure_type_index)
+        fg.overlaps[it, jt] += 1
+    end
     if d < tol
         # Function value: add to total function value and to
         # molecular contributions

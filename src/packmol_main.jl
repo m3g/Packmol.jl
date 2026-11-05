@@ -609,7 +609,11 @@ function _packmol(
         # penalties are both independent of atom_radii — so reading them off
         # this floor-radii evaluation gives exactly the same value they'd
         # have under the working atom_radii.)
+        # (also counting the overlapping pairs, for the report of the loop)
+        cl_system.fg.count_overlaps[] = true
         f_true_loop_end = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
+        cl_system.fg.count_overlaps[] = false
+        overlaps = copy(cl_system.fg.overlaps)
         dmin = min(cl_system.fg.dmin, cl_system.cutoff)
         max_overlap = cl_system.fg.max_overlap
         fimp_within_loop = clamp(-100 * (f_true_loop_end - f_true_loop_start) / f_true_loop_start, T(-99.99), T(99.99))
@@ -681,6 +685,7 @@ function _packmol(
         @_printf("  Improvement within this loop: %8.2f %%\n", fimp_within_loop)
         @_printf("  Minimum distance: %12s\n", _format_dmin(dmin, cl_system.cutoff))
         @_printf("  Maximum violation of the constraints: %10.5e\n", max_const)
+        _print_overlaps(packmol_system, overlaps)
 
         if tol_ok && const_ok
             _println()
@@ -692,7 +697,7 @@ function _packmol(
             _println()
             _println(dash_line)
             _println()
-            _println("              Please cite this work if Packmol was useful: ")
+            _println("              If Packmol contributed to your work, please cite: ")
             _println()
             _println("            L. Martinez, R. Andrade, E. G. Birgin, J. M. Martinez, ")
             _println("          PACKMOL: A package for building initial configurations for")
@@ -1048,4 +1053,32 @@ function packmol_callback(
         return true
     end
     return false
+end
+
+#
+# Report of the pairs of atoms overlapping by more than tolerance_precision (the
+# convergence criterion), for the pairs of structure types with the most of them
+#
+function _print_overlaps(packmol_system::PackmolSystem, overlaps::Matrix{Int}; nshow::Int=6)
+    total = sum(overlaps)
+    total == 0 && return nothing
+    @_printf("  Overlapping pairs of atoms: %d, between molecules of types:\n", total)
+    pairs = Tuple{Int,Int,Int}[]
+    for j in axes(overlaps, 2), i in 1:j
+        overlaps[i, j] > 0 && push!(pairs, (overlaps[i, j], i, j))
+    end
+    sort!(pairs; rev=true)
+    for k in 1:min(nshow, length(pairs))
+        n, i, j = pairs[k]
+        @_printf("    %10d  %s - %s\n", n, _type_label(packmol_system, i), _type_label(packmol_system, j))
+    end
+    if length(pairs) > nshow
+        @_printf("    %10d  (other pairs of types)\n", sum(first(p) for p in pairs[nshow+1:end]))
+    end
+    return nothing
+end
+function _type_label(packmol_system::PackmolSystem, itype::Int)
+    st = packmol_system.structure_types[itype]
+    label = string(itype, ": ", basename(st.filename))
+    return st.fixed.fixed ? label * " (fixed)" : label
 end

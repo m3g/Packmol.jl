@@ -431,3 +431,24 @@ end
     end
     @test sys.status == :failed_packing
 end
+
+@testitem "report of the overlapping pairs" setup = [TestFiles] begin
+    water = TestFiles.test_file("structure_files/water.pdb")
+    # Too many molecules for the box, one loop: overlaps between the two types are reported
+    a = structure_type(water; number = 40, constraints = [InsideBox([0., 0., 0.], [8., 8., 8.])])
+    b = structure_type(water; number = 40, constraints = [InsideBox([0., 0., 0.], [8., 8., 8.])])
+    sys = PackmolSystem([a, b]; tolerance = 2.0, output = tempname() * ".pdb", nloop = 1)
+    out = tempname()
+    open(out, "w") do io
+        redirect_stdout(io) do
+            packmol(sys)
+        end
+    end
+    log = read(out, String)
+    @test occursin("Overlapping pairs of atoms:", log)
+    @test occursin("1: water.pdb - 2: water.pdb", log)
+    # The counts are those of the overlaps beyond tolerance_precision, by pair of types
+    fg = Packmol.InteratomicDistanceFG{3,Float64}(sys)
+    @test size(fg.overlaps) == (2, 2)
+    @test !fg.count_overlaps[]
+end
