@@ -127,13 +127,15 @@ function _active_subsystem(
         near[iat] && !active[atoms[iat].molecule_index] && push!(atom_map, iat)
     end
     positions = [cl_positions[iat] for iat in atom_map]
-    fg_output = InteratomicDistanceFG(
+    fg_output = InteratomicDistanceFG{D,T}(
         f=zero(T),
         g=[zero(MoleculePosition{D,T})],  # not a thread copy (see `_is_thread_copy`)
         dmin=typemax(T),
         max_overlap=typemin(T),
         fmol=zeros(T, nmols),
         gxcar=fill(zero(SVector{D,T}), length(atom_map)),
+        max_constraint_penalty=zero(T),
+        overlap_precision=T(packmol_system.tolerance_precision),
     )
     cl = ParticleSystem(
         xpositions=positions,

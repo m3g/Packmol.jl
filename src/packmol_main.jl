@@ -517,7 +517,10 @@ function _packmol(
             _active_subsystem(packmol_system, cl_system.fg.fmol, free_mol_indices, cl_system.xpositions,
                 unitcell, cl_system.cutoff, mol_structure_type, mol_iat_first;
                 active_radius=T(active_radius), max_fraction=T(active_max_fraction),
-                bad_threshold=precision / packmol_system.nmols)
+                # (a molecule is bad if its contribution may block the convergence: an
+                # overlap of tolerance_precision, or a constraint violation of
+                # constraint_precision)
+                bad_threshold=min(precision^2, T(packmol_system.constraint_precision)))
         else
             nothing
         end
