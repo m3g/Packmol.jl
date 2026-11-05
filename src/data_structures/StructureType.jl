@@ -32,12 +32,11 @@ Structure that contains the input data for a structure block in the input file.
     # `constrain_rotation`: bounds on the angle between an axis and a vector of the
     # molecule (see constraints/rotations.jl)
     rotation_constraints::Vector{RotationConstraint{D,T}} = RotationConstraint{D,T}[]
-    # Per-structure-type restart (Fortran's `restart_from`/`restart_to` given
-    # inside a `structure ... end structure` block): `nothing` means unset.
-    # See `PackmolSystem.restart_from`/`restart_to` for the whole-system
-    # version, and its docstring for the accepted `restart_from` sources.
+    # Per-structure-type restart (Fortran's `restart_from` given inside a
+    # `structure ... end structure` block): `nothing` means unset. See
+    # `PackmolSystem.restart_from` for the whole-system version, and its
+    # docstring for the accepted sources.
     restart_from::Union{Nothing,String,Vector{Atom{Nothing}}} = nothing
-    restart_to::Union{Nothing,String} = nothing
     # Bonds of the template (from the CONECT records of the structure file, read by
     # PDBToolsBase): `connectivity[i]` are the indices of the atoms bonded to atom
     # `i`. `nothing` if not available, or disabled with `connect no`.
@@ -194,7 +193,6 @@ function structure_type(filename::Union{String,AbstractVector{String}};
     # the angle between the z axis and the vector from the center of atoms 1 and 2 to atom 30
     constrain_rotation = Dict{Symbol,Tuple{Float64,Float64}}(),
     restart_from::Union{Nothing,String,AbstractVector{<:Atom}} = nothing,
-    restart_to::Union{Nothing,String} = nothing,
     connect::Bool = true,
     filetype::String = "pdb",
     D::Int = 3,
@@ -248,7 +246,7 @@ function structure_type(filename::Union{String,AbstractVector{String}};
     _check_rotation_constraints(rotation_constraints, fixed_data, natoms)
 
     st = StructureType{D,T}(;
-        filename, natoms, atoms, number_of_molecules=number, rotation_constraints, restart_from=_restart_source(restart_from), restart_to,
+        filename, natoms, atoms, number_of_molecules=number, rotation_constraints, restart_from=_restart_source(restart_from),
         fixed=fixed_data, reference_coordinates, radii,
         residue_numbering, chain, changechains, segid=_check_segid(segid), connectivity, constraints, atom_constraints,
     )
@@ -347,8 +345,8 @@ function _conformation_types(
         Structure $(basename(st.filename)): a fixed molecule cannot have several conformations (models).
 
     """))
-    (isnothing(st.restart_from) && isnothing(st.restart_to)) || throw(ArgumentError("""\n
-        Structure $(basename(st.filename)): restart_from and restart_to are not supported for a molecule
+    isnothing(st.restart_from) || throw(ArgumentError("""\n
+        Structure $(basename(st.filename)): restart_from is not supported for a molecule
         with several conformations (models) in the structure block; use them for the whole system.
 
     """))
@@ -372,7 +370,7 @@ function _conformation_types(
             reference_coordinates=[_atom_position(at, Val(D), T) for at in atoms],
             radii=copy(st.radii), residue_numbering=st.residue_numbering, chain=st.chain,
             changechains=st.changechains, segid=st.segid, rotation_constraints=copy(st.rotation_constraints),
-            restart_from=nothing, restart_to=nothing, connectivity=st.connectivity,
+            restart_from=nothing, connectivity=st.connectivity,
             constraints=copy(st.constraints), atom_constraints=[copy(ac) for ac in st.atom_constraints],
             move_bad_molecules=st.move_bad_molecules, conformation=(i, length(keep)),
         ))
@@ -385,9 +383,9 @@ function _file_format(filename::AbstractString, filetype::String)
     ext == ".pdb" && return "pdb"
     ext == ".xyz" && return "xyz"
     (ext == ".cif" || ext == ".mmcif") && return "mmcif"
-    (filetype == "pdb" || filetype == "xyz") && return filetype
+    (filetype == "pdb" || filetype == "xyz" || filetype == "mmcif") && return filetype
     throw(ArgumentError("""\n
-        filetype $filetype is not supported: use pdb or xyz.
+        filetype $filetype is not supported: use pdb, xyz or mmcif.
 
     """))
 end
@@ -519,7 +517,6 @@ function _read_structure_types(input_file_block::IOBuffer, tolerance, ::Val{D}, 
     segid = nothing
     input_file_block, rotation_constraints = _read_rotation_constraints(input_file_block, Val(D), T)
     restart_from = nothing
-    restart_to = nothing
     # Read basic structure data first
     atoms_block = false
     iconstraint = 0
@@ -568,8 +565,6 @@ function _read_structure_types(input_file_block::IOBuffer, tolerance, ::Val{D}, 
             segid = _check_segid(String(values[1]))
         elseif keyword == "restart_from"
             restart_from = joinpath(path, expanduser(String(values[1])))
-        elseif keyword == "restart_to"
-            restart_to = joinpath(path, expanduser(String(values[1])))
         elseif keyword in constraint_placements
             iconstraint += 1
             push_parsed_constraint!(constraints, "$keyword $(values[1])", @view(values[2:end]), filename)
@@ -626,7 +621,7 @@ function _read_structure_types(input_file_block::IOBuffer, tolerance, ::Val{D}, 
     _check_rotation_constraints(rotation_constraints, fixed, length(atoms))
     st = StructureType{D,T}(;
         filename, natoms=length(atoms), atoms, number_of_molecules, fixed, reference_coordinates, radii,
-        residue_numbering, chain, changechains, segid, rotation_constraints, restart_from, restart_to,
+        residue_numbering, chain, changechains, segid, rotation_constraints, restart_from,
         connectivity=connect ? connectivity : nothing,
         constraints, atom_constraints,
     )

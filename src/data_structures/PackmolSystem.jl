@@ -52,8 +52,8 @@
     # Pack even if the initial approximation does not satisfy the constraints (input
     # keyword `continue_failed_initial_packing`); otherwise `packmol` stops there.
     continue_failed_initial_packing::Bool = false
-    # Whole-system restart (Fortran's `restart_from`/`restart_to` with no
-    # structure type, i.e. index 0): `nothing` means unset. When
+    # Whole-system restart (Fortran's `restart_from` with no structure type,
+    # i.e. index 0): `nothing` means unset. When
     # `restart_from` is set, packmol() skips the whole initial-approximation
     # pipeline entirely and reads every molecule's position from this
     # source instead — the point of a whole-system restart is to skip that
@@ -63,11 +63,10 @@
     # extension), whose atoms are rigid-body-aligned against each structure
     # type's own template to recover (cm, angles) (see `_align_molecule` in
     # write_output.jl), or, Julia-API only, a `Vector{<:Atom}` already in
-    # memory. `restart_to` writes the coordinates (PDB, or XYZ by extension).
-    # See also `StructureType.restart_from`/`restart_to` for the
-    # per-structure-type equivalents.
+    # memory. There is no `restart_to`: the output file itself can be given to
+    # `restart_from`. See also `StructureType.restart_from` for the
+    # per-structure-type equivalent.
     restart_from::Union{Nothing,String,Vector{Atom{Nothing}}} = nothing
-    restart_to::Union{Nothing,String} = nothing
     # Unit cell for periodic boundary conditions (nothing = no PBC)
     unitcell::Union{Nothing, Matrix{T}} = nothing
     # Reference center for PBC wrapping (constraints evaluated relative to this point)
@@ -271,7 +270,7 @@ _warn(msg::AbstractString) = _with_stderr(io -> println(io, "Warning: ", msg))
 #
 function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, val::AbstractString) where {D,T}
     if keyword == "filetype"
-        sys.filetype = _parse_options("filetype", val, ("pdb" => "pdb", "xyz" => "xyz"))
+        sys.filetype = _parse_options("filetype", val, ("pdb" => "pdb", "xyz" => "xyz", "mmcif" => "mmcif", "cif" => "mmcif"))
     elseif keyword == "output"
         sys.output_file = expanduser(_parse_value(String, "output", val))
     elseif keyword == "tolerance"
@@ -339,8 +338,6 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.continue_failed_initial_packing = true
     elseif keyword == "restart_from"
         sys.restart_from = expanduser(_parse_value(String, "restart_from", val))
-    elseif keyword == "restart_to"
-        sys.restart_to = expanduser(_parse_value(String, "restart_to", val))
     else
         return false
     end
@@ -394,6 +391,7 @@ const packmol_legacy_keywords = Dict{String,String}(
     "non_standard_conect" => "non_standard_conect is a deprecated keyword and was ignored (CONECT records are read in the standard PDB format).",
     "hexadecimal_indices" => "hexadecimal_indices is a deprecated keyword and was ignored (atom indices above 99999 are always written in hexadecimal).",
     "movebadrandom" => "movebadrandom is a deprecated keyword and was ignored (bad molecules are always moved to random positions).",
+    "restart_to" => "restart_to is a deprecated keyword and was ignored: to restart, give the output file (PDB, XYZ or mmCIF) to restart_from.",
 )
 
 # Keywords recognized by Fortran Packmol but not yet wired into Packmol.jl
@@ -417,6 +415,7 @@ const _global_keywords = (
 const packmol_legacy_structure_keywords = Dict{String,String}(
     "nloop" => "nloop inside a structure block is a deprecated keyword and was ignored (use the global nloop).",
     "nloop0" => "nloop0 is a deprecated keyword and was ignored.",
+    "restart_to" => "restart_to is a deprecated keyword and was ignored: to restart, give the output file (PDB, XYZ or mmCIF) to restart_from.",
 )
 
 # Input file line without its comment (anything after a `#`, as in Fortran
@@ -551,8 +550,6 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
     isempty(sys.output_file) || (sys.output_file = joinpath(input_dir, sys.output_file))
     restart_from = sys.restart_from
     restart_from isa String && (sys.restart_from = joinpath(input_dir, restart_from))
-    restart_to = sys.restart_to
-    restart_to isa String && (sys.restart_to = joinpath(input_dir, restart_to))
     # Read structure data
     structure_input = IOBuffer()
     for line in lines

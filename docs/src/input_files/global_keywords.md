@@ -4,7 +4,7 @@
 |:--|:--|
 | `tolerance <value>` | Minimum distance between atoms of different molecules (required). |
 | `output <file>` | Path of the output structure file. |
-| `filetype pdb\|xyz` | Format of the structure and output files (default `pdb`). Files with the extensions `.pdb`, `.xyz`, `.cif` or `.mmcif` (mmCIF, structure files only) are read and written in that format, whatever the `filetype`. |
+| `filetype pdb\|xyz\|mmcif` | Format of the structure and output files (default `pdb`). Files with the extensions `.pdb`, `.xyz`, `.cif` or `.mmcif` are read and written in that format, whatever the `filetype`: `output system.cif` writes the output as mmCIF, with the periodic cell in its `_cell` fields. |
 | `seed <int>` | Random number generator seed (default `1234567`). |
 | `movefrac <value>` | Maximum fraction of the molecules of each type moved by the bad-molecule heuristic in each loop (default `0.05`). The `movefrac` keyword argument of [`packmol`](@ref) takes precedence. |
 | `periodic_boundary_style <triclinic\|dodecahedral\|octahedral>` | Shape in which the molecules are written, with periodic boundary conditions: the parallelepiped of the cell (`triclinic`, the default), or the compact rhombic dodecahedron or truncated octahedron (see the [Output shape](../periodic_boundary_conditions/rhombic_dodecahedral_box.md#Output-shape)). |
@@ -33,7 +33,6 @@
 | `pbc octahedral <cx cy cz d>` | Truncated octahedron periodic box of size `d` centered at `(cx,cy,cz)` — likewise stored as the equivalent triclinic cell. |
 | `unitcell <a b c α β γ>` | Triclinic periodic box, CRYST1-style (centered at the origin). |
 | `restart_from <file>` | Skip initial placement for every free molecule and read their positions from `<file>` instead — see [Restarting a run](@ref) below. Also valid inside a `structure ... end structure` block, to restart only that structure type. |
-| `restart_to <file>` | Write the coordinates of the system to `<file>` (PDB, or XYZ by the extension) each time output is written (including intermediate `writeout` writes). Also valid per structure type. |
 
 See [Periodic boundary conditions](../periodic_boundary_conditions/index.md) for the
 full `pbc`/`unitcell` syntax (including the dodecahedral/octahedral shapes)

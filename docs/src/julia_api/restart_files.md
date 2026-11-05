@@ -1,15 +1,15 @@
 # Restart files
 
-`restart_from`/`restart_to`, on both `PackmolSystem` (whole system) and
-`structure_type` (one structure type only), work as in the input file's
-[Restarting a run](../input_files/restarting_a_run.md) section — a coordinate
-file (PDB, XYZ or mmCIF, by extension) skips or shortcuts the initial placement
-step:
+`restart_from`, on both `PackmolSystem` (whole system) and `structure_type` (one
+structure type only), works as in the input file's
+[Restarting a run](../input_files/restarting_a_run.md) section: a coordinate file
+(PDB, XYZ or mmCIF, by extension), as the output of a previous run, skips or
+shortcuts the initial placement step:
 
 ```julia
-sys = PackmolSystem(structure_types; output="box.pdb", tolerance=2.0, restart_to="box_restart.pdb")
+sys = PackmolSystem(structure_types; output="box.pdb", tolerance=2.0)
 packmol(sys)  # ... later, resume packing (or extend a run that stopped early):
-sys2 = PackmolSystem(structure_types; output="box2.pdb", tolerance=2.0, restart_from="box_restart.pdb")
+sys2 = PackmolSystem(structure_types; output="box2.pdb", tolerance=2.0, restart_from="box.pdb")
 packmol(sys2)
 ```
 

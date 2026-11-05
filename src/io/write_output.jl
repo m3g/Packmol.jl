@@ -73,33 +73,38 @@ end
 # Packmol's own %9.2f/%7.2f — a strictly more precise, still spec-compliant
 # choice, not a behavioral difference worth preserving.
 #
-function _cryst1_lines(packmol_system::PackmolSystem{D,T}, atom_positions) where {D,T}
-    add_box_sides = packmol_system.add_box_sides
+# The cell of the output (the CRYST1 record of PDB files, the `_cell` fields of mmCIF
+# files): the periodic cell, or, with `add_box_sides`, the box of the atoms extended by
+# 1.1 tolerance. `(false, ...)` if there is none (a single return type, for `juliac --trim`).
+function _output_cell(packmol_system::PackmolSystem{D,T}, atom_positions) where {D,T}
     has_pbc = !isnothing(packmol_system.unitcell)
-    (!add_box_sides && !has_pbc) && return String[]
-
-    lines = String[]
     if has_pbc
         a, b, c, α, β, γ = _unitcell_abc_angles(packmol_system.unitcell)
-    else
+        return true, T(a), T(b), T(c), T(α), T(β), T(γ)
+    elseif packmol_system.add_box_sides
+        lo, hi = compute_bounding_box(atom_positions)
+        sides = (hi .- lo) .+ 2 * T(1.1) * packmol_system.tolerance
+        return true, sides[1], sides[2], D == 3 ? sides[3] : one(T), T(90), T(90), T(90)
+    end
+    return false, zero(T), zero(T), zero(T), zero(T), zero(T), zero(T)
+end
+
+function _cryst1_lines(packmol_system::PackmolSystem{D,T}, atom_positions) where {D,T}
+    has_cell, a, b, c, α, β, γ = _output_cell(packmol_system, atom_positions)
+    has_cell || return String[]
+    lines = String[]
+    if isnothing(packmol_system.unitcell)
         push!(lines, "REMARK  CRYST1 info below is (extrema(coordinates) +/- 1.1*tolerance) because no explicit")
         push!(lines, "REMARK  PBCs were defined. To apply PBCs, use the `pbc` keyword.")
-        lo, hi = compute_bounding_box(atom_positions)
-        margin = T(1.1) * packmol_system.tolerance
-        sides = (hi .- lo) .+ 2margin
-        a, b = sides[1], sides[2]
-        c = D == 3 ? sides[3] : one(T)
-        α = β = γ = T(90)
     end
     push!(lines, @sprintf("CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11s%4d", a, b, c, α, β, γ, "P 1", 1))
     return lines
 end
 
 #
-# Restarts (`restart_from`/`restart_to`) use coordinate files (PDB, XYZ or mmCIF, by
-# the file extension): `restart_to` writes the coordinates of the system (or of one
-# structure type) every time the output is written, and `restart_from` recovers the
-# position of each molecule from coordinates (see `_align_molecule`). The restart
+# Restarts (`restart_from`) use coordinate files (PDB, XYZ or mmCIF, by the file
+# extension): the position of each molecule is recovered from the coordinates (see
+# `_align_molecule`), of the output of a previous run or of a simulation. The restart
 # files of Fortran Packmol (raw center of mass and Euler angles) are not supported.
 #
 _restart_file_format(path::AbstractString) = _file_format(path, "")
@@ -110,7 +115,7 @@ function _check_restart_file(path::AbstractString, keyword::AbstractString)
     throw(ArgumentError("""\n
         $keyword $path: restart files must be coordinate files (.pdb, .xyz or .cif).
         The restart files of Fortran Packmol are not supported: restart from the
-        coordinates of a previous run (its output file, or a restart_to file).
+        coordinates of a previous run (its output file).
 
     """))
 end
@@ -119,10 +124,8 @@ _check_restart_file(::AbstractVector{<:Atom}, ::AbstractString) = nothing
 
 function _check_restart_files(packmol_system::PackmolSystem)
     _check_restart_file(packmol_system.restart_from, "restart_from")
-    _check_restart_file(packmol_system.restart_to, "restart_to")
     for st in packmol_system.structure_types
         _check_restart_file(st.restart_from, "restart_from")
-        _check_restart_file(st.restart_to, "restart_to")
     end
     return nothing
 end
@@ -202,35 +205,6 @@ end
 function _restart_positions(source::AbstractString, segments::Vector{Tuple{Int,Int,Vector{SVector{D,T}},Bool}}, ::Type{MoleculePosition{D,T}}) where {D,T}
     atoms, _ = _read_structure_file(source, _restart_file_format(source))
     _restart_positions_from_atoms(atoms, segments)
-end
-
-#
-# Write any configured restart_to files (whole-system and/or per structure
-# type): the coordinates of `output_atoms` (the atoms of `get_atoms`), or of
-# the atoms of one structure type.
-#
-function _write_restart_files(packmol_system::PackmolSystem, output_atoms::Vector{Atom{Nothing}})
-    restart_to = packmol_system.restart_to
-    isnothing(restart_to) || _write_coordinates(restart_to, output_atoms)
-    iat_offset = 0
-    for st in packmol_system.structure_types
-        natoms = _ncopies(st) * st.natoms
-        st_restart_to = st.restart_to
-        if !isnothing(st_restart_to)
-            _write_coordinates(st_restart_to, output_atoms[iat_offset+1:iat_offset+natoms])
-        end
-        iat_offset += natoms
-    end
-    return nothing
-end
-
-function _write_coordinates(filename::String, atoms::Vector{Atom{Nothing}})
-    if _restart_file_format(filename) == "xyz"
-        write_xyz(filename, Structure(atoms; title="Built with Packmol"))
-    else
-        write_pdb(filename, atoms)
-    end
-    return filename
 end
 
 #
@@ -425,19 +399,25 @@ Write packed coordinates to the output file specified in `packmol_system.output_
 Residue numbering follows each structure type's `residue_numbering` (`resnumbers`)
 setting, chain identifiers follow `chain`/`changechains`, and a `CRYST1` record is
 added when `add_box_sides` is set or the system has periodic boundary conditions.
-Also writes any configured `restart_to` file(s) from the current molecule positions,
-unless `write_restart=false`.
 Returns the path of the file that was written. See [`get_atoms`](@ref) for how the
 written coordinates are computed (including PBC wrapping and
 `packmol_system.periodic_boundary_style`).
 """
-function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_system.output_file, write_restart::Bool=true) where {D,T}
+function write_output(packmol_system::PackmolSystem{D,T}; output_file=packmol_system.output_file) where {D,T}
     output_atoms = get_atoms(packmol_system)
-    write_restart && _write_restart_files(packmol_system, output_atoms)
     atom_positions = _positions_from_atoms(output_atoms, Val(D), T)
 
-    if _file_format(output_file, packmol_system.filetype) == "xyz"
+    format = _file_format(output_file, packmol_system.filetype)
+    if format == "xyz"
         write_xyz(output_file, Structure(output_atoms; title="Built with Packmol"))
+        return output_file
+    end
+    if format == "mmcif"
+        # The cell in the `_cell` fields, the bonds of the templates in `_struct_conn`
+        has_cell, a, b, c, α, β, γ = _output_cell(packmol_system, atom_positions)
+        cell = has_cell ? PDBToolsBase.UnitCell(a, b, c, α, β, γ) : nothing
+        metadata = PDBToolsBase.MetaData(cell, _system_connectivity(packmol_system), "Built with Packmol")
+        PDBToolsBase.write_mmcif(output_file, Structure(output_atoms, metadata))
         return output_file
     end
     cryst1_lines = _cryst1_lines(packmol_system, atom_positions)

@@ -93,7 +93,7 @@ end
 Read a Packmol input file, run the packing optimization, and write the output.
 Returns the built `PackmolSystem` (see `packmol(::PackmolSystem)` for details).
 
-Paths in the input file (structure files, `output`, `restart_from`, `restart_to`)
+Paths in the input file (structure files, `output`, `restart_from`)
 are relative to the directory of the input file.
 
 With no input file, a file explorer is opened to choose it (see [`Packmol.pick_file`](@ref)).
@@ -248,7 +248,7 @@ function _packmol(
     # alignment.
     #
     # A *whole-system* restart source is whatever a prior
-    # `write_output`/`_write_restart_files` call wrote for the entire
+    # `write_output` call wrote for the entire
     # system, so it lists every molecule of every structure type, fixed
     # ones included, interleaved in structure-declaration order — not just
     # the free ones. `segments` below therefore spans every structure type
@@ -282,7 +282,7 @@ function _packmol(
         if !st.fixed.fixed && !isnothing(st_restart_from)
             _println("  Restarting structure type '", basename(st.filename), "' from: ", _restart_source_name(st_restart_from))
             # A per-structure-type restart source only ever contains this
-            # one type's own molecules (e.g. its own `restart_to` file from
+            # one type's own molecules (e.g. the coordinates of that type from
             # an earlier run), so its segment list is just itself — always
             # extracted, nothing to skip.
             segments = [(st.number_of_molecules, st.natoms, st.reference_coordinates, true)]
@@ -826,7 +826,7 @@ function _write_forced_output(packmol_system::PackmolSystem, free_mol_indices::V
         nloop, cm_lo_type=cm_min, cm_hi_type=cm_max, buffers,
     )
     forced_file = packmol_system.output_file * "_FORCED"
-    write_output(packmol_system; output_file=forced_file, write_restart=false)
+    write_output(packmol_system; output_file=forced_file)
     _println("  The forced point was written to the output file: ", forced_file)
     copyto!(packmol_system.molecule_positions, best_positions)
     return forced_file
