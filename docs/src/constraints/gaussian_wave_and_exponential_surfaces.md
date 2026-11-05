@@ -63,6 +63,81 @@ end # hide
 visualize(get_atoms(system); unitcell = UnitCell([30., 30., 15.]), unitcell_origin = [-15., -15., 0.])
 ```
 
+## Example: a periodic wavy monolayer
+
+A monolayer of POPC following one period of a sine wave of amplitude 6 Å along `x`, in an
+orthorhombic periodic cell whose side in `x` is the wavelength (60 Å), so that the surface
+is continuous across the periodic boundaries. The nitrogen atoms of the heads (atom 1) are
+within 2 Å of the surface, and the ends of the two chains (atoms 88 and 131) at least 22 Å
+above it. Water fills the cell below the heads and above the chains: across the periodic
+boundary in `z`, the two water structure blocks form a single layer, 30 Å thick. The
+surfaces are vertical translations of each other, so each water region has the volume of
+a flat slab (60 × 40 Å, 16 and 14 Å thick), filled at 1 g/mL. The area of the wavy surface
+is about 2780 Å², about 66 Å² for each of the 42 lipids.
+
+```
+tolerance 2.0
+output wavy_monolayer.pdb
+pbc 0. 0. -20. 60. 40. 44.
+
+structure popc.pdb
+  number 42
+  atoms 1
+    above sin 0. 0. 1. 1. 0. 0. -2. 6. 60. 0.
+    below sin 0. 0. 1. 1. 0. 0. 2. 6. 60. 0.
+  end atoms
+  atoms 88 131
+    above sin 0. 0. 1. 1. 0. 0. 22. 6. 60. 0.
+  end atoms
+end structure
+
+structure water.pdb
+  number 1280
+  below sin 0. 0. 1. 1. 0. 0. -4. 6. 60. 0.
+end structure
+
+structure water.pdb
+  number 1120
+  above sin 0. 0. 1. 1. 0. 0. 30. 6. 60. 0.
+end structure
+```
+
+The same system with the [Julia API](../julia_api/index.md) (it packs in a few seconds):
+
+```@setup wavy
+using Packmol
+cp(joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb"), "water.pdb"; force = true)
+cp(joinpath(Packmol.RecipesDirectory, "lipids", "popc.pdb"), "popc.pdb"; force = true)
+```
+
+```@example wavy
+using Packmol, PDBTools
+up, along = [0., 0., 1.], [1., 0., 0.]       # the surface z = 6 sin(2π x / 60)
+amplitude, wavelength, phase = 6., 60., 0.
+popc = structure_type("popc.pdb";
+    number = 42,
+    atom_constraints = [
+        [1] => AboveSin(up, along, -2., amplitude, wavelength, phase),
+        [1] => BelowSin(up, along, 2., amplitude, wavelength, phase),
+        [88, 131] => AboveSin(up, along, 22., amplitude, wavelength, phase),
+    ],
+)
+water_below = structure_type("water.pdb"; number = 1280,
+    constraints = [BelowSin(up, along, -4., amplitude, wavelength, phase)])
+water_above = structure_type("water.pdb"; number = 1120,
+    constraints = [AboveSin(up, along, 30., amplitude, wavelength, phase)])
+system = PackmolSystem([popc, water_below, water_above];
+    tolerance = 2.0,
+    output = "wavy_monolayer.pdb",
+    unitcell = [60. 0. 0.; 0. 40. 0.; 0. 0. 64.],
+    unitcell_center = [30., 20., 12.],      # the cell from (0, 0, -20) to (60, 40, 44)
+)
+redirect_stdio(stdout = devnull, stderr = devnull) do # hide
+packmol(system)
+end # hide
+visualize(get_atoms(system); unitcell = UnitCell([60., 40., 64.]), unitcell_origin = [0., 0., -20.])
+```
+
 ## Radial variants
 
 ```
