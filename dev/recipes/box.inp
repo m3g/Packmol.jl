@@ -41,15 +41,15 @@ structure /home/runner/work/Packmol.jl/Packmol.jl/src/Recipes/test/data/poly_h.p
     fixed 0. 0. 0. 0. 0. 0.
 end structure
 
-structure /tmp/jl_q34fifY3cP/HOH.pdb
+structure /tmp/jl_GBeVm7OVOf/HOH.pdb
     number 55435
 end structure
 
-structure /tmp/jl_q34fifY3cP/SOD.pdb
+structure /tmp/jl_GBeVm7OVOf/SOD.pdb
     number 151
 end structure
 
-structure /tmp/jl_q34fifY3cP/CLA.pdb
+structure /tmp/jl_GBeVm7OVOf/CLA.pdb
     number 153
 end structure
 
