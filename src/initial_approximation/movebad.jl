@@ -30,6 +30,7 @@ function movebad!(
     mol_structure_type::Vector{Int},
     RNG;
     movefrac::T=T(0.05),
+    movebad_fraction::T=T(0.2),
     precision::T=T(1e-2),
     fmol_max_type::Vector{T}=zeros(T, length(packmol_system.structure_types)),
     cm_lo_type::Union{Nothing,Vector{SVector{D,T}}} = nothing,
@@ -77,7 +78,13 @@ function movebad!(
     # exactly as it should be.
     fmol_max_type .= max.(fmol_max_type, fmol_max_now)
 
-    # A single quota for the whole system: `movefrac` of the free molecules.
+    # A single quota for the whole system: `movebad_fraction` of the bad molecules (at
+    # least one), and at most `movefrac` of the free molecules (the rule of Fortran
+    # Packmol). A fraction of all the molecules moves every bad molecule of a large
+    # system, where they are a small fraction of the total (thousands of molecules
+    # placed at random at once, out of millions), and the packing is largely restarted.
+    #
+    # The quota is for the whole system, not per structure type.
     # A quota per structure type (at least one molecule each) moves far more
     # molecules than that in systems of many small types (ten types of 6
     # molecules would move 10 molecules per call, instead of 3 if they were a
@@ -85,7 +92,7 @@ function movebad!(
     # done, while a molecule stuck far from its region competes for its
     # type's quota only with its few siblings.
     nfree = length(free_mol_indices)
-    nmove = max(1, min(nbad, round(Int, min(movefrac, nbad / nfree) * nfree)))
+    nmove = max(1, min(nbad, round(Int, movefrac * nfree), round(Int, movebad_fraction * nbad)))
 
     # Each moved molecule is placed within the center-of-mass bounds of its type
     function place!(imol)

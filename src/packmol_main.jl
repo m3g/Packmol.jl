@@ -138,6 +138,10 @@ molecules of each type moved per loop, default `0.05`) take precedence over the
 values set in the input file (`packmol_system.nloop`, `packmol_system.max_iter`
 and `packmol_system.movefrac`).
 
+`movebad_fraction` (default `0.2`): the molecules moved to random positions after a loop
+that improved the objective function by less than 10% are at most this fraction of the
+bad molecules (at least one), and at most `movefrac` of all the molecules.
+
 `nthreads` (maximum number of threads used, default: all the threads of the Julia
 session) takes precedence over `packmol_system.nthreads` (the input keyword `nthreads`).
 
@@ -184,6 +188,7 @@ function _packmol(
     nloop::Union{Nothing,Int}=nothing,
     maxit::Union{Nothing,Int}=nothing,
     movefrac::Union{Nothing,Real}=nothing,
+    movebad_fraction::Real=0.2,
     n_stall_iterations::Int=40,
     f_stall_tolerance::T=T(0.01),
     movebad_tolerance::T=T(0.10),
@@ -754,7 +759,7 @@ function _packmol(
             cm_min, cm_max = compute_cm_bounds(packmol_system)
             moved = movebad!(
                 packmol_system, cl_system.fg.fmol, free_mol_indices, mol_structure_type, RNG;
-                movefrac, precision, fmol_max_type,
+                movefrac, movebad_fraction=T(movebad_fraction), precision, fmol_max_type,
                 cm_lo_type=cm_min, cm_hi_type=cm_max,
                 fixed_sys=movebad_fixed_sys, fixed_lo=movebad_fixed_lo, fixed_hi=movebad_fixed_hi,
                 overlap_tol=movebad_overlap_tol,
