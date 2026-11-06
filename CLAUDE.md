@@ -56,6 +56,7 @@ src/
                                       # volume of the region of each structure type); CLI
                                       # --guess-volume/--free-volume
   interatomic_distance_fg.jl          # Distance function & gradient computation
+  active_set.jl                       # Active subsystem: bad molecules + neighbors optimized, the rest frozen
   data_structures/
     atoms_and_molecules.jl            # AtomData, MoleculePosition, FixedMoleculeData
     StructureType.jl                  # Structure definitions & input parsing
@@ -286,6 +287,14 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] SPGBox-based optimization (`packmol()` function)
 - [x] Multi-start strategy: initial placement + iterative repositioning of bad molecules (`movebad!`)
 - [x] `movefrac` control: fraction of bad molecules moved per iteration
+- [x] Active subsystem (`src/active_set.jl`, `packmol(sys; active_set=true)`, the default): after loop 0,
+      each loop optimizes only the bad molecules (fmol > min(tolerance_precision², constraint_precision))
+      and the molecules with an atom within `active_radius` (6 tolerance) of them, the others frozen;
+      two cell lists: the active atoms (rebuilt every evaluation) and the frozen atoms (a cross list,
+      built once per loop). Whole system when the active atoms exceed `active_max_fraction` (0.7) of
+      the free atoms. With short loops (`maxit` 30 default, `n_stall_iterations` = maxit), tuned on the
+      large nanoliposome: 2.6x faster than whole-system loops of maxit 800.
+      Recomputing the subsystem within a loop (every N iterations) was tried: never faster.
 - [x] Rotations scaled by the inertia of each molecule (`src/rigid_body/rotation_metric.jl`): in each
       chunk the optimizer works on a′ = Lᵀa (G/N = LLᵀ, G = JᵀIJ, the metric of the atom displacements
       at the current orientation), so a unit step moves the atoms by 1 Å RMS; not for linear molecules.
