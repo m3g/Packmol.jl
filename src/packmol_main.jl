@@ -479,6 +479,9 @@ function _packmol(
     # over the whole run (see movebad.jl for why this must persist rather
     # than being recomputed fresh each call).
     fmol_max_type = zeros(T, length(packmol_system.structure_types))
+    # The molecules that do not satisfy the convergence criterion (the bad molecules of
+    # the active subsystem and of movebad!), at the start and at the end of each loop
+    mol_unconverged = zeros(Bool, packmol_system.nmols)
 
     # Fixed-structure overlap-check system and constraint-only scratch for
     # movebad! (see movebad.jl): built once here, since the fixed atoms never
@@ -580,7 +583,12 @@ function _packmol(
         # non-increasing; otherwise, the optimizer is chasing an inflated
         # target instead, so the real objective isn't guaranteed to move in
         # either direction.
+        # (recording the molecules that do not satisfy the convergence criterion: the
+        # bad molecules of the active subsystem)
+        cl_system.fg.count_overlaps[] = true
         f_true_loop_start = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
+        cl_system.fg.count_overlaps[] = false
+        _mark_unconverged!(mol_unconverged, cl_system.fg)
 
         # Run a short optimization (maxit iterations per loop)
         progress_meter = ProgressBar(maxit; desc="  Iterations: ", barlen=46)
@@ -588,13 +596,9 @@ function _packmol(
         # their neighbors, from the contributions to the objective function at the
         # start of the loop (`cl_system.fg.fmol`, of the evaluation above)
         sub, nactive, nactive_atoms = if active_set && loop > 0
-            _active_subsystem(packmol_system, cl_system.fg.fmol, free_mol_indices, cl_system.xpositions,
+            _active_subsystem(packmol_system, mol_unconverged, free_mol_indices, cl_system.xpositions,
                 unitcell, cl_system.cutoff, mol_structure_type, mol_iat_first;
-                active_radius=T(active_radius), max_fraction=T(active_max_fraction),
-                # (a molecule is bad if its contribution may block the convergence: an
-                # overlap of tolerance_precision, or a constraint violation of
-                # constraint_precision)
-                bad_threshold=min(precision^2, T(packmol_system.constraint_precision)))
+                active_radius=T(active_radius), max_fraction=T(active_max_fraction))
         else
             nothing, 0, 0
         end
@@ -707,10 +711,13 @@ function _packmol(
         # penalties are both independent of atom_radii — so reading them off
         # this floor-radii evaluation gives exactly the same value they'd
         # have under the working atom_radii.)
-        # (also counting the overlapping pairs, for the report of the loop)
+        # (also counting the overlapping pairs, for the report of the loop, and recording
+        # the molecules that do not satisfy the convergence criterion: the bad molecules
+        # of movebad!)
         cl_system.fg.count_overlaps[] = true
         f_true_loop_end = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
         cl_system.fg.count_overlaps[] = false
+        _mark_unconverged!(mol_unconverged, cl_system.fg)
         overlaps = copy(cl_system.fg.overlaps)
         dmin = min(cl_system.fg.dmin, cl_system.cutoff)
         max_overlap = cl_system.fg.max_overlap
@@ -821,7 +828,7 @@ function _packmol(
             cm_min, cm_max = compute_cm_bounds(packmol_system)
             moved = movebad!(
                 packmol_system, cl_system.fg.fmol, free_mol_indices, mol_structure_type, RNG;
-                movefrac, precision, fmol_max_type,
+                movefrac, precision, fmol_max_type, unconverged=mol_unconverged,
                 cm_lo_type=cm_min, cm_hi_type=cm_max,
                 fixed_sys=movebad_fixed_sys, fixed_lo=movebad_fixed_lo, fixed_hi=movebad_fixed_hi,
                 overlap_tol=movebad_overlap_tol,

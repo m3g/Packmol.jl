@@ -74,17 +74,18 @@ function _active_output(packmol_system::PackmolSystem{D,T}, n::Int) where {D,T}
 end
 
 #
-# Builds the active subsystem from the contributions of the molecules to the objective
-# function (`fmol`, at the current positions), or `nothing` if the atoms of the active
+# Builds the active subsystem from the bad molecules (`unconverged`: those that do not
+# satisfy the convergence criterion at the current positions) and the molecules near
+# them, or `nothing` if the atoms of the active
 # molecules are more than `max_fraction` of the atoms of the free molecules (the cost of
 # an evaluation goes with the number of atoms; then the whole system is optimized), with
 # the numbers of active molecules and of their atoms.
 #
 function _active_subsystem(
-    packmol_system::PackmolSystem{D,T}, fmol::Vector{T}, free_mol_indices::Vector{Int},
+    packmol_system::PackmolSystem{D,T}, unconverged::Vector{Bool}, free_mol_indices::Vector{Int},
     cl_xpositions, unitcell, cutoff::T,
     mol_structure_type::Vector{Int}, mol_iat_first::Vector{Int};
-    active_radius::T, max_fraction::T, bad_threshold::T,
+    active_radius::T, max_fraction::T,
 ) where {D,T}
     atoms = packmol_system.atoms
     natoms = length(atoms)
@@ -94,7 +95,7 @@ function _active_subsystem(
     bad_atoms = SVector{D,T}[]
     nbad = 0
     for imol in free_mol_indices
-        fmol[imol] > bad_threshold || continue
+        unconverged[imol] || continue
         nbad += 1
         st = packmol_system.structure_types[mol_structure_type[imol]]
         i0 = mol_iat_first[imol]

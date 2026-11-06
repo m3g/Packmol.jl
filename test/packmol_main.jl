@@ -453,6 +453,45 @@ end
     @test !fg.count_overlaps[]
 end
 
+@testitem "bad molecules: those that do not satisfy the convergence criterion" setup=[TestFiles] begin
+    using Packmol: InteratomicDistanceFG, compute_atom_positions!, initialize_molecules!, fg!,
+        _mark_unconverged!, MoleculePosition
+    using StaticArrays: SVector
+    using CellListMap: ParticleSystem
+    using Random
+    water = TestFiles.test_file("structure_files/water.pdb")
+    st = structure_type(water; number=4, constraints=[InsideBox([0, 0, 0], [40, 40, 40])])
+    sys = PackmolSystem([st]; output=tempname() * ".pdb", tolerance=2.0)
+    initialize_molecules!(sys, Random.Xoshiro(1))
+    angles = SVector(0.0, 0.0, 0.0)
+    # 1 and 2 overlap by 0.2 Å (more than tolerance_precision, 0.01 Å), 3 is 0.3 Å outside
+    # its box, 4 is fine
+    sys.molecule_positions[1] = MoleculePosition(SVector(10.0, 10.0, 10.0), angles)
+    sys.molecule_positions[2] = MoleculePosition(SVector(10.0, 10.0, 11.8), angles)
+    sys.molecule_positions[4] = MoleculePosition(SVector(30.0, 30.0, 30.0), angles)
+    ap = Vector{SVector{3,Float64}}(undef, length(sys.atoms))
+    compute_atom_positions!(ap, sys.molecule_positions, sys)
+    zmax = maximum(ap[i][3] for i in 1:3)
+    sys.molecule_positions[3] = MoleculePosition(SVector(20.0, 20.0, 40.3 + 10.0 - zmax), angles)
+    compute_atom_positions!(ap, sys.molecule_positions, sys)
+    cl = ParticleSystem(xpositions=copy(ap), unitcell=[100.0, 100.0, 100.0], cutoff=2.2,
+        output=InteratomicDistanceFG{3,Float64}(sys), output_name=:fg, parallel=false)
+    free = collect(1:sys.nmols)
+    x = copy(reinterpret(Float64, sys.molecule_positions))
+    g = zeros(length(x))
+    unconverged = zeros(Bool, sys.nmols)
+    # recorded only when the flag is set
+    fg!(g, x, cl, sys, ap, free)
+    @test isempty(cl.fg.unconverged_mols)
+    cl.fg.count_overlaps[] = true
+    fg!(g, x, cl, sys, ap, free)
+    cl.fg.count_overlaps[] = false
+    _mark_unconverged!(unconverged, cl.fg)
+    @test cl.fg.max_overlap >= sys.tolerance_precision
+    @test cl.fg.max_constraint_penalty >= sys.constraint_precision
+    @test unconverged == [true, true, true, false]
+end
+
 @testitem "radscale decay" setup=[TestFiles] begin
     using Packmol
     # exponential decay from radscale to 1, within 1e-3 of the initial excess at decay_loops
