@@ -1,7 +1,7 @@
 # Tutorials
 
-The tutorials build complete systems, from a box with a mixture of two molecules to a
-virion with 2.2 million particles. The first ones are the classic examples of
+The tutorials build complete systems, from a box with a mixture of two molecules to an
+exosome with 13.6 million atoms. The first ones are the classic examples of
 [Packmol](https://m3g.github.io/packmol/examples.shtml) (the bilayer and the vesicle redone
 with an all-atom lipid, at realistic densities, the vesicle as nanoliposomes); the others
 use more of the features of Packmol.jl: fixed molecules, periodic cells of different
@@ -22,6 +22,7 @@ shapes, curved surfaces, crystals. To have an AI agent build a system for you, s
 | [Gases in a zeolite](zeolite.md) | A fixed crystal in its triclinic periodic cell, with gases in its pores |
 | [Liquid crystals](liquid_crystal.md) | Oriented molecules (rotation constraints): a nematic phase and a cholesteric (twisted) phase |
 | [Zika virion](zika.md) | A large system: 2.2 million particles in membranes and spherical shells |
+| [Exosome](exosome.md) | A very large system, with all atoms: 13.6 million atoms in an asymmetric bilayer with membrane proteins, macromolecules inside, water and ions |
 
 ## How the tutorials are organized
 
@@ -42,7 +43,7 @@ The two are equivalent, and either can be followed alone. The input files of the
 ## Getting the files
 
 Each tutorial links to the files it needs: the input file and the structures of the
-molecules (the Zika virion, which is larger, is a separate download). Put them in a
+molecules (the Zika virion and the exosome, which are larger, are separate downloads). Put them in a
 directory, and run the examples from it: the paths in an input file are relative to the
 directory of the input file, and those in a Julia script to the current directory.
 
@@ -58,7 +59,7 @@ directory of the input file, and those in a Julia script to the current director
     Uncomment it (remove the `#`), and run the input file: Packmol then only places each
     molecule in its region, satisfying the constraints, writes this initial placement to
     the output file, and stops, without packing. This takes a fraction of the time of the
-    packing (30 seconds, for the virion that takes 7 minutes). The molecules may still overlap,
+    packing (2.5 minutes, for the exosome that takes 33 minutes). The molecules may still overlap,
     but a look at the output file in a molecular visualization program shows whether the
     constraints put them where intended. When they do, comment the line again, and run the
     packing.
