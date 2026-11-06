@@ -195,7 +195,7 @@ These are the building blocks everything else depends on.
       `inside/outside cylinder`, `inside/outside ellipsoid`, `above/over/below plane`
 - [x] Per-atom blocks (`atoms ... end atoms`) with custom constraints
 - [x] `radscale` (with legacy `discale` mapped to it), global or per structure block; default per type
-      (`_radscale`): 5.0 for free molecules of > 20 atoms, 1.0 otherwise; `radscale_decay_loops` (loops
+      (`_radscale`): 5.0 for free molecules of > 20 atoms, 1.0 for the other free ones, fixed ones the largest of the free (else inflated lipids were pushed into fixed proteins: exosome lipids + proteins failed); `radscale_decay_loops` (loops
       for the radii to decay to their values; default 20)
 - [x] Julia-native construction API (no input file needed): `structure_type(pdbfile; number, constraints, atom_constraints, ...)`
       + `PackmolSystem(structure_types; output, ...)`, documented in `docs/src/julia_api/`

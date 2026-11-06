@@ -53,6 +53,18 @@ end
     @test isnothing(sys.radscale)
     # default scales: 1.0 for water (3 atoms)
     @test Packmol._radscale(sys, sys.structure_types[1]) == 1.0
+    # fixed molecules: the largest scale of the free ones (5.0 with a lipid, 1.0 with water only)
+    water = TestFiles.test_file("structure_files/water.pdb")
+    lipid = TestFiles.test_file("structure_files/palmitoil.pdb")
+    fx = structure_type(water; number=1, fixed=([0.0, 0.0, 0.0], [0.0, 0.0, 0.0]))
+    w = structure_type(water; number=2, constraints=[InsideBox([0, 0, 0], [20, 20, 20])])
+    l = structure_type(lipid; number=2, constraints=[InsideBox([0, 0, 0], [20, 20, 20])])
+    s2 = PackmolSystem([fx, w, l]; output=tempname() * ".pdb")
+    @test [Packmol._radscale(s2, st) for st in s2.structure_types] == [5.0, 1.0, 5.0]
+    s2 = PackmolSystem([fx, w]; output=tempname() * ".pdb")
+    @test [Packmol._radscale(s2, st) for st in s2.structure_types] == [1.0, 1.0]
+    s2 = PackmolSystem([fx, w, structure_type(lipid; number=2, radscale=2.0)]; output=tempname() * ".pdb")
+    @test Packmol._radscale(s2, s2.structure_types[1]) == 2.0
 
     sys = read_packmol_input(file; T=Float32)
     @test typeof(sys.tolerance) == Float32
