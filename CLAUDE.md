@@ -304,7 +304,7 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       packs with the Euler angles. Solver experiments (GENCAN, L-BFGS: no gain) in `dev/solvers/`.
 - [x] `<output>_FORCED`: constraint-only adjustment of the best solution, written when packing fails
 - [ ] Convergence criteria based on `tolerance_precision` and `constraint_precision`
-- [x] `writeout`: minimum seconds between writes of the output during the packing (default 30, as Fortran)
+- [x] `writeout`: minimum seconds between writes of the output during the packing (default 60; 30 in Fortran)
 - [N] `writebad` (the best solution is written when the packing fails)
 
 **Note on optimizer choice**: The Fortran Packmol uses GENCAN (large-scale bound-constrained

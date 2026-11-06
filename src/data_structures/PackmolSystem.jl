@@ -20,7 +20,7 @@
     # `radscale_decay_loops`): `nothing` means 20.
     radscale_decay_loops::Union{Nothing,Int} = nothing
     # Minimum time, in seconds, between two writes of the output file during the
-    # packing (input keyword `writeout`, as in Fortran Packmol): `nothing` means 30 s.
+    # packing (input keyword `writeout`, as in Fortran Packmol): `nothing` means 60 s.
     writeout::Union{Nothing,T} = nothing
     structure_types::Vector{StructureType{D,T}} = StructureType{D,T}[]
     tolerance_precision::T = 1e-1

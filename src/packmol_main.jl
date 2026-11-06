@@ -152,7 +152,7 @@ The defaults: `nloop` `500`, `maxit` (optimizer iterations per loop) `30`, `move
 (minimum time, in seconds, between two writes of the output during the packing: the best
 solution so far is written after a loop that improves it, if the end of the last write,
 or the start of the packing, was at least `writeout` seconds before; the final solution is always
-written) `30`, `nthreads` (maximum number of threads used) all the threads of the Julia
+written) `60`, `nthreads` (maximum number of threads used) all the threads of the Julia
 session, and `radscale_decay_loops` `20`: the number of loops in which the radii of the
 atoms, multiplied at the start by the `radscale` of their structure type (see
 [`PackmolSystem`](@ref); by default 5.0 for the free molecules of more than 20 atoms, 1.0
@@ -427,7 +427,7 @@ function _packmol(
     atom_radscale = T[_radscale(packmol_system, packmol_system.structure_types[a.structure_type_index])
                       for a in packmol_system.atoms]
     # Minimum time between two writes of the output file during the packing
-    write_interval = Float64(something(writeout, packmol_system.writeout, 30))
+    write_interval = Float64(something(writeout, packmol_system.writeout, 60))
     last_write = time()
     atom_radii = atom_radscale .* atom_radii_floor
 
