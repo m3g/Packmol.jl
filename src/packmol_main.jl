@@ -133,17 +133,22 @@ constraints (written to the output file; the packing continues only if
 no packing attempted).
 
 `nloop` (maximum number of packing loops, default `500`), `maxit` (optimizer
-iterations per loop, default `800`) and `movefrac` (maximum fraction of the
+iterations per loop, default `30`) and `movefrac` (maximum fraction of the
 molecules of each type moved per loop, default `0.05`) take precedence over the
 values set in the input file (`packmol_system.nloop`, `packmol_system.max_iter`
 and `packmol_system.movefrac`).
 
-`active_set` (default `false`, experimental): after the first loop, optimize only the
+`active_set` (default `true`): after the first loop, optimize only the
 molecules with overlaps or constraint violations that may block the convergence, and the
 molecules with an atom within `active_radius` (default `6 * tolerance`) of them, with the
 other molecules frozen. Used in a loop when the atoms of the active molecules are at most
-`active_max_fraction` (default `0.5`) of the atoms of the free molecules; otherwise the
+`active_max_fraction` (default `0.7`) of the atoms of the free molecules; otherwise the
 whole system is optimized. Each loop reports the fractions of active molecules and atoms.
+Short loops with the active subsystem pack large systems fastest: about 2.5x faster
+than whole-system loops of 800 iterations for a nanoliposome of 600,000 atoms.
+
+`n_stall_iterations` (default: `maxit`): window of iterations over which a loop is ended
+early if the minimum distance or the constraint violation stop improving.
 
 `nthreads` (maximum number of threads used, default: all the threads of the Julia
 session) takes precedence over `packmol_system.nthreads` (the input keyword `nthreads`).
@@ -191,19 +196,20 @@ function _packmol(
     nloop::Union{Nothing,Int}=nothing,
     maxit::Union{Nothing,Int}=nothing,
     movefrac::Union{Nothing,Real}=nothing,
-    n_stall_iterations::Int=40,
+    n_stall_iterations::Union{Nothing,Int}=nothing,
     f_stall_tolerance::T=T(0.01),
     movebad_tolerance::T=T(0.10),
     seed::Int=packmol_system.seed,
     restart::Bool=false,
     rotation_scaling::Bool=true,
-    active_set::Bool=false,
+    active_set::Bool=true,
     active_radius::Real=6 * packmol_system.tolerance,
-    active_max_fraction::Real=0.5,
+    active_max_fraction::Real=0.7,
 ) where {D,T}
     # Keyword arguments take precedence over the input file's `nloop`/`maxit`
     nloop = something(nloop, packmol_system.nloop, 500)
-    maxit = something(maxit, packmol_system.max_iter, 800)
+    maxit = something(maxit, packmol_system.max_iter, 30)
+    n_stall_iterations = something(n_stall_iterations, maxit)
     movefrac = T(something(movefrac, packmol_system.movefrac, 0.05))
     # Initialize RNG and molecule positions. Negative seed (Fortran Packmol's
     # `seed -1`, used by the Recipes as their default) means "pick a random
