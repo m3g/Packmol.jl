@@ -493,3 +493,34 @@ end
     sys, output, nwrites = run(writeout = 1e6)
     @test sys.status == :packing_ready && isfile(output) && nwrites == 0
 end
+
+@testitem "global options as keyword arguments of packmol" setup = [TestFiles] begin
+    using Packmol
+    input_file = TestFiles.test_file("input_files/water_box_small.inp")
+    sys = read_packmol_input(input_file)
+    out = tempname() * ".pdb"
+    redirect_stdout(devnull) do
+        packmol(sys; tolerance = 2.2, maxit = 25, nloop = 100, seed = 5, output = out,
+            writeout = 0, radscale_decay_loops = 7, add_box_sides = true, tolerance_precision = 0.05)
+    end
+    @test sys.status == :packing_ready
+    @test sys.tolerance == 2.2 && all(a.radius == 1.1 for a in sys.atoms)
+    @test all(st.radii == fill(1.1, st.natoms) for st in sys.structure_types)
+    @test sys.max_iter == 25 && sys.nloop == 100 && sys.seed == 5 && sys.writeout == 0
+    @test sys.radscale_decay_loops == 7 && sys.add_box_sides && sys.tolerance_precision == 0.05
+    @test sys.output_file == out && isfile(out)
+    # atoms with their own radius keep it
+    sys = read_packmol_input(input_file)
+    st = sys.structure_types[1]
+    sys.atoms[1] = Packmol.AtomData{Float64}(sys.atoms[1].molecule_index, 1, 0.7, sys.atoms[1].constraints)
+    Packmol._set_global_options!(sys; tolerance = 3.0)
+    @test sys.atoms[1].radius == 0.7 && sys.atoms[2].radius == 1.5
+    # periodic cells, as the input keywords
+    Packmol._set_global_options!(sys; pbc = [30, 30, 30])
+    @test sys.unitcell == [30 0 0; 0 30 0; 0 0 30] && sys.unitcell_center == [15, 15, 15]
+    Packmol._set_global_options!(sys; pbc = (:octahedral, 0, 0, 0, 60))
+    @test sys.wigner_seitz_cell && sys.unitcell_center == [0, 0, 0]
+    Packmol._set_global_options!(sys; periodic_boundary_style = :octahedral)
+    @test sys.periodic_boundary_style == :octahedral
+    @test_throws ArgumentError Packmol._set_global_options!(sys; pbc = [1, 2])
+end

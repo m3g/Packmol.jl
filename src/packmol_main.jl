@@ -132,24 +132,34 @@ constraints (written to the output file; the packing continues only if
 `:not_packed` if `packmol_system.check_initial_placement` was set (initial approximation written,
 no packing attempted).
 
-`nloop` (maximum number of packing loops, default `500`), `maxit` (optimizer
-iterations per loop, default `30`) and `movefrac` (maximum fraction of the
-molecules of each type moved per loop, default `0.05`) take precedence over the
-values set in the input file (`packmol_system.nloop`, `packmol_system.max_iter`
-and `packmol_system.movefrac`).
+**Global options.** Every global keyword of the input files (see [Global keywords](@ref)) can
+be given as a keyword argument, with the name of the keyword: `tolerance`, `output`,
+`filetype`, `seed`, `nloop`, `maxit`, `movefrac`, `radscale`, `radscale_decay_loops`,
+`writeout`, `tolerance_precision`, `constraint_precision`, `nthreads`, `avoid_overlap`,
+`connect`, `add_box_sides`, `add_amber_ter`, `amber_ter_preserve`, `periodic_boundary_style`,
+`max_random_init`, `adjust_constraints_on_init`, `check_initial_placement`,
+`continue_failed_initial_packing`, `restart_from`, `pbc` and `unitcell`. They are set in
+`packmol_system`, replacing the values of the input file (or of the constructor), before
+the packing. For example, `packmol(system; tolerance = 2.5, maxit = 50, output = "out.pdb")`.
+The values are those of the input keywords: numbers, strings or symbols for the options
+(`periodic_boundary_style = :octahedral`), `true`/`false` for the flags; `pbc` takes the
+values of the input keyword (`pbc = [40, 40, 40]`, `pbc = (:octahedral, 0, 0, 0, 80)`), and
+`unitcell` the six cell parameters or a unit cell matrix. A new `tolerance` sets the radius
+of the atoms that have the default one (`tolerance / 2`).
 
-`writeout` (default `30`): minimum time, in seconds, between two writes of the output
-file during the packing (the best solution so far is written after a loop that improves
-it, if the last write, or the start of the packing, was at least `writeout` seconds
-before; the final solution is always written). Takes precedence over
-`packmol_system.writeout` (the input keyword `writeout`).
-
-`radscale_decay_loops` (default: `20`): number of loops in which the radii of the atoms,
-multiplied at the start by the `radscale` of their structure type (see
+The defaults: `nloop` `500`, `maxit` (optimizer iterations per loop) `30`, `movefrac`
+(maximum fraction of the molecules of each type moved per loop) `0.05`, `writeout`
+(minimum time, in seconds, between two writes of the output during the packing: the best
+solution so far is written after a loop that improves it, if the last write, or the start
+of the packing, was at least `writeout` seconds before; the final solution is always
+written) `30`, `nthreads` (maximum number of threads used) all the threads of the Julia
+session, and `radscale_decay_loops` `20`: the number of loops in which the radii of the
+atoms, multiplied at the start by the `radscale` of their structure type (see
 [`PackmolSystem`](@ref); by default 5.0 for the free molecules of more than 20 atoms, 1.0
-for the others), decay exponentially to their values
-(to within 0.1% of the initial excess). Takes precedence over
-`packmol_system.radscale_decay_loops` (the input keyword `radscale_decay_loops`).
+for the others), decay exponentially to their values (to within 0.1% of the initial
+excess).
+
+**Options of the run.**
 
 `active_set` (default `true`): after the first loop, optimize only the
 molecules with overlaps or constraint violations that may block the convergence, and the
@@ -160,17 +170,51 @@ whole system is optimized. Each loop reports the fractions of active molecules a
 Short loops with the active subsystem pack large systems fastest: about 2.5x faster
 than whole-system loops of 800 iterations for a nanoliposome of 600,000 atoms.
 
-`nthreads` (maximum number of threads used, default: all the threads of the Julia
-session) takes precedence over `packmol_system.nthreads` (the input keyword `nthreads`).
-
 `rotation_scaling` (default `true`): the optimizer works on rotation variables scaled by
 the inertia of each molecule (a unit change moves its atoms by 1 Å RMS), instead of its
 Euler angles. With `false`, the Euler angles themselves, much slower for systems of
 elongated molecules (lipids, polymers); for comparisons only.
 """
-function packmol(packmol_system::PackmolSystem; nthreads::Union{Nothing,Int}=nothing, kargs...)
+function packmol(packmol_system::PackmolSystem;
+    output::Union{Nothing,AbstractString} = nothing,
+    filetype::Union{Nothing,AbstractString,Symbol} = nothing,
+    tolerance::Union{Nothing,Real} = nothing,
+    radscale::Union{Nothing,Real} = nothing,
+    discale::Union{Nothing,Real} = nothing,
+    radscale_decay_loops::Union{Nothing,Integer} = nothing,
+    writeout::Union{Nothing,Real} = nothing,
+    tolerance_precision::Union{Nothing,Real} = nothing,
+    constraint_precision::Union{Nothing,Real} = nothing,
+    maxit::Union{Nothing,Integer} = nothing,
+    nloop::Union{Nothing,Integer} = nothing,
+    movefrac::Union{Nothing,Real} = nothing,
+    nthreads::Union{Nothing,Integer} = nothing,
+    seed::Union{Nothing,Integer} = nothing,
+    max_random_init::Union{Nothing,Integer} = nothing,
+    adjust_constraints_on_init::Union{Nothing,Bool} = nothing,
+    add_amber_ter::Union{Nothing,Bool} = nothing,
+    amber_ter_preserve::Union{Nothing,Bool} = nothing,
+    add_box_sides::Union{Nothing,Bool} = nothing,
+    periodic_boundary_style::Union{Nothing,AbstractString,Symbol} = nothing,
+    connect::Union{Nothing,Bool} = nothing,
+    avoid_overlap::Union{Nothing,Bool} = nothing,
+    check_initial_placement::Union{Nothing,Bool} = nothing,
+    continue_failed_initial_packing::Union{Nothing,Bool} = nothing,
+    restart_from::Union{Nothing,AbstractString} = nothing,
+    pbc = nothing,
+    unitcell = nothing,
+    kargs...,
+)
+    # The global options of the input files, set in the system
+    _set_global_options!(packmol_system;
+        output, filetype, tolerance, radscale, discale, radscale_decay_loops, writeout,
+        tolerance_precision, constraint_precision, maxit, nloop, movefrac, nthreads, seed,
+        max_random_init, adjust_constraints_on_init, add_amber_ter, amber_ter_preserve,
+        add_box_sides, periodic_boundary_style, connect, avoid_overlap, check_initial_placement,
+        continue_failed_initial_packing, restart_from, pbc, unitcell,
+    )
     ntasks = _ntasks[]
-    _ntasks[] = something(nthreads, packmol_system.nthreads, 0)
+    _ntasks[] = something(packmol_system.nthreads, 0)
     try
         return _packmol(packmol_system; kargs...)
     finally
