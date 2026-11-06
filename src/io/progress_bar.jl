@@ -31,7 +31,7 @@ function _set_showvalues!(p::ProgressBar, showvalues::Tuple)
     isempty(showvalues) && return p
     buf = IOBuffer()
     # (`map` rather than a loop, for each value to be printed with its own type.)
-    map(((label, value),) -> _print_each(buf, ("\n  ", label, ":  ", value)), showvalues)
+    map(((label, value),) -> _print_each(buf, ("\n    ", label, ": ", value)), showvalues)
     p.showvalues = String(take!(buf))
     return p
 end

@@ -10,10 +10,11 @@
 | `periodic_boundary_style <triclinic\|dodecahedral\|octahedral>` | Shape in which the molecules are written, with periodic boundary conditions: the parallelepiped of the cell (`triclinic`, the default), or the compact rhombic dodecahedron or truncated octahedron (see the [Output shape](../periodic_boundary_conditions/rhombic_dodecahedral_box.md#Output-shape)). |
 | `nthreads <n>` | Maximum number of threads used (default: all). The `nthreads` keyword argument of [`packmol`](@ref) and the `-t` flag of the executable take precedence. |
 | `nloop <int>` | Maximum number of packing loops (default `500`). The `nloop` keyword argument of [`packmol`](@ref) takes precedence. |
-| `maxit <int>` | Optimizer iterations per packing loop (default `800`). The `maxit` keyword argument of [`packmol`](@ref) takes precedence. |
-| `radscale <value>` | Loose-start radius scale factor (see [`packmol`](@ref)): the radii of the atoms are multiplied by it at the start of the packing, decaying to their values along the packing loops. Default `1.0` (no scaling); a larger value (e.g. `1.2`) can be faster in systems that are not dense. `discale` is accepted as a legacy alias. |
+| `maxit <int>` | Optimizer iterations per packing loop (default `30`; short loops, in which the overlapping molecules are moved often, pack fastest). The `maxit` keyword argument of [`packmol`](@ref) takes precedence. |
+| `radscale <value>` | Loose-start radius scale factor (see [`packmol`](@ref)): the radii of the atoms are multiplied by it at the start of the packing, decaying to their values in `radscale_decay_loops` loops. If not set, each structure type has its own: `5.0` for free molecules of more than 20 atoms (lipids, polymers, liquid crystals, which otherwise interpenetrate and pack slowly), `1.0` for smaller molecules (water, ions, small solvents, which pack fastest at their radii), and for fixed molecules the largest scale of the free ones (otherwise inflated lipids are pushed into a fixed protein at its radii). If set, it applies to all the structure types without a `radscale` of their own (see [Structure blocks](@ref)). `discale` is accepted as a legacy alias. |
+| `writeout <seconds>` | Minimum time between two writes of the output file during the packing (default `60`): the best solution so far is written after a loop that improves it, if the last write ended at least this long before. The final solution is always written. The keyword argument of [`packmol`](@ref) takes precedence. |
+| `radscale_decay_loops <int>` | Number of packing loops in which the radii decay from `radscale` times their values to their values, exponentially (default: `20`). The keyword argument of [`packmol`](@ref) takes precedence. |
 | `tolerance_precision <value>`, `constraint_precision <value>` | Convergence tolerances for the distance and constraint checks. |
-| `stall_tolerance <value>` | Relative-improvement threshold below which a packing chunk is considered stalled and cut short (default `1e-2 * tolerance_precision`). |
 | `max_random_init <int>` | Best-of-`N` random placements tried per molecule during initialization. |
 | `adjust_constraints_on_init yes\|no` | Whether to run constraint-only pre-optimization before packing. |
 | `avoid_overlap yes\|no` | Whether the initial placement avoids overlaps with the fixed molecules (default `yes`). The molecules moved during the packing always avoid them. |
@@ -38,9 +39,8 @@ Fortran Packmol keywords that have no use in Packmol.jl (`fscale`, `sidemax`,
 `maxmove`, `nloop0`, `movebadrandom`, `use_short_tol` and the other short-tolerance keywords,
 `hexadecimal_indices`, `non_standard_conect`, `randominitialpoint`,
 `optimization_print_level`, `chkgrad`, `restart_to`, ...) are accepted with a
-deprecation warning and ignored, so that old input files still run. `writeout` and
-`writebad` are ignored too: the output file is written after every loop that improves the
-solution, and the best solution is written when the packing does not converge. The other
+deprecation warning and ignored, so that old input files still run. `writebad` is
+ignored too: the best solution is written when the packing does not converge. The other
 file formats of Fortran Packmol (`filetype tinker`, `filetype moldy`) are not
 supported. See
 [`dev/drop-in-replacement.md`](https://github.com/m3g/Packmol.jl/blob/main/dev/drop-in-replacement.md)

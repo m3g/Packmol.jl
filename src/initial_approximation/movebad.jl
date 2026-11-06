@@ -44,8 +44,12 @@ function movebad!(
     opt_nit::Int = 20,
     max_guess_try::Int = 100,
     max_shift::Union{Nothing,T} = nothing,
+    unconverged::Union{Nothing,Vector{Bool}} = nothing,
 ) where {D,T}
     ntypes = length(packmol_system.structure_types)
+    # The bad molecules: those that do not satisfy the convergence criterion
+    # (`unconverged`, from the packing loop), or else those with a contribution to the
+    # function above `precision / nmols`
     bad_threshold = precision / packmol_system.nmols
 
     # The bad molecules of all types, and the worst one of each type and of
@@ -54,7 +58,7 @@ function movebad!(
     fmol_max_now = zeros(T, ntypes)
     worst_imol = 0
     for imol in free_mol_indices
-        fmol[imol] > bad_threshold || continue
+        (isnothing(unconverged) ? fmol[imol] > bad_threshold : unconverged[imol]) || continue
         push!(candidates, imol)
         ist = mol_structure_type[imol]
         fmol_max_now[ist] = max(fmol_max_now[ist], fmol[imol])

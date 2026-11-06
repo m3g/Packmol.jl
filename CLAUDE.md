@@ -56,6 +56,7 @@ src/
                                       # volume of the region of each structure type); CLI
                                       # --guess-volume/--free-volume
   interatomic_distance_fg.jl          # Distance function & gradient computation
+  active_set.jl                       # Active subsystem: bad molecules + neighbors optimized, the rest frozen
   data_structures/
     atoms_and_molecules.jl            # AtomData, MoleculePosition, FixedMoleculeData
     StructureType.jl                  # Structure definitions & input parsing
@@ -188,19 +189,21 @@ These are the building blocks everything else depends on.
 #### Input Parser
 - [x] Global keywords: `tolerance`, `output`, `filetype`, `seed`, `maxit`, `avoid_overlap`,
       `add_amber_ter`, `amber_ter_preserve`, `add_box_sides`, `connect`, `tolerance_precision`,
-      `constraint_precision`, `stall_tolerance`
+      `constraint_precision`
 - [x] Structure blocks: `structure/end structure`, `number`, `fixed`, `center`, `radius`
 - [x] Constraint parsing: `inside/outside box`, `inside/outside cube`, `inside/outside sphere`,
       `inside/outside cylinder`, `inside/outside ellipsoid`, `above/over/below plane`
 - [x] Per-atom blocks (`atoms ... end atoms`) with custom constraints
-- [x] `radscale` (with legacy `discale` mapped to it)
+- [x] `radscale` (with legacy `discale` mapped to it), global or per structure block; default per type
+      (`_radscale`): 5.0 for free molecules of > 20 atoms, 1.0 for the other free ones, fixed ones the largest of the free (else inflated lipids were pushed into fixed proteins: exosome lipids + proteins failed); `radscale_decay_loops` (loops
+      for the radii to decay to their values; default 20)
 - [x] Julia-native construction API (no input file needed): `structure_type(pdbfile; number, constraints, atom_constraints, ...)`
       + `PackmolSystem(structure_types; output, ...)`, documented in `docs/src/julia_api/`
 - [x] `nloop`, `maxit` (stored in `PackmolSystem.nloop`/`max_iter`; `packmol(sys; nloop, maxit)` takes precedence)
 - [x] Inline `#` comments stripped (as Fortran)
 - [x] Deprecated Fortran keywords (`fscale`, `fbins`, `precision`, `sidemax`, `maxmove`, `nloop0`,
       `disable_movebad`, `writecrd`, `use_short_tol`/`short_*`, `iprint*`, `randominitialpoint`, `optimization_print_level`,
-      `chkgrad`, `writeout`, `writebad`, `restart_to`) accepted with a warning
+      `chkgrad`, `writebad`, `restart_to`) accepted with a warning
 - [x] `movefrac` (`packmol(sys; movefrac)` takes precedence), `movebadrandom` (deprecated: bad molecules
       are always moved randomly), `segid` (written to PDB columns 73-76)
 - [x] CONECT options: `connect yes|no` (global and per structure), `ignore_conect`; `non_standard_conect`,
@@ -286,6 +289,15 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] SPGBox-based optimization (`packmol()` function)
 - [x] Multi-start strategy: initial placement + iterative repositioning of bad molecules (`movebad!`)
 - [x] `movefrac` control: fraction of bad molecules moved per iteration
+- [x] Active subsystem (`src/active_set.jl`, `packmol(sys; active_set=true)`, the default): each loop
+      (loop 0 too, which matters for restarts) optimizes only the bad molecules (those that do not satisfy
+      the convergence criterion: `unconverged_mols` of the evaluations at the start and end of the loop)
+      and the molecules with an atom within `active_radius` (2 tolerance; 6 made 74% of the exosome active, from scattered bad waters) of them, the others frozen;
+      two cell lists: the active atoms (rebuilt every evaluation) and the frozen atoms (a cross list,
+      built once per loop). Whole system when the active atoms exceed `active_max_fraction` (0.7) of
+      the free atoms. With short loops (`maxit` 30 default, no stall detection: removed), tuned on the
+      large nanoliposome: 2.6x faster than whole-system loops of maxit 800.
+      Recomputing the subsystem within a loop (every N iterations) was tried: never faster.
 - [x] Rotations scaled by the inertia of each molecule (`src/rigid_body/rotation_metric.jl`): in each
       chunk the optimizer works on a′ = Lᵀa (G/N = LLᵀ, G = JᵀIJ, the metric of the atom displacements
       at the current orientation), so a unit step moves the atoms by 1 Å RMS; not for linear molecules.
@@ -293,7 +305,8 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       packs with the Euler angles. Solver experiments (GENCAN, L-BFGS: no gain) in `dev/solvers/`.
 - [x] `<output>_FORCED`: constraint-only adjustment of the best solution, written when packing fails
 - [ ] Convergence criteria based on `tolerance_precision` and `constraint_precision`
-- [N] `writeout` as a time interval and `writebad` (the output is written after every improved loop)
+- [x] `writeout`: minimum seconds between writes of the output during the packing (default 60; 30 in Fortran)
+- [N] `writebad` (the best solution is written when the packing fails)
 
 **Note on optimizer choice**: The Fortran Packmol uses GENCAN (large-scale bound-constrained
 optimizer with truncated Newton steps). The Julia version uses SPGBox (spectral projected gradient).

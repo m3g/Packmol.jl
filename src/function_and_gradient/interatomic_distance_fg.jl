@@ -30,6 +30,13 @@ using SPGBox: spgbox!
     count_overlaps::Base.RefValue{Bool} = Ref(false)
     overlap_precision::T = zero(T)
     overlaps::Matrix{Int} = zeros(Int, 0, 0)
+    # Molecules that do not satisfy the convergence criterion (a pair overlapping by
+    # `overlap_precision` or more, or an atom with a constraint penalty of
+    # `constraint_precision` or more), with repetitions: recorded only when
+    # `count_overlaps[]` is set. Used to classify the molecules as bad, for the active
+    # subsystem and for movebad! (see `_mark_unconverged!`).
+    constraint_precision::T = zero(T)
+    unconverged_mols::Vector{Int32} = Int32[]
 end
 
 function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
@@ -44,6 +51,7 @@ function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
         max_constraint_penalty = zero(T),
         overlap_precision = T(packmol_system.tolerance_precision),
         overlaps = zeros(Int, length(packmol_system.structure_types), length(packmol_system.structure_types)),
+        constraint_precision = T(packmol_system.constraint_precision),
     )
 end
 
@@ -74,6 +82,8 @@ function CellListMap.copy_output(x::InteratomicDistanceFG{D,T}) where {D,T}
         x.count_overlaps,  # shared flag
         x.overlap_precision,
         zero(x.overlaps),
+        x.constraint_precision,
+        Int32[],
     )
 end
 function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,T}
@@ -82,6 +92,7 @@ function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,
     output.max_overlap = typemin(T)
     output.max_constraint_penalty = zero(T)
     fill!(output.overlaps, 0)
+    empty!(output.unconverged_mols)
     if _is_thread_copy(output)
         _zero_touched!(output)
     else
@@ -111,6 +122,7 @@ function CellListMap.reducer(x::InteratomicDistanceFG, y::InteratomicDistanceFG)
     x.fmol .+= y.fmol
     x.gxcar .+= y.gxcar
     x.overlaps .+= y.overlaps
+    append!(x.unconverged_mols, y.unconverged_mols)
     return x
 end
 
@@ -130,9 +142,12 @@ function CellListMap.reduce_output!(
     output.dmin = typemax(T)
     output.max_overlap = typemin(T)
     fill!(output.overlaps, 0)
+    empty!(output.unconverged_mols)
     ntouched = 0
     for ot in output_threaded
         output.overlaps .+= ot.overlaps
+        append!(output.unconverged_mols, ot.unconverged_mols)
+        empty!(ot.unconverged_mols)
         output.f += ot.f
         output.dmin = min(output.dmin, ot.dmin)
         output.max_overlap = max(output.max_overlap, ot.max_overlap)
@@ -208,9 +223,12 @@ function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_sy
     fg.dmin = min(d, fg.dmin)
     overlap = iatom.radius + jatom.radius - d
     fg.max_overlap = max(fg.max_overlap, overlap)
-    if fg.count_overlaps[] && overlap > fg.overlap_precision
-        it, jt = minmax(iatom.structure_type_index, jatom.structure_type_index)
-        fg.overlaps[it, jt] += 1
+    if fg.count_overlaps[] && overlap >= fg.overlap_precision
+        if overlap > fg.overlap_precision
+            it, jt = minmax(iatom.structure_type_index, jatom.structure_type_index)
+            fg.overlaps[it, jt] += 1
+        end
+        push!(fg.unconverged_mols, iatom.molecule_index, jatom.molecule_index)
     end
     if d < tol
         # Function value: add to total function value and to
@@ -568,6 +586,7 @@ function _rotation_constraints_fg!(fg_output::InteratomicDistanceFG{D,T}, packmo
                 @spawn begin
                     f_local = zero(T)
                     max_local = zero(T)
+                    unconverged_local = Int32[]
                     for i in irange
                         imol = mol_offset + i
                         R = eulermat(packmol_system.molecule_positions[imol].angles)
@@ -575,8 +594,12 @@ function _rotation_constraints_fg!(fg_output::InteratomicDistanceFG{D,T}, packmo
                         fg_output.fmol[imol] += p
                         f_local += p
                         max_local = max(max_local, p)
+                        if fg_output.count_overlaps[] && p >= fg_output.constraint_precision
+                            push!(unconverged_local, imol)
+                        end
                     end
                     @lock lk begin
+                        append!(fg_output.unconverged_mols, unconverged_local)
                         fg_output.f += f_local
                         fg_output.max_constraint_penalty = max(fg_output.max_constraint_penalty, max_local)
                     end
@@ -616,6 +639,7 @@ function _constraint_fg!(
             imol_last = atoms[last(iat_range)].molecule_index
             fmol_first = zero(T)
             fmol_last = zero(T)
+            unconverged_local = Int32[]
             for iat in iat_range
                 atom = packmol_system.atoms[iat]
                 x = atom_positions[iat]
@@ -654,8 +678,12 @@ function _constraint_fg!(
                     fg_output.fmol[imol] += atom_penalty
                 end
                 max_penalty_local = max(max_penalty_local, atom_penalty)
+                if fg_output.count_overlaps[] && atom_penalty >= fg_output.constraint_precision
+                    push!(unconverged_local, imol)
+                end
             end
             @lock lk_fg begin
+                append!(fg_output.unconverged_mols, unconverged_local)
                 fg_output.f += fg_local
                 fg_output.fmol[imol_first] += fmol_first
                 if imol_last != imol_first
@@ -715,3 +743,14 @@ function fg!(g, x,
     return cl_system.fg.f
 end
 
+#
+# Marks (in `unconverged`, one entry per molecule) the molecules recorded by the last
+# evaluation with `count_overlaps[]` set as not satisfying the convergence criterion.
+#
+function _mark_unconverged!(unconverged::Vector{Bool}, fg::InteratomicDistanceFG)
+    fill!(unconverged, false)
+    for imol in fg.unconverged_mols
+        unconverged[imol] = true
+    end
+    return unconverged
+end

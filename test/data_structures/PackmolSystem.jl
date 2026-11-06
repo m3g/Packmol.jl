@@ -50,12 +50,26 @@ end
     @test all(at.molecule_index == 1000 for at in sys.atoms[2998:3000])
     @test all(at.radius ≈ 1.0 for at in sys.atoms)
     @test length(sys.molecule_positions) == 1000
-    @test sys.radscale == 1.0
+    @test isnothing(sys.radscale)
+    # default scales: 1.0 for water (3 atoms)
+    @test Packmol._radscale(sys, sys.structure_types[1]) == 1.0
+    # fixed molecules: the largest scale of the free ones (5.0 with a lipid, 1.0 with water only)
+    water = TestFiles.test_file("structure_files/water.pdb")
+    lipid = TestFiles.test_file("structure_files/palmitoil.pdb")
+    fx = structure_type(water; number=1, fixed=([0.0, 0.0, 0.0], [0.0, 0.0, 0.0]))
+    w = structure_type(water; number=2, constraints=[InsideBox([0, 0, 0], [20, 20, 20])])
+    l = structure_type(lipid; number=2, constraints=[InsideBox([0, 0, 0], [20, 20, 20])])
+    s2 = PackmolSystem([fx, w, l]; output=tempname() * ".pdb")
+    @test [Packmol._radscale(s2, st) for st in s2.structure_types] == [5.0, 1.0, 5.0]
+    s2 = PackmolSystem([fx, w]; output=tempname() * ".pdb")
+    @test [Packmol._radscale(s2, st) for st in s2.structure_types] == [1.0, 1.0]
+    s2 = PackmolSystem([fx, w, structure_type(lipid; number=2, radscale=2.0)]; output=tempname() * ".pdb")
+    @test Packmol._radscale(s2, s2.structure_types[1]) == 2.0
 
     sys = read_packmol_input(file; T=Float32)
     @test typeof(sys.tolerance) == Float32
     @test eltype(sys.molecule_positions) == Packmol.MoleculePosition{3,Float32}
-    @test sys.radscale ≈ 1.0
+    @test isnothing(sys.radscale)
 
     # 2D: Currently not supported
     # sys = read_packmol_input(file; D=2)
@@ -73,6 +87,13 @@ end
         write(radscale_file, original * "\nradscale 1.5\n")
         sys = read_packmol_input(radscale_file)
         @test sys.radscale == 1.5
+        @test isnothing(sys.radscale_decay_loops)
+
+        decay_file = joinpath(tmp, "radscale_decay.inp")
+        write(decay_file, original * "\nradscale 3.0\nradscale_decay_loops 50\n")
+        sys = read_packmol_input(decay_file)
+        @test sys.radscale == 3.0
+        @test sys.radscale_decay_loops == 50
 
         discale_file = joinpath(tmp, "discale.inp")
         write(discale_file, original * "\ndiscale 1.3\n")
@@ -163,7 +184,7 @@ end
             read_packmol_input(input)
         end
     end
-    for keyword in ("randominitialpoint", "optimization_print_level", "chkgrad", "writeout", "writebad")
+    for keyword in ("randominitialpoint", "optimization_print_level", "chkgrad", "writebad")
         @test occursin("$keyword is a deprecated keyword and was ignored", read(warnings, String))
     end
     @test sys.tolerance == 2.0
@@ -171,6 +192,7 @@ end
     @test sys.max_iter == 15
     @test sys.movefrac == 0.1
     @test sys.nthreads == 2
+    @test sys.writeout == 10
     @test sys.structure_types[1].segid == "WAT"
     @test sys.nmols == 10
     @test length(sys.structure_types[1].constraints) == 1

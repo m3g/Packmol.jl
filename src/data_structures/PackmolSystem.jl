@@ -6,21 +6,27 @@
     tolerance::T = 2.0
     # Loose-start radius scale factor for the packing objective (Fortran Packmol's
     # `discale`): atom radii are inflated by this factor at the start of packing
-    # (loop 0), then decayed exponentially toward 1.0 by loop `nloop`, the
+    # (loop 0), then decayed exponentially toward 1.0 by loop `radscale_decay_loops`, the
     # same for every atom regardless of movebad! relocations (see
-    # `_radscale_at` and the outer packing loop in packmol_main.jl). 1.0 (no scaling) by
-    # default: in dense systems (water, bilayers, vesicles) the inflated problem has no
-    # solution, and a larger scale took up to 40 times more function evaluations; the
-    # lipid shells of a nanoliposome, less dense, packed faster with 1.2.
-    radscale::T = 1.0
+    # `_radscale_at` and the outer packing loop in packmol_main.jl). `nothing` (the
+    # default) means a scale for each structure type (`_radscale`): 5.0 for the free
+    # molecules of more than 20 atoms, which otherwise interpenetrate (lipids, liquid
+    # crystals: 2 to 6 times faster, and 18,000 lipids of an exosome that did not pack
+    # at 1.0 packed in 8 loops), 1.0 for the smaller ones (water, ions, small solvents
+    # pack in a few loops at 1.0, and 4 to 8 times slower inflated), and the largest scale
+    # of the free molecules for the fixed ones (lipids inflated next to a fixed protein at
+    # its radii were pushed into it). A `radscale` keyword in a structure block sets the
+    # scale of that type.
+    radscale::Union{Nothing,T} = nothing
+    # Loops for the radii to decay from `radscale` to 1.0 (input keyword
+    # `radscale_decay_loops`): `nothing` means 20.
+    radscale_decay_loops::Union{Nothing,Int} = nothing
+    # Minimum time, in seconds, between two writes of the output file during the
+    # packing (input keyword `writeout`, as in Fortran Packmol): `nothing` means 60 s.
+    writeout::Union{Nothing,T} = nothing
     structure_types::Vector{StructureType{D,T}} = StructureType{D,T}[]
     tolerance_precision::T = 1e-1
     constraint_precision::T = 1e-2
-    # Relative-improvement threshold below which the stall detector counts a
-    # plateau iteration in either the minimum interatomic distance or the
-    # maximum constraint violation during a packing chunk (see
-    # packmol_main.jl).
-    stall_tolerance::T = 1e-3 * tolerance_precision
     # Packing loops and optimizer iterations per loop (input keywords `nloop`
     # and `maxit`): `nothing` means unset, and the keyword arguments of
     # `packmol(::PackmolSystem)` take precedence over these.
@@ -272,6 +278,10 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.tolerance = _parse_value(T, "tolerance", val)
     elseif keyword == "radscale"
         sys.radscale = _parse_value(T, "radscale", val)
+    elseif keyword == "writeout"
+        sys.writeout = _parse_value(T, "writeout", val)
+    elseif keyword == "radscale_decay_loops"
+        sys.radscale_decay_loops = _parse_value(Int, "radscale_decay_loops", val)
     elseif keyword == "discale"
         _warn("discale is a legacy keyword name; use radscale instead.")
         sys.radscale = _parse_value(T, "discale", val)
@@ -279,8 +289,6 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.tolerance_precision = _parse_value(T, "tolerance_precision", val)
     elseif keyword == "constraint_precision"
         sys.constraint_precision = _parse_value(T, "constraint_precision", val)
-    elseif keyword == "stall_tolerance"
-        sys.stall_tolerance = _parse_value(T, "stall_tolerance", val)
     elseif keyword == "maxit"
         sys.max_iter = _parse_value(Int, "maxit", val)
     elseif keyword == "nloop"
@@ -380,7 +388,6 @@ const packmol_legacy_keywords = Dict{String,String}(
     "randominitialpoint" => "randominitialpoint is a deprecated keyword and was ignored.",
     "optimization_print_level" => "optimization_print_level is a deprecated keyword and was ignored.",
     "chkgrad" => "chkgrad is a deprecated keyword and was ignored.",
-    "writeout" => "writeout is a deprecated keyword and was ignored (the output is written after every loop that improves the solution).",
     "writebad" => "writebad is a deprecated keyword and was ignored (the output is written after every loop that improves the solution).",
 )
 
@@ -393,8 +400,8 @@ const packmol_unimplemented_keywords = Dict{String,String}(
 
 # Global keywords (see `_set_input_keyword!` and `_read_packmol_input`)
 const _global_keywords = (
-    "filetype", "output", "tolerance", "radscale", "discale", "tolerance_precision",
-    "constraint_precision", "stall_tolerance", "maxit", "nloop", "movefrac", "nthreads", "periodic_boundary_style", "max_random_init",
+    "filetype", "output", "tolerance", "radscale", "radscale_decay_loops", "writeout", "discale", "tolerance_precision",
+    "constraint_precision", "maxit", "nloop", "movefrac", "nthreads", "periodic_boundary_style", "max_random_init",
     "adjust_constraints_on_init", "add_amber_ter", "amber_ter_preserve", "add_box_sides",
     "ignore_conect", "seed", "avoid_overlap",
     "check_initial_placement", "check", "continue_failed_initial_packing", "pbc", "unitcell",
@@ -444,7 +451,6 @@ end
 
 function _read_packmol_input(lines::Vector{String}, input_file::String, input_dir::String, ::Val{D}, ::Type{T}) where {D,T}
     sys = PackmolSystem{D,T}(; input_file, output_file="")
-    stall_tolerance_set = false
     structure_section = false
     for line in lines
         line = _strip_comment(line)
@@ -473,7 +479,6 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
         # appear on their own line with nothing after them; an empty string
         # is passed through for those.
         if _set_input_keyword!(sys, keyword, isempty(values) ? "" : first(values))
-            stall_tolerance_set |= keyword == "stall_tolerance"
             continue
         elseif haskey(packmol_legacy_keywords, keyword)
             _warn(packmol_legacy_keywords[keyword])
@@ -482,58 +487,18 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
             _warn(packmol_unimplemented_keywords[keyword])
             continue
         end
-        # pbc: orthorhombic PBC keyword
-        #   3 values (side lengths): center at origin
-        #   6 values (xmin ymin zmin xmax ymax zmax): center at midpoint
         if keyword == "pbc"
-            if !isempty(values) && values[1] == "dodecahedral"
-                unitcell, unitcell_center = parse_pbc_dodecahedral(T, values[2:end], Val(D))
-                sys.unitcell, sys.unitcell_center = unitcell, unitcell_center
-                continue
-            end
-            if !isempty(values) && values[1] == "octahedral"
-                unitcell, unitcell_center = parse_pbc_octahedral(T, values[2:end], Val(D))
-                sys.unitcell, sys.unitcell_center = unitcell, unitcell_center
-                continue
-            end
-            vals = [_parse_value(T, "pbc", v) for v in values]
-            if length(vals) == D
-                # 3 values: side lengths of the box from the origin to (a, b, c), as in
-                # Fortran Packmol (equivalent to `pbc 0 0 0 a b c`)
-                sys.unitcell = Matrix{T}(Diagonal(vals))
-                sys.unitcell_center = SVector{D,T}(vals) / 2
-            elseif length(vals) == 2 * D
-                # 6 values: xmin ymin zmin xmax ymax zmax
-                lo = SVector{D,T}(@view(vals[1:D]))
-                hi = SVector{D,T}(@view(vals[D+1:2*D]))
-                sides = hi - lo
-                sys.unitcell = Matrix{T}(Diagonal(Vector(sides)))
-                sys.unitcell_center = (lo + hi) / 2
-            else
-                throw(ArgumentError("pbc keyword requires $D (side lengths) or $(2*D) (min/max coords) values, got $(length(vals))"))
-            end
+            _set_pbc!(sys, values)
             continue
         end
-        # unitcell: general PBC keyword (6 values: a b c α β γ in CRYST1 convention)
-        # Center at origin.
         if keyword == "unitcell"
-            if D != 3 || length(values) != 6
-                throw(ArgumentError("unitcell keyword requires 6 values (a b c α β γ), got $(length(values))"))
-            end
-            p = [_parse_value(T, "unitcell", v) for v in values]
-            sys.unitcell = Matrix{T}(unitcell_matrix(T, p[1], p[2], p[3], p[4], p[5], p[6]))
-            sys.unitcell_center = zero(SVector{D,T})
+            _set_unitcell!(sys, values)
             continue
         end
         throw(ArgumentError("Keyword $keyword not recognized"))
     end
     if structure_section
         throw(ArgumentError("Structure block not closed with 'end structure'"))
-    end
-    # The default stall tolerance is relative to the tolerance precision, which
-    # might have been set in the input file.
-    if !stall_tolerance_set
-        sys.stall_tolerance = T(1e-3) * sys.tolerance_precision
     end
     # As the structure files, the other files named in the input file are
     # relative to its directory (an absolute path is kept as is by `joinpath`).
@@ -578,5 +543,172 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
     # Initialize atom data and molecule position arrays
     #
     sys.atoms, sys.molecule_positions, sys.nmols = _atoms_and_molecule_positions(sys.structure_types)
+    return sys
+end
+
+#
+# Scale of the radii of the atoms of a structure type at the start of the packing: the
+# `radscale` of the structure block, or the global one, or, if neither is set, 5.0 for
+# the free molecules of more than 20 atoms, 1.0 for the other free molecules, and, for
+# the fixed molecules, the largest scale of the free ones (see the `radscale` field of
+# `PackmolSystem`). The fixed molecules are inflated as the free ones: with lipids
+# inflated 5 times next to a fixed protein at its radii, the targets of the lipid-protein
+# pairs (5 + 1 radii) were much shorter than those of the lipid-lipid pairs (5 + 5), and
+# the lipids, crowded at their inflated radii, were pushed deep into the protein.
+#
+const _radscale_default = 5.0
+const _radscale_min_natoms = 21
+function _radscale(sys::PackmolSystem{D,T}, st::StructureType) where {D,T}
+    default = if st.fixed.fixed
+        maximum((_radscale_free(sys, s) for s in sys.structure_types if !s.fixed.fixed); init=one(T))
+    else
+        _radscale_free(sys, st)
+    end
+    return T(something(st.radscale, sys.radscale, default))
+end
+function _radscale_free(sys::PackmolSystem{D,T}, st::StructureType) where {D,T}
+    default = st.natoms >= _radscale_min_natoms ? T(_radscale_default) : one(T)
+    return T(something(st.radscale, sys.radscale, default))
+end
+# Scale of the distance to the fixed atoms in the initial placement and in movebad!:
+# the global radscale, if set (1.0 otherwise: free molecules are placed and moved at
+# the tolerance distance from the fixed ones)
+_global_radscale(sys::PackmolSystem{D,T}) where {D,T} = T(something(sys.radscale, one(T)))
+
+#
+# The periodic cell of the `pbc` keyword (`values`: its values, as strings)
+#   3 values (side lengths): the box from the origin to (a, b, c)
+#   6 values (xmin ymin zmin xmax ymax zmax): center at the midpoint
+#   dodecahedral|octahedral cx cy cz d
+#
+function _set_pbc!(sys::PackmolSystem{D,T}, values::AbstractVector{<:AbstractString}) where {D,T}
+    if !isempty(values) && values[1] == "dodecahedral"
+        sys.unitcell, sys.unitcell_center = parse_pbc_dodecahedral(T, values[2:end], Val(D))
+        return sys
+    end
+    if !isempty(values) && values[1] == "octahedral"
+        sys.unitcell, sys.unitcell_center = parse_pbc_octahedral(T, values[2:end], Val(D))
+        return sys
+    end
+    vals = [_parse_value(T, "pbc", v) for v in values]
+    if length(vals) == D
+        # 3 values: side lengths of the box from the origin to (a, b, c), as in
+        # Fortran Packmol (equivalent to `pbc 0 0 0 a b c`)
+        sys.unitcell = Matrix{T}(Diagonal(vals))
+        sys.unitcell_center = SVector{D,T}(vals) / 2
+    elseif length(vals) == 2 * D
+        lo = SVector{D,T}(@view(vals[1:D]))
+        hi = SVector{D,T}(@view(vals[D+1:2*D]))
+        sys.unitcell = Matrix{T}(Diagonal(Vector(hi - lo)))
+        sys.unitcell_center = (lo + hi) / 2
+    else
+        throw(ArgumentError("pbc keyword requires $D (side lengths) or $(2*D) (min/max coords) values, got $(length(vals))"))
+    end
+    return sys
+end
+
+# The periodic cell of the `unitcell` keyword: a b c α β γ (CRYST1 convention), centered
+# at the origin
+function _set_unitcell!(sys::PackmolSystem{D,T}, values::AbstractVector{<:AbstractString}) where {D,T}
+    if D != 3 || length(values) != 6
+        throw(ArgumentError("unitcell keyword requires 6 values (a b c α β γ), got $(length(values))"))
+    end
+    p = [_parse_value(T, "unitcell", v) for v in values]
+    sys.unitcell = Matrix{T}(unitcell_matrix(T, p[1], p[2], p[3], p[4], p[5], p[6]))
+    sys.unitcell_center = zero(SVector{D,T})
+    return sys
+end
+
+#
+# A new tolerance: the atoms with the default radius (tolerance/2) get the new default
+#
+function _set_tolerance!(sys::PackmolSystem{D,T}, tolerance::Real) where {D,T}
+    old, new = sys.tolerance / 2, T(tolerance) / 2
+    for st in sys.structure_types
+        replace!(r -> r == old ? new : r, st.radii)
+    end
+    sys.atoms = [a.radius == old ? AtomData{T}(a.molecule_index, a.structure_type_index, new, a.constraints) : a
+                 for a in sys.atoms]
+    sys.tolerance = T(tolerance)
+    return sys
+end
+
+# The values of a `pbc` or `unitcell` keyword argument as those of the input keyword:
+# numbers, and the cell shape (`:octahedral`, `"dodecahedral"`) as the first one
+_keyword_values(v) = String[string(x) for x in v]
+
+#
+# The global options of the input files given as keyword arguments of
+# `packmol(::PackmolSystem)`: they are set in the system (see `packmol`).
+#
+function _set_global_options!(sys::PackmolSystem{D,T};
+    output::Union{Nothing,AbstractString} = nothing,
+    filetype::Union{Nothing,AbstractString,Symbol} = nothing,
+    tolerance::Union{Nothing,Real} = nothing,
+    radscale::Union{Nothing,Real} = nothing,
+    discale::Union{Nothing,Real} = nothing,
+    radscale_decay_loops::Union{Nothing,Integer} = nothing,
+    writeout::Union{Nothing,Real} = nothing,
+    tolerance_precision::Union{Nothing,Real} = nothing,
+    constraint_precision::Union{Nothing,Real} = nothing,
+    maxit::Union{Nothing,Integer} = nothing,
+    nloop::Union{Nothing,Integer} = nothing,
+    movefrac::Union{Nothing,Real} = nothing,
+    nthreads::Union{Nothing,Integer} = nothing,
+    seed::Union{Nothing,Integer} = nothing,
+    max_random_init::Union{Nothing,Integer} = nothing,
+    adjust_constraints_on_init::Union{Nothing,Bool} = nothing,
+    add_amber_ter::Union{Nothing,Bool} = nothing,
+    amber_ter_preserve::Union{Nothing,Bool} = nothing,
+    add_box_sides::Union{Nothing,Bool} = nothing,
+    periodic_boundary_style::Union{Nothing,AbstractString,Symbol} = nothing,
+    connect::Union{Nothing,Bool} = nothing,
+    avoid_overlap::Union{Nothing,Bool} = nothing,
+    check_initial_placement::Union{Nothing,Bool} = nothing,
+    continue_failed_initial_packing::Union{Nothing,Bool} = nothing,
+    restart_from::Union{Nothing,AbstractString} = nothing,
+    pbc = nothing,
+    unitcell = nothing,
+) where {D,T}
+    isnothing(output) || (sys.output_file = expanduser(String(output)))
+    isnothing(filetype) || _set_input_keyword!(sys, "filetype", string(filetype))
+    isnothing(tolerance) || _set_tolerance!(sys, tolerance)
+    isnothing(discale) || _set_input_keyword!(sys, "discale", string(discale))
+    isnothing(radscale) || (sys.radscale = T(radscale))
+    isnothing(radscale_decay_loops) || (sys.radscale_decay_loops = Int(radscale_decay_loops))
+    isnothing(writeout) || (sys.writeout = T(writeout))
+    isnothing(tolerance_precision) || (sys.tolerance_precision = T(tolerance_precision))
+    isnothing(constraint_precision) || (sys.constraint_precision = T(constraint_precision))
+    isnothing(maxit) || (sys.max_iter = Int(maxit))
+    isnothing(nloop) || (sys.nloop = Int(nloop))
+    isnothing(movefrac) || (sys.movefrac = T(movefrac))
+    isnothing(nthreads) || _set_input_keyword!(sys, "nthreads", string(nthreads))
+    isnothing(seed) || (sys.seed = Int(seed))
+    isnothing(max_random_init) || (sys.max_random_init = Int(max_random_init))
+    isnothing(adjust_constraints_on_init) || (sys.adjust_constraints_on_init = adjust_constraints_on_init)
+    isnothing(add_amber_ter) || (sys.add_amber_ter = add_amber_ter)
+    isnothing(amber_ter_preserve) || (sys.amber_ter_preserve = amber_ter_preserve)
+    isnothing(add_box_sides) || (sys.add_box_sides = add_box_sides)
+    isnothing(periodic_boundary_style) || _set_input_keyword!(sys, "periodic_boundary_style", string(periodic_boundary_style))
+    isnothing(connect) || (sys.connect = connect)
+    isnothing(avoid_overlap) || (sys.avoid_overlap = avoid_overlap)
+    isnothing(check_initial_placement) || (sys.check_initial_placement = check_initial_placement)
+    isnothing(continue_failed_initial_packing) || (sys.continue_failed_initial_packing = continue_failed_initial_packing)
+    isnothing(restart_from) || (sys.restart_from = expanduser(String(restart_from)))
+    if !isnothing(pbc)
+        _set_pbc!(sys, _keyword_values(pbc))
+    elseif !isnothing(unitcell)
+        if unitcell isa AbstractMatrix
+            sys.unitcell = Matrix{T}(unitcell)
+            sys.unitcell_center = zero(SVector{D,T})
+        else
+            _set_unitcell!(sys, _keyword_values(unitcell))
+        end
+    end
+    if !isnothing(pbc) || !isnothing(unitcell)
+        sys.wigner_seitz_cell = _is_wigner_seitz_cell(something(sys.unitcell))
+        _check_fixed_inside_cell(sys)
+    end
+    isnothing(restart_from) || _check_restart_files(sys)
     return sys
 end

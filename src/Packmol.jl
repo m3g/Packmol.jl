@@ -93,6 +93,7 @@ include("./shape.jl")
 
 # Packing functions
 include("./packmol_main.jl")
+include("./active_set.jl")
 
 # Volume estimates for setting up a system
 include("./tools/volume.jl")

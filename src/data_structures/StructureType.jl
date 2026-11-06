@@ -29,6 +29,10 @@ Structure that contains the input data for a structure block in the input file.
     # Segment identifier (`segid` keyword) written to every atom of this type
     # in the output (PDB columns 73-76); `nothing` keeps the template's own.
     segid::Union{Nothing,String} = nothing
+    # Scale of the radii of the atoms of this type at the start of the packing (`radscale`
+    # keyword of the structure block): `nothing` means the global `radscale`, or, if that
+    # is not set either, the default of `_radscale(::PackmolSystem, ::StructureType)`.
+    radscale::Union{Nothing,T} = nothing
     # `constrain_rotation`: bounds on the angle between an axis and a vector of the
     # molecule (see constraints/rotations.jl)
     rotation_constraints::Vector{RotationConstraint{D,T}} = RotationConstraint{D,T}[]
@@ -163,6 +167,9 @@ single structure type (e.g. `PackmolSystem([lipids, water]; ...)`).
 `radius` sets a uniform atom radius; if not given, it defaults to `tolerance/2` (so
 that two touching atoms' radii sum to `tolerance`, matching the input file default).
 
+`radscale` sets the scale of the radii of the atoms of this type at the start of the
+packing (see the `radscale` field of [`PackmolSystem`](@ref)).
+
 `fixed`, if given, is a `(cm, angles)` pair of 3-vectors that fixes the molecule at
 that position/orientation instead of packing it; `center` (`:none`, `:geometric`, or
 `:mass`) then controls how the molecule is centered before that transformation is
@@ -188,6 +195,7 @@ function structure_type(filename::Union{String,AbstractVector{String}};
     chain::Union{Nothing,Char} = nothing,
     changechains::Bool = false,
     segid::Union{Nothing,String} = nothing,
+    radscale::Union{Nothing,Real} = nothing,
     # e.g. `constrain_rotation=Dict(:z => (0, 10))` keeps the angle between the z axis and
     # the longest axis of the molecule within 0° ± 10°, and `Dict(:z => (0, 10, [1, 2], [30]))`
     # the angle between the z axis and the vector from the center of atoms 1 and 2 to atom 30
@@ -249,6 +257,7 @@ function structure_type(filename::Union{String,AbstractVector{String}};
         filename, natoms, atoms, number_of_molecules=number, rotation_constraints, restart_from=_restart_source(restart_from),
         fixed=fixed_data, reference_coordinates, radii,
         residue_numbering, chain, changechains, segid=_check_segid(segid), connectivity, constraints, atom_constraints,
+        radscale=isnothing(radscale) ? nothing : T(radscale),
     )
     types = _conformation_types(st, conformations, conformation_files)
     return length(types) == 1 ? only(types) : types
@@ -369,7 +378,7 @@ function _conformation_types(
             number_of_molecules=q + (k <= r), fixed=st.fixed,
             reference_coordinates=[_atom_position(at, Val(D), T) for at in atoms],
             radii=copy(st.radii), residue_numbering=st.residue_numbering, chain=st.chain,
-            changechains=st.changechains, segid=st.segid, rotation_constraints=copy(st.rotation_constraints),
+            changechains=st.changechains, segid=st.segid, radscale=st.radscale, rotation_constraints=copy(st.rotation_constraints),
             restart_from=nothing, connectivity=st.connectivity,
             constraints=copy(st.constraints), atom_constraints=[copy(ac) for ac in st.atom_constraints],
             move_bad_molecules=st.move_bad_molecules, conformation=(i, length(keep)),
@@ -515,6 +524,7 @@ function _read_structure_types(input_file_block::IOBuffer, tolerance, ::Val{D}, 
     chain = nothing
     changechains = false
     segid = nothing
+    radscale = nothing
     input_file_block, rotation_constraints = _read_rotation_constraints(input_file_block, Val(D), T)
     restart_from = nothing
     # Read basic structure data first
@@ -563,6 +573,8 @@ function _read_structure_types(input_file_block::IOBuffer, tolerance, ::Val{D}, 
             connect = _parse_options("connect", isempty(values) ? "" : values[1], _yes_no)
         elseif keyword == "segid"
             segid = _check_segid(String(values[1]))
+        elseif keyword == "radscale"
+            radscale = _parse_value(T, "radscale", values[1])
         elseif keyword == "restart_from"
             restart_from = joinpath(path, expanduser(String(values[1])))
         elseif keyword in constraint_placements
@@ -621,7 +633,7 @@ function _read_structure_types(input_file_block::IOBuffer, tolerance, ::Val{D}, 
     _check_rotation_constraints(rotation_constraints, fixed, length(atoms))
     st = StructureType{D,T}(;
         filename, natoms=length(atoms), atoms, number_of_molecules, fixed, reference_coordinates, radii,
-        residue_numbering, chain, changechains, segid, rotation_constraints, restart_from,
+        residue_numbering, chain, changechains, segid, radscale, rotation_constraints, restart_from,
         connectivity=connect ? connectivity : nothing,
         constraints, atom_constraints,
     )

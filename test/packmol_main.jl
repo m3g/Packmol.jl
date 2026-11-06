@@ -452,3 +452,114 @@ end
     @test size(fg.overlaps) == (2, 2)
     @test !fg.count_overlaps[]
 end
+
+@testitem "bad molecules: those that do not satisfy the convergence criterion" setup=[TestFiles] begin
+    using Packmol: InteratomicDistanceFG, compute_atom_positions!, initialize_molecules!, fg!,
+        _mark_unconverged!, MoleculePosition
+    using StaticArrays: SVector
+    using CellListMap: ParticleSystem
+    using Random
+    water = TestFiles.test_file("structure_files/water.pdb")
+    st = structure_type(water; number=4, constraints=[InsideBox([0, 0, 0], [40, 40, 40])])
+    sys = PackmolSystem([st]; output=tempname() * ".pdb", tolerance=2.0)
+    initialize_molecules!(sys, Random.Xoshiro(1))
+    angles = SVector(0.0, 0.0, 0.0)
+    # 1 and 2 overlap by 0.2 Å (more than tolerance_precision, 0.01 Å), 3 is 0.3 Å outside
+    # its box, 4 is fine
+    sys.molecule_positions[1] = MoleculePosition(SVector(10.0, 10.0, 10.0), angles)
+    sys.molecule_positions[2] = MoleculePosition(SVector(10.0, 10.0, 11.8), angles)
+    sys.molecule_positions[4] = MoleculePosition(SVector(30.0, 30.0, 30.0), angles)
+    ap = Vector{SVector{3,Float64}}(undef, length(sys.atoms))
+    compute_atom_positions!(ap, sys.molecule_positions, sys)
+    zmax = maximum(ap[i][3] for i in 1:3)
+    sys.molecule_positions[3] = MoleculePosition(SVector(20.0, 20.0, 40.3 + 10.0 - zmax), angles)
+    compute_atom_positions!(ap, sys.molecule_positions, sys)
+    cl = ParticleSystem(xpositions=copy(ap), unitcell=[100.0, 100.0, 100.0], cutoff=2.2,
+        output=InteratomicDistanceFG{3,Float64}(sys), output_name=:fg, parallel=false)
+    free = collect(1:sys.nmols)
+    x = copy(reinterpret(Float64, sys.molecule_positions))
+    g = zeros(length(x))
+    unconverged = zeros(Bool, sys.nmols)
+    # recorded only when the flag is set
+    fg!(g, x, cl, sys, ap, free)
+    @test isempty(cl.fg.unconverged_mols)
+    cl.fg.count_overlaps[] = true
+    fg!(g, x, cl, sys, ap, free)
+    cl.fg.count_overlaps[] = false
+    _mark_unconverged!(unconverged, cl.fg)
+    @test cl.fg.max_overlap >= sys.tolerance_precision
+    @test cl.fg.max_constraint_penalty >= sys.constraint_precision
+    @test unconverged == [true, true, true, false]
+end
+
+@testitem "radscale decay" setup=[TestFiles] begin
+    using Packmol
+    # exponential decay from radscale to 1, within 1e-3 of the initial excess at decay_loops
+    @test Packmol._radscale_at(0, 3.0, 50.0) == 3.0
+    @test 1 < Packmol._radscale_at(25, 3.0, 50.0) < 3
+    @test Packmol._radscale_at(49, 3.0, 50.0) - 1 < 3e-3
+    @test Packmol._radscale_at(50, 3.0, 50.0) == 1.0
+    @test Packmol._radscale_at(10, 1.0, 50.0) == 1.0
+    # the keyword argument and the system field
+    input_file = TestFiles.test_file("input_files/water_box_small.inp")
+    sys = Packmol.read_packmol_input(input_file)
+    sys.radscale = 2.0
+    sys.radscale_decay_loops = 5
+    @test packmol(sys; nloop=200, iprint=1000, seed=3).status == :packing_ready
+    sys = Packmol.read_packmol_input(input_file)
+    sys.radscale = 2.0
+    @test packmol(sys; nloop=200, iprint=1000, seed=3, radscale_decay_loops=5).status == :packing_ready
+end
+
+@testitem "writeout: minimum time between writes of the output" setup = [TestFiles] begin
+    water = TestFiles.test_file("structure_files/water.pdb")
+    function run(; kargs...)
+        a = structure_type(water; number = 300, constraints = [InsideBox([0., 0., 0.], [21., 21., 21.])])
+        output = tempname() * ".pdb"
+        sys = PackmolSystem([a]; tolerance = 2.0, output)
+        out = tempname()
+        open(out, "w") do io
+            redirect_stdout(io) do
+                packmol(sys; seed = 1, maxit = 5, kargs...)
+            end
+        end
+        return sys, output, count("Current solution written", read(out, String))
+    end
+    # every improved loop writes the output (maxit = 5: several loops)
+    sys, output, nwrites = run(writeout = 0)
+    @test sys.status == :packing_ready && isfile(output) && nwrites > 0
+    # no intermediate writes; the final solution is written
+    sys, output, nwrites = run(writeout = 1e6)
+    @test sys.status == :packing_ready && isfile(output) && nwrites == 0
+end
+
+@testitem "global options as keyword arguments of packmol" setup = [TestFiles] begin
+    using Packmol
+    input_file = TestFiles.test_file("input_files/water_box_small.inp")
+    sys = read_packmol_input(input_file)
+    out = tempname() * ".pdb"
+    redirect_stdout(devnull) do
+        packmol(sys; tolerance = 2.2, maxit = 25, nloop = 100, seed = 5, output = out,
+            writeout = 0, radscale_decay_loops = 7, add_box_sides = true, tolerance_precision = 0.05)
+    end
+    @test sys.status == :packing_ready
+    @test sys.tolerance == 2.2 && all(a.radius == 1.1 for a in sys.atoms)
+    @test all(st.radii == fill(1.1, st.natoms) for st in sys.structure_types)
+    @test sys.max_iter == 25 && sys.nloop == 100 && sys.seed == 5 && sys.writeout == 0
+    @test sys.radscale_decay_loops == 7 && sys.add_box_sides && sys.tolerance_precision == 0.05
+    @test sys.output_file == out && isfile(out)
+    # atoms with their own radius keep it
+    sys = read_packmol_input(input_file)
+    st = sys.structure_types[1]
+    sys.atoms[1] = Packmol.AtomData{Float64}(sys.atoms[1].molecule_index, 1, 0.7, sys.atoms[1].constraints)
+    Packmol._set_global_options!(sys; tolerance = 3.0)
+    @test sys.atoms[1].radius == 0.7 && sys.atoms[2].radius == 1.5
+    # periodic cells, as the input keywords
+    Packmol._set_global_options!(sys; pbc = [30, 30, 30])
+    @test sys.unitcell == [30 0 0; 0 30 0; 0 0 30] && sys.unitcell_center == [15, 15, 15]
+    Packmol._set_global_options!(sys; pbc = (:octahedral, 0, 0, 0, 60))
+    @test sys.wigner_seitz_cell && sys.unitcell_center == [0, 0, 0]
+    Packmol._set_global_options!(sys; periodic_boundary_style = :octahedral)
+    @test sys.periodic_boundary_style == :octahedral
+    @test_throws ArgumentError Packmol._set_global_options!(sys; pbc = [1, 2])
+end
