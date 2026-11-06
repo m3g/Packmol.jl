@@ -452,3 +452,22 @@ end
     @test size(fg.overlaps) == (2, 2)
     @test !fg.count_overlaps[]
 end
+
+@testitem "radscale decay" setup=[TestFiles] begin
+    using Packmol
+    # exponential decay from radscale to 1, within 1e-3 of the initial excess at decay_loops
+    @test Packmol._radscale_at(0, 3.0, 50.0) == 3.0
+    @test 1 < Packmol._radscale_at(25, 3.0, 50.0) < 3
+    @test Packmol._radscale_at(49, 3.0, 50.0) - 1 < 3e-3
+    @test Packmol._radscale_at(50, 3.0, 50.0) == 1.0
+    @test Packmol._radscale_at(10, 1.0, 50.0) == 1.0
+    # the keyword argument and the system field
+    input_file = TestFiles.test_file("input_files/water_box_small.inp")
+    sys = Packmol.read_packmol_input(input_file)
+    sys.radscale = 2.0
+    sys.radscale_decay_loops = 5
+    @test packmol(sys; nloop=200, iprint=1000, seed=3).status == :packing_ready
+    sys = Packmol.read_packmol_input(input_file)
+    sys.radscale = 2.0
+    @test packmol(sys; nloop=200, iprint=1000, seed=3, radscale_decay_loops=5).status == :packing_ready
+end

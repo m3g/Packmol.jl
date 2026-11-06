@@ -73,6 +73,13 @@ end
         write(radscale_file, original * "\nradscale 1.5\n")
         sys = read_packmol_input(radscale_file)
         @test sys.radscale == 1.5
+        @test isnothing(sys.radscale_decay_loops)
+
+        decay_file = joinpath(tmp, "radscale_decay.inp")
+        write(decay_file, original * "\nradscale 3.0\nradscale_decay_loops 50\n")
+        sys = read_packmol_input(decay_file)
+        @test sys.radscale == 3.0
+        @test sys.radscale_decay_loops == 50
 
         discale_file = joinpath(tmp, "discale.inp")
         write(discale_file, original * "\ndiscale 1.3\n")

@@ -12,6 +12,7 @@
 | `nloop <int>` | Maximum number of packing loops (default `500`). The `nloop` keyword argument of [`packmol`](@ref) takes precedence. |
 | `maxit <int>` | Optimizer iterations per packing loop (default `30`; short loops, in which the overlapping molecules are moved often, pack fastest). The `maxit` keyword argument of [`packmol`](@ref) takes precedence. |
 | `radscale <value>` | Loose-start radius scale factor (see [`packmol`](@ref)): the radii of the atoms are multiplied by it at the start of the packing, decaying to their values along the packing loops. Default `1.0` (no scaling); a larger value (e.g. `1.2`) can be faster in systems that are not dense. `discale` is accepted as a legacy alias. |
+| `radscale_decay_loops <int>` | Number of packing loops in which the radii decay from `radscale` times their values to their values, exponentially (default: `nloop`). The keyword argument of [`packmol`](@ref) takes precedence. |
 | `tolerance_precision <value>`, `constraint_precision <value>` | Convergence tolerances for the distance and constraint checks. |
 | `max_random_init <int>` | Best-of-`N` random placements tried per molecule during initialization. |
 | `adjust_constraints_on_init yes\|no` | Whether to run constraint-only pre-optimization before packing. |

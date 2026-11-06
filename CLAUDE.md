@@ -194,7 +194,7 @@ These are the building blocks everything else depends on.
 - [x] Constraint parsing: `inside/outside box`, `inside/outside cube`, `inside/outside sphere`,
       `inside/outside cylinder`, `inside/outside ellipsoid`, `above/over/below plane`
 - [x] Per-atom blocks (`atoms ... end atoms`) with custom constraints
-- [x] `radscale` (with legacy `discale` mapped to it)
+- [x] `radscale` (with legacy `discale` mapped to it), `radscale_decay_loops` (loops for the radii to decay to their values; default `nloop`)
 - [x] Julia-native construction API (no input file needed): `structure_type(pdbfile; number, constraints, atom_constraints, ...)`
       + `PackmolSystem(structure_types; output, ...)`, documented in `docs/src/julia_api/`
 - [x] `nloop`, `maxit` (stored in `PackmolSystem.nloop`/`max_iter`; `packmol(sys; nloop, maxit)` takes precedence)

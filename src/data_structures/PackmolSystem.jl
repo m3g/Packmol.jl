@@ -6,13 +6,16 @@
     tolerance::T = 2.0
     # Loose-start radius scale factor for the packing objective (Fortran Packmol's
     # `discale`): atom radii are inflated by this factor at the start of packing
-    # (loop 0), then decayed exponentially toward 1.0 by loop `nloop`, the
+    # (loop 0), then decayed exponentially toward 1.0 by loop `radscale_decay_loops`, the
     # same for every atom regardless of movebad! relocations (see
     # `_radscale_at` and the outer packing loop in packmol_main.jl). 1.0 (no scaling) by
     # default: in dense systems (water, bilayers, vesicles) the inflated problem has no
     # solution, and a larger scale took up to 40 times more function evaluations; the
     # lipid shells of a nanoliposome, less dense, packed faster with 1.2.
     radscale::T = 1.0
+    # Loops for the radii to decay from `radscale` to 1.0 (input keyword
+    # `radscale_decay_loops`): `nothing` means `nloop`.
+    radscale_decay_loops::Union{Nothing,Int} = nothing
     structure_types::Vector{StructureType{D,T}} = StructureType{D,T}[]
     tolerance_precision::T = 1e-1
     constraint_precision::T = 1e-2
@@ -267,6 +270,8 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.tolerance = _parse_value(T, "tolerance", val)
     elseif keyword == "radscale"
         sys.radscale = _parse_value(T, "radscale", val)
+    elseif keyword == "radscale_decay_loops"
+        sys.radscale_decay_loops = _parse_value(Int, "radscale_decay_loops", val)
     elseif keyword == "discale"
         _warn("discale is a legacy keyword name; use radscale instead.")
         sys.radscale = _parse_value(T, "discale", val)
@@ -387,7 +392,7 @@ const packmol_unimplemented_keywords = Dict{String,String}(
 
 # Global keywords (see `_set_input_keyword!` and `_read_packmol_input`)
 const _global_keywords = (
-    "filetype", "output", "tolerance", "radscale", "discale", "tolerance_precision",
+    "filetype", "output", "tolerance", "radscale", "radscale_decay_loops", "discale", "tolerance_precision",
     "constraint_precision", "maxit", "nloop", "movefrac", "nthreads", "periodic_boundary_style", "max_random_init",
     "adjust_constraints_on_init", "add_amber_ter", "amber_ter_preserve", "add_box_sides",
     "ignore_conect", "seed", "avoid_overlap",

@@ -138,6 +138,11 @@ molecules of each type moved per loop, default `0.05`) take precedence over the
 values set in the input file (`packmol_system.nloop`, `packmol_system.max_iter`
 and `packmol_system.movefrac`).
 
+`radscale_decay_loops` (default: `nloop`): number of loops in which the radii of the atoms,
+multiplied by `packmol_system.radscale` at the start, decay exponentially to their values
+(to within 0.1% of the initial excess). Takes precedence over
+`packmol_system.radscale_decay_loops` (the input keyword `radscale_decay_loops`).
+
 `active_set` (default `true`): after the first loop, optimize only the
 molecules with overlaps or constraint violations that may block the convergence, and the
 molecules with an atom within `active_radius` (default `6 * tolerance`) of them, with the
@@ -193,6 +198,7 @@ function _packmol(
     nloop::Union{Nothing,Int}=nothing,
     maxit::Union{Nothing,Int}=nothing,
     movefrac::Union{Nothing,Real}=nothing,
+    radscale_decay_loops::Union{Nothing,Int}=nothing,
     movebad_tolerance::T=T(0.10),
     seed::Int=packmol_system.seed,
     restart::Bool=false,
@@ -363,8 +369,8 @@ function _packmol(
         atom_radii_floor[iat] = a.radius
     end
     # radscale decays from packmol_system.radscale (at loop == 0) to 1.0 by
-    # loop == radscale_decay_loops == nloop, the same for every atom.
-    radscale_decay_loops = T(nloop)
+    # loop == radscale_decay_loops (default: nloop), the same for every atom.
+    decay_loops = T(something(radscale_decay_loops, packmol_system.radscale_decay_loops, nloop))
     atom_radii = packmol_system.radscale .* atom_radii_floor
 
     # CellListMap cutoff: set from the radii in use (see `_distance_cutoff`),
@@ -735,7 +741,7 @@ function _packmol(
         # behavior, not a stall response. A molecule relocated by movebad!
         # below is not given its own separate, restarted schedule — its
         # atoms decay along with everyone else's.
-        current_radscale = _radscale_at(loop + 1, packmol_system.radscale, radscale_decay_loops)
+        current_radscale = _radscale_at(loop + 1, packmol_system.radscale, decay_loops)
         for iat in eachindex(atom_radii)
             atom_radii[iat] = current_radscale * atom_radii_floor[iat]
         end
