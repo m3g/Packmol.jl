@@ -163,7 +163,7 @@ excess).
 
 `active_set` (default `true`): after the first loop, optimize only the
 molecules with overlaps or constraint violations that may block the convergence, and the
-molecules with an atom within `active_radius` (default `6 * tolerance`) of them, with the
+molecules with an atom within `active_radius` (default `2 * tolerance`) of them, with the
 other molecules frozen. Used in a loop when the atoms of the active molecules are at most
 `active_max_fraction` (default `0.7`) of the atoms of the free molecules; otherwise the
 whole system is optimized. Each loop reports the fractions of active molecules and atoms.
@@ -257,7 +257,7 @@ function _packmol(
     restart::Bool=false,
     rotation_scaling::Bool=true,
     active_set::Bool=true,
-    active_radius::Real=6 * packmol_system.tolerance,
+    active_radius::Real=2 * packmol_system.tolerance,
     active_max_fraction::Real=0.7,
 ) where {D,T}
     # Keyword arguments take precedence over the input file's `nloop`/`maxit`

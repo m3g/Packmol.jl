@@ -292,7 +292,7 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] Active subsystem (`src/active_set.jl`, `packmol(sys; active_set=true)`, the default): each loop
       (loop 0 too, which matters for restarts) optimizes only the bad molecules (those that do not satisfy
       the convergence criterion: `unconverged_mols` of the evaluations at the start and end of the loop)
-      and the molecules with an atom within `active_radius` (6 tolerance) of them, the others frozen;
+      and the molecules with an atom within `active_radius` (2 tolerance; 6 made 74% of the exosome active, from scattered bad waters) of them, the others frozen;
       two cell lists: the active atoms (rebuilt every evaluation) and the frozen atoms (a cross list,
       built once per loop). Whole system when the active atoms exceed `active_max_fraction` (0.7) of
       the free atoms. With short loops (`maxit` 30 default, no stall detection: removed), tuned on the
