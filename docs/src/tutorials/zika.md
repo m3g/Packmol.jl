@@ -65,7 +65,7 @@ Main.input_file("files/zika/zika.inp")
 ### Check the initial placement first
 
 For a system of this size, checking the initial placement is essential: the packing takes
-several minutes, but the initial placement takes about 30 seconds (see
+about a minute, but the initial placement takes about 15 seconds (see
 [Checking the initial placement](@ref check_initial_placement)). Uncomment the
 `check_initial_placement` line of the input file, and run it:
 
@@ -88,8 +88,8 @@ Only then comment the line again, and run the packing.
 packmol zika.inp
 ```
 
-The packing converged in 2 loops, which took 7 minutes with 14 threads, using 3.7 GB
-of memory (the check of the initial approximation takes 30 seconds and 3.6 GB). By
+The packing converged in 16 to 23 loops, which took about 50 seconds with 14 threads, using
+3.5 GB of memory (the check of the initial approximation takes 15 seconds and 3.5 GB). By
 default, the `packmol` executable
 uses all the cores of the machine; `packmol -t N` limits it to `N` threads.
 

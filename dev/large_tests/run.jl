@@ -21,18 +21,21 @@ const root = normpath(joinpath(@__DIR__, "..", ".."))
 const tutorials = joinpath(root, "docs", "src", "tutorials", "files")
 
 # name, directory of the input (a function: the artifacts are downloaded only when needed),
-# input file, approximate time (14 threads)
+# input file (or input files, packed one after the other in the same directory, the last
+# one checked and reported, the time being that of all of them), approximate time
+# (14 threads)
 const cases = [
-    ("protein_glycerol", () -> joinpath(tutorials, "protein_glycerol"), "protein_glycerol.inp", "2 s"),
+    ("protein_glycerol", () -> joinpath(tutorials, "protein_glycerol"), "protein_glycerol.inp", "< 1 s"),
     ("water_drop", () -> joinpath(tutorials, "water_drop"), "drop.inp", "< 1 s"),
     ("gaussian_drop", () -> joinpath(tutorials, "water_drop"), "gaussian_drop.inp", "< 1 s"),
     ("zeolite", () -> joinpath(tutorials, "zeolite"), "zeolite.inp", "< 1 s"),
     ("polymer_dmf", () -> joinpath(tutorials, "polymer_dmf"), "polymer_dmf.inp", "< 1 s"),
     ("nanotube", () -> joinpath(tutorials, "nanotube"), "nanotube.inp", "< 1 s"),
-    ("bilayer", () -> joinpath(tutorials, "bilayer"), "bilayer.inp", "1-2 min"),
-    ("nanoliposome_small", () -> joinpath(tutorials, "nanoliposome"), "small.inp", "15-30 min"),
-    ("nanoliposome_large", () -> joinpath(tutorials, "nanoliposome"), "large.inp", "1.5-2 h"),
-    ("zika", () -> artifact"packmol_zika", "zika.inp", "1 h"),
+    ("bilayer", () -> joinpath(tutorials, "bilayer"), "bilayer.inp", "2 s"),
+    ("nanoliposome_small", () -> joinpath(tutorials, "nanoliposome"), "small.inp", "20 s"),
+    ("nanoliposome_large", () -> joinpath(tutorials, "nanoliposome"), "large.inp", "30 s"),
+    ("zika", () -> artifact"packmol_zika", "zika.inp", "1 min"),
+    ("exosome", () -> artifact"packmol_exosome", ["proteins.inp", "exosome.inp"], "30 min"),
 ]
 
 function parse_args(args)
@@ -75,26 +78,32 @@ function minimum_intermolecular_distance(sys)
     return inv_dmin > 0 ? 1 / inv_dmin : sys.tolerance
 end
 
-function run_case(name, dir, input, workdir, seed)
+function run_case(name, dir, inputs, workdir, seed)
     dir = dir()
-    isfile(joinpath(dir, input)) || return nothing
+    inputs = inputs isa AbstractString ? [inputs] : inputs
+    all(input -> isfile(joinpath(dir, input)), inputs) || return nothing
     work = joinpath(workdir, name)
     rm(work; recursive = true, force = true)
     cp(dir, work)
     chmod(work, 0o755; recursive = true)
-    inp = joinpath(work, input)
-    if !isnothing(seed)
-        lines = filter(l -> !occursin(r"^\s*seed\b", l), readlines(inp))
-        write(inp, "seed $seed\n" * join(lines, '\n') * '\n')
-    end
-    log = joinpath(work, replace(input, ".inp" => ".log"))
-    sys, time = open(log, "w") do io
-        redirect_stdout(io) do
-            redirect_stderr(io) do
-                t = @elapsed s = Packmol.packmol(inp)
-                (s, t)
+    sys, time, log = nothing, 0.0, ""
+    for input in inputs
+        inp = joinpath(work, input)
+        if !isnothing(seed)
+            lines = filter(l -> !occursin(r"^\s*seed\b", l), readlines(inp))
+            write(inp, "seed $seed\n" * join(lines, '\n') * '\n')
+        end
+        log = joinpath(work, replace(input, ".inp" => ".log"))
+        sys, t = open(log, "w") do io
+            redirect_stdout(io) do
+                redirect_stderr(io) do
+                    t = @elapsed s = Packmol.packmol(inp)
+                    (s, t)
+                end
             end
         end
+        time += t
+        sys.status == :packing_ready || break
     end
     s = read(log, String)
     loops = count("Starting packing loop", s)
@@ -123,7 +132,7 @@ function main(args)
     opts = parse_args(args)
     if opts.list
         for (name, _, input, t) in cases
-            println(rpad(name, 22), rpad(input, 24), t)
+            println(rpad(name, 22), rpad(input isa AbstractString ? input : join(input, ", "), 30), t)
         end
         return true
     end

@@ -6,3 +6,12 @@ lazy = true
     [[packmol_zika.download]]
     url = "https://github.com/m3g/MolSimTestFiles/releases/download/packmol_zika-v2/packmol_zika.tar.gz"
     sha256 = "c736719c3a210ceedf790dade5e5903885d7a845e01e98c004ef6b3694d749af"
+
+# The exosome tutorial (13.6 million atoms), from https://github.com/m3g/MolSimTestFiles (downloaded only when needed)
+[packmol_exosome]
+git-tree-sha1 = "1d09e67cb02c3d8ef77d564352693e59f14a1610"
+lazy = true
+
+    [[packmol_exosome.download]]
+    url = "https://github.com/m3g/MolSimTestFiles/releases/download/packmol_exosome-v1/packmol_exosome.tar.gz"
+    sha256 = "d444c4f6c6e3626b4b37668644a1780b665730f6b292c22bcd5000f22b622dfe"

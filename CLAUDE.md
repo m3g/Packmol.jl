@@ -115,7 +115,9 @@ fraction of a second) and shows it with `PDBTools.visualize` (structure files co
 `docs/src/tutorials/` holds the classic Packmol examples (water–urea, interface, bilayer,
 vesicle, solvated protein; the bilayer and the vesicle redone with the all-atom POPC of the
 `packmol_lipids` set of MolSimTestFiles, the vesicle as two nanoliposomes in octahedral cells) and others (liquid crystals of 5CB with
-`constrain_rotation`: a nematic phase and a cholesteric phase), each with a command-line and a Julia section; keep
+`constrain_rotation`: a nematic phase and a cholesteric phase; the Zika virion and the all-atom exosome,
+13.6 million atoms, whose files are the `packmol_zika` and `packmol_exosome` sets of MolSimTestFiles, the
+exosome's built by `dev/tutorials/exosome.jl` and its images by `dev/tutorials/exosome_images.jl`), each with a command-line and a Julia section; keep
 both paths equivalent when changing the input syntax or the Julia API.
 Tutorial images (`docs/src/tutorials/images/*.webp`) are rendered with VMD by the scripts of
 `dev/tutorials/` (`render.jl`; `classic.jl` for the classic examples, `lipids.jl` for the
@@ -148,7 +150,7 @@ Tests use `setup=[TestFiles]` and `TestFiles.test_file(name)` (`test/test_files.
 copy of the set, since tests write output files next to their inputs. To add or change files,
 publish a new release of the set (see the MolSimTestFiles README) and update `Artifacts.toml`.
 
-The large examples (the tutorials, from seconds to hours: nanoliposomes, Zika virion) are a
+The large examples (the tutorials, from seconds to half an hour: nanoliposomes, Zika virion, exosome) are a
 separate suite, `dev/large_tests/` (plain scripts, not `@testitem`s, so that the test suite
 does not pick them up; see its README). Run it only when the maintainer asks (e.g. before a
 release) or when studying one of those systems, one case at a time, never alongside other

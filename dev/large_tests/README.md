@@ -25,6 +25,8 @@ time, minimum distance between molecules, at most the tolerance), which is kept 
 repository to compare versions: commit it after a run on a clean working tree.
 
 The inputs are those of `docs/src/tutorials/files` (cases whose input is missing are
-skipped) and the Zika virion of the `packmol_zika` set of
-[MolSimTestFiles](https://github.com/m3g/MolSimTestFiles), downloaded when first needed
-(a 7 MB download, `Artifacts.toml`).
+skipped), the Zika virion of the `packmol_zika` set and the exosome of the
+`packmol_exosome` set of [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles),
+downloaded when first needed (7 MB and 1 MB downloads, `Artifacts.toml`). The exosome
+(13.6 million atoms, packed in two steps: the proteins, then the rest) takes about 35
+minutes and 24 GB of memory.
