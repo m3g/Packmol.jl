@@ -525,7 +525,7 @@ function _packmol(
         f_true_loop_start = fg!(g0, x, cl_system, packmol_system, atom_positions, free_mol_indices, atom_radii_floor)
 
         # Run a short optimization (maxit iterations per loop)
-        progress_meter = ProgressBar(maxit; desc=" Iterations: ", barlen=47)
+        progress_meter = ProgressBar(maxit; desc="  Iterations: ", barlen=46)
         # On an active subset of the system (see active_set.jl): the bad molecules and
         # their neighbors, from the contributions to the objective function at the
         # start of the loop (`cl_system.fg.fmol`, of the evaluation above)
@@ -541,9 +541,10 @@ function _packmol(
             nothing, 0, 0
         end
         if active_set && loop > 0
-            @_printf("  Active molecules: %d of %d (%.2f%%), atoms: %d of %d (%.2f%%): %s\n\n",
-                nactive, nfree, 100 * nactive / nfree, nactive_atoms, nfree_atoms, 100 * nactive_atoms / nfree_atoms,
-                isnothing(sub) ? "above active_max_fraction, optimizing the whole system" : "optimizing the active subsystem")
+            @_printf("  Active molecules: %d of %d (%.2f%%)\n", nactive, nfree, 100 * nactive / nfree)
+            @_printf("  Active atoms: %d of %d (%.2f%%)\n", nactive_atoms, nfree_atoms, 100 * nactive_atoms / nfree_atoms)
+            _println(isnothing(sub) ? "  Above active_max_fraction: optimizing the whole system" : "  Optimizing the active subsystem")
+            _println()
         end
         optresult = if isnothing(sub)
             if scale_rotations
@@ -681,9 +682,9 @@ function _packmol(
             "converged"
         elseif optresult.ierr == 0
             # SPGBox's own convergence criterion (small projected gradient)
-            "optimizer converged internally (small gradient), short of " *
-                (!tol_ok && !const_ok ? "the distance tolerance and the constraints" :
-                    !tol_ok ? "the distance tolerance" : "the constraints")
+            "small gradient, " *
+                (!tol_ok && !const_ok ? "tolerance and constraints not satisfied" :
+                    !tol_ok ? "tolerance not satisfied" : "constraints not satisfied")
         elseif optresult.ierr == 2
             "function-evaluation budget (10 maxit) reached"
         else
@@ -691,13 +692,13 @@ function _packmol(
         end
 
         @_printf("\n  Packing loop ended: %s\n", loop_end_reason)
+        _print_overlaps(packmol_system, overlaps) && _println()
         @_printf("  Function value from last loop: f = %10.5e\n", f_true_loop_end)
         @_printf("  Best function value before: f = %10.5e\n", bestf_before_loop)
         @_printf("  Improvement from best function value: %8.2f %%\n", fimprov)
         @_printf("  Improvement within this loop: %8.2f %%\n", fimp_within_loop)
         @_printf("  Minimum distance: %12s\n", _format_dmin(dmin, cl_system.cutoff))
         @_printf("  Maximum violation of the constraints: %10.5e\n", max_const)
-        _print_overlaps(packmol_system, overlaps)
 
         if tol_ok && const_ok
             _println()
@@ -860,11 +861,11 @@ function packmol_callback(
     # values above only update once SPGBox accepts an iteration, so nfeval shows
     # a slow line search, and a blown-up or NaN gnorm a numerical problem.
     next!(progress_meter; showvalues = (
-        (" Function value", f),
-        (" Minimum distance", _format_dmin(dmin, cl_system.cutoff)),
-        (" Maximum constraint violation", max_const),
-        (" Function evaluations", isnothing(nfeval) ? nfeval : "$nfeval / $nfevalmax"),
-        (" Projected gradient norm", gnorm),
+        ("Function value", isnothing(f) ? "" : @sprintf("%.5e", f)),
+        ("Minimum distance", _format_dmin(dmin, cl_system.cutoff)),
+        ("Maximum constraint violation", @sprintf("%.5e", max_const)),
+        ("Function evaluations", isnothing(nfeval) ? "" : "$nfeval / $nfevalmax"),
+        ("Projected gradient norm", isnothing(gnorm) ? "" : @sprintf("%.5e", gnorm)),
     ))
     tol_ok = cl_system.fg.max_overlap < tolerance_precision
     const_ok = max_const < constraint_precision
@@ -877,7 +878,7 @@ end
 #
 function _print_overlaps(packmol_system::PackmolSystem, overlaps::Matrix{Int}; nshow::Int=6)
     total = sum(overlaps)
-    total == 0 && return nothing
+    total == 0 && return false
     @_printf("  Overlapping pairs of atoms: %d, between molecules of types:\n", total)
     pairs = Tuple{Int,Int,Int}[]
     for j in axes(overlaps, 2), i in 1:j
@@ -891,7 +892,7 @@ function _print_overlaps(packmol_system::PackmolSystem, overlaps::Matrix{Int}; n
     if length(pairs) > nshow
         @_printf("    %10d  (other pairs of types)\n", sum(first(p) for p in pairs[nshow+1:end]))
     end
-    return nothing
+    return true
 end
 function _type_label(packmol_system::PackmolSystem, itype::Int)
     st = packmol_system.structure_types[itype]
