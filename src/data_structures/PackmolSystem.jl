@@ -16,11 +16,6 @@
     structure_types::Vector{StructureType{D,T}} = StructureType{D,T}[]
     tolerance_precision::T = 1e-1
     constraint_precision::T = 1e-2
-    # Relative-improvement threshold below which the stall detector counts a
-    # plateau iteration in either the minimum interatomic distance or the
-    # maximum constraint violation during a packing chunk (see
-    # packmol_main.jl).
-    stall_tolerance::T = 1e-3 * tolerance_precision
     # Packing loops and optimizer iterations per loop (input keywords `nloop`
     # and `maxit`): `nothing` means unset, and the keyword arguments of
     # `packmol(::PackmolSystem)` take precedence over these.
@@ -279,8 +274,6 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.tolerance_precision = _parse_value(T, "tolerance_precision", val)
     elseif keyword == "constraint_precision"
         sys.constraint_precision = _parse_value(T, "constraint_precision", val)
-    elseif keyword == "stall_tolerance"
-        sys.stall_tolerance = _parse_value(T, "stall_tolerance", val)
     elseif keyword == "maxit"
         sys.max_iter = _parse_value(Int, "maxit", val)
     elseif keyword == "nloop"
@@ -357,6 +350,7 @@ end
 # so that old input files still run, with a warning that they are ignored.
 const packmol_legacy_keywords = Dict{String,String}(
     "fscale" => "fscale is a deprecated keyword and was ignored.",
+    "stall_tolerance" => "stall_tolerance is a deprecated keyword and was ignored (the packing loops are short and are not cut on stalls).",
     "fbins" => "fbins is a deprecated keyword and was ignored.",
     "iprint1" => "iprint1 is a deprecated keyword and was ignored.",
     "iprint2" => "iprint2 is a deprecated keyword and was ignored.",
@@ -394,7 +388,7 @@ const packmol_unimplemented_keywords = Dict{String,String}(
 # Global keywords (see `_set_input_keyword!` and `_read_packmol_input`)
 const _global_keywords = (
     "filetype", "output", "tolerance", "radscale", "discale", "tolerance_precision",
-    "constraint_precision", "stall_tolerance", "maxit", "nloop", "movefrac", "nthreads", "periodic_boundary_style", "max_random_init",
+    "constraint_precision", "maxit", "nloop", "movefrac", "nthreads", "periodic_boundary_style", "max_random_init",
     "adjust_constraints_on_init", "add_amber_ter", "amber_ter_preserve", "add_box_sides",
     "ignore_conect", "seed", "avoid_overlap",
     "check_initial_placement", "check", "continue_failed_initial_packing", "pbc", "unitcell",
@@ -444,7 +438,6 @@ end
 
 function _read_packmol_input(lines::Vector{String}, input_file::String, input_dir::String, ::Val{D}, ::Type{T}) where {D,T}
     sys = PackmolSystem{D,T}(; input_file, output_file="")
-    stall_tolerance_set = false
     structure_section = false
     for line in lines
         line = _strip_comment(line)
@@ -473,7 +466,6 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
         # appear on their own line with nothing after them; an empty string
         # is passed through for those.
         if _set_input_keyword!(sys, keyword, isempty(values) ? "" : first(values))
-            stall_tolerance_set |= keyword == "stall_tolerance"
             continue
         elseif haskey(packmol_legacy_keywords, keyword)
             _warn(packmol_legacy_keywords[keyword])
@@ -529,11 +521,6 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
     end
     if structure_section
         throw(ArgumentError("Structure block not closed with 'end structure'"))
-    end
-    # The default stall tolerance is relative to the tolerance precision, which
-    # might have been set in the input file.
-    if !stall_tolerance_set
-        sys.stall_tolerance = T(1e-3) * sys.tolerance_precision
     end
     # As the structure files, the other files named in the input file are
     # relative to its directory (an absolute path is kept as is by `joinpath`).

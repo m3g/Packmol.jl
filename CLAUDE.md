@@ -189,7 +189,7 @@ These are the building blocks everything else depends on.
 #### Input Parser
 - [x] Global keywords: `tolerance`, `output`, `filetype`, `seed`, `maxit`, `avoid_overlap`,
       `add_amber_ter`, `amber_ter_preserve`, `add_box_sides`, `connect`, `tolerance_precision`,
-      `constraint_precision`, `stall_tolerance`
+      `constraint_precision`
 - [x] Structure blocks: `structure/end structure`, `number`, `fixed`, `center`, `radius`
 - [x] Constraint parsing: `inside/outside box`, `inside/outside cube`, `inside/outside sphere`,
       `inside/outside cylinder`, `inside/outside ellipsoid`, `above/over/below plane`
@@ -201,7 +201,7 @@ These are the building blocks everything else depends on.
 - [x] Inline `#` comments stripped (as Fortran)
 - [x] Deprecated Fortran keywords (`fscale`, `fbins`, `precision`, `sidemax`, `maxmove`, `nloop0`,
       `disable_movebad`, `writecrd`, `use_short_tol`/`short_*`, `iprint*`, `randominitialpoint`, `optimization_print_level`,
-      `chkgrad`, `writeout`, `writebad`, `restart_to`) accepted with a warning
+      `chkgrad`, `writeout`, `writebad`, `restart_to`, `stall_tolerance`) accepted with a warning
 - [x] `movefrac` (`packmol(sys; movefrac)` takes precedence), `movebadrandom` (deprecated: bad molecules
       are always moved randomly), `segid` (written to PDB columns 73-76)
 - [x] CONECT options: `connect yes|no` (global and per structure), `ignore_conect`; `non_standard_conect`,
@@ -292,7 +292,7 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       and the molecules with an atom within `active_radius` (6 tolerance) of them, the others frozen;
       two cell lists: the active atoms (rebuilt every evaluation) and the frozen atoms (a cross list,
       built once per loop). Whole system when the active atoms exceed `active_max_fraction` (0.7) of
-      the free atoms. With short loops (`maxit` 30 default, `n_stall_iterations` = maxit), tuned on the
+      the free atoms. With short loops (`maxit` 30 default, no stall detection: removed), tuned on the
       large nanoliposome: 2.6x faster than whole-system loops of maxit 800.
       Recomputing the subsystem within a loop (every N iterations) was tried: never faster.
 - [x] Rotations scaled by the inertia of each molecule (`src/rigid_body/rotation_metric.jl`): in each

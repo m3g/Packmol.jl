@@ -13,7 +13,6 @@
 | `maxit <int>` | Optimizer iterations per packing loop (default `30`; short loops, in which the overlapping molecules are moved often, pack fastest). The `maxit` keyword argument of [`packmol`](@ref) takes precedence. |
 | `radscale <value>` | Loose-start radius scale factor (see [`packmol`](@ref)): the radii of the atoms are multiplied by it at the start of the packing, decaying to their values along the packing loops. Default `1.0` (no scaling); a larger value (e.g. `1.2`) can be faster in systems that are not dense. `discale` is accepted as a legacy alias. |
 | `tolerance_precision <value>`, `constraint_precision <value>` | Convergence tolerances for the distance and constraint checks. |
-| `stall_tolerance <value>` | Relative-improvement threshold below which a packing chunk is considered stalled and cut short (default `1e-2 * tolerance_precision`). |
 | `max_random_init <int>` | Best-of-`N` random placements tried per molecule during initialization. |
 | `adjust_constraints_on_init yes\|no` | Whether to run constraint-only pre-optimization before packing. |
 | `avoid_overlap yes\|no` | Whether the initial placement avoids overlaps with the fixed molecules (default `yes`). The molecules moved during the packing always avoid them. |
