@@ -128,7 +128,7 @@ Main.input_file("files/liquid_crystal/cholesteric.inp")
 packmol cholesteric.inp
 ```
 
-It packs in about 10 seconds with 14 threads.
+It packs in about a second with 14 threads.
 
 ### Julia
 

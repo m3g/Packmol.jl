@@ -59,7 +59,7 @@ and run the packing.
 packmol protein_glycerol.inp
 ```
 
-The packing (about 48 thousand atoms) takes about 2 seconds.
+The packing (about 48 thousand atoms) takes about half a second.
 
 ## Julia
 

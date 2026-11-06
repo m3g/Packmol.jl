@@ -19,10 +19,11 @@ can be built from target densities and concentrations (recipes). See the
 
 Relative to the legacy (Fortran) Packmol:
 
-- **Much faster**: 3 to 16 times faster in a single thread, and multithreaded, up to about
-  40 times faster on a multicore computer (see the table below). Large systems are packed in
-  minutes: nanoliposomes of 350 and 600 thousand atoms in 3 and 10 minutes, and a whole
-  Zika virion (2.2 million particles) in 7 minutes, with 14 threads.
+- **Much faster**: 2 to 16 times faster in a single thread, and multithreaded, up to about
+  45 times faster on a multicore computer (see the table below). Large systems are packed in
+  seconds or minutes: nanoliposomes of 350 and 600 thousand atoms in 16 and 31 seconds, a
+  whole Zika virion (2.2 million particles) in 47 seconds, and an exosome of 13.6 million
+  atoms in 33 minutes, with 14 threads.
 - **Periodic boundary conditions** in orthorhombic, triclinic, rhombic dodecahedral and
   truncated octahedral cells.
 - **New constraints**: curved surfaces (Gaussian, waves, exponentials), and
@@ -43,10 +44,10 @@ Packmol.jl, and of Packmol 21.1.4, on an Intel Core i9-14900KF):
 
 | Input | Legacy Packmol | Packmol.jl, 1 thread | Packmol.jl, 14 threads |
 |:--|--:|--:|--:|
-| water and urea (`mixture`) | 1.4 | 0.14 | 0.16 |
-| solvated protein (`solvprotein`) | 13.1 | 1.1 | 0.48 |
-| lipid bilayer (`bilayer`) | 26.1 | 1.7 | 0.73 |
-| spherical vesicle (`spherical`) | 36.3 | 10.2 | 0.92 |
+| water and urea (`mixture`) | 1.4 | 0.12 | 0.11 |
+| solvated protein (`solvprotein`) | 13.1 | 0.81 | 0.37 |
+| lipid bilayer (`bilayer`) | 26.1 | 2.3 | 0.57 |
+| spherical vesicle (`spherical`) | 36.3 | 17.4 | 2.6 |
 
 The input files of the legacy Packmol run unchanged, with few exceptions: see
 [Migrating from legacy Packmol](https://m3g.github.io/Packmol.jl/stable/migrating/).
