@@ -141,9 +141,8 @@ and `packmol_system.movefrac`).
 `writeout` (default `30`): minimum time, in seconds, between two writes of the output
 file during the packing (the best solution so far is written after a loop that improves
 it, if the last write, or the start of the packing, was at least `writeout` seconds
-before; the final solution is
-always written). Takes precedence over `packmol_system.writeout` (the input keyword
-`writeout`).
+before; the final solution is always written). Takes precedence over
+`packmol_system.writeout` (the input keyword `writeout`).
 
 `radscale_decay_loops` (default: `nloop`): number of loops in which the radii of the atoms,
 multiplied by `packmol_system.radscale` at the start, decay exponentially to their values
