@@ -471,3 +471,25 @@ end
     sys.radscale = 2.0
     @test packmol(sys; nloop=200, iprint=1000, seed=3, radscale_decay_loops=5).status == :packing_ready
 end
+
+@testitem "writeout: minimum time between writes of the output" setup = [TestFiles] begin
+    water = TestFiles.test_file("structure_files/water.pdb")
+    function run(; kargs...)
+        a = structure_type(water; number = 300, constraints = [InsideBox([0., 0., 0.], [21., 21., 21.])])
+        output = tempname() * ".pdb"
+        sys = PackmolSystem([a]; tolerance = 2.0, output)
+        out = tempname()
+        open(out, "w") do io
+            redirect_stdout(io) do
+                packmol(sys; seed = 1, maxit = 5, kargs...)
+            end
+        end
+        return sys, output, count("Current solution written", read(out, String))
+    end
+    # every improved loop writes the output (maxit = 5: several loops)
+    sys, output, nwrites = run(writeout = 0)
+    @test sys.status == :packing_ready && isfile(output) && nwrites > 0
+    # no intermediate writes; the final solution is written
+    sys, output, nwrites = run(writeout = 1e6)
+    @test sys.status == :packing_ready && isfile(output) && nwrites == 0
+end

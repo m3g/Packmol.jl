@@ -16,6 +16,9 @@
     # Loops for the radii to decay from `radscale` to 1.0 (input keyword
     # `radscale_decay_loops`): `nothing` means `nloop`.
     radscale_decay_loops::Union{Nothing,Int} = nothing
+    # Minimum time, in seconds, between two writes of the output file during the
+    # packing (input keyword `writeout`, as in Fortran Packmol): `nothing` means 30 s.
+    writeout::Union{Nothing,T} = nothing
     structure_types::Vector{StructureType{D,T}} = StructureType{D,T}[]
     tolerance_precision::T = 1e-1
     constraint_precision::T = 1e-2
@@ -270,6 +273,8 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.tolerance = _parse_value(T, "tolerance", val)
     elseif keyword == "radscale"
         sys.radscale = _parse_value(T, "radscale", val)
+    elseif keyword == "writeout"
+        sys.writeout = _parse_value(T, "writeout", val)
     elseif keyword == "radscale_decay_loops"
         sys.radscale_decay_loops = _parse_value(Int, "radscale_decay_loops", val)
     elseif keyword == "discale"
@@ -379,7 +384,6 @@ const packmol_legacy_keywords = Dict{String,String}(
     "randominitialpoint" => "randominitialpoint is a deprecated keyword and was ignored.",
     "optimization_print_level" => "optimization_print_level is a deprecated keyword and was ignored.",
     "chkgrad" => "chkgrad is a deprecated keyword and was ignored.",
-    "writeout" => "writeout is a deprecated keyword and was ignored (the output is written after every loop that improves the solution).",
     "writebad" => "writebad is a deprecated keyword and was ignored (the output is written after every loop that improves the solution).",
 )
 
@@ -392,7 +396,7 @@ const packmol_unimplemented_keywords = Dict{String,String}(
 
 # Global keywords (see `_set_input_keyword!` and `_read_packmol_input`)
 const _global_keywords = (
-    "filetype", "output", "tolerance", "radscale", "radscale_decay_loops", "discale", "tolerance_precision",
+    "filetype", "output", "tolerance", "radscale", "radscale_decay_loops", "writeout", "discale", "tolerance_precision",
     "constraint_precision", "maxit", "nloop", "movefrac", "nthreads", "periodic_boundary_style", "max_random_init",
     "adjust_constraints_on_init", "add_amber_ter", "amber_ter_preserve", "add_box_sides",
     "ignore_conect", "seed", "avoid_overlap",

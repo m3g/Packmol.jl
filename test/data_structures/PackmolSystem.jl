@@ -170,7 +170,7 @@ end
             read_packmol_input(input)
         end
     end
-    for keyword in ("randominitialpoint", "optimization_print_level", "chkgrad", "writeout", "writebad")
+    for keyword in ("randominitialpoint", "optimization_print_level", "chkgrad", "writebad")
         @test occursin("$keyword is a deprecated keyword and was ignored", read(warnings, String))
     end
     @test sys.tolerance == 2.0
@@ -178,6 +178,7 @@ end
     @test sys.max_iter == 15
     @test sys.movefrac == 0.1
     @test sys.nthreads == 2
+    @test sys.writeout == 10
     @test sys.structure_types[1].segid == "WAT"
     @test sys.nmols == 10
     @test length(sys.structure_types[1].constraints) == 1

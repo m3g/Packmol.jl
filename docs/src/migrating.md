@@ -65,8 +65,7 @@ run:
 - `use_short_tol`, `short_tol_dist`, `short_tol_scale`, `short_radius`,
   `short_radius_scale`;
 - `randominitialpoint`, `optimization_print_level`, `chkgrad`;
-- `writeout` and `writebad`: the output file is written after every loop that improves
-  the solution, and the best solution is written when the packing does not converge;
+- `writebad`: the best solution is written when the packing does not converge;
 - `restart_to`, `writecrd` (CHARMM CRD output), `non_standard_conect`,
   `hexadecimal_indices` (atom indices above 99999 are always written in hexadecimal);
 - `nloop` inside a structure block (use the global `nloop`).

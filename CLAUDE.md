@@ -201,7 +201,7 @@ These are the building blocks everything else depends on.
 - [x] Inline `#` comments stripped (as Fortran)
 - [x] Deprecated Fortran keywords (`fscale`, `fbins`, `precision`, `sidemax`, `maxmove`, `nloop0`,
       `disable_movebad`, `writecrd`, `use_short_tol`/`short_*`, `iprint*`, `randominitialpoint`, `optimization_print_level`,
-      `chkgrad`, `writeout`, `writebad`, `restart_to`, `stall_tolerance`) accepted with a warning
+      `chkgrad`, `writebad`, `restart_to`, `stall_tolerance`) accepted with a warning
 - [x] `movefrac` (`packmol(sys; movefrac)` takes precedence), `movebadrandom` (deprecated: bad molecules
       are always moved randomly), `segid` (written to PDB columns 73-76)
 - [x] CONECT options: `connect yes|no` (global and per structure), `ignore_conect`; `non_standard_conect`,
@@ -302,7 +302,8 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       packs with the Euler angles. Solver experiments (GENCAN, L-BFGS: no gain) in `dev/solvers/`.
 - [x] `<output>_FORCED`: constraint-only adjustment of the best solution, written when packing fails
 - [ ] Convergence criteria based on `tolerance_precision` and `constraint_precision`
-- [N] `writeout` as a time interval and `writebad` (the output is written after every improved loop)
+- [x] `writeout`: minimum seconds between writes of the output during the packing (default 30, as Fortran)
+- [N] `writebad` (the best solution is written when the packing fails)
 
 **Note on optimizer choice**: The Fortran Packmol uses GENCAN (large-scale bound-constrained
 optimizer with truncated Newton steps). The Julia version uses SPGBox (spectral projected gradient).

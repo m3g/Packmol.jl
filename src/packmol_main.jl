@@ -138,6 +138,13 @@ molecules of each type moved per loop, default `0.05`) take precedence over the
 values set in the input file (`packmol_system.nloop`, `packmol_system.max_iter`
 and `packmol_system.movefrac`).
 
+`writeout` (default `30`): minimum time, in seconds, between two writes of the output
+file during the packing (the best solution so far is written after a loop that improves
+it, if the last write, or the start of the packing, was at least `writeout` seconds
+before; the final solution is
+always written). Takes precedence over `packmol_system.writeout` (the input keyword
+`writeout`).
+
 `radscale_decay_loops` (default: `nloop`): number of loops in which the radii of the atoms,
 multiplied by `packmol_system.radscale` at the start, decay exponentially to their values
 (to within 0.1% of the initial excess). Takes precedence over
@@ -199,6 +206,7 @@ function _packmol(
     maxit::Union{Nothing,Int}=nothing,
     movefrac::Union{Nothing,Real}=nothing,
     radscale_decay_loops::Union{Nothing,Int}=nothing,
+    writeout::Union{Nothing,Real}=nothing,
     movebad_tolerance::T=T(0.10),
     seed::Int=packmol_system.seed,
     restart::Bool=false,
@@ -371,6 +379,9 @@ function _packmol(
     # radscale decays from packmol_system.radscale (at loop == 0) to 1.0 by
     # loop == radscale_decay_loops (default: nloop), the same for every atom.
     decay_loops = T(something(radscale_decay_loops, packmol_system.radscale_decay_loops, nloop))
+    # Minimum time between two writes of the output file during the packing
+    write_interval = Float64(something(writeout, packmol_system.writeout, 30))
+    last_write = time()
     atom_radii = packmol_system.radscale .* atom_radii_floor
 
     # CellListMap cutoff: set from the radii in use (see `_distance_cutoff`),
@@ -726,8 +737,10 @@ function _packmol(
         _println()
         _println(dash_line)
 
-        # Write best solution so far to output file
-        if improved && !isempty(packmol_system.output_file)
+        # Write best solution so far to output file (at most every `write_interval`
+        # seconds: writing a large system can take longer than a loop)
+        if improved && !isempty(packmol_system.output_file) && time() - last_write >= write_interval
+            last_write = time()
             saved_positions = packmol_system.molecule_positions
             packmol_system.molecule_positions = best_positions
             write_output(packmol_system)
