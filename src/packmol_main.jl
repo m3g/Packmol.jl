@@ -150,8 +150,8 @@ of the atoms that have the default one (`tolerance / 2`).
 The defaults: `nloop` `500`, `maxit` (optimizer iterations per loop) `30`, `movefrac`
 (maximum fraction of the molecules of each type moved per loop) `0.05`, `writeout`
 (minimum time, in seconds, between two writes of the output during the packing: the best
-solution so far is written after a loop that improves it, if the last write, or the start
-of the packing, was at least `writeout` seconds before; the final solution is always
+solution so far is written after a loop that improves it, if the end of the last write,
+or the start of the packing, was at least `writeout` seconds before; the final solution is always
 written) `30`, `nthreads` (maximum number of threads used) all the threads of the Julia
 session, and `radscale_decay_loops` `20`: the number of loops in which the radii of the
 atoms, multiplied at the start by the `radscale` of their structure type (see
@@ -792,13 +792,14 @@ function _packmol(
         _println(dash_line)
 
         # Write best solution so far to output file (at most every `write_interval`
-        # seconds: writing a large system can take longer than a loop)
+        # seconds after the end of the last write: writing a large system can take
+        # longer than a loop)
         if improved && !isempty(packmol_system.output_file) && time() - last_write >= write_interval
-            last_write = time()
             saved_positions = packmol_system.molecule_positions
             packmol_system.molecule_positions = best_positions
             write_output(packmol_system)
             packmol_system.molecule_positions = saved_positions
+            last_write = time()
             _println()
             _println("  Current solution written to file: ", packmol_system.output_file)
         end
