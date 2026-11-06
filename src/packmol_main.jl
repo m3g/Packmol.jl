@@ -824,7 +824,10 @@ function _packmol(
         # inflated atom_radii — via cl_system.fg.fmol, restored to that basis
         # just above — to pick and relocate molecules, and its own
         # exponential-probability-on-worst-fmol selection is unchanged).
-        do_movebad = fimp_within_loop < T(100) * movebad_tolerance
+        # Never after loop 0: it starts from the initial placement, and with inflated radii
+        # (radscale) it can increase the true objective function while it spreads the
+        # molecules apart, which is no sign of molecules that need to be moved.
+        do_movebad = loop > 0 && fimp_within_loop < T(100) * movebad_tolerance
         if do_movebad
             cm_min, cm_max = compute_cm_bounds(packmol_system)
             moved = movebad!(
