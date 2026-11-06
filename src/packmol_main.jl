@@ -144,8 +144,10 @@ it, if the last write, or the start of the packing, was at least `writeout` seco
 before; the final solution is always written). Takes precedence over
 `packmol_system.writeout` (the input keyword `writeout`).
 
-`radscale_decay_loops` (default: `nloop`): number of loops in which the radii of the atoms,
-multiplied by `packmol_system.radscale` at the start, decay exponentially to their values
+`radscale_decay_loops` (default: `20`): number of loops in which the radii of the atoms,
+multiplied at the start by the `radscale` of their structure type (see
+[`PackmolSystem`](@ref); by default 5.0 for the free molecules of more than 20 atoms, 1.0
+for the others), decay exponentially to their values
 (to within 0.1% of the initial excess). Takes precedence over
 `packmol_system.radscale_decay_loops` (the input keyword `radscale_decay_loops`).
 
@@ -375,13 +377,15 @@ function _packmol(
     for (iat, a) in enumerate(packmol_system.atoms)
         atom_radii_floor[iat] = a.radius
     end
-    # radscale decays from packmol_system.radscale (at loop == 0) to 1.0 by
-    # loop == radscale_decay_loops (default: nloop), the same for every atom.
-    decay_loops = T(something(radscale_decay_loops, packmol_system.radscale_decay_loops, nloop))
+    # The scale of the radii of each atom decays from that of its structure type
+    # (`_radscale`, at loop == 0) to 1.0 by loop == radscale_decay_loops (default: 20).
+    decay_loops = T(something(radscale_decay_loops, packmol_system.radscale_decay_loops, 20))
+    atom_radscale = T[_radscale(packmol_system, packmol_system.structure_types[a.structure_type_index])
+                      for a in packmol_system.atoms]
     # Minimum time between two writes of the output file during the packing
     write_interval = Float64(something(writeout, packmol_system.writeout, 30))
     last_write = time()
-    atom_radii = packmol_system.radscale .* atom_radii_floor
+    atom_radii = atom_radscale .* atom_radii_floor
 
     # CellListMap cutoff: set from the radii in use (see `_distance_cutoff`),
     # and updated whenever `atom_radii` shrinks along the radscale schedule.
@@ -435,7 +439,7 @@ function _packmol(
     # Fixed-structure overlap-check system and constraint-only scratch for
     # movebad! (see movebad.jl): built once here, since the fixed atoms never
     # move over the course of the run, and reused on every relocation.
-    movebad_overlap_tol = packmol_system.radscale * packmol_system.tolerance
+    movebad_overlap_tol = _global_radscale(packmol_system) * packmol_system.tolerance
     movebad_fixed_sys, movebad_fixed_lo, movebad_fixed_hi =
         _build_overlap_check_system(packmol_system, movebad_overlap_tol; avoid_overlap=true)
     movebad_fg_output = InteratomicDistanceFG{D,T}(packmol_system)
@@ -754,9 +758,8 @@ function _packmol(
         # behavior, not a stall response. A molecule relocated by movebad!
         # below is not given its own separate, restarted schedule — its
         # atoms decay along with everyone else's.
-        current_radscale = _radscale_at(loop + 1, packmol_system.radscale, decay_loops)
         for iat in eachindex(atom_radii)
-            atom_radii[iat] = current_radscale * atom_radii_floor[iat]
+            atom_radii[iat] = _radscale_at(loop + 1, atom_radscale[iat], decay_loops) * atom_radii_floor[iat]
         end
         CellListMap.update!(cl_system; cutoff=_distance_cutoff(atom_radii, atom_radii_floor, tol, volume, D))
         # Whether to move bad molecules is decided purely at this outer-loop

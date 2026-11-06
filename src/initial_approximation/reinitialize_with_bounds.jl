@@ -38,7 +38,7 @@ function reinitialize_with_bounds!(
     # `tolerance` away from the fixed structure still leaves them violating
     # that first, loosest loop, which just pushes the problem into the
     # (slower) main optimization instead of avoiding it here where it's cheap.
-    tol = packmol_system.radscale * packmol_system.tolerance
+    tol = _global_radscale(packmol_system) * packmol_system.tolerance
     has_pbc, uc, center = _typed_unitcell(packmol_system)
     max_natoms = maximum(st.natoms for st in packmol_system.structure_types if !st.fixed.fixed; init=0)
     ntasks = _nbatches()

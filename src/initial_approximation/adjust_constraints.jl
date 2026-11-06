@@ -124,7 +124,7 @@ function adjust_constraints!(
     # structure still leaves them violating that first, loosest loop, which
     # just pushes the problem into the (slower) main optimization instead of
     # avoiding it here where it's cheap.
-    overlap_tol = packmol_system.radscale * tol
+    overlap_tol = _global_radscale(packmol_system) * tol
 
     # Separate, single-molecule-at-a-time overlap-check system for the
     # movebad loop below: randomize_molecule! draws one trial molecule at a

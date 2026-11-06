@@ -50,12 +50,14 @@ end
     @test all(at.molecule_index == 1000 for at in sys.atoms[2998:3000])
     @test all(at.radius ≈ 1.0 for at in sys.atoms)
     @test length(sys.molecule_positions) == 1000
-    @test sys.radscale == 1.0
+    @test isnothing(sys.radscale)
+    # default scales: 1.0 for water (3 atoms)
+    @test Packmol._radscale(sys, sys.structure_types[1]) == 1.0
 
     sys = read_packmol_input(file; T=Float32)
     @test typeof(sys.tolerance) == Float32
     @test eltype(sys.molecule_positions) == Packmol.MoleculePosition{3,Float32}
-    @test sys.radscale ≈ 1.0
+    @test isnothing(sys.radscale)
 
     # 2D: Currently not supported
     # sys = read_packmol_input(file; D=2)

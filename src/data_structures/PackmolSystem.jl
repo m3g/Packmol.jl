@@ -8,13 +8,16 @@
     # `discale`): atom radii are inflated by this factor at the start of packing
     # (loop 0), then decayed exponentially toward 1.0 by loop `radscale_decay_loops`, the
     # same for every atom regardless of movebad! relocations (see
-    # `_radscale_at` and the outer packing loop in packmol_main.jl). 1.0 (no scaling) by
-    # default: in dense systems (water, bilayers, vesicles) the inflated problem has no
-    # solution, and a larger scale took up to 40 times more function evaluations; the
-    # lipid shells of a nanoliposome, less dense, packed faster with 1.2.
-    radscale::T = 1.0
+    # `_radscale_at` and the outer packing loop in packmol_main.jl). `nothing` (the
+    # default) means a scale for each structure type (`_radscale`): 5.0 for the free
+    # molecules of more than 20 atoms, which otherwise interpenetrate (lipids, liquid
+    # crystals: 2 to 6 times faster, and 18,000 lipids of an exosome that did not pack
+    # at 1.0 packed in 8 loops), 1.0 for the smaller ones and the fixed ones (water,
+    # ions, small solvents pack in a few loops at 1.0, and 4 to 8 times slower
+    # inflated). A `radscale` keyword in a structure block sets the scale of that type.
+    radscale::Union{Nothing,T} = nothing
     # Loops for the radii to decay from `radscale` to 1.0 (input keyword
-    # `radscale_decay_loops`): `nothing` means `nloop`.
+    # `radscale_decay_loops`): `nothing` means 20.
     radscale_decay_loops::Union{Nothing,Int} = nothing
     # Minimum time, in seconds, between two writes of the output file during the
     # packing (input keyword `writeout`, as in Fortran Packmol): `nothing` means 30 s.
@@ -576,3 +579,20 @@ function _read_packmol_input(lines::Vector{String}, input_file::String, input_di
     sys.atoms, sys.molecule_positions, sys.nmols = _atoms_and_molecule_positions(sys.structure_types)
     return sys
 end
+
+#
+# Scale of the radii of the atoms of a structure type at the start of the packing: the
+# `radscale` of the structure block, or the global one, or, if neither is set, 5.0 for
+# the free molecules of more than 20 atoms, and 1.0 for the others (see the `radscale`
+# field of `PackmolSystem`).
+#
+const _radscale_default = 5.0
+const _radscale_min_natoms = 21
+function _radscale(sys::PackmolSystem{D,T}, st::StructureType) where {D,T}
+    default = (!st.fixed.fixed && st.natoms >= _radscale_min_natoms) ? T(_radscale_default) : one(T)
+    return T(something(st.radscale, sys.radscale, default))
+end
+# Scale of the distance to the fixed atoms in the initial placement and in movebad!:
+# the global radscale, if set (1.0 otherwise: free molecules are placed and moved at
+# the tolerance distance from the fixed ones)
+_global_radscale(sys::PackmolSystem{D,T}) where {D,T} = T(something(sys.radscale, one(T)))
