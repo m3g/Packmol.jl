@@ -289,8 +289,9 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] SPGBox-based optimization (`packmol()` function)
 - [x] Multi-start strategy: initial placement + iterative repositioning of bad molecules (`movebad!`)
 - [x] `movefrac` control: fraction of bad molecules moved per iteration
-- [x] Active subsystem (`src/active_set.jl`, `packmol(sys; active_set=true)`, the default): after loop 0,
-      each loop optimizes only the bad molecules (fmol > min(tolerance_precision², constraint_precision))
+- [x] Active subsystem (`src/active_set.jl`, `packmol(sys; active_set=true)`, the default): each loop
+      (loop 0 too, which matters for restarts) optimizes only the bad molecules (those that do not satisfy
+      the convergence criterion: `unconverged_mols` of the evaluations at the start and end of the loop)
       and the molecules with an atom within `active_radius` (6 tolerance) of them, the others frozen;
       two cell lists: the active atoms (rebuilt every evaluation) and the frozen atoms (a cross list,
       built once per loop). Whole system when the active atoms exceed `active_max_fraction` (0.7) of

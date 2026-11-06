@@ -595,14 +595,14 @@ function _packmol(
         # On an active subset of the system (see active_set.jl): the bad molecules and
         # their neighbors, from the contributions to the objective function at the
         # start of the loop (`cl_system.fg.fmol`, of the evaluation above)
-        sub, nactive, nactive_atoms = if active_set && loop > 0
+        sub, nactive, nactive_atoms = if active_set
             _active_subsystem(packmol_system, mol_unconverged, free_mol_indices, cl_system.xpositions,
                 unitcell, cl_system.cutoff, mol_structure_type, mol_iat_first;
                 active_radius=T(active_radius), max_fraction=T(active_max_fraction))
         else
             nothing, 0, 0
         end
-        if active_set && loop > 0
+        if active_set
             @_printf("  Active molecules: %d of %d (%.2f%%)\n", nactive, nfree, 100 * nactive / nfree)
             @_printf("  Active atoms: %d of %d (%.2f%%)\n", nactive_atoms, nfree_atoms, 100 * nactive_atoms / nfree_atoms)
             _println(isnothing(sub) ? "  Above active_max_fraction: optimizing the whole system" : "  Optimizing the active subsystem")
