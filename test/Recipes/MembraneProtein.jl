@@ -47,7 +47,7 @@ end
     protein = joinpath(Packmol.RecipesDirectory, "test", "data", "integrin_tm.pdb")
     s = MembraneProtein(; protein, lipids = "POPC", margin = 6.0, solvent_margin = 6.0)
     out = tempname() * ".pdb"
-    sys = packmol(s; output = out, seed = 1, iprint = 0)
+    sys = packmol(s; output = out, seed = 1)
     @test sys.status == :packing_ready
     @test isfile(out)
 end

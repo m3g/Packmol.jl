@@ -157,7 +157,7 @@ end
     # cell, and were trapped: the packing took minutes, or failed, instead of < 1 s
     for seed in (4, 5, 7)
         sys = redirect_stdout(devnull) do
-            packmol(TestFiles.test_file("input_files/mixture_pbc.inp"); seed, iprint=1000)
+            packmol(TestFiles.test_file("input_files/mixture_pbc.inp"); seed)
         end
         @test sys.status == :packing_ready
     end

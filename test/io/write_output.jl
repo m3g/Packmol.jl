@@ -242,7 +242,7 @@ end
         unitcell=Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0),
         unitcell_center=zeros(3),
     )
-    @test packmol(sys; nloop=20, maxit=100, iprint=1000, seed=7).status == :packing_ready
+    @test packmol(sys; nloop=20, maxit=100, seed=7).status == :packing_ready
     source_pdb = write_output(sys)
 
     # `_align_molecule` recovers each molecule's (cm, angles) well enough
@@ -333,7 +333,7 @@ end
     st = structure_type(water; number=2, constraints=[InsideBox([0.0, 0.0, 0.0], [1.1, 1.1, 1.1])])
     sys = PackmolSystem([st]; output, tolerance=2.0, nloop=1, max_iter=2)
     best_positions = copy(sys.molecule_positions)
-    @test packmol(sys; iprint=1000).status == :failed_packing
+    @test packmol(sys).status == :failed_packing
     @test isfile(output)
     @test isfile(output * "_FORCED")
     rm(output; force=true)
@@ -341,7 +341,7 @@ end
     # No _FORCED output when the packing succeeds
     st = structure_type(water; number=2, constraints=[InsideBox([0.0, 0.0, 0.0], [20.0, 20.0, 20.0])])
     sys = PackmolSystem([st]; output, tolerance=2.0)
-    @test packmol(sys; iprint=1000).status == :packing_ready
+    @test packmol(sys).status == :packing_ready
     @test isfile(output)
     @test !isfile(output * "_FORCED")
     rm(output; force=true)
@@ -434,7 +434,7 @@ end
     # repeated CONECT entries (double bonds), which must be preserved
     input_file = TestFiles.test_file("input_files/benzene2.inp")
     sys = redirect_stdout(devnull) do
-        packmol(input_file; iprint=1000)
+        packmol(input_file)
     end
     @test sys.status == :packing_ready
     output = read_pdb(sys.output_file)

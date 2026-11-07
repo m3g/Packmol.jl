@@ -469,6 +469,21 @@ function write_packmol_input(
     end
 end # function write_packmol_input
 
+@eval function packmol(
+    system::Membrane;
+    output="membrane.pdb",
+    $(map(_kwarg_signature, _packmol_recipe_kwargs)...),
+)
+    (; lipid_placements, solvent_placements, unitcell) = _setup(system)
+    structure_types = StructureType{3,Float64}[]
+    foreach(lp -> _push_structure_types!(structure_types, lp), lipid_placements)
+    foreach(sp -> _push_structure_types!(structure_types, sp), solvent_placements)
+    packmol_system = PackmolSystem(structure_types;
+        output, tolerance=2.0, add_box_sides=true, seed=-1, _recipe_unitcell(unitcell)...,
+    )
+    return packmol(packmol_system; $(_packmol_recipe_kwarg_names...))
+end
+
 """
     packmol(
         system::Membrane;
@@ -482,27 +497,14 @@ It is equivalent to calling
 [`write_packmol_input`](@ref write_packmol_input(::Membrane)) followed by `packmol` on the
 resulting file.
 
-`output` behaves as in `write_packmol_input`. Any other keyword (`nloop`, `iprint`,
+`output` behaves as in `write_packmol_input`. Any other keyword (`nloop`, `maxit`,
 `seed`, ...) is forwarded to the packing engine — see `packmol(::PackmolSystem)`.
 
 Returns the built `PackmolSystem`, with the packing outcome in its `.status` field —
 see `packmol(::PackmolSystem)`.
 
 """
-function packmol(
-    system::Membrane;
-    output="membrane.pdb",
-    kwargs...,
-)
-    (; lipid_placements, solvent_placements, unitcell) = _setup(system)
-    structure_types = StructureType{3,Float64}[]
-    foreach(lp -> _push_structure_types!(structure_types, lp), lipid_placements)
-    foreach(sp -> _push_structure_types!(structure_types, sp), solvent_placements)
-    packmol_system = PackmolSystem(structure_types;
-        output, tolerance=2.0, add_box_sides=true, seed=-1, _recipe_unitcell(unitcell)...,
-    )
-    return packmol(packmol_system; kwargs...)
-end
+packmol(::Membrane)
 
 #
 # The structure block of a lipid or a solvent in a slab, for the input files of the

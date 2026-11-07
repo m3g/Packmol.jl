@@ -81,7 +81,7 @@ end
     # structure without `number`
     input_file = TestFiles.test_file("fortran_examples/interface.inp")
     sys = redirect_stdout(devnull) do
-        Packmol.packmol(input_file; iprint=1000)
+        Packmol.packmol(input_file)
     end
     @test sys.status == :packing_ready
     output = read_xyz(joinpath(dirname(input_file), "interface.xyz"))

@@ -116,7 +116,7 @@
     # packmol(::Recipe) forwards packmol(::PackmolSystem)'s own return value:
     # the built PackmolSystem itself (with its packing outcome in `.status`),
     # not a bare Bool, so the caller can inspect/reuse the packed system.
-    packed_sys = packmol(small_system; box_sides = [25.0, 25.0, 25.0], output = tmp_output_file, iprint = 1000, nloop = 20)
+    packed_sys = packmol(small_system; box_sides = [25.0, 25.0, 25.0], output = tmp_output_file, nloop = 20)
     @test packed_sys isa Packmol.PackmolSystem
     @test packed_sys.status == :packing_ready
     @test isfile(tmp_output_file)

@@ -271,6 +271,26 @@ function write_packmol_input(
     end
 end # function write_packmol_input
 
+@eval function packmol(
+    system::SolutionBoxUS;
+    output="system.pdb",
+    box_sides::Union{AbstractVector{<:Number},Nothing}=nothing,
+    margin::Union{<:Number,Nothing}=nothing,
+    pbc::Symbol=:cubic,
+    $(map(_kwarg_signature, _packmol_recipe_kwargs)...),
+)
+    (; solute_pdbfile, solvent_pdbfile) = system
+    (; ns, unitcell) = _setup(system, box_sides, margin, pbc)
+    structure_types = [
+        _fixed_solute_structure_type(solute_pdbfile),
+        structure_type(solvent_pdbfile; number=ns),
+    ]
+    packmol_system = PackmolSystem(structure_types;
+        output, tolerance=2.0, add_box_sides=true, seed=-1, _recipe_unitcell(unitcell)...,
+    )
+    return packmol(packmol_system; $(_packmol_recipe_kwarg_names...))
+end
+
 """
     packmol(
         system::SolutionBoxUS;
@@ -289,29 +309,11 @@ It is equivalent to calling
 resulting file.
 
 `output`, `box_sides`, `margin`, and `pbc` behave as in `write_packmol_input`. Any other
-keyword (`nloop`, `iprint`, `seed`, `optimizer`, ...) is forwarded to the packing engine —
+keyword (`nloop`, `maxit`, `seed`, ...) is forwarded to the packing engine —
 see `packmol(::PackmolSystem)`.
 
 Returns the built `PackmolSystem`, with the packing outcome in its `.status` field —
 see `packmol(::PackmolSystem)`.
 
 """
-function packmol(
-    system::SolutionBoxUS;
-    output="system.pdb",
-    box_sides::Union{AbstractVector{<:Number},Nothing}=nothing,
-    margin::Union{<:Number,Nothing}=nothing,
-    pbc::Symbol=:cubic,
-    kwargs...,
-)
-    (; solute_pdbfile, solvent_pdbfile) = system
-    (; ns, unitcell) = _setup(system, box_sides, margin, pbc)
-    structure_types = [
-        _fixed_solute_structure_type(solute_pdbfile),
-        structure_type(solvent_pdbfile; number=ns),
-    ]
-    packmol_system = PackmolSystem(structure_types;
-        output, tolerance=2.0, add_box_sides=true, seed=-1, _recipe_unitcell(unitcell)...,
-    )
-    return packmol(packmol_system; kwargs...)
-end
+packmol(::SolutionBoxUS)

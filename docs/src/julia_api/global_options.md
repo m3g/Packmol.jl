@@ -18,4 +18,4 @@ Options take the values of the input keywords (`periodic_boundary_style = :octah
 `filetype = "mmcif"`), flags `true` or `false` (`add_box_sides = true`), and `pbc` the
 values of its input keyword (`pbc = [40, 40, 40]`, `pbc = (:octahedral, 0, 0, 0, 80)`).
 [`packmol`](@ref) also takes options of the run that have no input-file equivalent
-(`iprint`, `parallel`, `active_set`, ...).
+(`active_set`, `active_radius`, `rotation_scaling`, ...).

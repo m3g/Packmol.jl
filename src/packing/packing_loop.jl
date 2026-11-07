@@ -117,13 +117,12 @@ _local_solver(fg!, x, lower, upper; callback, vaux, nitmax, nfevalmax) =
 function _packmol(
     packmol_system::PackmolSystem{D,T};
     parallel::Bool=true,
-    iprint::Int=10,
     nloop::Union{Nothing,Int}=nothing,
     maxit::Union{Nothing,Int}=nothing,
     movefrac::Union{Nothing,Real}=nothing,
     radscale_decay_loops::Union{Nothing,Int}=nothing,
     writeout::Union{Nothing,Real}=nothing,
-    movebad_tolerance::T=T(0.10),
+    movebad_tolerance::Real=0.10,
     seed::Int=packmol_system.seed,
     restart::Bool=false,
     rotation_scaling::Bool=true,
@@ -490,7 +489,7 @@ function _packmol(
             res = _local_solver(
                 fg_closure,
                 x, lower, upper;
-                callback=(result) -> packmol_callback(cl_system, tol, iprint,
+                callback=(result) -> packmol_callback(cl_system, tol,
                     packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
                     f=result.f, nfeval=result.nfeval, nfevalmax=10 * maxit, gnorm=result.gnorm,
                 ),
@@ -507,10 +506,10 @@ function _packmol(
             # (separate calls with and without bounds: with the two types of `sub`, the
             # types of the arguments must stay within what can be split at compile time)
             _optimize_active_subsystem!(x, sub, nothing, nothing, scale_rotations, rot_scaling,
-                packmol_system, atom_radii, tol, iprint, progress_meter, maxit)
+                packmol_system, atom_radii, tol, progress_meter, maxit)
         else
             _optimize_active_subsystem!(x, sub, lower, upper, scale_rotations, rot_scaling,
-                packmol_system, atom_radii, tol, iprint, progress_meter, maxit)
+                packmol_system, atom_radii, tol, progress_meter, maxit)
         end
 
         # Update molecule positions with optimized values
@@ -660,7 +659,7 @@ function _packmol(
         # Never after loop 0: it starts from the initial placement, and with inflated radii
         # (radscale) it can increase the true objective function while it spreads the
         # molecules apart, which is no sign of molecules that need to be moved.
-        do_movebad = loop > 0 && fimp_within_loop < T(100) * movebad_tolerance
+        do_movebad = loop > 0 && fimp_within_loop < T(100 * movebad_tolerance)
         if do_movebad
             cm_min, cm_max = compute_cm_bounds(packmol_system)
             moved = movebad!(
