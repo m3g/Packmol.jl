@@ -41,7 +41,7 @@ const _yes_no = ("yes" => true, "no" => false)
 
 # Warnings of the input file parser: printed directly, rather than through the
 # logging macros, to keep the parser compilable with `juliac --trim`.
-_warn(msg::AbstractString) = _with_stderr(io -> println(io, "Warning: ", msg))
+_warn(msg::AbstractString) = _screen_log[] ? _with_stderr(io -> println(io, "Warning: ", msg)) : nothing
 
 #
 # Set the field of `sys` corresponding to a global keyword of the input file,
@@ -103,6 +103,8 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.seed = _parse_value(Int, "seed", val)
     elseif keyword == "avoid_overlap"
         sys.avoid_overlap = _parse_options("avoid_overlap", val, _yes_no)
+    elseif keyword == "screen_log"
+        sys.screen_log = _parse_options("screen_log", val, _yes_no)
     elseif keyword == "check_initial_placement"
         sys.check_initial_placement = true
     elseif keyword == "check"
@@ -161,7 +163,7 @@ const _global_keywords = (
     "filetype", "output", "tolerance", "radscale", "radscale_decay_loops", "writeout", "discale", "tolerance_precision",
     "constraint_precision", "maxit", "nloop", "movefrac", "nthreads", "periodic_boundary_style", "max_random_init",
     "adjust_constraints_on_init", "add_amber_ter", "amber_ter_preserve", "add_box_sides",
-    "ignore_conect", "seed", "avoid_overlap",
+    "ignore_conect", "seed", "avoid_overlap", "screen_log",
     "check_initial_placement", "check", "continue_failed_initial_packing", "pbc", "unitcell",
 )
 
@@ -207,7 +209,24 @@ function _read_lines(io::IO)
     return lines
 end
 
+# With `screen_log no`, the warnings of the parser are silenced too, also those of the
+# lines before the keyword
 function _read_packmol_input(lines::Vector{String}, input_file::String, input_dir::String, ::Val{D}, ::Type{T}) where {D,T}
+    screen_log = !any(_is_screen_log_no, lines)
+    screen_log_before = _screen_log[]
+    _screen_log[] = screen_log_before && screen_log
+    try
+        return _read_packmol_input_lines(lines, input_file, input_dir, Val(D), T)
+    finally
+        _screen_log[] = screen_log_before
+    end
+end
+function _is_screen_log_no(line::AbstractString)
+    words = split(_strip_comment(line))
+    return length(words) == 2 && words[1] == "screen_log" && words[2] == "no"
+end
+
+function _read_packmol_input_lines(lines::Vector{String}, input_file::String, input_dir::String, ::Val{D}, ::Type{T}) where {D,T}
     sys = PackmolSystem{D,T}(; input_file, output_file="")
     structure_section = false
     for line in lines

@@ -32,6 +32,7 @@ const _packmol_global_options = (
     :(periodic_boundary_style::Union{Nothing,AbstractString,Symbol} = nothing),
     :(connect::Union{Nothing,Bool} = nothing),
     :(avoid_overlap::Union{Nothing,Bool} = nothing),
+    :(screen_log::Union{Nothing,Bool} = nothing),
     :(check_initial_placement::Union{Nothing,Bool} = nothing),
     :(continue_failed_initial_packing::Union{Nothing,Bool} = nothing),
     :(restart_from::Union{Nothing,AbstractString} = nothing),
@@ -105,11 +106,13 @@ packmol()
         output, filetype, tolerance, radscale, discale, radscale_decay_loops, writeout,
         tolerance_precision, constraint_precision, maxit, nloop, movefrac, nthreads, seed,
         max_random_init, adjust_constraints_on_init, add_amber_ter, amber_ter_preserve,
-        add_box_sides, periodic_boundary_style, connect, avoid_overlap, check_initial_placement,
+        add_box_sides, periodic_boundary_style, connect, avoid_overlap, screen_log, check_initial_placement,
         continue_failed_initial_packing, restart_from, pbc, unitcell,
     )
     ntasks = _ntasks[]
     _ntasks[] = something(packmol_system.nthreads, 0)
+    screen_log_before = _screen_log[]
+    _screen_log[] = packmol_system.screen_log
     try
         return _packmol(packmol_system;
             active_set, active_max_fraction, rotation_scaling, parallel,
@@ -118,6 +121,7 @@ packmol()
         )
     finally
         _ntasks[] = ntasks
+        _screen_log[] = screen_log_before
     end
 end
 """
@@ -141,7 +145,7 @@ no packing attempted).
 **Global options.** Every global keyword of the input files (see [Global keywords](@ref)) can
 be given as a keyword argument, with the name of the keyword: `tolerance`, `output`,
 `filetype`, `seed`, `nloop`, `maxit`, `movefrac`, `radscale`, `radscale_decay_loops`,
-`writeout`, `tolerance_precision`, `constraint_precision`, `nthreads`, `avoid_overlap`,
+`writeout`, `tolerance_precision`, `constraint_precision`, `nthreads`, `avoid_overlap`, `screen_log`,
 `connect`, `add_box_sides`, `add_amber_ter`, `amber_ter_preserve`, `periodic_boundary_style`,
 `max_random_init`, `adjust_constraints_on_init`, `check_initial_placement`,
 `continue_failed_initial_packing`, `restart_from`, `pbc` and `unitcell`. They are set in

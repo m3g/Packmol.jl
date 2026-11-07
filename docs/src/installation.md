@@ -55,9 +55,12 @@ solution is written to the output file, and a solution satisfying only the const
 `174` for command-line errors, and `170` for other errors.
 
 The report of the run goes to the standard output, and can be redirected to a file, as
-with Fortran Packmol: `packmol input.inp > packmol.log`. The run is then silent, with no
-progress bars (they are shown only when the standard output is a terminal), and scripts can
-rely on the exit code. Warnings and errors are printed to the standard error.
+with Fortran Packmol: `packmol input.inp > packmol.log`. The progress bars, as those of
+Fortran Packmol, are lines of `*` characters appended as the packing advances, so the
+progress of a long run can be followed in the log (`tail -f packmol.log`). Warnings and
+errors are printed to the standard error, and scripts can rely on the exit code. The
+global keyword `screen_log no` suppresses all the output of a run (including the
+warnings), except the errors.
 
 ### Replicas of a system
 

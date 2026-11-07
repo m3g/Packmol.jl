@@ -51,6 +51,9 @@
     connect::Bool = true
     seed::Int = 1234567
     avoid_overlap::Bool = true
+    # Print the report of the packing (and its warnings) to the screen or log; `false`
+    # (input keyword `screen_log no`) silences the run
+    screen_log::Bool = true
     # Write the initial approximation to the output file and stop, without packing (input
     # keyword `check_initial_placement`, or Fortran's `check`)
     check_initial_placement::Bool = false

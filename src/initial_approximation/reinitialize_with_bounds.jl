@@ -86,7 +86,7 @@ function _place_molecules!(
     fit, max_shift, opt_nit, fit_precision,
 ) where {D,T}
     _println("  Setting initial trial coordinates (best of $max_guess_try per molecule)...")
-    progress_meter = ProgressBar(nfree; desc="  Molecules placed: ", barlen=40)
+    progress_meter = ProgressBar(nfree; desc="  Molecules placed: ")
 
     # Buffers of the constraint fits of the trials, one per task
     natoms = length(packmol_system.atoms)
