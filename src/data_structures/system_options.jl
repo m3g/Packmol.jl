@@ -90,6 +90,7 @@ function _set_global_options!(sys::PackmolSystem{D,T};
     periodic_boundary_style::Union{Nothing,AbstractString,Symbol} = nothing,
     connect::Union{Nothing,Bool} = nothing,
     avoid_overlap::Union{Nothing,Bool} = nothing,
+    screen_log::Union{Nothing,Bool} = nothing,
     check_initial_placement::Union{Nothing,Bool} = nothing,
     continue_failed_initial_packing::Union{Nothing,Bool} = nothing,
     restart_from::Union{Nothing,AbstractString} = nothing,
@@ -118,6 +119,7 @@ function _set_global_options!(sys::PackmolSystem{D,T};
     isnothing(periodic_boundary_style) || _set_input_keyword!(sys, "periodic_boundary_style", string(periodic_boundary_style))
     isnothing(connect) || (sys.connect = connect)
     isnothing(avoid_overlap) || (sys.avoid_overlap = avoid_overlap)
+    isnothing(screen_log) || (sys.screen_log = screen_log)
     isnothing(check_initial_placement) || (sys.check_initial_placement = check_initial_placement)
     isnothing(continue_failed_initial_packing) || (sys.continue_failed_initial_packing = continue_failed_initial_packing)
     isnothing(restart_from) || (sys.restart_from = expanduser(String(restart_from)))

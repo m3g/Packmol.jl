@@ -54,6 +54,14 @@ solution is written to the output file, and a solution satisfying only the const
 `<output>_FORCED`), `171` for errors in the input, `172` if a file could not be opened,
 `174` for command-line errors, and `170` for other errors.
 
+The report of the run goes to the standard output, and can be redirected to a file, as
+with Fortran Packmol: `packmol input.inp > packmol.log`. The progress bars, as those of
+Fortran Packmol, are lines of `*` characters appended as the packing advances, so the
+progress of a long run can be followed in the log (`tail -f packmol.log`). Warnings and
+errors are printed to the standard error, and scripts can rely on the exit code. The
+global keyword `screen_log no` suppresses all the output of a run (including the
+warnings), except the errors.
+
 ### Replicas of a system
 
 `-o` writes the packed system to another file than the `output` of the input file, so the
@@ -64,7 +72,7 @@ or macOS shell:
 
 ```bash
 for i in 1 2 3 4 5; do
-    packmol -i system.inp -o system_$i.pdb -s $i
+    packmol -i system.inp -o system_$i.pdb -s $i > system_$i.log
 done
 ```
 

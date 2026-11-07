@@ -13,6 +13,11 @@
 #
 const _use_core_streams = Ref(false)
 
+# Whether the report of a run is printed (`screen_log`, see `packmol`): when `false`,
+# everything printed to `stdout` by these functions goes to `devnull`, and so do the
+# warnings (`_warn`). The errors of the command line interface (`_eprintln`) are printed.
+const _screen_log = Ref(true)
+
 # (A macro, rather than a function taking the stream, because passing the abstractly
 # typed stream as an argument would already be a call that cannot be resolved.)
 macro _with_stream(f, stream, fallback)
@@ -32,22 +37,13 @@ macro _with_stream(f, stream, fallback)
     end
 end
 function _with_stdout(f::F) where {F}
+    _screen_log[] || return f(devnull)
     _use_core_streams[] && return f(Core.stdout)
     return @_with_stream(f, stdout, Core.stdout)
 end
 function _with_stderr(f::F) where {F}
     _use_core_streams[] && return f(Core.stderr)
     return @_with_stream(f, stderr, Core.stderr)
-end
-
-# Whether `stderr` is a terminal (for the progress bar to be redrawn in place).
-function _stderr_is_terminal()
-    _use_core_streams[] || return stderr isa Base.TTY
-    return @static if Sys.iswindows()
-        ccall(:_isatty, Cint, (Cint,), 2) != 0
-    else
-        ccall(:isatty, Cint, (Cint,), 2) != 0
-    end
 end
 
 # Print the elements of the tuple `xs` one by one, so that each `print` call has a
@@ -59,6 +55,8 @@ _print_each(io::IO, xs::Tuple) = (map(x -> print(io, x), xs); nothing)
 
 _print(xs...) = _with_stdout(io -> _print_each(io, xs))
 _println(xs...) = _with_stdout(io -> _print_each(io, (xs..., '\n')))
+# Errors of the command line interface, to `stderr`
+_eprintln(xs...) = _with_stderr(io -> _print_each(io, (xs..., '\n')))
 _flush_stdout() = _with_stdout(flush)
 
 # Print `x` `n` times (`repeat`, `lpad` and `^` on strings do not compile with `--trim`).

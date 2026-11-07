@@ -310,7 +310,7 @@ _subset(::Nothing, ::Vector{Int}) = nothing
 #
 function _optimize_active_subsystem!(
     x::Vector{T}, sub, lower, upper, scale_rotations::Bool, rot_scaling,
-    packmol_system::PackmolSystem{D,T}, atom_radii::Vector{T}, tol, progress_meter, maxit::Int,
+    packmol_system::PackmolSystem{D,T}, atom_radii::Vector{T}, progress_meter, maxit::Int,
 ) where {D,T}
     na = length(sub.mols)
     x_mol_full = reinterpret(MoleculePosition{D,T}, x)
@@ -325,10 +325,8 @@ function _optimize_active_subsystem!(
         collect(reinterpret(T, reinterpret(MoleculePosition{D,T}, lower)[sub.kfree])),
             collect(reinterpret(T, reinterpret(MoleculePosition{D,T}, upper)[sub.kfree]))
     end
-    callback = (result) -> packmol_callback(sub.cl, tol,
-        packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
-        f=result.f, nfeval=result.nfeval, nfevalmax=10 * maxit, gnorm=result.gnorm,
-    )
+    callback = (result) -> packmol_callback(sub.cl,
+        packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter)
     res = if scale_rotations
         rs_act = _subset(rot_scaling, sub.kfree)
         _update_rotation_scaling!(rs_act, xa_mol)

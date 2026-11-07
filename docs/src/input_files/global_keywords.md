@@ -18,6 +18,7 @@
 | `max_random_init <int>` | Best-of-`N` random placements tried per molecule during initialization. |
 | `adjust_constraints_on_init yes\|no` | Whether to run constraint-only pre-optimization before packing. |
 | `avoid_overlap yes\|no` | Whether the initial placement avoids overlaps with the fixed molecules (default `yes`). The molecules moved during the packing always avoid them. |
+| `screen_log yes\|no` | Whether the report of the run, with its progress bars and warnings, is printed (default `yes`). With `no` the run is silent, except for errors (Packmol.jl only; in Julia, `packmol(...; screen_log = false)`). |
 | `connect yes\|no` | Whether to write the connectivity of the structure files (their `CONECT` records) to the output, for every molecule (default `yes`). `ignore_conect` (no value) is the same as `connect no`. |
 | `add_amber_ter` | Flag: add a `TER` record after every molecule (AMBER convention). |
 | `amber_ter_preserve` | Flag: preserve the `TER` records of the structure files, in every copy of the molecule. |

@@ -72,6 +72,40 @@ end
         @test code == 174
     end
 
+    @testset "output redirected; screen_log" begin
+        # With stdout redirected (`packmol input.inp > log`), nothing is printed to stderr,
+        # and the log has the report of the run, with the progress bars (no carriage
+        # returns or escape sequences)
+        log = joinpath(dir, "redirected.log")
+        err = IOBuffer()
+        cmd = Cmd(`$exe -i $(joinpath(inputs, "water_box.inp"))`; ignorestatus=true, dir=inputs)
+        p = run(pipeline(cmd; stdout=log, stderr=err))
+        @test p.exitcode == 0
+        @test isempty(take!(err))
+        report = read(log, String)
+        @test occursin("Success!", report)
+        @test occursin("|*****", report)
+        @test !occursin('\r', report) && !occursin('\e', report)
+        # `screen_log no`: nothing printed, also not the warnings
+        quiet = joinpath(inputs, "water_box_quiet.inp")
+        write(quiet, read(joinpath(inputs, "water_box.inp"), String) * "\nfscale 1.0\nscreen_log no\n")
+        out = IOBuffer()
+        err = IOBuffer()
+        p = run(pipeline(Cmd(`$exe -i $quiet`; ignorestatus=true, dir=inputs); stdout=out, stderr=err))
+        @test p.exitcode == 0
+        @test isempty(take!(out))
+        @test isempty(take!(err))
+        # Errors are printed to stderr
+        bad = joinpath(dir, "missing_structure.inp")
+        write(bad, "tolerance 2.0\noutput x.pdb\nstructure missing.pdb\n  number 1\n  inside cube 0. 0. 0. 10.\nend structure\n")
+        out = IOBuffer()
+        err = IOBuffer()
+        p = run(pipeline(Cmd(`$exe -i $bad`; ignorestatus=true, dir=dir); stdout=out, stderr=err))
+        @test p.exitcode == 172
+        @test occursin("ERROR: opening file", String(take!(err)))
+        @test !occursin("ERROR", String(take!(out)))
+    end
+
     @testset "threads" begin
         input_file = joinpath(inputs, "water_box.inp")
         for (args, env, n) in [(("-t", "1"), nothing, 1), (("-t", "2"), "1", 2), ((), "2", 2)]

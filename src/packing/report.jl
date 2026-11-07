@@ -34,27 +34,10 @@ end
 #
 # SPGBox callback: progress bar, and stop on convergence
 #
-function packmol_callback(
-    cl_system, tol, tolerance_precision, constraint_precision, progress_meter;
-    f::Union{Nothing,Real} = nothing,
-    nfeval::Union{Nothing,Integer} = nothing,
-    nfevalmax::Union{Nothing,Integer} = nothing,
-    gnorm::Union{Nothing,Real} = nothing,
-)
-    dmin = min(cl_system.fg.dmin, cl_system.cutoff)
-    max_const = cl_system.fg.max_constraint_penalty
-    # nfeval/nfevalmax and gnorm are diagnostic only: the progress bar and the
-    # values above only update once SPGBox accepts an iteration, so nfeval shows
-    # a slow line search, and a blown-up or NaN gnorm a numerical problem.
-    next!(progress_meter; showvalues = (
-        ("Function value", isnothing(f) ? "" : @sprintf("%.5e", f)),
-        ("Minimum distance", _format_dmin(dmin, cl_system.cutoff)),
-        ("Maximum constraint violation", @sprintf("%.5e", max_const)),
-        ("Function evaluations", isnothing(nfeval) ? "" : "$nfeval / $nfevalmax"),
-        ("Projected gradient norm", isnothing(gnorm) ? "" : @sprintf("%.5e", gnorm)),
-    ))
+function packmol_callback(cl_system, tolerance_precision, constraint_precision, progress_meter)
+    next!(progress_meter)
     tol_ok = cl_system.fg.max_overlap < tolerance_precision
-    const_ok = max_const < constraint_precision
+    const_ok = cl_system.fg.max_constraint_penalty < constraint_precision
     return tol_ok && const_ok
 end
 

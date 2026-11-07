@@ -460,8 +460,6 @@ function _packmol(
         cl_system.fg.count_overlaps[] = false
         _mark_unconverged!(mol_unconverged, cl_system.fg)
 
-        # Run a short optimization (maxit iterations per loop)
-        progress_meter = ProgressBar(maxit; desc="  Iterations: ", barlen=46)
         # On an active subset of the system (see active_set.jl): the bad molecules and
         # their neighbors, from the contributions to the objective function at the
         # start of the loop (`cl_system.fg.fmol`, of the evaluation above)
@@ -478,6 +476,8 @@ function _packmol(
             _println(isnothing(sub) ? "  Above active_max_fraction: optimizing the whole system" : "  Optimizing the active subsystem")
             _println()
         end
+        # Run a short optimization (maxit iterations per loop)
+        progress_meter = ProgressBar(maxit; desc="  Iterations:       ")
         optresult = if isnothing(sub)
             if scale_rotations
                 _update_rotation_scaling!(rot_scaling, reinterpret(MoleculePosition{D,T}, x))
@@ -489,10 +489,8 @@ function _packmol(
             res = _local_solver(
                 fg_closure,
                 x, lower, upper;
-                callback=(result) -> packmol_callback(cl_system, tol,
-                    packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
-                    f=result.f, nfeval=result.nfeval, nfevalmax=10 * maxit, gnorm=result.gnorm,
-                ),
+                callback=(result) -> packmol_callback(cl_system,
+                    packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter),
                 vaux=auxvecs,
                 nitmax=maxit,
                 nfevalmax=10 * maxit,
@@ -506,10 +504,10 @@ function _packmol(
             # (separate calls with and without bounds: with the two types of `sub`, the
             # types of the arguments must stay within what can be split at compile time)
             _optimize_active_subsystem!(x, sub, nothing, nothing, scale_rotations, rot_scaling,
-                packmol_system, atom_radii, tol, progress_meter, maxit)
+                packmol_system, atom_radii, progress_meter, maxit)
         else
             _optimize_active_subsystem!(x, sub, lower, upper, scale_rotations, rot_scaling,
-                packmol_system, atom_radii, tol, progress_meter, maxit)
+                packmol_system, atom_radii, progress_meter, maxit)
         end
 
         # Update molecule positions with optimized values

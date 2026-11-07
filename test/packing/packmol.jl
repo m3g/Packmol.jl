@@ -563,3 +563,33 @@ end
     @test sys.periodic_boundary_style == :octahedral
     @test_throws ArgumentError Packmol._set_global_options!(sys; pbc = [1, 2])
 end
+
+@testitem "screen_log" setup=[TestFiles] begin
+    using Packmol
+    input_file = TestFiles.test_file("input_files/water_box.inp")
+    # The report goes to stdout, with the progress bars appended (nothing redrawn)
+    log = tempname()
+    sys = open(log, "w") do io
+        redirect_stdout(() -> packmol(input_file; nloop = 20), io)
+    end
+    report = read(log, String)
+    @test sys.status == :packing_ready
+    @test occursin("|*****", report)
+    @test !occursin('\r', report)
+    # `screen_log = false`: nothing printed
+    sys = open(log, "w") do io
+        redirect_stdout(() -> packmol(input_file; nloop = 20, screen_log = false), io)
+    end
+    @test sys.status == :packing_ready
+    @test isempty(read(log, String))
+    @test Packmol._screen_log[] # restored after the run
+    # The input keyword, which also silences the warnings of the parser
+    quiet_file = joinpath(dirname(input_file), "water_box_quiet.inp")
+    write(quiet_file, "screen_log no\nfscale 1.0\n" * read(input_file, String))
+    err = tempname()
+    sys = open(err, "w") do io
+        redirect_stderr(() -> read_packmol_input(quiet_file), io)
+    end
+    @test !sys.screen_log
+    @test isempty(read(err, String))
+end
