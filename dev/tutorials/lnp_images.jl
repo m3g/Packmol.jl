@@ -8,10 +8,12 @@
 #     julia --project=dev/large_tests dev/tutorials/lnp_images.jl lnp.inp lnp.cif lnp.webp
 #
 # The nanoparticle is cut as a cake: the molecules with the center in the quarter x > 0,
-# y < 0 are removed (the RNA, a single molecule each, bead by bead), and so is the water
-# outside the particle. The molecules kept are written first to a smaller PDB file, which
-# is rendered, with the chain identifiers marking the components: M the lipids of the
-# monolayers, F the POPC of the lipid phase, R the RNA, C the water of the compartments.
+# y < 0 are removed (the RNA, a single molecule each, bead by bead). Of the water outside
+# the particle, only two walls of `wall` Å along the faces of the cut are kept, so that
+# the surface of the particle is seen. The molecules kept are written first to a smaller
+# PDB file, which is rendered, with the chain identifiers marking the components: M the
+# lipids of the monolayers, F the POPC of the lipid phase, R the RNA, C the water of the
+# compartments, O the water outside.
 #
 using PDBToolsBase: read_mmcif, read_pdb, write_pdb, Atom
 include("render.jl")
@@ -35,7 +37,7 @@ function structures(input)
             outside = true
         elseif w[1] == "end" && length(w) > 1 && w[2] == "structure"
             tag = oriented ? "M" : startswith(file, "rna") ? "R" :
-                  file == "wt4.pdb" ? (outside ? "" : "C") : "F"
+                  file == "wt4.pdb" ? (outside ? "O" : "C") : "F"
             push!(types, (file, number, tag))
         end
     end
@@ -44,6 +46,8 @@ end
 
 read_structure(file) = endswith(file, ".cif") ? read_mmcif(file) : read_pdb(file)
 cut(x, y) = x > 0 && y < 0 # the quarter removed
+const wall = 25.0
+wall_of_water(x, y) = (x > 0 && 0 <= y < wall) || (y < 0 && -wall < x <= 0)
 
 function cake_file(input, output)
     types = structures(input)
@@ -55,7 +59,6 @@ function cake_file(input, output)
         for _ in 1:n
             mol = @view(atoms[i+1:i+natoms[file]])
             i += natoms[file]
-            isempty(tag) && continue
             if tag == "R"
                 for a in mol
                     cut(a.x, a.y) && continue
@@ -65,6 +68,7 @@ function cake_file(input, output)
                 xc = sum(a.x for a in mol) / length(mol)
                 yc = sum(a.y for a in mol) / length(mol)
                 cut(xc, yc) && continue
+                tag == "O" && !wall_of_water(xc, yc) && continue
                 for a in mol
                     b = copy(a); b.chain = tag; push!(kept, b)
                 end
@@ -84,6 +88,7 @@ reps = [
     (selection = "chain F", style = "VDW 1.8 6", color = "ColorID 5"),
     (selection = "chain R", style = "VDW 2.4 8", color = "ColorID 1"),
     (selection = "chain C", style = "VDW 1.8 6", color = "ColorID 15"),
+    (selection = "chain O", style = "VDW 1.8 6", color = "ColorID 15"),
 ]
 pdb = cake_file(input, output)
 render(pdb, joinpath(images, image); reps,

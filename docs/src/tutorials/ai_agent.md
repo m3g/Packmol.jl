@@ -24,7 +24,11 @@ itself:
 - **The molecules.** Give PDB IDs, file names, or names of molecules the agent can build
   (water, ions, common solvents); say which chains, ligands or waters of a PDB structure to
   keep. For lipids, name them: the [Membrane recipe](@ref "Membrane system") has
-  conformations of POPC, POPE, POPS, POPG, DPPC, DOPC and DMPC.
+  conformations of POPC, POPE, POPS, POPG, DPPC, DOPC and DMPC. Provide the structures of
+  the molecules the agent cannot get reliably (coarse-grained models, molecules of a
+  specific force field): it can build rough models, but not ones fit for a simulation.
+  Have it confirm with you which atoms orient each molecule (the head and the chain ends
+  of a lipid, for example) before it builds the system.
 - **The amounts.** Numbers of molecules, or what determines them: a density, a
   concentration (mol/L, molality, mole fraction), a salt concentration, the neutralization
   of a charged protein, an area per lipid. The agent can compute the numbers.
@@ -204,6 +208,14 @@ Public functions, not exported (call them with the `Packmol.` prefix):
 ### Practical advice
 
 - The tolerance of 2.0 Å is the usual one for all-atom systems.
+- `radscale` (in an input file, globally or per structure block; `radscale` keyword of
+  `structure_type`) scales the radii of the atoms at the start of the packing, decaying to
+  their values in the first loops (`radscale_decay_loops`, 20). The default is 5.0 for free
+  molecules of more than 20 atoms, which spreads lipids over their layers, and 1.0 for the
+  others. Set 5.0 for lipids of fewer atoms (coarse-grained lipids) in layers; keep 1.0 for
+  molecules that fill an enclosed region densely (a lipid phase between layers, for
+  example), which may not fit in it inflated. If the first loop of a packing does not
+  end, check the `radscale` of the molecules of the crowded regions.
 - Rigid molecules are packed as given: prefer compact, extended conformations. Lipids pack
   fastest when straight, with the chains side by side, and with the head atoms constrained to
   a narrow band (the `Membrane` recipe does this). Bilayers of extended lipids are thicker
