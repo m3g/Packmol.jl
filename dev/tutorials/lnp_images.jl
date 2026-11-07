@@ -8,9 +8,9 @@
 #     julia --project=dev/large_tests dev/tutorials/lnp_images.jl lnp.inp lnp.cif lnp.webp
 #
 # The nanoparticle is cut as a cake: the molecules with the center in the quarter x > 0,
-# y < 0 are removed (the RNA, a single molecule each, bead by bead). Of the water outside
-# the particle, only two walls of `wall` Å along the faces of the cut are kept, so that
-# the surface of the particle is seen. The molecules kept are written first to a smaller
+# y < 0 are removed (the RNA, a single molecule each, bead by bead). The water outside
+# the particle is kept below a diagonal plane: the particle is seen partially immersed
+# in it. The molecules kept are written first to a smaller
 # PDB file, which is rendered, with the chain identifiers marking the components: M the
 # lipids of the monolayers, F the POPC of the lipid phase, R the RNA, C the water of the
 # compartments, O the water outside.
@@ -46,8 +46,7 @@ end
 
 read_structure(file) = endswith(file, ".cif") ? read_mmcif(file) : read_pdb(file)
 cut(x, y) = x > 0 && y < 0 # the quarter removed
-const wall = 25.0
-wall_of_water(x, y) = (x > 0 && 0 <= y < wall) || (y < 0 && -wall < x <= 0)
+water_kept(x, y, z) = z < -120 - 0.5 * (x + y) / sqrt(2) # below the diagonal plane
 
 function cake_file(input, output)
     types = structures(input)
@@ -67,8 +66,9 @@ function cake_file(input, output)
             else
                 xc = sum(a.x for a in mol) / length(mol)
                 yc = sum(a.y for a in mol) / length(mol)
-                cut(xc, yc) && continue
-                tag == "O" && !wall_of_water(xc, yc) && continue
+                tag != "O" && cut(xc, yc) && continue
+                zc = sum(a.z for a in mol) / length(mol)
+                tag == "O" && !water_kept(xc, yc, zc) && continue
                 for a in mol
                     b = copy(a); b.chain = tag; push!(kept, b)
                 end

@@ -16,8 +16,8 @@ a real LNP.
 
 *The nanoparticle with a quarter cut out: the heads (blue) and the chains (orange) of the
 lipids of the monolayers, the lipid phase (tan), and, in the compartments, water (light
-blue) and RNA (red). Of the water outside, only two walls along the faces of the cut are
-shown, up to the faces of the periodic cell.*
+blue) and RNA (red). The water outside is shown below a diagonal plane, with the particle
+partially immersed in it, up to the faces of the periodic cell.*
 
 The files are the `packmol_lnp` set of
 [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles): download and extract
