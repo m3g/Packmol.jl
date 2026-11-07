@@ -48,6 +48,7 @@ makedocs(
             "Gases in a zeolite" => "tutorials/zeolite.md",
             "Liquid crystals" => "tutorials/liquid_crystal.md",
             "Zika virion (a large system)" => "tutorials/zika.md",
+            "Lipid nanoparticle (designed with an AI agent)" => "tutorials/lnp.md",
             "Exosome (a very large system)" => "tutorials/exosome.md",
         ],
         "Input files" => [

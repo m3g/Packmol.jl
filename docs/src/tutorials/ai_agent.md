@@ -9,6 +9,9 @@ orient them, compute their masses and charges, the numbers of molecules from den
 concentrations, and the size of the box, pack the system, check the result, and write it.
 The script is a record of how the system was built, and it can be changed and run again.
 
+The [Lipid nanoparticle](lnp.md) tutorial shows a system designed this way, from an
+illustration and a few sentences, in a conversation with an agent.
+
 This page has guidelines for the prompt, an example, and, at the end, a section written for
 the agent: a summary of what Packmol.jl provides and how to use it. Point your agent to
 that section in the prompt.

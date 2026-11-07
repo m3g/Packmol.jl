@@ -6,7 +6,8 @@ exosome with 13.6 million atoms. The first ones are the classic examples of
 with an all-atom lipid, at realistic densities, the vesicle as nanoliposomes); the others
 use more of the features of Packmol.jl: fixed molecules, periodic cells of different
 shapes, curved surfaces, crystals. To have an AI agent build a system for you, see
-[Using your AI agent](ai_agent.md).
+[Using your AI agent](ai_agent.md), and the [Lipid nanoparticle](lnp.md), designed with an
+agent from an illustration.
 
 | Tutorial | System |
 |---|---|
@@ -22,6 +23,7 @@ shapes, curved surfaces, crystals. To have an AI agent build a system for you, s
 | [Gases in a zeolite](zeolite.md) | A fixed crystal in its triclinic periodic cell, with gases in its pores |
 | [Liquid crystals](liquid_crystal.md) | Oriented molecules (rotation constraints): a nematic phase and a cholesteric (twisted) phase |
 | [Zika virion](zika.md) | A large system: 2.2 million particles in membranes and spherical shells |
+| [Lipid nanoparticle](lnp.md) | A system designed with an AI agent from an illustration: 5.6 million particles in monolayers, a lipid phase and water compartments with RNA |
 | [Exosome](exosome.md) | A very large system, with all atoms: 13.6 million atoms in an asymmetric bilayer with membrane proteins, macromolecules inside, water and ions |
 
 ## How the tutorials are organized
