@@ -1,0 +1,48 @@
+#
+# POPC bilayer in water, with periodic boundary conditions
+#
+tolerance 2.0
+output bilayer.pdb
+
+# Uncomment to write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints):
+# check_initial_placement
+
+# Periodic box: 60 lipids per leaflet at 64 Å² per lipid (61.96 Å sides in x and y),
+# membrane centered at z = 0, 15 Å of water above and below it
+pbc -30.98 -30.98 -45. 30.98 30.98 45.
+
+# Upper leaflet: the head (atom 1, N) above z = 28, the ends of the two chains
+# (atoms 88 and 131) below z = 6
+structure popc.pdb
+  number 60
+  atoms 1
+    above plane 0. 0. 1. 28.
+  end atoms
+  atoms 88 131
+    below plane 0. 0. 1. 6.
+  end atoms
+end structure
+
+# Lower leaflet: the same, mirrored
+structure popc.pdb
+  number 60
+  atoms 1
+    below plane 0. 0. 1. -28.
+  end atoms
+  atoms 88 131
+    above plane 0. 0. 1. -6.
+  end atoms
+end structure
+
+# Water: 15 Å above and below the membrane (the two slabs are continuous
+# through the periodic boundary in z)
+structure water.pdb
+  number 1925
+  above plane 0. 0. 1. 30.
+end structure
+
+structure water.pdb
+  number 1925
+  below plane 0. 0. 1. -30.
+end structure
