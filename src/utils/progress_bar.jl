@@ -3,7 +3,9 @@
 # `juliac --trim`. Printed to `stderr`, as ProgressMeter's, and redrawn at most
 # every `dt` seconds. On a terminal the bar (and the `showvalues` lines below it)
 # is redrawn in place; otherwise it is printed only once, by `finish!`, so that
-# logs are not flooded. `next!` is thread-safe.
+# logs are not flooded. It is not printed at all when `stdout` is not a terminal (the
+# output of `packmol` redirected to a file, `packmol input.inp > log`): a run is then
+# silent, and the log has the results of each loop. `next!` is thread-safe.
 #
 mutable struct ProgressBar
     const n::Int
@@ -17,9 +19,10 @@ mutable struct ProgressBar
     showvalues::String # the last `showvalues`, printed below the bar
     nlines::Int # lines printed by the last redraw, to be overwritten by the next one
     finished::Bool
+    const enabled::Bool # whether the bar is printed (stdout is a terminal)
 end
 ProgressBar(n::Integer; desc::String="Progress: ", barlen::Int=40, dt::Real=0.1) =
-    ProgressBar(n, desc, barlen, dt, time(), ReentrantLock(), 0, 0.0, "", 0, false)
+    ProgressBar(n, desc, barlen, dt, time(), ReentrantLock(), 0, 0.0, "", 0, false, _stdout_is_terminal())
 
 function _format_seconds(t::Real)
     s = round(Int, t)
@@ -37,6 +40,7 @@ function _set_showvalues!(p::ProgressBar, showvalues::Tuple)
 end
 
 function _draw(p::ProgressBar)
+    p.enabled || return p
     frac = p.n > 0 ? min(p.counter / p.n, 1.0) : 1.0
     nfilled = round(Int, frac * p.barlen)
     elapsed = time() - p.tstart

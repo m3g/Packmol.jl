@@ -40,14 +40,21 @@ function _with_stderr(f::F) where {F}
     return @_with_stream(f, stderr, Core.stderr)
 end
 
-# Whether `stderr` is a terminal (for the progress bar to be redrawn in place).
+# Whether `stdout` is a terminal (for the progress bars to be shown at all: with the
+# output redirected, `packmol input.inp > log`, a run is silent, as Fortran Packmol's), and
+# whether `stderr` is (for them to be redrawn in place).
+function _stdout_is_terminal()
+    _use_core_streams[] || return stdout isa Base.TTY
+    return _isatty(1)
+end
 function _stderr_is_terminal()
     _use_core_streams[] || return stderr isa Base.TTY
-    return @static if Sys.iswindows()
-        ccall(:_isatty, Cint, (Cint,), 2) != 0
-    else
-        ccall(:isatty, Cint, (Cint,), 2) != 0
-    end
+    return _isatty(2)
+end
+_isatty(fd::Integer) = @static if Sys.iswindows()
+    ccall(:_isatty, Cint, (Cint,), fd) != 0
+else
+    ccall(:isatty, Cint, (Cint,), fd) != 0
 end
 
 # Print the elements of the tuple `xs` one by one, so that each `print` call has a
@@ -59,6 +66,8 @@ _print_each(io::IO, xs::Tuple) = (map(x -> print(io, x), xs); nothing)
 
 _print(xs...) = _with_stdout(io -> _print_each(io, xs))
 _println(xs...) = _with_stdout(io -> _print_each(io, (xs..., '\n')))
+# Errors of the command line interface, to `stderr`
+_eprintln(xs...) = _with_stderr(io -> _print_each(io, (xs..., '\n')))
 _flush_stdout() = _with_stdout(flush)
 
 # Print `x` `n` times (`repeat`, `lpad` and `^` on strings do not compile with `--trim`).

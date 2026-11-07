@@ -86,9 +86,9 @@ function _print_error(@nospecialize(e))
           e isa SystemError ? e.prefix : "unexpected error."
     msg = msg isa String ? strip(msg) : "unexpected error."
     if e isa SystemError
-        Packmol._println("ERROR: ", msg, ": ", Libc.strerror(e.errnum))
+        Packmol._eprintln("ERROR: ", msg, ": ", Libc.strerror(e.errnum))
     else
-        Packmol._println("ERROR: ", msg)
+        Packmol._eprintln("ERROR: ", msg)
     end
 end
 
@@ -146,7 +146,7 @@ function (@main)(ARGS)
             input_file = arg
             positional += 1
         else
-            Packmol._println("ERROR: unrecognized command-line argument: ", arg)
+            Packmol._eprintln("ERROR: unrecognized command-line argument: ", arg)
             Packmol._print(usage)
             return exit_code_command_line_error
         end
@@ -154,12 +154,12 @@ function (@main)(ARGS)
     end
     ntasks = isempty(nthreads) ? 0 : something(tryparse(Int, nthreads), 0)
     if !isempty(nthreads) && ntasks < 1
-        Packmol._println("ERROR: the number of threads (-t) must be a positive integer, got: ", nthreads)
+        Packmol._eprintln("ERROR: the number of threads (-t) must be a positive integer, got: ", nthreads)
         return exit_code_command_line_error
     end
     seed_value = isempty(seed) ? nothing : tryparse(Int, seed)
     if !isempty(seed) && isnothing(seed_value)
-        Packmol._println("ERROR: the seed (-s) must be an integer, got: ", seed)
+        Packmol._eprintln("ERROR: the seed (-s) must be an integer, got: ", seed)
         return exit_code_command_line_error
     end
     # Dimension and number type given as types, so that the parser is type-stable
@@ -184,12 +184,12 @@ function (@main)(ARGS)
     if guess || free
         dens = something(tryparse(Float64, density), -1.0)
         if dens <= 0
-            Packmol._println("ERROR: the density (--density) must be a positive number, got: ", density)
+            Packmol._eprintln("ERROR: the density (--density) must be a positive number, got: ", density)
             return exit_code_command_line_error
         end
         np = something(tryparse(Int, npoints), 0)
         if np < 1
-            Packmol._println("ERROR: the number of points (--npoints) must be a positive integer, got: ", npoints)
+            Packmol._eprintln("ERROR: the number of points (--npoints) must be a positive integer, got: ", npoints)
             return exit_code_command_line_error
         end
         ntasks_session = Packmol._ntasks[]
