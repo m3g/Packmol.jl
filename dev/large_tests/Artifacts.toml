@@ -15,3 +15,12 @@ lazy = true
     [[packmol_exosome.download]]
     url = "https://github.com/m3g/MolSimTestFiles/releases/download/packmol_exosome-v1/packmol_exosome.tar.gz"
     sha256 = "d444c4f6c6e3626b4b37668644a1780b665730f6b292c22bcd5000f22b622dfe"
+
+# The lipid nanoparticle tutorial (5.6 million SIRAH particles), from https://github.com/m3g/MolSimTestFiles (downloaded only when needed)
+[packmol_lnp]
+git-tree-sha1 = "1ed88b3a03c8fad39df18205823c671c0e88fcab"
+lazy = true
+
+    [[packmol_lnp.download]]
+    url = "https://github.com/m3g/MolSimTestFiles/releases/download/packmol_lnp-v1/packmol_lnp.tar.gz"
+    sha256 = "55b140d7c184b8b1767689cea4a5cf4da87b407c161d7d42547d4cafa0afe12f"

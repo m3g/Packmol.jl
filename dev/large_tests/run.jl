@@ -35,6 +35,7 @@ const cases = [
     ("nanoliposome_small", () -> joinpath(tutorials, "nanoliposome"), "small.inp", "20 s"),
     ("nanoliposome_large", () -> joinpath(tutorials, "nanoliposome"), "large.inp", "30 s"),
     ("zika", () -> artifact"packmol_zika", "zika.inp", "1 min"),
+    ("lnp", () -> artifact"packmol_lnp", "lnp.inp", "5 min"),
     ("exosome", () -> artifact"packmol_exosome", ["proteins.inp", "exosome.inp"], "30 min"),
 ]
 
