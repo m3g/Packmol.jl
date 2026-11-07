@@ -8,10 +8,11 @@
 #     julia --project=dev/large_tests dev/tutorials/lnp_images.jl lnp.inp lnp.cif lnp.webp
 #
 # The nanoparticle is cut as a cake: the molecules with the center in the quarter x > 0,
-# y < 0 are removed (the RNA, a single molecule each, bead by bead), and so is the water
-# outside the particle. The molecules kept are written first to a smaller PDB file, which
-# is rendered, with the chain identifiers marking the components: M the lipids of the
-# monolayers, F the POPC of the lipid phase, R the RNA, C the water of the compartments.
+# y < 0 are removed (the RNA, a single molecule each, bead by bead). The water outside
+# the particle is kept behind it (see `water_kept`). The molecules kept are written first to a smaller
+# PDB file, which is rendered, with the chain identifiers marking the components: M the
+# lipids of the monolayers, F the POPC of the lipid phase, R the RNA, C the water of the
+# compartments, O the water outside.
 #
 using PDBToolsBase: read_mmcif, read_pdb, write_pdb, Atom
 include("render.jl")
@@ -35,7 +36,7 @@ function structures(input)
             outside = true
         elseif w[1] == "end" && length(w) > 1 && w[2] == "structure"
             tag = oriented ? "M" : startswith(file, "rna") ? "R" :
-                  file == "wt4.pdb" ? (outside ? "" : "C") : "F"
+                  file == "wt4.pdb" ? (outside ? "O" : "C") : "F"
             push!(types, (file, number, tag))
         end
     end
@@ -44,6 +45,16 @@ end
 
 read_structure(file) = endswith(file, ".cif") ? read_mmcif(file) : read_pdb(file)
 cut(x, y) = x > 0 && y < 0 # the quarter removed
+# The water behind the particle: behind a plane `ahead` Å in front of the center, whose
+# normal is the direction towards the viewer turned by `turn` degrees towards the right
+# of the image (both directions in the coordinates of the system, for the view of
+# `render` below), and out of the quarter removed
+const toward_viewer = (0.3462, -0.7424, 0.5736)
+const image_right = (0.9063, 0.4226, 0.0)
+const turn = 40.0
+const ahead = 70.0
+const normal = cosd(turn) .* toward_viewer .+ sind(turn) .* image_right
+water_kept(x, y, z) = normal[1] * x + normal[2] * y + normal[3] * z < ahead
 
 function cake_file(input, output)
     types = structures(input)
@@ -55,7 +66,6 @@ function cake_file(input, output)
         for _ in 1:n
             mol = @view(atoms[i+1:i+natoms[file]])
             i += natoms[file]
-            isempty(tag) && continue
             if tag == "R"
                 for a in mol
                     cut(a.x, a.y) && continue
@@ -65,6 +75,8 @@ function cake_file(input, output)
                 xc = sum(a.x for a in mol) / length(mol)
                 yc = sum(a.y for a in mol) / length(mol)
                 cut(xc, yc) && continue
+                zc = sum(a.z for a in mol) / length(mol)
+                tag == "O" && !water_kept(xc, yc, zc) && continue
                 for a in mol
                     b = copy(a); b.chain = tag; push!(kept, b)
                 end
@@ -84,6 +96,7 @@ reps = [
     (selection = "chain F", style = "VDW 1.8 6", color = "ColorID 5"),
     (selection = "chain R", style = "VDW 2.4 8", color = "ColorID 1"),
     (selection = "chain C", style = "VDW 1.8 6", color = "ColorID 15"),
+    (selection = "chain O", style = "VDW 1.8 6", color = "ColorID 15"),
 ]
 pdb = cake_file(input, output)
 render(pdb, joinpath(images, image); reps,

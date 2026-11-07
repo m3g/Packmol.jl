@@ -14,9 +14,10 @@ a real LNP.
 
 ![Lipid nanoparticle](images/lnp.webp)
 
-*The nanoparticle with a quarter cut out (the water outside is not shown): the heads
-(blue) and the chains (orange) of the lipids of the monolayers, the lipid phase (tan), and,
-in the compartments, water (light blue) and RNA (red).*
+*The nanoparticle with a quarter cut out: the heads (blue) and the chains (orange) of the
+lipids of the monolayers, the lipid phase (tan), and, in the compartments, water (light
+blue) and RNA (red). The water outside is shown behind the particle, up to the faces of
+the periodic cell.*
 
 The files are the `packmol_lnp` set of
 [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles): download and extract
@@ -46,11 +47,13 @@ The agent read the illustration, proposed a geometry (the sizes and the position
 compartments, the shells of the lipids), and estimated the numbers of molecules. The
 design was then corrected and simplified in a few exchanges:
 
-- **The lipids.** A first attempt with simplified lipids of the Martini model, built by
-  the agent, including PEG-lipids, ran into problems with the geometry of the PEG-lipids,
-  and was dropped. The lipids and the water of SIRAH of the [Zika virion](zika.md)
-  tutorial, already tested with Packmol, were used instead: POPC, POPE and POPS, 60:30:10,
-  and the WT4 water.
+- **The molecules.** The structures of the molecules are for the user to provide: an
+  agent can build rough models, but not ones fit for a simulation. Here, the lipids and
+  the water of SIRAH of the [Zika virion](zika.md) tutorial were used: POPC, POPE and
+  POPS, 60:30:10, and the WT4 water. Before building anything, the agent confirmed with
+  the user how the lipids are oriented by the constraints: the head bead (bead 1) and the
+  end of a chain (bead 16, or 17 in POPS), from the structure files and the input of the
+  Zika virion.
 - **The layers.** The layers of the illustration are monolayers, with the chains of the
   lipids pointing to the lipid phase between them: heads outwards in the outer layer,
   inwards (towards the water) in the compartments.
@@ -72,11 +75,26 @@ design was then corrected and simplified in a few exchanges:
   nucleotide, of 1500, 1000 and 700 nucleotides, with the size that fits in each
   compartment (placeholders: a real structure of a coarse-grained mRNA would replace them),
   fixed at the centers of the compartments.
-- **A problem in the packing.** The first loop of the packing of the whole system did
-  not finish in 10 minutes. The POPC of the lipid phase started with its radii
-  scaled by 5 (as those of the lipids of the monolayers, to spread them over their
-  surfaces), and the agent proposed a few alternatives; the one chosen was to start it
-  at its radii. With that, the system packed in 5 minutes.
+- **The scale of the radii.** The lipids of the monolayers start the packing with their
+  radii scaled by 5 (`radscale 5.0` in their structure blocks; the default for molecules
+  of up to 20 beads is 1), so that they spread over their surfaces before they settle
+  (see [Structure blocks](@ref)). The POPC of the lipid phase was first given the same
+  scale, and the first loop of the packing did not finish in 10 minutes, most likely
+  because, inflated five-fold, it does not fit in its region, which is enclosed by the
+  monolayers. The
+  agent proposed a few alternatives; the one chosen was to start it at its radii. With
+  that, the system packed in 5 minutes.
+
+!!! tip "The scale of the radii at the start"
+    `radscale` scales the radii of the atoms at the start of the packing, decaying to
+    their values in the first loops. Inflated molecules repel each other from farther,
+    which spreads them over their regions: it is what lipids in a layer need, and
+    Packmol uses it by default for molecules of more than 20 atoms (SIRAH lipids have
+    16 or 17 beads, so it is set here). But molecules that fill an enclosed region
+    densely, as the lipid phase here, may not fit in it inflated, and the first loops
+    make no progress: start those at their radii (`radscale 1.0`, the default for
+    small molecules). When the first loop of a packing does not end, look at the
+    `radscale` of the molecules of the crowded regions.
 
 The illustration helped the agent understand what was wanted, but the decisions that
 mattered were made in the conversation: what to simplify, which models to use, what to
