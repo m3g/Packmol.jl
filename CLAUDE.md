@@ -34,59 +34,41 @@ update its task list and session log when you stop.
 
 ## Project Structure
 
+Each directory of `src/` has a README describing its files (`src/README.md` is the
+overview, with the conventions of the code). The tests mirror the layout (`test/<dir>/<file>.jl`).
+
 ```
 src/
-  Packmol.jl                          # Main module
-  packmol_runner.jl                   # run_packmol_legacy stub (methods in ext/)
-  CLI.jl                              # Command-line interface, native engine
-  threads.jl                          # `@_sync`: trim-safe `@sync`
-  precompile.jl                       # PrecompileTools workload: tiny systems (one loop) through the parser,
-                                      # the constraints, the periodic cells, the output formats and a recipe
-  io/
-    terminal.jl                       # Trim-safe stdout/stderr printing (`_print`, `_println`, `@_printf`)
-    progress_bar.jl                   # Minimal progress bar (replaces ProgressMeter.jl)
-    pick_file.jl                      # File dialog via OS tools (osascript/PowerShell/zenity/kdialog), run with libc `popen`
-    write_output.jl                   # Output writing
-  random.jl                           # Random number generation
-  shape.jl                            # shape_descriptors, select_conformations
-  tools/system_building.jl            # public (not exported): cross_section (area of a protein in a leaflet),
-                                      # builtin_lipid (file, head, chain ends, area, length of the built-in lipids)
-  tools/
-    volume.jl                         # guess_volume (volume at a density), free_volume (Monte Carlo
-                                      # volume of the region of each structure type); CLI
-                                      # --guess-volume/--free-volume
-  interatomic_distance_fg.jl          # Distance function & gradient computation
-  active_set.jl                       # Active subsystem: bad molecules + neighbors optimized, the rest frozen
-  data_structures/
-    atoms_and_molecules.jl            # AtomData, MoleculePosition, FixedMoleculeData
-    StructureType.jl                  # Structure definitions & input parsing
-    PackmolSystem.jl                  # Main system container
-  constraints/
-    constraints_base.jl               # Abstract Constraint type & interface
-    boxes.jl                          # Cube, Box (Inside/Outside)
-    spheres.jl                        # Sphere (Inside/Outside)
-    planes.jl                         # Plane (Above/Over/Below)
-    cylinders.jl                      # Cylinder (Inside/Outside)
-    ellipsoids.jl                     # Ellipsoid (Inside/Outside)
-    rotations.jl                      # RotationConstraint (constrain_rotation): axis–vector angle penalty
-    custom.jl                         # CustomConstraint: region f(x) ≤ 0 of a user function (Julia only;
-                                      # FunctionWrappers; gradient given or by finite differences)
-  rigid_body/
-    rigid_body.jl                     # Euler angles, rotations, translations
-    chain_rule.jl                     # Gradient chain rule for rigid bodies
-    rotation_metric.jl                # Rotation variables scaled by the inertia of each molecule
-  Recipes/                            # Parameter-driven system setups (recipes)
-    Recipes.jl
-    SolutionBoxUS.jl                  # Solute + Solvent
-    SolutionBoxUSC.jl                 # Solute + Solvent + Cossolvent
-    SolutionBoxUWI.jl                 # Solute + Water + Ions
-    Membrane.jl                       # Lipid bilayer/monolayer
-    MembraneProtein.jl                # Membrane protein in a bilayer, with water and ions
-    DensityTable.jl
-    concentration_units.jl
+  Packmol.jl              # The module: dependencies, exports, includes (types before their use in signatures)
+  CLI.jl                  # Command-line interface, native engine (trim-compatible)
+  packmol_runner.jl       # run_packmol_legacy stub (methods in ext/)
+  precompile.jl           # PrecompileTools workload: tiny systems (one loop) through the parser,
+                          # the constraints, the periodic cells, the output formats and a recipe
+  utils/                  # terminal.jl (`_print`, `_println`, `@_printf`), progress_bar.jl, threads.jl
+                          # (`@_sync`), pick_file.jl (file dialog via OS tools, libc `popen`)
+  constraints/            # constraint types (penalty, gradient, parse_constraint); constraint_types.jl
+                          # (`AnyConstraint` union, `_constraint_dispatch`); custom.jl; rotations.jl
+  data_structures/        # atoms_and_molecules.jl, StructureType.jl (+ structure_type, conformations),
+                          # PackmolSystem.jl (+ `_radscale`), system_options.jl (pbc, tolerance, keyword
+                          # options), FixedParticleSystem.jl (cell lists of the fixed atoms)
+  periodic_cells/         # periodic_cells.jl (shared: images, Wigner-Seitz cells, unitcell_matrix),
+                          # dodecahedron.jl, octahedron.jl, wrapping.jl (wrap_to_center, _wrap_cm)
+  io/                     # read_input.jl (input parser, global keywords), read_structure_block.jl,
+                          # write_output.jl (get_atoms, write_output), restart.jl (restart_from)
+  rigid_body/             # rigid_body.jl (Euler angles, moves), chain_rule.jl, rotation_metric.jl
+  function_and_gradient/  # fg_output.jl (InteratomicDistanceFG + CellListMap interface), pair_fg.jl,
+                          # atom_positions.jl, constraint_fg.jl, fg.jl (fg!, _mark_unconverged!)
+  initial_approximation/  # set_initial_approximation! and its steps; movebad.jl; bounds.jl,
+                          # constraint_checks.jl, fixed_molecules.jl, buffers.jl
+  packing/                # packmol.jl (API), packing_loop.jl (`_packmol`), active_set.jl, report.jl
+  tools/                  # volume.jl (guess_volume, free_volume), shape.jl (shape_descriptors,
+                          # select_conformations), system_building.jl (builtin_lipid, cross_section)
+  Recipes/                # SolutionBoxUS/USC/UWI, Membrane, MembraneProtein, DensityTable,
+                          # concentration_units; lipids/ (built-in lipids), test/ (docs data)
 ext/
-  PackmolJLLExt.jl                    # run_packmol_legacy methods (loaded with Packmol_jll)
-juliac/                               # Executable: app.jl, build.jl (juliac), test_executable.jl
+  PackmolJLLExt.jl        # run_packmol_legacy methods (loaded with Packmol_jll)
+  TestFilesExt.jl         # test_file (loaded with LazyArtifacts)
+juliac/                   # Executable: app.jl, build.jl (juliac), test_executable.jl
 ```
 
 ## Key Dependencies
@@ -216,7 +198,7 @@ These are the building blocks everything else depends on.
       vector of files in `structure_type`, expands into consecutive structure types (one per conformation,
       `number` split evenly, marked by `StructureType.conformation = (i, n)`); `show` and the output
       numbering treat each set as a single structure type
-- [x] Shape of molecules (`src/shape.jl`): `shape_descriptors` (gyration tensor: asphericity, acylindricity,
+- [x] Shape of molecules (`src/tools/shape.jl`): `shape_descriptors` (gyration tensor: asphericity, acylindricity,
       relative shape anisotropy) and `select_conformations` (writes the most rod-like or sphere-like
       conformations of a multi-model file, e.g. frames of a single-molecule simulation)
 
@@ -257,13 +239,13 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] Reference center for PBC: constraints evaluated on atoms wrapped to cell centered at `unitcell_center`
 - [x] Rhombic dodecahedron box (`pbc dodecahedral cx cy cz d` keyword, `dodecahedral_unitcell`
       Julia API helper, `triclinic_to_dodecahedral`/`dodecahedral_to_triclinic` coordinate
-      conversion helpers — see `src/data_structures/dodecahedron.jl`); recipes support it via
+      conversion helpers — see `src/periodic_cells/dodecahedron.jl`); recipes support it via
       their `pbc = :dodecahedral` keyword.
 - [x] Truncated octahedron box (`pbc octahedral cx cy cz d` keyword, `octahedral_unitcell`
       Julia API helper, `triclinic_to_octahedral`/`octahedral_to_triclinic` coordinate
-      conversion helpers — see `src/data_structures/octahedron.jl`, mirroring
+      conversion helpers — see `src/periodic_cells/octahedron.jl`, mirroring
       `dodecahedron.jl`; both share the same "nearest periodic image" search in
-      `src/data_structures/periodic_cells.jl`); recipes support it via their
+      `src/periodic_cells/periodic_cells.jl`); recipes support it via their
       `pbc = :octahedral` keyword.
 - [x] Dodecahedral and octahedral cells (detected from the `unitcell` matrix, `_is_wigner_seitz_cell`,
       `PackmolSystem.wigner_seitz_cell`) are the Wigner-Seitz cell centered at `unitcell_center`: the
@@ -293,7 +275,7 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] SPGBox-based optimization (`packmol()` function)
 - [x] Multi-start strategy: initial placement + iterative repositioning of bad molecules (`movebad!`)
 - [x] `movefrac` control: fraction of bad molecules moved per iteration
-- [x] Active subsystem (`src/active_set.jl`, `packmol(sys; active_set=true)`, the default): each loop
+- [x] Active subsystem (`src/packing/active_set.jl`, `packmol(sys; active_set=true)`, the default): each loop
       (loop 0 too, which matters for restarts) optimizes only the bad molecules (those that do not satisfy
       the convergence criterion: `unconverged_mols` of the evaluations at the start and end of the loop)
       and the molecules with an atom within `active_radius` (2 tolerance; 6 made 74% of the exosome active, from scattered bad waters) of them, the others frozen;
@@ -462,10 +444,10 @@ implementation in the Fortran version.
 The CLI (`src/CLI.jl`) compiles with `juliac --trim=safe` (Julia 1.13+: with 1.12 the
 bodies of spawned tasks are not compiled into the executable), which requires every call
 reachable from it to be resolved at compile time. In the engine code:
-- print with `_print`/`_println`/`@_printf` (`src/io/terminal.jl`), never `println`/`@printf`
+- print with `_print`/`_println`/`@_printf` (`src/utils/terminal.jl`), never `println`/`@printf`
   to `stdout`/`stderr` (non-constant globals of abstract type `IO`, and not even initialized
   in a trimmed executable: the CLI sets `_use_core_streams[] = true`); progress with `ProgressBar`;
-- use `@_sync` (`src/threads.jl`) instead of `@sync`, and no `deepcopy`; split parallel loops
+- use `@_sync` (`src/utils/threads.jl`) instead of `@sync`, and no `deepcopy`; split parallel loops
   into `_nbatches()` chunks, not `Threads.nthreads()` (the executable starts all threads, and
   `nthreads`/`-t` limits how many work);
 - read/write PDB files with PDBToolsBase's `read_pdb`/`write_pdb` (trim-compatible);

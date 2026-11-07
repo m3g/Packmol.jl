@@ -1,3 +1,8 @@
+#
+# Runner of the Fortran Packmol (`run_packmol_legacy`): the methods are defined in the
+# PackmolJLLExt extension (ext/), loaded with `using Packmol_jll`.
+#
+
 export run_packmol_legacy
 
 """

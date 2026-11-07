@@ -1,3 +1,7 @@
+#
+# SolutionBoxUS: a solute in a solvent.
+#
+
 mutable struct SolutionBoxUS <: Recipe
     solute_pdbfile::String
     solvent_pdbfile::String

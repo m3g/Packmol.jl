@@ -98,7 +98,7 @@ function adjust_constraints!(
         # many orders of magnitude above the actual atom count — the cell
         # array itself is allocated at that size regardless of parallel vs
         # serial construction, which is what actually blows up memory here.
-        # Cap it at (fixed + free) atom count, matching packmol_main.jl's own
+        # Cap it at (fixed + free) atom count, matching the packing loop's own
         # cl_system cutoff cap.
         volume = abs(det(fixed_unitcell))
         max_particles = natoms

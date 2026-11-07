@@ -3,7 +3,7 @@
 # Scans fmol for free molecules with fmol > precision, computes the number
 # of bad molecules and moves a fraction of them randomly. Returns the
 # indices of the molecules actually moved, so the caller can act on them
-# individually (e.g. packmol_main.jl fattens their atom radii back up).
+# individually (e.g. the packing loop, packing/packing_loop.jl, fattens their atom radii back up).
 # Following the Fortran Packmol heuristic (heuristics.f90 movebad subroutine).
 #
 # On top of that per-candidate probabilistic selection, the single

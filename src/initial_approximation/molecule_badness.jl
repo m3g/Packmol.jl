@@ -97,7 +97,7 @@ end
 
 # HASPBC is a type parameter (via Val), not a runtime Bool, so the non-PBC
 # specialization never compiles the wrap_to_center branch at all — see the
-# comment on _constraint_fg! in interatomic_distance_fg.jl for why that matters.
+# comment on _constraint_fg! in function_and_gradient/constraint_fg.jl for why that matters.
 function _molecule_badness_constraints!(
     badness::Vector{T},
     packmol_system::PackmolSystem{D,T},
@@ -121,7 +121,7 @@ function _molecule_badness_constraints!(
                     # the one that wraps the molecule's own CM into the
                     # canonical cell — rather than wrapping each atom's
                     # absolute position independently. See the comment on
-                    # `_constraint_fg!` in interatomic_distance_fg.jl for why:
+                    # `_constraint_fg!` in function_and_gradient/constraint_fg.jl for why:
                     # wrapping atoms independently lets one atom of a
                     # molecule cross a wrap seam while its CM (and the rest
                     # of the molecule) doesn't, turning a harmless boundary
@@ -233,7 +233,7 @@ function molecule_badness_for_mols!(
 end
 
 # HASPBC is a type parameter (via Val), not a runtime Bool — see the comment
-# on _constraint_fg! in interatomic_distance_fg.jl for why that matters.
+# on _constraint_fg! in function_and_gradient/constraint_fg.jl for why that matters.
 function _molecule_badness_constraints_for_mols!(
     badness::Vector{T},
     packmol_system::PackmolSystem{D,T},

@@ -1,4 +1,7 @@
-
+#
+# Recipes: systems set up from densities and concentrations (solvation boxes, membranes),
+# written as input files (`write_packmol_input`) or packed directly (`packmol(recipe)`).
+#
 using Unitful
 using PDBToolsBase: read_pdb, write_pdb, Atom, mass, charge, maxmin, eachresidue
 
@@ -96,8 +99,6 @@ function _unitcell_description(unitcell::AbstractMatrix{Float64})
 end
 
 include("./DensityTable.jl")
-
-#include("concentration.jl")
 include("./concentration_units.jl")
 
 # System types
