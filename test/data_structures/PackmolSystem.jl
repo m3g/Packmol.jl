@@ -15,7 +15,7 @@
     @test all(at.molecule_index == 100 for at in sys.atoms[298:300])
     @test length(sys.molecule_positions) == 100
 
-    packmol(sys; nloop=200, maxit=20, iprint=200)
+    packmol(sys; nloop=200, maxit=20)
     @test isfile("julia_api_test.pdb")
     output_atoms = read_pdb("julia_api_test.pdb")
     @test length(output_atoms) == 300
@@ -274,7 +274,7 @@ end
                 structure_type(water; number=5, constraints),
             ]; output="", tolerance=2.0)
         redirect_stdout(devnull) do
-            packmol(sys; iprint=1000)
+            packmol(sys)
         end
         @test sys.status == :packing_ready
         @test all(isapprox(position(at), x; atol=1e-3) for (at, x) in zip(get_atoms(sys)[1:3], expected))
@@ -375,7 +375,7 @@ end
         unitcell=dodecahedral_unitcell(Float64, 15.0))
     @test sys.unitcell_center == SVector(0.0, 0.0, 0.0)
     @test redirect_stdout(devnull) do
-        packmol(sys; iprint=1000)
+        packmol(sys)
     end.status == :packing_ready
 end
 

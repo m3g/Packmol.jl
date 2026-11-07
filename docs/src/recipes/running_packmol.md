@@ -18,7 +18,7 @@ native, pure-Julia [Julia API](../julia_api/index.md) uses) and hands it to
 only file produced. Keyword arguments specific to each recipe
 (`margin`/`box_sides`/`pbc`, plus `concentration`/`ionic_concentration`
 where relevant) are documented under each recipe below; any other keyword
-(`nloop`, `iprint`, `seed`, ...) is forwarded to the packing
+(`nloop`, `maxit`, `seed`, ...) is forwarded to the packing
 engine itself — see `packmol(::PackmolSystem)`.
 
 `pbc` selects the shape of the periodic cell that `margin`/`box_sides` size:

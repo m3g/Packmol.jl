@@ -35,7 +35,7 @@ end
 # SPGBox callback: progress bar, and stop on convergence
 #
 function packmol_callback(
-    cl_system, tol, iprint, tolerance_precision, constraint_precision, progress_meter;
+    cl_system, tol, tolerance_precision, constraint_precision, progress_meter;
     f::Union{Nothing,Real} = nothing,
     nfeval::Union{Nothing,Integer} = nothing,
     nfevalmax::Union{Nothing,Integer} = nothing,

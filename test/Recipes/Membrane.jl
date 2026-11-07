@@ -212,7 +212,7 @@ end
 
     sys = Membrane(lipids="POPC", total_lipids=20)
     tmp_output_file = tempname() * ".pdb"
-    packed_sys = packmol(sys; output=tmp_output_file, seed=42, iprint=0)
+    packed_sys = packmol(sys; output=tmp_output_file, seed=42)
     @test packed_sys isa Packmol.PackmolSystem
     @test packed_sys.status == :packing_ready
     @test isfile(tmp_output_file)
@@ -237,7 +237,7 @@ end
 
     sys = Membrane(type=:monolayer, lipids="DMPC", total_lipids=10)
     tmp_output_file = tempname() * ".pdb"
-    packed_sys = packmol(sys; output=tmp_output_file, seed=42, iprint=0)
+    packed_sys = packmol(sys; output=tmp_output_file, seed=42)
     @test packed_sys isa Packmol.PackmolSystem
     @test packed_sys.status == :packing_ready
     @test isfile(tmp_output_file)

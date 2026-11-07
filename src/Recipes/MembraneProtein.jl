@@ -332,14 +332,10 @@ function write_packmol_input(
     return debug ? setup : nothing
 end
 
-"""
-    packmol(system::MembraneProtein; output = "membrane_protein.pdb", kwargs...)
-
-Builds and packs a membrane protein system, without writing an input file (as
-[`write_packmol_input`](@ref write_packmol_input(::MembraneProtein)) followed by `packmol`).
-Any other keyword is forwarded to the packing engine; returns the `PackmolSystem`.
-"""
-function packmol(system::MembraneProtein; output = "membrane_protein.pdb", kwargs...)
+@eval function packmol(system::MembraneProtein;
+    output = "membrane_protein.pdb",
+    $(map(_kwarg_signature, _packmol_recipe_kwargs)...),
+)
     (; lipid_placements, solvent_placements, unitcell, center) = _setup(system)
     structure_types = StructureType{3,Float64}[
         structure_type(system.protein_pdbfile; number = 1, fixed = ([0.0, 0.0, 0.0], [0.0, 0.0, 0.0])),
@@ -350,5 +346,14 @@ function packmol(system::MembraneProtein; output = "membrane_protein.pdb", kwarg
         output, tolerance = 2.0, add_box_sides = true, seed = -1,
         unitcell, unitcell_center = SVector{3,Float64}(center),
     )
-    return packmol(packmol_system; kwargs...)
+    return packmol(packmol_system; $(_packmol_recipe_kwarg_names...))
 end
+
+"""
+    packmol(system::MembraneProtein; output = "membrane_protein.pdb", kwargs...)
+
+Builds and packs a membrane protein system, without writing an input file (as
+[`write_packmol_input`](@ref write_packmol_input(::MembraneProtein)) followed by `packmol`).
+Any other keyword is forwarded to the packing engine; returns the `PackmolSystem`.
+"""
+packmol(::MembraneProtein)

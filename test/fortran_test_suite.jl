@@ -30,7 +30,7 @@
     ]
         sys = redirect_stdout(devnull) do
             redirect_stderr(devnull) do
-                packmol(TestFiles.test_file("input_files/$name.inp"); iprint=1000)
+                packmol(TestFiles.test_file("input_files/$name.inp"))
             end
         end
         @testset "$name" begin
@@ -46,7 +46,7 @@
     failed_impossible = joinpath(dirname(failed), "water_box_impossible.inp")
     write(failed_impossible, replace(read(failed, String), "inside box 0. 0. 0. 3.0 3.0 1.0" => "inside box 0. 0. 0. 1.1 1.1 1.1"))
     sys = redirect_stdout(devnull) do
-        packmol(failed_impossible; iprint=1000)
+        packmol(failed_impossible)
     end
     @test sys.status == :failed_packing
     @test isfile(sys.output_file * "_FORCED")

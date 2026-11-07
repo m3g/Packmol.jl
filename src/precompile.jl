@@ -86,7 +86,7 @@ if !_executable_build
               constrain_rotation z 0. 20.
             end structure
             """)
-            packmol(input; iprint = 1000)
+            packmol(input)
             # Checking the initial placement, and an input with an orthorhombic periodic
             # box and XYZ output
             sys = read_packmol_input(input)
@@ -106,7 +106,7 @@ if !_executable_build
               above plane 0. 0. 1. 5.
             end structure
             """)
-            packmol(input_pbc; iprint = 1000)
+            packmol(input_pbc)
             free_volume(input_pbc; npoints = 1000)
             guess_volume(input_pbc)
             # The Julia API: a rhombic dodecahedron, written in its shape, as mmCIF
@@ -118,17 +118,17 @@ if !_executable_build
             sys = PackmolSystem([w, e]; tolerance = 2.0, output = joinpath(dir, "julia.cif"),
                 unitcell = dodecahedral_unitcell(Float64, 16.0), nloop = 1)
             triclinic_to_dodecahedral(sys)
-            packmol(sys; iprint = 1000)
+            packmol(sys)
             get_atoms(sys)
             sys = PackmolSystem([w]; tolerance = 2.0, output = joinpath(dir, "octahedral.pdb"),
                 unitcell = octahedral_unitcell(Float64, 16.0), nloop = 1)
-            packmol(sys; iprint = 1000)
+            packmol(sys)
             # A unit cell given as a matrix, and a rotation constraint of the longest axis
             e = structure_type(ethanol; number = 2, constraints = [InsideBox([0., 0., 0.], [15., 15., 15.])],
                 constrain_rotation = Dict(:z => (0.0, 30.0)))
             sys = PackmolSystem([w, e]; tolerance = 2.0, output = joinpath(dir, "matrix.pdb"),
                 unitcell = [15. 0. 0.; 0. 15. 0.; 0. 0. 15.], nloop = 1)
-            packmol(sys; iprint = 1000)
+            packmol(sys)
             # A recipe (the system is not packed: it has thousands of molecules)
             recipe = SolutionBoxUS(solute_pdbfile = joinpath(data, "poly_h.pdb"),
                 solvent_pdbfile = water, density = 1.0u"g/mL")

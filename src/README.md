@@ -35,7 +35,11 @@ The tests (`test/`) mirror this layout: the tests of `src/<dir>/<file>.jl` are i
 - Each file starts with a comment saying what it contains.
 - Dimensions and precision are type parameters (`D`, `T`); 3D is the main target.
 - Coordinates are in Å.
-- Names starting with `_` are internal. Keyword arguments passed through are `kwargs...`.
+- Names starting with `_` are internal. Keyword arguments passed through are `kwargs...`,
+  except in the `packmol` methods (of the API and of the recipes), whose options are listed
+  explicitly, so that the REPL completes them: they are generated from the lists of
+  `packing/packmol.jl` (`_packmol_global_options`, `_packmol_run_options`), where a new
+  option is added.
 - Errors are `ArgumentError`s with messages padded as `"""\n ... \n\n"""`.
 - The code reachable from the command line interface must compile with
   `juliac --trim=safe`: see the notes in `CLAUDE.md` (no printing to `stdout` with
