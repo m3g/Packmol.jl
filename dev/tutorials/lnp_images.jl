@@ -9,8 +9,7 @@
 #
 # The nanoparticle is cut as a cake: the molecules with the center in the quarter x > 0,
 # y < 0 are removed (the RNA, a single molecule each, bead by bead). The water outside
-# the particle is kept below a diagonal plane: the particle is seen partially immersed
-# in it. The molecules kept are written first to a smaller
+# the particle is kept behind it (see `water_kept`). The molecules kept are written first to a smaller
 # PDB file, which is rendered, with the chain identifiers marking the components: M the
 # lipids of the monolayers, F the POPC of the lipid phase, R the RNA, C the water of the
 # compartments, O the water outside.
@@ -46,7 +45,16 @@ end
 
 read_structure(file) = endswith(file, ".cif") ? read_mmcif(file) : read_pdb(file)
 cut(x, y) = x > 0 && y < 0 # the quarter removed
-water_kept(x, y, z) = z < -120 - 0.5 * (x + y) / sqrt(2) # below the diagonal plane
+# The water behind the particle: behind a plane `ahead` Å in front of the center, whose
+# normal is the direction towards the viewer turned by `turn` degrees towards the right
+# of the image (both directions in the coordinates of the system, for the view of
+# `render` below), and out of the quarter removed
+const toward_viewer = (0.3462, -0.7424, 0.5736)
+const image_right = (0.9063, 0.4226, 0.0)
+const turn = 40.0
+const ahead = 70.0
+const normal = cosd(turn) .* toward_viewer .+ sind(turn) .* image_right
+water_kept(x, y, z) = normal[1] * x + normal[2] * y + normal[3] * z < ahead
 
 function cake_file(input, output)
     types = structures(input)
@@ -66,7 +74,7 @@ function cake_file(input, output)
             else
                 xc = sum(a.x for a in mol) / length(mol)
                 yc = sum(a.y for a in mol) / length(mol)
-                tag != "O" && cut(xc, yc) && continue
+                cut(xc, yc) && continue
                 zc = sum(a.z for a in mol) / length(mol)
                 tag == "O" && !water_kept(xc, yc, zc) && continue
                 for a in mol
