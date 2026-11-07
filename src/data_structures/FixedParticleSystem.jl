@@ -1,4 +1,10 @@
 #
+# Cell lists of the fixed atoms (`build_fixed_particle_system`), built once, for the
+# distances between free and fixed atoms in the initial placement and in movebad, and the
+# cap on the number of cells of large, sparse boxes (`_capped_cutoff`).
+#
+
+#
 # Cell count for a CellListMap box scales as volume / cutoff^D: for a large,
 # sparse box (extent set by where particles *could* be, not by how many there
 # are) a naively small cutoff can imply a cell count many orders of magnitude
@@ -128,7 +134,7 @@ end
 # index a whole system's worth of molecules (e.g. molecule_badness.jl, which
 # uses a single shared instance) need `packmol_system.nmols`; callers that
 # build one instance per thread/task to check a single trial molecule at a
-# time (overlaps_fixed.jl) only ever touch index 1, so pass `nmols=1` there —
+# time (fixed_molecules.jl) only ever touch index 1, so pass `nmols=1` there —
 # CellListMap replicates the output buffer once per internal batch, and again
 # for every per-task instance, so an oversized buffer here is multiplied by both
 # factors and can blow up memory on large systems.
@@ -141,7 +147,7 @@ end
 # `limits(xpositions, ypositions)` on every `update!`/`pairwise!` call whose
 # trial point falls outside the current box — an O(nmols_fixed) scan, and
 # potentially a full cell-list rebuild, repeated on every single trial for
-# callers like overlaps_fixed.jl. Passing an explicit box comfortably covering
+# callers like fixed_molecules.jl. Passing an explicit box comfortably covering
 # every point that will ever be queried makes CellListMap treat it as
 # periodic instead, skipping that re-fit entirely.
 #

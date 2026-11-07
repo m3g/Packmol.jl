@@ -46,3 +46,28 @@
     @test n_near_zhi > 0
     @test max(n_near_zlo, n_near_zhi) / min(n_near_zlo, n_near_zhi) < 2.0
 end
+
+@testitem "_extended_cm_bounds" setup=[TestFiles] begin
+    using Packmol
+    using StaticArrays
+    using LinearAlgebra: norm, Diagonal
+    water = TestFiles.test_file("structure_files/water.pdb")
+    st = structure_type(water; number = 2, constraints = [InsideSphere([0.0, 0.0, 0.0], 20.0)])
+    system = PackmolSystem([st]; output = "")
+    Packmol._center_reference_coordinates!(system)
+    st = system.structure_types[1]
+    r = maximum(norm, st.reference_coordinates)
+    lo, hi = Packmol._extended_cm_bounds(system, st, SVector(-5.0, -5.0, -5.0), SVector(5.0, 5.0, 5.0))
+    @test lo ≈ SVector(-5.0, -5.0, -5.0) .- r
+    @test hi ≈ SVector(5.0, 5.0, 5.0) .+ r
+    # Within the periodic cell
+    center = SVector(5.0, 5.0, 5.0)
+    system = PackmolSystem([structure_type(water; number = 2)]; output = "",
+        unitcell = Matrix{Float64}(Diagonal([10.0, 10.0, 10.0])), unitcell_center = center)
+    Packmol._center_reference_coordinates!(system)
+    st = system.structure_types[1]
+    lo, hi = Packmol._extended_cm_bounds(system, st, SVector(0.5, 0.5, 0.5), SVector(9.5, 9.5, 9.5))
+    h = Packmol._cm_half_extent(system)
+    @test lo ≈ center .- h
+    @test hi ≈ center .+ h
+end

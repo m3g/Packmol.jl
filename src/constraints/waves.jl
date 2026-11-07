@@ -45,8 +45,8 @@ end
 Wave{Placement}(; up, along, d0, amplitude, wavelength, phase, weight=weight_default[:wave]) where {Placement} =
     Wave{Placement}(up, along, d0, amplitude, wavelength, phase, weight)
 
-AboveSin(args...; kargs...) = Wave{Over}(args...; kargs...)
-BelowSin(args...; kargs...) = Wave{Below}(args...; kargs...)
+AboveSin(args...; kwargs...) = Wave{Over}(args...; kwargs...)
+BelowSin(args...; kwargs...) = Wave{Below}(args...; kwargs...)
 AboveCos(up, along, d0, amplitude, wavelength, phase, weight=weight_default[:wave]) =
     Wave{Over}(up, along, d0, amplitude, wavelength, phase + oftype(phase, pi) / 2, weight)
 AboveCos(; up, along, d0, amplitude, wavelength, phase, weight=weight_default[:wave]) =
@@ -118,8 +118,8 @@ end
 RadialWave{Placement}(; up, center, d0, amplitude, wavelength, phase, weight=weight_default[:radial_wave]) where {Placement} =
     RadialWave{Placement}(up, center, d0, amplitude, wavelength, phase, weight)
 
-AboveRadialSin(args...; kargs...) = RadialWave{Over}(args...; kargs...)
-BelowRadialSin(args...; kargs...) = RadialWave{Below}(args...; kargs...)
+AboveRadialSin(args...; kwargs...) = RadialWave{Over}(args...; kwargs...)
+BelowRadialSin(args...; kwargs...) = RadialWave{Below}(args...; kwargs...)
 AboveRadialCos(up, center, d0, amplitude, wavelength, phase, weight=weight_default[:radial_wave]) =
     RadialWave{Over}(up, center, d0, amplitude, wavelength, phase + oftype(phase, pi) / 2, weight)
 AboveRadialCos(; up, center, d0, amplitude, wavelength, phase, weight=weight_default[:radial_wave]) =

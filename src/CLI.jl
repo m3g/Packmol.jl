@@ -1,3 +1,9 @@
+#
+# The command line interface (`packmol` app of `Pkg.Apps`, and the executable built with
+# `juliac`, see juliac/): parses the arguments and runs the native engine. Compatible with
+# `juliac --trim` (see the notes in CLAUDE.md).
+#
+
 module CLI
 
 import ..Packmol
@@ -92,7 +98,7 @@ function _error_exit(@nospecialize(e), code::Int)
 end
 
 function (@main)(ARGS)
-    # Print to the `Core` streams (see `src/io/terminal.jl`)
+    # Print to the `Core` streams (see `src/utils/terminal.jl`)
     Packmol._use_core_streams[] = true
     # Packmol makes no BLAS calls: don't let OpenBLAS start its own threads
     BLAS.set_num_threads(1)

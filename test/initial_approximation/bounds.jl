@@ -40,3 +40,34 @@ end
     @test system.molecule_positions[1].cm == SVector(15.0, 0.0, 0.0)
     @test all(lo[1] .<= system.molecule_positions[2].cm .<= hi[1])
 end
+
+@testitem "compute_cm_bounds: extrapolated range of few molecules" setup=[TestFiles] begin
+    # The range of the centers of n molecules underestimates the region they can
+    # occupy: the bounds are widened by range/(n - 1) on each side, and clamped to
+    # the cell under PBC.
+    using Packmol
+    using StaticArrays
+    using LinearAlgebra
+
+    water = TestFiles.test_file("structure_files/water.pdb")
+    st = structure_type(water; number=6)
+    sys = PackmolSystem([st]; output="")
+    for (i, x) in enumerate(0.0:2.0:10.0) # range 10, n = 6: margin 2
+        sys.molecule_positions[i] = Packmol.MoleculePosition(SVector(x, 0.0, -x), zero(SVector{3,Float64}))
+    end
+    lo, hi = Packmol.compute_cm_bounds(sys; extrapolate=false)
+    @test lo[1] ≈ [0.0, 0.0, -10.0]
+    @test hi[1] ≈ [10.0, 0.0, 0.0]
+    lo, hi = Packmol.compute_cm_bounds(sys)
+    @test lo[1] ≈ [-2.0, 0.0, -12.0]
+    @test hi[1] ≈ [12.0, 0.0, 2.0]
+
+    # Under PBC, the widened bounds do not go beyond the cell (here, from -11 to 11)
+    sys = PackmolSystem([st]; output="", unitcell=Matrix{Float64}(Diagonal([22.0, 22.0, 22.0])))
+    for (i, x) in enumerate(0.0:2.0:10.0)
+        sys.molecule_positions[i] = Packmol.MoleculePosition(SVector(x, 0.0, -x), zero(SVector{3,Float64}))
+    end
+    lo, hi = Packmol.compute_cm_bounds(sys)
+    @test lo[1] ≈ [-2.0, 0.0, -11.0]
+    @test hi[1] ≈ [11.0, 0.0, 2.0]
+end

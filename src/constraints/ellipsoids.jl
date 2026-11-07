@@ -33,8 +33,8 @@ end
 Ellipsoid{Placement}(; center, a, b, c, scale, weight=weight_default[:ellipsoid]) where {Placement} =
     Ellipsoid{Placement}(center, a, b, c, scale, weight)
 
-InsideEllipsoid(args...; kargs...) = Ellipsoid{Inside}(args...; kargs...)
-OutsideEllipsoid(args...; kargs...) = Ellipsoid{Outside}(args...; kargs...)
+InsideEllipsoid(args...; kwargs...) = Ellipsoid{Inside}(args...; kwargs...)
+OutsideEllipsoid(args...; kwargs...) = Ellipsoid{Outside}(args...; kwargs...)
 
 # Normalized "radius" of x on the ellipsoid's scale: > 0 outside, < 0 inside,
 # 0 exactly on the surface `(x-center)/(a,b,c) scaled by `scale`.

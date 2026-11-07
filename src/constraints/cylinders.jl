@@ -31,8 +31,8 @@ end
 Cylinder{Placement}(; center, axis, radius, length, weight=weight_default[:cylinder]) where {Placement} =
     Cylinder{Placement}(center, axis, radius, length, weight)
 
-InsideCylinder(args...; kargs...) = Cylinder{Inside}(args...; kargs...)
-OutsideCylinder(args...; kargs...) = Cylinder{Outside}(args...; kargs...)
+InsideCylinder(args...; kwargs...) = Cylinder{Inside}(args...; kwargs...)
+OutsideCylinder(args...; kwargs...) = Cylinder{Outside}(args...; kwargs...)
 
 # Decompose x - center into its axial coordinate `w` (signed distance from
 # `center` along the normalized axis) and its perpendicular vector `r` (so

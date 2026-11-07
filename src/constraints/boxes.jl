@@ -104,7 +104,7 @@ julia> InsideCube([0.0, 0.0, 0.0], 40.0) == InsideCube(center=[20.0, 20.0, 20.0]
 true
 ```
 """
-InsideCube(args...; kargs...) = Cube{Inside}(args...; kargs...)
+InsideCube(args...; kwargs...) = Cube{Inside}(args...; kwargs...)
 
 """
     OutsideCube(lower_corner, side; weight)
@@ -112,7 +112,7 @@ InsideCube(args...; kargs...) = Cube{Inside}(args...; kargs...)
 
 Keeps the atoms outside an axis-aligned cube, given as in [`InsideCube`](@ref).
 """
-OutsideCube(args...; kargs...) = Cube{Outside}(args...; kargs...)
+OutsideCube(args...; kwargs...) = Cube{Outside}(args...; kwargs...)
 
 constraint_penalty(c::Cube{Inside}, x) =
     sum(orthogonal_wall(Inside, c.center[i], c.side, c.weight, x[i]) for i in eachindex(x,c.center))
@@ -169,7 +169,7 @@ julia> InsideBox([0.0, 0.0, 0.0], [40.0, 40.0, 40.0]) == InsideBox(center=[20.0,
 true
 ```
 """
-InsideBox(args...; kargs...) = Box{Inside}(args...; kargs...)
+InsideBox(args...; kwargs...) = Box{Inside}(args...; kwargs...)
 
 """
     OutsideBox(lower, upper; weight)
@@ -177,7 +177,7 @@ InsideBox(args...; kargs...) = Box{Inside}(args...; kargs...)
 
 Keeps the atoms outside an axis-aligned box, given as in [`InsideBox`](@ref).
 """
-OutsideBox(args...; kargs...) = Box{Outside}(args...; kargs...)
+OutsideBox(args...; kwargs...) = Box{Outside}(args...; kwargs...)
 
 constraint_penalty(c::Box{Inside}, x) =
     sum(orthogonal_wall(Inside, c.center[i], c.sides[i], c.weight, x[i]) for i in eachindex(x,c.center,c.sides))

@@ -302,3 +302,55 @@ _subset(rs::RotationScaling{T}, k::Vector{Int}) where {T} =
     RotationScaling{T}(rs.inertia[k], rs.scaled[k], rs.Lt[k], rs.Lt_inv[k], rs.L_inv[k])
 _subset(::Nothing, ::Vector{Int}) = nothing
 
+#
+# Optimization of the active subsystem `sub` of a loop (see `_active_subsystem` above): the variables
+# of its molecules are taken from, and returned to, the variables `x` of the free molecules.
+# (A function barrier: the type of `sub` is only known at run time, and the closures given
+# to the solver must have concrete types for `juliac --trim`.)
+#
+function _optimize_active_subsystem!(
+    x::Vector{T}, sub, lower, upper, scale_rotations::Bool, rot_scaling,
+    packmol_system::PackmolSystem{D,T}, atom_radii::Vector{T}, tol, iprint, progress_meter, maxit::Int,
+) where {D,T}
+    na = length(sub.mols)
+    x_mol_full = reinterpret(MoleculePosition{D,T}, x)
+    x_act = Vector{T}(undef, 2 * D * na)
+    xa_mol = reinterpret(MoleculePosition{D,T}, x_act)
+    for k in 1:na
+        xa_mol[k] = x_mol_full[sub.kfree[k]]
+    end
+    lower_act, upper_act = if isnothing(lower) || isnothing(upper)
+        nothing, nothing
+    else
+        collect(reinterpret(T, reinterpret(MoleculePosition{D,T}, lower)[sub.kfree])),
+            collect(reinterpret(T, reinterpret(MoleculePosition{D,T}, upper)[sub.kfree]))
+    end
+    callback = (result) -> packmol_callback(sub.cl, tol, iprint,
+        packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter;
+        f=result.f, nfeval=result.nfeval, nfevalmax=10 * maxit, gnorm=result.gnorm,
+    )
+    res = if scale_rotations
+        rs_act = _subset(rot_scaling, sub.kfree)
+        _update_rotation_scaling!(rs_act, xa_mol)
+        _scale_angles!(xa_mol, rs_act)
+        xu_act = similar(x_act)
+        fg_scaled = (g, y) -> begin
+            _unscale_angles!(reinterpret(MoleculePosition{D,T}, xu_act), reinterpret(MoleculePosition{D,T}, y), rs_act)
+            fa = _active_fg!(g, xu_act, sub, packmol_system, atom_radii)
+            _scale_angle_gradient!(reinterpret(MoleculePosition{D,T}, g), rs_act)
+            fa
+        end
+        r = _local_solver(fg_scaled, x_act, lower_act, upper_act;
+            callback, vaux=SPGBox.VAux(x_act, zero(T)), nitmax=maxit, nfevalmax=10 * maxit)
+        _unscale_angles!(xa_mol, xa_mol, rs_act)
+        r
+    else
+        fg_plain = (g, y) -> _active_fg!(g, y, sub, packmol_system, atom_radii)
+        _local_solver(fg_plain, x_act, lower_act, upper_act;
+            callback, vaux=SPGBox.VAux(x_act, zero(T)), nitmax=maxit, nfevalmax=10 * maxit)
+    end
+    for k in 1:na
+        x_mol_full[sub.kfree[k]] = xa_mol[k]
+    end
+    return res
+end

@@ -1,3 +1,8 @@
+#
+# SolutionBoxUSC: a solute in a mixture of a solvent and a cossolvent, at a concentration
+# of the cossolvent.
+#
+
 mutable struct SolutionBoxUSC <: Recipe
     solute_pdbfile::String
     solvent_pdbfile::String

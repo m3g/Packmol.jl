@@ -4,7 +4,7 @@
 # test/input_files). Each one must actually converge, and in a number of
 # packing loops not much greater than what it currently needs — a large
 # increase would signal a regression in the stall-detection/movebad!
-# machinery in packmol_main.jl, not just a slower run.
+# machinery of src/packing/, not just a slower run.
 #
 
 @testitem "example: mixture (water + urea)" setup=[TestFiles] begin

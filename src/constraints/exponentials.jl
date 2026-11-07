@@ -44,8 +44,8 @@ end
 Exponential{Placement}(; up, along, d0, amplitude, center, rate, weight=weight_default[:exponential]) where {Placement} =
     Exponential{Placement}(up, along, d0, amplitude, center, rate, weight)
 
-AboveExponential(args...; kargs...) = Exponential{Over}(args...; kargs...)
-BelowExponential(args...; kargs...) = Exponential{Below}(args...; kargs...)
+AboveExponential(args...; kwargs...) = Exponential{Over}(args...; kwargs...)
+BelowExponential(args...; kwargs...) = Exponential{Below}(args...; kwargs...)
 
 # Profile value and derivative at s = along_unit·x
 function _exponential_h(c::Exponential, s)
@@ -104,8 +104,8 @@ end
 RadialExponential{Placement}(; up, center, d0, amplitude, rate, weight=weight_default[:radial_exponential]) where {Placement} =
     RadialExponential{Placement}(up, center, d0, amplitude, rate, weight)
 
-AboveRadialExponential(args...; kargs...) = RadialExponential{Over}(args...; kargs...)
-BelowRadialExponential(args...; kargs...) = RadialExponential{Below}(args...; kargs...)
+AboveRadialExponential(args...; kwargs...) = RadialExponential{Over}(args...; kwargs...)
+BelowRadialExponential(args...; kwargs...) = RadialExponential{Below}(args...; kwargs...)
 
 # Decompose x - center into the axial coordinate `w` (along the normalized
 # `up`) and the perpendicular vector `perp`, whose norm `r` is the radial

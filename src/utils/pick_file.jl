@@ -1,3 +1,9 @@
+#
+# File dialog for choosing an input file, with the tools of the operating system
+# (osascript, PowerShell, zenity or kdialog), run with libc `popen`: no GUI toolkit is
+# bundled with the executable.
+#
+
 """
     pick_file()
 

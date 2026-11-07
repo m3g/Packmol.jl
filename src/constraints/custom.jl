@@ -6,8 +6,6 @@
 # constraint has a concrete type, and fits in the closed `AnyConstraint` union of the
 # packing loop (see constraint_types.jl), whatever function the user gives.
 #
-using FunctionWrappers: FunctionWrapper
-
 export CustomConstraint
 
 # Default weight

@@ -1,3 +1,8 @@
+#
+# Concentration units (molarity, molality, mole fraction, ...) and the conversions between
+# them, given the densities of the solutions.
+#
+
 using Unitful
 using OrderedCollections: OrderedDict
 

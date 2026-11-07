@@ -12,6 +12,9 @@ using PDBToolsBase: read_xyz, write_xyz, read_mmcif
 using SPGBox
 using Printf: @printf, @sprintf
 import CellListMap
+using CellListMap: ParticleSystem, NeighborPair, pairwise!
+using FunctionWrappers: FunctionWrapper
+import Random
 # `get_atoms` is a shared function name (defined in PDBToolsBase): imported,
 # not defined here, so that it and other packages in the M3G ecosystem
 # (MolSimToolkit.jl, ...) can each add their own method to the very same
@@ -44,10 +47,12 @@ export structure_type
 export get_atoms
 export shape_descriptors, select_conformations
 
-# Terminal input/output, progress bar and task synchronization (compatible with `juliac --trim`)
-include("./io/terminal.jl")
-include("./io/progress_bar.jl")
-include("./threads.jl")
+# Basic utilities: terminal output, progress bar and task synchronization (compatible
+# with `juliac --trim`), and the file dialog
+include("./utils/terminal.jl")
+include("./utils/progress_bar.jl")
+include("./utils/threads.jl")
+include("./utils/pick_file.jl")
 
 # Constraints
 include("./constraints/constraints_base.jl")
@@ -67,46 +72,58 @@ include("./constraints/rotations.jl")
 include("./data_structures/atoms_and_molecules.jl")
 include("./data_structures/StructureType.jl")
 include("./data_structures/PackmolSystem.jl")
-include("./data_structures/periodic_cells.jl")
-include("./data_structures/dodecahedron.jl")
-include("./data_structures/octahedron.jl")
+include("./data_structures/system_options.jl")
 include("./data_structures/FixedParticleSystem.jl")
 
-# Random number generation
-include("./initial_approximation/random.jl")
+# Periodic cells
+include("./periodic_cells/periodic_cells.jl")
+include("./periodic_cells/dodecahedron.jl")
+include("./periodic_cells/octahedron.jl")
+include("./periodic_cells/wrapping.jl")
+
+# Input files
+include("./io/read_input.jl")
+include("./io/read_structure_block.jl")
 
 # Rigid body transformations
 include("./rigid_body/rigid_body.jl")
 include("./rigid_body/chain_rule.jl")
 include("./rigid_body/rotation_metric.jl")
 
-# Function and gradient of the distance between atoms
-include("./function_and_gradient/interatomic_distance_fg.jl")
+# The objective function and its gradient
+include("./function_and_gradient/fg_output.jl")
+include("./function_and_gradient/pair_fg.jl")
+include("./function_and_gradient/atom_positions.jl")
+include("./function_and_gradient/constraint_fg.jl")
+include("./function_and_gradient/fg.jl")
 
-# Initial approximation: placement, constraint pre-optimization
+# Initial placement of the molecules, and movebad
 include("./initial_approximation/initial_approximation.jl")
 
-# Input and output
-include("./io/pick_file.jl")
+# Output and restart
 include("./io/write_output.jl")
-include("./shape.jl")
+include("./io/restart.jl")
 
-# Packing functions
-include("./packmol_main.jl")
-include("./active_set.jl")
+# The packing
+include("./packing/packmol.jl")
+include("./packing/packing_loop.jl")
+include("./packing/report.jl")
+include("./packing/active_set.jl")
 
-# Volume estimates for setting up a system
+# Tools for setting up systems: volumes, shapes of molecules, and tools for building
+# systems by hand (public, not exported)
 include("./tools/volume.jl")
+include("./tools/shape.jl")
+include("./tools/system_building.jl")
 
 # Runner for the legacy packmol (methods in the PackmolJLLExt extension)
 include("./packmol_runner.jl")
+
+# Command line interface
 include("./CLI.jl")
 
-# Packmol input file creator
+# Recipes
 include("./Recipes/Recipes.jl")
-
-# Tools for building systems by hand (public, not exported)
-include("./tools/system_building.jl")
 
 # Precompilation workload
 include("./precompile.jl")

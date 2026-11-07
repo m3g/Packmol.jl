@@ -452,7 +452,7 @@ Fixed (branch `fixed-molecules-compat`):
   dropping LinearAlgebra from the dependency tree (hard, because StaticArrays needs it).
 - [x] **B7** Threads (2026-10-30, D18). The executable is built with all threads
   (`threads=auto,0`), and the number that work is the number of batches of the parallel
-  loops (`_nbatches()`, `src/threads.jl`), also passed to CellListMap (`nbatches`).
+  loops (`_nbatches()`, `src/utils/threads.jl`), also passed to CellListMap (`nbatches`).
   It is set by `-t N`, then the input keyword `nthreads`, then `JULIA_NUM_THREADS`,
   and otherwise all threads are used; `packmol(sys; nthreads)` in Julia. The CLI sets
   BLAS to one thread (Packmol makes no BLAS calls).

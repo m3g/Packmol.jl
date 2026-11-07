@@ -1,3 +1,7 @@
+#
+# Tables of densities of solutions as a function of the concentration, interpolated.
+#
+
 struct DensityTable
     concentration::Vector{typeof(1.0u"mol/L")}
     density::Vector{typeof(1.0u"g/mL")}

@@ -42,8 +42,8 @@ end
 Gaussian{Placement}(; up, along, d0, amplitude, center, sigma, weight=weight_default[:gaussian]) where {Placement} =
     Gaussian{Placement}(up, along, d0, amplitude, center, sigma, weight)
 
-AboveGaussian(args...; kargs...) = Gaussian{Over}(args...; kargs...)
-BelowGaussian(args...; kargs...) = Gaussian{Below}(args...; kargs...)
+AboveGaussian(args...; kwargs...) = Gaussian{Over}(args...; kwargs...)
+BelowGaussian(args...; kwargs...) = Gaussian{Below}(args...; kwargs...)
 
 # Profile value and derivative at s = along_unit·x
 function _gaussian_h(c::Gaussian, s)
@@ -102,8 +102,8 @@ end
 RadialGaussian{Placement}(; up, center, d0, amplitude, sigma, weight=weight_default[:radial_gaussian]) where {Placement} =
     RadialGaussian{Placement}(up, center, d0, amplitude, sigma, weight)
 
-AboveRadialGaussian(args...; kargs...) = RadialGaussian{Over}(args...; kargs...)
-BelowRadialGaussian(args...; kargs...) = RadialGaussian{Below}(args...; kargs...)
+AboveRadialGaussian(args...; kwargs...) = RadialGaussian{Over}(args...; kwargs...)
+BelowRadialGaussian(args...; kwargs...) = RadialGaussian{Below}(args...; kwargs...)
 
 # Decompose x - center into the axial coordinate `w` (along the normalized
 # `up`) and the perpendicular vector `perp` (so `rsq = sum(abs2, perp)` is

@@ -4,23 +4,15 @@
 # Default sidemax: half-width of the large box for initial placement.
 const DEFAULT_SIDEMAX = 1000.0
 
-include("./_clamp_molecules_to_bounds.jl")
-include("./compute_bounding_box.jl")
-include("./overlaps_fixed.jl")
-include("./satisfies_constraints.jl")
-include("./constraint_penalty_sum.jl")
-include("./compute_cm_bounds.jl")
-include("./_fit_bounds.jl")
+include("./bounds.jl")
+include("./fixed_molecules.jl")
+include("./constraint_checks.jl")
+include("./buffers.jl")
 include("./movebad.jl")
 include("./initialize_molecules.jl")
-include("./_collect_fixed_positions.jl")
-include("./_build_mol_structure_type.jl")
-include("./MemoryBuffers.jl")
-include("./_fill_free_atoms.jl")
 include("./molecule_badness.jl")
 include("./randomize_molecule.jl")
 include("./reinitialize_with_bounds.jl")
-include("./constraint_only_fg.jl")
 include("./adjust_constraints.jl")
 
 #

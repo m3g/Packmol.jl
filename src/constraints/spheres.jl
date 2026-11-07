@@ -26,8 +26,8 @@ end
 Sphere{Placement}(; center, radius, weight=weight_default[:sphere]) where {Placement} =
     Sphere{Placement}(center, radius, weight)
 
-InsideSphere(args...; kargs...) = Sphere{Inside}(args...; kargs...)
-OutsideSphere(args...; kargs...) = Sphere{Outside}(args...; kargs...)
+InsideSphere(args...; kwargs...) = Sphere{Inside}(args...; kwargs...)
+OutsideSphere(args...; kwargs...) = Sphere{Outside}(args...; kwargs...)
 
 function constraint_penalty(c::Sphere{Inside}, x)
     (; center, radius, weight) = c

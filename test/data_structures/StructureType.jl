@@ -32,7 +32,7 @@ end
 
 #=
     read_structure_data(input_file_block::IOBuffer, tolerance; T=Float64, D=3)
-    read_structure_data(input_file_block::AbstractString, args... kargs..)
+    read_structure_data(input_file_block::AbstractString, args... kwargs..)
 
 Reads the structure data from a structure block of the input file. Requires the `tolerance`
 parameter to set atom radii by default. The function returns a `StructureType` object. 

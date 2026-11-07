@@ -29,8 +29,8 @@ end
 Plane{Placement}(; normal, d, weight=weight_default[:plane]) where {Placement} =
     Plane{Placement}(normal, d, weight)
 
-AbovePlane(args...; kargs...) = Plane{Over}(args...; kargs...)
-BelowPlane(args...; kargs...) = Plane{Below}(args...; kargs...)
+AbovePlane(args...; kwargs...) = Plane{Over}(args...; kwargs...)
+BelowPlane(args...; kwargs...) = Plane{Below}(args...; kwargs...)
 
 # Above plane: atom must satisfy n·x >= d, penalty when n·x < d
 _op_plane(::Plane{Over}, x) = x < zero(x)

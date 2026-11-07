@@ -196,3 +196,27 @@ function _wrap_molecule_positions!(packmol_system::PackmolSystem{D,T}, imols::Ab
     end
     return packmol_system
 end
+
+#=
+    unitcell_matrix(a, b, c, α, β, γ)
+
+Convert CRYST1-style unit cell parameters (sides a, b, c and angles α, β, γ in degrees)
+to a 3×3 unit cell matrix (columns are the cell vectors). Uses the PDB convention:
+  a along x, b in the xy-plane.
+=#
+function unitcell_matrix(::Type{T}, a, b, c, α_deg, β_deg, γ_deg) where {T}
+    α = T(α_deg * π / 180)
+    β = T(β_deg * π / 180)
+    γ = T(γ_deg * π / 180)
+    ax = T(a)
+    bx = T(b) * cos(γ)
+    by = T(b) * sin(γ)
+    cx = T(c) * cos(β)
+    cy = T(c) * (cos(α) - cos(β) * cos(γ)) / sin(γ)
+    cz = sqrt(T(c)^2 - cx^2 - cy^2)
+    @SMatrix [
+        ax  bx  cx
+        zero(T)  by  cy
+        zero(T) zero(T) cz
+    ]
+end
