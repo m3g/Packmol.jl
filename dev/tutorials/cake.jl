@@ -14,7 +14,7 @@
 # the atom in the molecule, or `nothing` to keep the chains of the output) and how the
 # block is cut: `:split` (atom by atom), `:whole` (by the center of the molecules) or
 # `:outside` (by the center, and only behind the plane: the solvent outside the
-# particle).
+# particle; by the plane only, not by the quarter, beyond the radius `uncut_beyond`).
 #
 using PDBToolsBase: read_mmcif, read_pdb, write_pdb, Atom
 
@@ -64,7 +64,7 @@ function behind_plane(x, y, z; turn, ahead)
     return n[1] * x + n[2] * y + n[3] * z < ahead
 end
 
-function cake_file(input, output; tag, ahead, turn = 40.0, keep_atom = a -> true)
+function cake_file(input, output; tag, ahead, turn = 40.0, uncut_beyond = Inf, keep_atom = a -> true)
     blocks = structure_blocks(input)
     natoms = Dict(b.file => length(read_structure(joinpath(dirname(input), b.file))) for b in blocks)
     atoms = read_structure(output)
@@ -87,7 +87,7 @@ function cake_file(input, output; tag, ahead, turn = 40.0, keep_atom = a -> true
                 xc = sum(a.x for a in mol) / n
                 yc = sum(a.y for a in mol) / n
                 zc = sum(a.z for a in mol) / n
-                in_cut(xc, yc) && continue
+                in_cut(xc, yc) && (kind != :outside || xc^2 + yc^2 + zc^2 < uncut_beyond^2) && continue
                 kind == :outside && !behind_plane(xc, yc, zc; turn, ahead) && continue
                 for a in mol
                     keep_atom(a) || continue

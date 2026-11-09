@@ -6,7 +6,8 @@
 #     julia --project=dev/large_tests dev/tutorials/zika.jl zika.inp zika_check.pdb zika.pdb
 #
 # The virion is cut as a cake (cake.jl): a quarter of it is removed (the capsid, fixed,
-# atom by atom), and the solvent outside the membrane is kept behind it. The molecules
+# atom by atom), and the solvent outside is kept behind it (beyond the radius of the
+# capsid, 250 Å, cut by the plane only, not by the quarter). The molecules
 # kept are written first to a smaller PDB file, which is rendered, with the chain
 # identifiers marking the components: those of the capsid (proteins E and M, colored by
 # chain), B the lipids, W the solvent inside, Z the solvent outside.
@@ -33,7 +34,7 @@ reps = [
     (selection = "resname NaW ClW", style = "VDW 1.6 12", color = "ResName"),
 ]
 for (file, name) in zip(outputs, ("zika_check.webp", "zika.webp"))
-    pdb = cake_file(input, file; tag, ahead = 0.0)
+    pdb = cake_file(input, file; tag, ahead = 0.0, turn = 20.0, uncut_beyond = 250.0)
     render(pdb, joinpath(images, name); reps, rotate = cake_rotate, size = (1600, 1600), width = 1000)
     rm(pdb)
 end
