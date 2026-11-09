@@ -5,61 +5,29 @@
 #
 #     julia --project=dev/large_tests dev/tutorials/exosome_images.jl exosome.inp exosome_check.cif exosome.cif
 #
-# The systems have 13 million atoms: the molecules with an atom in a slab through the
-# center of the vesicle (|y| < 10 Å) are written first to a smaller PDB file, which is
+# The vesicle is cut as a cake (cake.jl): a quarter of it is removed (the fixed proteins
+# atom by atom), and the solvent outside the vesicle is kept behind it. The heavy atoms
+# kept (of the 13 million atoms) are written first to a smaller PDB file, which is
 # rendered. The chain identifiers of that file mark the membrane proteins (M) and the
-# contents of the lumen (N) of the fixed `proteins.cif` (the output of `proteins.inp`).
+# contents of the lumen (N) of the fixed `proteins.cif` (the output of `proteins.inp`),
+# and the solvent outside the vesicle (O).
 #
-using PDBToolsBase: read_mmcif, write_pdb, Atom
+include("cake.jl")
 include("render.jl")
 const images = joinpath(@__DIR__, "..", "..", "docs", "src", "tutorials", "images")
 const input, outputs = ARGS[1], ARGS[2:end]
-const slab = 10.0
 
-# The structure files and numbers of molecules of an input
-function structures(input)
-    types = Tuple{String,Int}[]
-    file = ""
-    for line in eachline(input)
-        w = split(strip(first(split(line, '#'))))
-        isempty(w) && continue
-        w[1] == "structure" && (file = String(w[2]))
-        w[1] == "number" && push!(types, (file, parse(Int, w[2])))
-    end
-    return types
-end
-types = structures(input)
-natoms = Dict(f => length(read_mmcif(joinpath(dirname(input), f))) for f in unique(first.(types)))
 # The atoms of the membrane proteins, the first ones of proteins.cif
-n_membrane = sum(n * length(read_mmcif(joinpath(dirname(input), f)))
-    for (f, n) in structures(joinpath(dirname(input), "proteins.inp")) if f in ("cd81.cif", "cd9.cif"))
+const n_membrane = sum(b.number * length(read_mmcif(joinpath(dirname(input), b.file)))
+    for b in structure_blocks(joinpath(dirname(input), "proteins.inp")) if b.file in ("cd81.cif", "cd9.cif"))
 
-function slab_file(output)
-    atoms = read_mmcif(output)
-    kept = Atom[]
-    i = 0
-    for (file, n) in types
-        if file == "proteins.cif"
-            # the fixed proteins: their atoms in the slab
-            for (k, a) in enumerate(@view(atoms[i+1:i+natoms[file]]))
-                abs(a.y) < slab || continue
-                b = copy(a); b.chain = k <= n_membrane ? "M" : "N"
-                push!(kept, b)
-            end
-            i += natoms[file]
-            continue
-        end
-        for _ in 1:n
-            mol = @view(atoms[i+1:i+natoms[file]])
-            any(a -> abs(a.y) < slab, mol) && append!(kept, mol)
-            i += natoms[file]
-        end
-    end
-    i == length(atoms) || error("$output has $(length(atoms)) atoms, the input $i")
-    pdb = tempname() * ".pdb"
-    write_pdb(pdb, kept)
-    return pdb
+# The component of each structure block, and how it is cut: the solvent outside the
+# vesicle is the one outside the sphere of 258.1 Å
+function tag(block)
+    block.file == "proteins.cif" && return (k -> k <= n_membrane ? "M" : "N", :split)
+    return outside_radius(block) > 250 ? ("O", :outside) : ("X", :whole)
 end
+heavy(a) = !startswith(a.name, "H")
 
 nucleic = "resname A U G C DA DT DG DC"
 reps = [
@@ -72,7 +40,7 @@ reps = [
     (selection = "resname CLA", style = "VDW 1.6 12", color = "ColorID 9"),
 ]
 for (file, name) in zip(outputs, ("exosome_check.webp", "exosome.webp"))
-    pdb = slab_file(file)
-    render(pdb, joinpath(images, name); reps, rotate = [(:x, -90)])
+    pdb = cake_file(input, file; tag, ahead = 30.0, keep_atom = heavy)
+    render(pdb, joinpath(images, name); reps, rotate = cake_rotate, size = (1600, 1600), width = 1000)
     rm(pdb)
 end

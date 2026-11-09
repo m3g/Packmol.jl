@@ -105,7 +105,8 @@ exosome's built by `dev/tutorials/exosome.jl` and its images by `dev/tutorials/e
 both paths equivalent when changing the input syntax or the Julia API.
 Tutorial images (`docs/src/tutorials/images/*.webp`) are rendered with VMD by the scripts of
 `dev/tutorials/` (`render.jl`; `classic.jl` for the classic examples, `lipids.jl` for the
-nanoliposomes; the bilayer, zeolite, polymer, nanotube and liquid crystal pages have live
+nanoliposomes; `cake.jl`, the quarter cut of the LNP, Zika and exosome images, the solvent
+outside kept behind the particle; the bilayer, zeolite, polymer, nanotube and liquid crystal pages have live
 `visualize` views instead). Tutorials of non-trivial
 systems first show the initial placement (`check_initial_placement`), then the packing.
 The input files of the tutorials are files of `docs/src/tutorials/files/<tutorial>/`, shown in
