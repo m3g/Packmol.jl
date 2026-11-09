@@ -10,9 +10,10 @@ them.
 
 ![Exosome](images/exosome.webp)
 
-*A slab through the center of the exosome: the tetraspanins (blue) crossing the bilayer
+*The exosome with a quarter cut out: the tetraspanins (blue) crossing the bilayer
 (orange), the Argonaute-2 complexes and the nucleosomes in the lumen (green, with their
-nucleic acids in yellow), water (light blue), and sodium (red) and chloride (pink) ions.*
+nucleic acids in yellow), water (light blue), and sodium (red) and chloride (pink) ions. The water outside is shown only behind the
+exosome.*
 
 The files are the `packmol_exosome` set of
 [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles): download and extract
@@ -121,8 +122,8 @@ input file, and run it (see
 packmol exosome.inp
 ```
 
-This takes 2.5 minutes with 14 threads, and 15 GB of memory. A slab through the center of the initial
-approximation shows every component in its region:
+This takes 2.5 minutes with 14 threads, and 15 GB of memory. The initial approximation, cut as the image
+above, shows every component in its region:
 
 ![Initial approximation](images/exosome_check.webp)
 

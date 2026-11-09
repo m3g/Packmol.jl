@@ -9,8 +9,10 @@ opposite faces. The system has 2.20 million particles and 407 thousand molecules
 
 ![Zika virion](images/zika.webp)
 
-*A slab through the center of the virion: the protein shell (blue), the two layers of the
-membrane (orange), water (gray) and ions (red and blue).*
+*The virion with a quarter cut out: the protein shell (the proteins E in blue, green and
+yellow, the proteins M in purple, pink and cyan), the two layers of the membrane
+(orange), water (gray) and ions (red and blue). The water outside is shown only behind
+the virion.*
 
 The files are the `packmol_zika` set of
 [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles): download and extract
@@ -73,8 +75,8 @@ about a minute, but the initial placement takes about 15 seconds (see
 packmol zika.inp
 ```
 
-The initial approximation is written to the output file (`zika.pdb`). A slab through its
-center shows that every component is in its region:
+The initial approximation is written to the output file (`zika.pdb`). Cut as the image
+above, it shows that every component is in its region:
 
 ![Initial approximation](images/zika_check.webp)
 
