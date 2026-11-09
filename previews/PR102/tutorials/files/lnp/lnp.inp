@@ -1,0 +1,207 @@
+#
+# A lipid nanoparticle of 80 nm (SIRAH coarse-grained lipids and water of the Zika
+# example): an outer monolayer, heads outwards; three compartments bounded by monolayers,
+# heads inwards, with WT4 water and a piece of RNA (fixed); POPC filling the lipid phase
+# between them; WT4 water outside, in a truncated octahedron.
+#
+tolerance 2.0
+output lnp.cif
+pbc octahedral 0. 0. 0. 860.0
+periodic_boundary_style octahedral
+
+# To write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints), uncomment the line below.
+# check_initial_placement
+
+# The lipids of the monolayers (16 or 17 beads) start with their radii scaled by 5,
+# to spread over the surfaces; the water and the POPC of the lipid phase start at their
+# radii (the default for molecules of up to 20 beads).
+
+# The outer monolayer: heads beyond 395.0, ends of the chains within 388.0
+structure popc.pdb
+  number 16216
+  atoms 1
+    outside sphere 0. 0. 0. 395.0
+  end atoms
+  atoms 16
+    inside sphere 0. 0. 0. 388.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pope.pdb
+  number 8108
+  atoms 1
+    outside sphere 0. 0. 0. 395.0
+  end atoms
+  atoms 16
+    inside sphere 0. 0. 0. 388.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pops.pdb
+  number 2703
+  atoms 1
+    outside sphere 0. 0. 0. 395.0
+  end atoms
+  atoms 17
+    inside sphere 0. 0. 0. 388.0
+  end atoms
+  radscale 5.0
+end structure
+
+# Compartment 1: center 0.0 0.0 150.0, heads within 105.0, ends of the chains beyond 113.0
+structure popc.pdb
+  number 1187
+  atoms 1
+    inside sphere 0.0 0.0 150.0 105.0
+  end atoms
+  atoms 16
+    outside sphere 0.0 0.0 150.0 113.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pope.pdb
+  number 594
+  atoms 1
+    inside sphere 0.0 0.0 150.0 105.0
+  end atoms
+  atoms 16
+    outside sphere 0.0 0.0 150.0 113.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pops.pdb
+  number 198
+  atoms 1
+    inside sphere 0.0 0.0 150.0 105.0
+  end atoms
+  atoms 17
+    outside sphere 0.0 0.0 150.0 113.0
+  end atoms
+  radscale 5.0
+end structure
+
+# Compartment 2: center -130.0 0.0 -75.0, heads within 95.0, ends of the chains beyond 103.0
+structure popc.pdb
+  number 972
+  atoms 1
+    inside sphere -130.0 0.0 -75.0 95.0
+  end atoms
+  atoms 16
+    outside sphere -130.0 0.0 -75.0 103.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pope.pdb
+  number 486
+  atoms 1
+    inside sphere -130.0 0.0 -75.0 95.0
+  end atoms
+  atoms 16
+    outside sphere -130.0 0.0 -75.0 103.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pops.pdb
+  number 162
+  atoms 1
+    inside sphere -130.0 0.0 -75.0 95.0
+  end atoms
+  atoms 17
+    outside sphere -130.0 0.0 -75.0 103.0
+  end atoms
+  radscale 5.0
+end structure
+
+# Compartment 3: center 130.0 0.0 -75.0, heads within 85.0, ends of the chains beyond 93.0
+structure popc.pdb
+  number 778
+  atoms 1
+    inside sphere 130.0 0.0 -75.0 85.0
+  end atoms
+  atoms 16
+    outside sphere 130.0 0.0 -75.0 93.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pope.pdb
+  number 389
+  atoms 1
+    inside sphere 130.0 0.0 -75.0 85.0
+  end atoms
+  atoms 16
+    outside sphere 130.0 0.0 -75.0 93.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pops.pdb
+  number 130
+  atoms 1
+    inside sphere 130.0 0.0 -75.0 85.0
+  end atoms
+  atoms 17
+    outside sphere 130.0 0.0 -75.0 93.0
+  end atoms
+  radscale 5.0
+end structure
+
+# Compartment 1: the RNA (fixed at the center) and water
+structure rna1.cif
+  number 1
+  center
+  fixed 0.0 0.0 150.0 0. 0. 0.
+end structure
+
+structure wt4.pdb
+  number 11970
+  inside sphere 0.0 0.0 150.0 102.0
+end structure
+
+# Compartment 2: the RNA (fixed at the center) and water
+structure rna2.cif
+  number 1
+  center
+  fixed -130.0 0.0 -75.0 0. 0. 0.
+end structure
+
+structure wt4.pdb
+  number 8884
+  inside sphere -130.0 0.0 -75.0 92.0
+end structure
+
+# Compartment 3: the RNA (fixed at the center) and water
+structure rna3.cif
+  number 1
+  center
+  fixed 130.0 0.0 -75.0 0. 0. 0.
+end structure
+
+structure wt4.pdb
+  number 6299
+  inside sphere 130.0 0.0 -75.0 82.0
+end structure
+
+# The lipid phase: POPC without orientation, between the monolayers (with its radii
+# scaled by 5 at the start, as those of the monolayers, the first loop of the packing
+# did not finish in 10 minutes)
+structure popc.pdb
+  number 138077
+  inside sphere 0. 0. 0. 388.0
+  outside sphere 0.0 0.0 150.0 113.0
+  outside sphere -130.0 0.0 -75.0 103.0
+  outside sphere 130.0 0.0 -75.0 93.0
+end structure
+
+# Outside: water
+structure wt4.pdb
+  number 689515
+  outside sphere 0. 0. 0. 397.0
+end structure
