@@ -8,9 +8,12 @@
 # packing loop through dynamic dispatch, which — because the compiler can't
 # bound the return type across an open set of possible methods — heap-boxes
 # the returned `SVector` on every single call. A `Vector{AnyConstraint{T}}`
-# is a small, closed Union of isbits types, which Julia stores inline and
-# dispatches via "union splitting" instead: allocation-free, and several
-# times faster (measured ~0 vs ~100 bytes/call for a 2-constraint mix).
+# is a closed Union dispatched by explicit branches (`_constraint_dispatch`
+# below) instead: allocation-free, and several times faster (measured ~0 vs
+# ~100 bytes/call for a 2-constraint mix). Not all of its types are isbits
+# (`SurfaceDistance` holds a reference to its points, `CustomConstraint` its
+# functions), so the vector is not stored inline: no measurable cost (a box of
+# 60000 waters packs in the same time).
 #
 # New constraint types must be added to this Union, their input keywords to
 # `constraint_keywords` below, and `parse_constraint` methods/exports to their
@@ -29,6 +32,7 @@ const _BuiltinConstraint{T} = Union{
     RadialWave{Over,T}, RadialWave{Below,T},
     Exponential{Over,T}, Exponential{Below,T},
     RadialExponential{Over,T}, RadialExponential{Below,T},
+    SurfaceDistance{Inside,T}, SurfaceDistance{Outside,T},
 }
 # Constraints defined by functions of the user (CustomConstraint) exist only in Julia
 # code: they are left out of the executable (`_executable_build`), which `juliac --trim`
@@ -69,10 +73,11 @@ const constraint_keywords = (
     "above sin", "below sin", "above cos", "below cos",
     "above radial_sin", "below radial_sin", "above radial_cos", "below radial_cos",
     "above exponential", "below exponential", "above radial_exponential", "below radial_exponential",
+    "within surface", "not within surface",
 )
 const _constraint_vals = map(keyword -> Val(Symbol(keyword)), constraint_keywords)
 
-# The first word of the constraint keywords (e.g. "inside")
+# The first word of the constraint keywords (e.g. "inside"; "not" of "not within surface")
 const constraint_placements = unique(String[first(split(keyword)) for keyword in constraint_keywords])
 
 #

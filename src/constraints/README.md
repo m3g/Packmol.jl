@@ -14,6 +14,7 @@ read from an input file:
 | `constraints_base.jl` | The abstract `Constraint`, the `Inside`/`Outside`/`Over`/`Below` markers, `show`, and the generic `parse_constraint`. |
 | `boxes.jl`, `spheres.jl`, `planes.jl`, `cylinders.jl`, `ellipsoids.jl` | The constraints of Fortran Packmol. |
 | `gaussians.jl`, `waves.jl`, `exponentials.jl` | Curved surfaces (Packmol.jl only), generalizing the planes, and their radial versions. |
+| `surfaces.jl` | Surfaces (or curves) given by points, with or without normals (`PointSurface`, `read_surface`, TS2CG point files), and the `within surface`/`not within surface` constraints of the distance to them (`SurfaceDistance`): a smooth signed distance (implicit moving least squares) near the points, cell lists of the points, and a descent on the points for the nearest one far from them. Not isbits (it holds the points): the union is not stored inline. |
 | `custom.jl` | `CustomConstraint`: the region `f(x) ≤ 0` of a function of the user (Julia only, not in the executable). |
 | `constraint_types.jl` | `AnyConstraint{T}`, the closed union of the constraint types (the element type of the constraint lists), and `_constraint_dispatch`, through which functions are called on its elements (the union is too large for automatic union splitting). |
 | `rotations.jl` | Rotation constraints (`constrain_rotation`): the angle between an axis and a vector of the molecule. |

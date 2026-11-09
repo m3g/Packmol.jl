@@ -65,6 +65,7 @@ include("./constraints/gaussians.jl")
 include("./constraints/waves.jl")
 include("./constraints/exponentials.jl")
 include("./constraints/custom.jl")
+include("./constraints/surfaces.jl")
 include("./constraints/constraint_types.jl")
 include("./constraints/rotations.jl")
 
