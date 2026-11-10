@@ -24,6 +24,9 @@ A constraint defined by a function of the position: the atoms are kept in the re
 `f(x) ≤ 0`, for `x` the position of an atom (an `SVector{3}`, in Å). Outside the region,
 the penalty is `weight * f(x)^2`, so `f` should grow with the distance to the region (as
 `f(x) = norm(x) - R`, for a sphere of radius `R`).
+Write `f` in Å, not without units (as `(norm(x)/R)^2 - 1`): for large regions, the
+gradient of such a function at small violations is below the stopping tolerance of the
+optimizer, and the fits of the initial placement do not converge.
 
 `gradient(x)` is the gradient of `f` at `x`. If it is not given, it is computed by central
 finite differences (6 evaluations of `f`). It can be computed exactly by automatic

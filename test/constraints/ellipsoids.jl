@@ -35,3 +35,25 @@ end
         @test ForwardDiff.gradient(x -> Packmol.constraint_penalty(c3, x), x) ≈ Packmol.constraint_gradient(c3, x)
     end
 end
+
+@testitem "Ellipsoid penalty scale" begin
+    using StaticArrays
+    # The violation is the distance to the surface for a sphere (penalty weight·d²)
+    c = InsideEllipsoid([1.0, 2.0, 3.0], 10.0, 10.0, 10.0, 1.5)
+    @test Packmol.constraint_penalty(c, SVector(1.0, 2.0, 3.0 + 17.0)) ≈ 5.0 * 2.0^2
+    c = OutsideEllipsoid([1.0, 2.0, 3.0], 10.0, 10.0, 10.0, 1.5)
+    @test Packmol.constraint_penalty(c, SVector(1.0 + 12.0, 2.0, 3.0)) ≈ 5.0 * 3.0^2
+    # and about the distance for an ellipsoid, at most (the smallest semi-axis)
+    c = InsideEllipsoid([0.0, 0.0, 0.0], 20.0, 10.0, 10.0, 1.0)
+    @test Packmol.constraint_penalty(c, SVector(0.0, 0.0, 11.0)) ≈ 5.0 * 1.0^2
+    @test Packmol.constraint_penalty(c, SVector(22.0, 0.0, 0.0)) ≈ 5.0 * 1.0^2
+    # Large ellipsoids: the gradient of a violation of 0.01 Å is not below the stopping
+    # tolerance of the optimizer (1e-5); with the dimensionless penalty of Fortran Packmol
+    # it was ~4e-6, and the fits of the initial placement stalled
+    c = InsideEllipsoid([0.0, 0.0, 0.0], 330.0, 320.0, 320.0, 1.0)
+    g = Packmol.constraint_gradient(c, SVector(0.0, 0.0, 320.01))
+    @test 2 * 5.0 * 0.01 * 0.99 < sqrt(sum(abs2, g)) < 2 * 5.0 * 0.01 * 1.01
+    # At the center (ρ not differentiable): no gradient
+    c = OutsideEllipsoid([0.0, 0.0, 0.0], 3.0, 2.0, 1.0, 1.0)
+    @test Packmol.constraint_gradient(c, SVector(0.0, 0.0, 0.0)) == zeros(3)
+end

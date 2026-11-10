@@ -216,7 +216,9 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] `Sphere` (InsideSphere / OutsideSphere) - sphere
 - [x] `Plane` (AbovePlane / BelowPlane) - point + normal vector; input keywords `above`/`over` (synonyms) and `below`, matching Fortran Packmol
 - [x] `Cylinder` (InsideCylinder / OutsideCylinder) - finite capped cylinder: one end center, axis direction, radius, length
-- [x] `Ellipsoid` (InsideEllipsoid / OutsideEllipsoid) - axis-aligned, center + 3 semi-axes + uniform scale factor
+- [x] `Ellipsoid` (InsideEllipsoid / OutsideEllipsoid) - axis-aligned, center + 3 semi-axes + uniform scale factor; the
+      violation is `min(a,b,c) (ρ - |scale|)` (≈ distance in Å), not Fortran's dimensionless `ρ² - scale²`, whose
+      gradient for large ellipsoids fell below SPGBox's eps and stalled the initial fits (2026-11-10)
 - [x] `Gaussian`/`Wave`/`Exponential` (Above.../Below..., Packmol.jl-only, no Fortran equivalent) - curved
       half-spaces `up·x = h(along·x)` generalizing `Plane` (degenerate to it at `amplitude=0`): a Gaussian
       bump, sine/cosine wave (`cos` = `sin` with `phase+π/2`), or exponential ramp extruded along `along`;
