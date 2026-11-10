@@ -11,6 +11,13 @@ An axis-aligned ellipsoid centered at `(cx,cy,cz)` with semi-axes `a`, `b`,
 `c*scale`. `scale` lets the same base ellipsoid (e.g. one fit to a
 reference structure) be grown or shrunk without recomputing `a`, `b`, `c`.
 
+The penalty of an atom outside the region is `weight * (m (ρ - scale))^2`, for
+`ρ^2 = ((x-cx)/a)^2 + ((y-cy)/b)^2 + ((z-cz)/c)^2` and `m = min(a, b, c)`: the violation
+is about the distance (in Å) to the surface of the ellipsoid, the exact distance for a
+sphere. (Fortran Packmol uses `ρ^2 - scale^2`, which has no units: for large ellipsoids,
+of hundreds of Å, its gradient at small violations was below the stopping tolerance of the
+optimizer, and the placement of the molecules did not converge.) The region is the same.
+
 ## Example
 
 81 water molecules (about 1 g/mL) in an ellipsoid with semi-axes of 12, 8 and 6 Å:

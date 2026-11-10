@@ -36,13 +36,24 @@ Ellipsoid{Placement}(; center, a, b, c, scale, weight=weight_default[:ellipsoid]
 InsideEllipsoid(args...; kwargs...) = Ellipsoid{Inside}(args...; kwargs...)
 OutsideEllipsoid(args...; kwargs...) = Ellipsoid{Outside}(args...; kwargs...)
 
-# Normalized "radius" of x on the ellipsoid's scale: > 0 outside, < 0 inside,
-# 0 exactly on the surface `(x-center)/(a,b,c) scaled by `scale`.
+# The violation, about the distance (Å) to the surface: `m (ρ - |scale|)`, for ρ² =
+# Σ ((x - center)ᵢ/aᵢ)² and `m` the smallest semi-axis; > 0 outside, < 0 inside, the exact
+# distance for a sphere. Not Fortran Packmol's `ρ² - scale²`, which has no units: with
+# semi-axes of hundreds of Å, the gradient of a violation of a few hundredths of Å was
+# below the stopping tolerance of the optimizer (1e-5) while the fits of the initial
+# placement asked for penalties below 1e-10, and stalled (an LNP of 70 nm: 200 loops).
 function _ellipsoid_w(c::Ellipsoid, x)
     dx = x - c.center
-    return (dx[1]/c.a)^2 + (dx[2]/c.b)^2 + (dx[3]/c.c)^2 - c.scale^2
+    ρ = sqrt((dx[1]/c.a)^2 + (dx[2]/c.b)^2 + (dx[3]/c.c)^2)
+    return min(c.a, c.b, c.c) * (ρ - abs(c.scale))
 end
-_ellipsoid_gradw(c::Ellipsoid, x) = (dx = x - c.center; 2 * SVector(dx[1]/c.a^2, dx[2]/c.b^2, dx[3]/c.c^2))
+function _ellipsoid_gradw(c::Ellipsoid, x)
+    dx = x - c.center
+    q = SVector(dx[1]/c.a^2, dx[2]/c.b^2, dx[3]/c.c^2)
+    ρ = sqrt((dx[1]/c.a)^2 + (dx[2]/c.b)^2 + (dx[3]/c.c)^2)
+    # (zero at the center, where ρ is not differentiable)
+    return ρ > 0 ? min(c.a, c.b, c.c) * q / ρ : zero(q)
+end
 
 function constraint_penalty(c::Ellipsoid{Inside}, x)
     w = _ellipsoid_w(c, x)
