@@ -228,6 +228,16 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       as in `Cylinder`): a smooth dome, concentric ripples, or a cone-like spike (the latter two have a
       genuine kink at `r=0`, handled by zeroing the gradient's radial component there)
 
+- [x] `within surface`/`not within surface` (`WithinSurface`/`NotWithinSurface`, Packmol.jl-only,
+      `src/constraints/surfaces.jl`): the distance to a surface or curve given by points (`PointSurface`,
+      `read_surface`: `x y z [nx ny nz]` files or TS2CG `PLM` point files), `|h - offset| ≤ distance`
+      (or `≥`); with normals `h` is signed and smooth (implicit moving least squares within the
+      smoothing radius, blended with the signed distance to the nearest point, which takes over far
+      away; the tangent-plane distance alone made the fits stall: it is not a distance far from
+      sparse points), without normals the distance to the nearest point. Own cell lists of the
+      points (no NearestNeighbors.jl: allocation-free, thread-safe, trim-compatible) and a descent
+      from a seed point of each cell for far queries. Experiments (TS2CG dumbbell, budding and
+      invaginated vesicles, the torus) in the session of 2026-11-09; the design note was `ts2cg.md`
 - [x] `CustomConstraint(f; gradient)` (Julia API only, not in input files or the executable): the
       region `f(x) ≤ 0` of a user function, penalty `weight·f²`; gradient given (e.g. ForwardDiff) or
       by central finite differences; stored as `FunctionWrapper`s so it fits the closed union

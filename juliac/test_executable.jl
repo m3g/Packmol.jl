@@ -183,6 +183,38 @@ end
         @test isfile(output_file)
     end
 
+    @testset "surface constraints" begin
+        # Water within a shell around a sphere given by points with normals, the oxygen
+        # atoms not within 4 Å of the sphere
+        sdir = mktempdir()
+        cp(joinpath(dir, "structure_files", "water.pdb"), joinpath(sdir, "water.pdb"))
+        open(joinpath(sdir, "sphere.dat"), "w") do io
+            n = 1500
+            for i in 1:n
+                θ = acos(1 - 2 * (i - 0.5) / n); φ = π * (1 + sqrt(5)) * i
+                u = (sin(θ) * cos(φ), sin(θ) * sin(φ), cos(θ))
+                println(io, join(15 .* u, " "), " ", join(u, " "))
+            end
+        end
+        input_file = joinpath(sdir, "shell.inp")
+        write(input_file, """
+            tolerance 2.0
+            output shell.pdb
+            structure water.pdb
+              number 120
+              within surface sphere.dat 2.0 7.0
+              atoms 1
+                not within surface sphere.dat 4.0
+              end atoms
+            end structure
+            """)
+        code, out = run_packmol("-i", input_file; cwd=sdir)
+        @test code == 0
+        code == 0 || println(out)
+        r = [sqrt(sum(abs2, position(at))) for at in read_pdb(joinpath(sdir, "shell.pdb"))]
+        @test 19.5 < minimum(r) && maximum(r) < 24.5
+    end
+
     @testset "examples" begin
         examples = joinpath(dir, "fortran_examples")
         for name in ["interface"]

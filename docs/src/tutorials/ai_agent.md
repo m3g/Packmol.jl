@@ -124,6 +124,12 @@ pairs of atom indices and constraints); the input-file keywords are in parenthes
 - `AbovePlane(normal, d)`, `BelowPlane`: `normal ⋅ x ≥ d` (`above plane nx ny nz d`, also `over`)
 - Curved surfaces, Packmol.jl only: `AboveGaussian`, `AboveSin`, `AboveExponential`, their
   `Below...`, and the radial ones (`AboveRadialGaussian`, ...)
+- Surfaces given by points, Packmol.jl only: `WithinSurface(surface, distance; offset)`,
+  `NotWithinSurface`, for `surface = PointSurface(points, normals)` or
+  `read_surface(file)` (`x y z [nx ny nz]` per line, Å, or a TS2CG `.dat` point file, nm):
+  `|h - offset| ≤ distance` (or `≥`), `h` the distance to the surface, signed (positive on
+  the side of the normals) if there are normals (`within surface file d [offset]`,
+  `not within surface file d [offset]`)
 - `CustomConstraint(f; gradient)`, Julia only: the region `f(x) ≤ 0` of any function of
   the position (Å); the gradient by finite differences if not given, or, for example,
   `gradient = x -> ForwardDiff.gradient(f, x)`

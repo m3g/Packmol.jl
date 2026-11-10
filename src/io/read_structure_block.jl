@@ -189,7 +189,8 @@ function _read_structure_types(input_file_block::IOBuffer, tolerance, ::Val{D}, 
             restart_from = joinpath(path, expanduser(String(values[1])))
         elseif keyword in constraint_placements
             iconstraint += 1
-            push_parsed_constraint!(constraints, "$keyword $(values[1])", @view(values[2:end]), filename)
+            ckeyword, cdata = _constraint_words(keyword, values, path)
+            push_parsed_constraint!(constraints, ckeyword, cdata, filename)
             if !atoms_block
                 for iatom in eachindex(atoms)
                     push!(atom_constraints[iatom], iconstraint)
@@ -248,4 +249,23 @@ function _read_structure_types(input_file_block::IOBuffer, tolerance, ::Val{D}, 
         constraints, atom_constraints,
     )
     return _conformation_types(st, conformations, conformation_files)
+end
+
+#
+# The keyword and the data of a constraint line: the first two words ("inside sphere"),
+# or three for "not within surface"; the file of a surface constraint is relative to the
+# directory of the input file (`path`)
+#
+function _constraint_words(keyword::AbstractString, values::AbstractVector{<:AbstractString}, path::AbstractString)
+    nkw = keyword == "not" ? 2 : 1
+    length(values) >= nkw || throw(ArgumentError("""\n
+        Incomplete constraint: $keyword $(join(values, " "))
+
+    """))
+    ckeyword = nkw == 2 ? "$keyword $(values[1]) $(values[2])" : "$keyword $(values[1])"
+    cdata = String[String(v) for v in values[nkw+1:end]]
+    if endswith(ckeyword, " surface") && !isempty(cdata)
+        cdata[1] = joinpath(path, expanduser(cdata[1]))
+    end
+    return ckeyword, cdata
 end
