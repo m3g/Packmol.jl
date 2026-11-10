@@ -1,9 +1,9 @@
 @testitem "Cylinder constructors" begin
-    @test InsideCylinder([0,0,0],[0,0,1],1.,2.) == Cylinder{Inside,Float64}([0.,0.,0.],[0.,0.,1.],1.,2.,5.0)
-    @test InsideCylinder(center=[0,0,0],axis=[0,0,1],radius=1.,length=2.) == Cylinder{Inside,Float64}([0.,0.,0.],[0.,0.,1.],1.,2.,5.0)
+    @test InsideCylinder([0,0,0],[0,0,1],1.,2.) == Cylinder{Inside,Float64}([0.,0.,0.],[0.,0.,1.],1.,2.,50.0)
+    @test InsideCylinder(center=[0,0,0],axis=[0,0,1],radius=1.,length=2.) == Cylinder{Inside,Float64}([0.,0.,0.],[0.,0.,1.],1.,2.,50.0)
     @test InsideCylinder(center=[0,0,0],axis=[0,0,1],radius=1.,length=2.,weight=2.0) == Cylinder{Inside,Float64}([0.,0.,0.],[0.,0.,1.],1.,2.,2.0)
-    @test OutsideCylinder([0,0,0],[0,0,1],1.,2.) == Cylinder{Outside,Float64}([0.,0.,0.],[0.,0.,1.],1.,2.,5.0)
-    @test OutsideCylinder(center=[0,0,0],axis=[0,0,1],radius=1.,length=2.) == Cylinder{Outside,Float64}([0.,0.,0.],[0.,0.,1.],1.,2.,5.0)
+    @test OutsideCylinder([0,0,0],[0,0,1],1.,2.) == Cylinder{Outside,Float64}([0.,0.,0.],[0.,0.,1.],1.,2.,50.0)
+    @test OutsideCylinder(center=[0,0,0],axis=[0,0,1],radius=1.,length=2.) == Cylinder{Outside,Float64}([0.,0.,0.],[0.,0.,1.],1.,2.,50.0)
 end
 
 @testitem "Cylinder gradients" begin
@@ -34,11 +34,11 @@ end
     # The penalty of the outside cylinder is the squared distance to the nearest way out,
     # independent of the length of the cylinder (a long cylinder crossing a periodic box)
     long = OutsideCylinder([0.0, 0.0, -100.0], [0.0, 0.0, 1.0], 10.0, 200.0)
-    @test Packmol.constraint_penalty(long, SVector(7.0, 0.0, 0.0)) ≈ 5.0 * 3.0^2
-    @test Packmol.constraint_gradient(long, SVector(7.0, 0.0, 0.0)) ≈ SVector(-2 * 5.0 * 3.0, 0.0, 0.0)
+    @test Packmol.constraint_penalty(long, SVector(7.0, 0.0, 0.0)) ≈ 50.0 * 3.0^2
+    @test Packmol.constraint_gradient(long, SVector(7.0, 0.0, 0.0)) ≈ SVector(-2 * 50.0 * 3.0, 0.0, 0.0)
     @test Packmol.constraint_penalty(long, SVector(11.0, 0.0, 0.0)) == 0
     @test Packmol.constraint_penalty(long, SVector(0.0, 0.0, 101.0)) == 0
-    @test Packmol.constraint_penalty(c2, SVector(0.1, 0.0, 0.3)) ≈ 5.0 * 0.3^2 # through the near cap
+    @test Packmol.constraint_penalty(c2, SVector(0.1, 0.0, 0.3)) ≈ 50.0 * 0.3^2 # through the near cap
 
     # A tilted, off-center, unnormalized-axis cylinder
     c3 = InsideCylinder(center=[1.0, -2.0, 0.5], axis=[1.0, 1.0, 1.0], radius=0.7, length=3.0)
