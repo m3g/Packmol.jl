@@ -53,8 +53,11 @@ end
 # method called with splatted arguments is not always specialized on them.)
 _print_each(io::IO, xs::Tuple) = (map(x -> print(io, x), xs); nothing)
 
-_print(xs...) = _with_stdout(io -> _print_each(io, xs))
-_println(xs...) = _with_stdout(io -> _print_each(io, (xs..., '\n')))
+_print(xs...) = _with_stdout(io -> (_print_each(io, xs); _flush_file(io)))
+_println(xs...) = _with_stdout(io -> (_print_each(io, (xs..., '\n')); _flush_file(io)))
+# Output redirected to a file (`packmol input.inp > log`) is buffered: flushed at every
+# print, so that the progress of a run can be followed in the file
+_flush_file(io::IO) = (io isa IOStream && flush(io); nothing)
 # Errors of the command line interface, to `stderr`
 _eprintln(xs...) = _with_stderr(io -> _print_each(io, (xs..., '\n')))
 _flush_stdout() = _with_stdout(flush)
