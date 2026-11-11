@@ -357,6 +357,36 @@ end
     @test worst >= -0.1
 end
 
+@testitem "the converged configuration is the solution" begin
+    using StaticArrays
+    using CellListMap: neighborlist
+    # A converged loop may have a larger function value than the best earlier one (that
+    # had fewer but larger overlaps): the converged configuration must be returned, not
+    # the one of lowest function value. Gases in a zeolite (hexagonal cell, fixed
+    # crystal, radii 1.5): seeds 4, 15, 16 and 20 returned overlaps of up to 0.14 Å.
+    dir = mktempdir()
+    src = joinpath(pkgdir(Packmol), "docs", "src", "tutorials", "files", "zeolite")
+    for f in readdir(src)
+        cp(joinpath(src, f), joinpath(dir, f))
+    end
+    inp = joinpath(dir, "zeolite.inp")
+    input = read(inp, String)
+    for seed in (4, 15, 16, 20)
+        write(inp, "seed $seed\n" * input)
+        sys = redirect_stdout(devnull) do
+            packmol(inp; nthreads=1)
+        end
+        @test sys.status == :packing_ready
+        x = similar(sys.atoms, SVector{3,Float64})
+        Packmol.compute_atom_positions!(x, sys.molecule_positions, sys)
+        worst = maximum(neighborlist(; positions=x, cutoff=3.0, unitcell=sys.unitcell); init=0.0) do (i, j, d)
+            ai, aj = sys.atoms[i], sys.atoms[j]
+            ai.molecule_index == aj.molecule_index ? 0.0 : ai.radius + aj.radius - d
+        end
+        @test worst < sys.tolerance_precision
+    end
+end
+
 @testitem "non-periodic cell is not inflated by fixed molecules" setup=[TestFiles] begin
     using StaticArrays
     using LinearAlgebra: norm

@@ -18,8 +18,11 @@ copied and packed; a temporary directory by default).
 
 The cases are run one after the other (never run two of them, or other heavy jobs, at the
 same time: the timings would be meaningless). Each packs a copy of its input directory, and
-passes if the packing converged and the atoms of different molecules are at least
-`tolerance - tolerance_precision` apart. A line per case is appended to `results.tsv`
+passes if the packing converged and, checked independently, no pair of atoms of different
+molecules (not both fixed) is closer than the sum of their radii (the tolerance, by default)
+by `tolerance_precision` or more: the criterion of the packing. The check uses the Float64
+positions of the engine, not those of `get_atoms` (Float32, with errors of ~1e-4 Å far from
+the origin, enough to report a pair accepted at 1.90002 Å as below 1.9). A line per case is appended to `results.tsv`
 (date, commit, Julia version, threads, case, seed, status, loops, function evaluations,
 time, minimum distance between molecules, at most the tolerance), which is kept in the
 repository to compare versions: commit it after a run on a clean working tree.

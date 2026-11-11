@@ -66,17 +66,31 @@ function parse_args(args)
     return (; selected, seed, workdir, list)
 end
 
-# Minimum distance between atoms of different molecules (molecules are rigid, so the
-# distances within a molecule are those of its structure file)
-function minimum_intermolecular_distance(sys)
-    atoms = get_atoms(sys)
-    x = [SVector{3,Float64}(a.x, a.y, a.z) for a in atoms]
-    mol = [a.molecule_index for a in sys.atoms]
+# The criterion of the packing, checked independently: no pair of atoms of different
+# molecules (not both fixed) closer than the sum of their radii by `tolerance_precision`
+# or more. From the positions of the engine (Float64): those of `get_atoms` are Float32,
+# with errors of ~1e-4 Å at 1000 Å from the origin, enough to put a pair accepted at
+# 1.90002 Å below 1.9. Returns the largest overlap and the minimum distance between
+# molecules (molecules are rigid, so the distances within a molecule are those of its
+# structure file).
+function check_overlaps(sys)
+    x = similar(sys.atoms, SVector{3,Float64})
+    Packmol.compute_atom_positions!(x, sys.molecule_positions, sys)
+    fixed = [sys.structure_types[a.structure_type_index].fixed.fixed for a in sys.atoms]
+    cutoff = 2 * maximum(a.radius for a in sys.atoms)
     unitcell = isnothing(sys.unitcell) ? nothing : sys.unitcell
-    # The output is reset to zero before the computation: the maximum of 1/d is accumulated
-    ps = ParticleSystem(; positions = x, cutoff = sys.tolerance, unitcell, output = 0.0, parallel = false)
-    inv_dmin = pairwise!((pair, o) -> mol[pair.i] == mol[pair.j] ? o : max(o, 1 / pair.d), ps)
-    return inv_dmin > 0 ? 1 / inv_dmin : sys.tolerance
+    # (the output, the largest overlap, is reset to zero before the computation; the
+    # minimum distance is kept aside, the computation being serial)
+    dmin = Ref(cutoff)
+    ps = ParticleSystem(; positions = x, cutoff, unitcell, output = 0.0, parallel = false)
+    max_overlap = pairwise!(ps) do pair, o
+        (; i, j, d) = pair
+        ai, aj = sys.atoms[i], sys.atoms[j]
+        (ai.molecule_index == aj.molecule_index || (fixed[i] && fixed[j])) && return o
+        dmin[] = min(dmin[], d)
+        return max(o, ai.radius + aj.radius - d)
+    end
+    return max_overlap, dmin[]
 end
 
 function run_case(name, dir, inputs, workdir, seed)
@@ -109,9 +123,9 @@ function run_case(name, dir, inputs, workdir, seed)
     s = read(log, String)
     loops = count("Starting packing loop", s)
     evaluations = sum(m -> parse(Int, m[1]), eachmatch(r"Function evaluations:\s+(\d+)", s); init = 0)
-    dmin = minimum_intermolecular_distance(sys)
-    ok = sys.status == :packing_ready && dmin >= sys.tolerance - sys.tolerance_precision
-    return (; ok, status = sys.status, loops, evaluations, time, dmin, log)
+    max_overlap, dmin = check_overlaps(sys)
+    ok = sys.status == :packing_ready && max_overlap < sys.tolerance_precision
+    return (; ok, status = sys.status, loops, evaluations, time, dmin, max_overlap, log)
 end
 
 # A small packing, so that the time of the first case does not include the compilation
@@ -160,8 +174,8 @@ function main(args)
             continue
         end
         all_ok &= r.ok
-        println(@sprintf("    %s: %s, %d loops, %d evaluations, %.1f s, minimum distance %.3f (at most the tolerance)",
-            r.ok ? "ok" : "FAILED", r.status, r.loops, r.evaluations, r.time, r.dmin))
+        println(@sprintf("    %s: %s, %d loops, %d evaluations, %.1f s, minimum distance %.5f, largest overlap %.5f",
+            r.ok ? "ok" : "FAILED", r.status, r.loops, r.evaluations, r.time, r.dmin, r.max_overlap))
         r.ok || println("    log: ", r.log)
         open(results_file, "a") do io
             println(io, join((date, commit, VERSION, Threads.nthreads(), name, something(opts.seed, ""),
