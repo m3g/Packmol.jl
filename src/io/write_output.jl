@@ -34,15 +34,16 @@ end
 #
 # Chain letter for auto-assigned (non-fixed `chain` keyword) chains, following
 # Fortran Packmol's `chainc` subroutine: 1-26 -> 'A'-'Z', 27-35 -> '1'-'9',
-# 36 -> '0', beyond that there are no more identifiers left so it falls back
-# to '#' (Fortran's own sentinel for "ran out").
+# 36 -> '0'. Beyond that, Fortran gives '#' to every molecule; here the sequence
+# starts again from 'A' ('#' starts a comment in mmCIF files, and a system of
+# hundreds of structure types got the chain '#' for most of its atoms).
 #
 function _chainc(i::Int)
     i == 0 && return ' '
+    i = mod1(i, 36)
     1 <= i <= 26 && return Char(UInt8('A') + i - 1)
     27 <= i <= 35 && return Char(UInt8('1') + i - 27)
-    i == 36 && return '0'
-    return '#'
+    return '0'
 end
 
 #
@@ -198,6 +199,10 @@ function get_atoms(packmol_system::PackmolSystem{D,T}) where {D,T}
         end
     end
 
+    # The packed system is a single model (model 1): the atoms of the templates keep
+    # theirs otherwise (0 for atoms built without one, as from mmCIF files written by
+    # PDBToolsBase), and an output with fixed molecules read with several models was
+    # rejected as a fixed structure
     output_atoms = Atom{Nothing}[]
     iat = 0
     atom_serial = 0
@@ -232,6 +237,7 @@ function get_atoms(packmol_system::PackmolSystem{D,T}) where {D,T}
                 # template chain id (there's no "auto-cycle per molecule" to
                 # do for a single fixed copy).
                 atom.chain = isnothing(st.chain) ? st.atoms[j].chain : string(st.chain)
+                atom.model = 1
                 _set_segid!(atom, st.segid)
                 push!(output_atoms, atom)
             end
@@ -266,6 +272,7 @@ function get_atoms(packmol_system::PackmolSystem{D,T}) where {D,T}
                     atom.z = D == 3 ? pos[3] : zero(eltype(pos))
                     atom.resnum = _resnum(resnumbers_mode, false, imol_local, st.atoms[j].resnum, ifres, irescount, iimol)
                     atom.chain = string(write_chain)
+                    atom.model = 1
                     _set_segid!(atom, st.segid)
                     push!(output_atoms, atom)
                 end
