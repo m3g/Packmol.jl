@@ -71,10 +71,22 @@ function reinitialize_with_bounds!(
 
     # (A function barrier: `task_fixed_syss` is `nothing` or a vector of systems, and the
     # closures of the tasks spawned there must have concrete types for `juliac --trim`.)
+    # Guided placement (void_map.jl) of the large molecules (the size rule of `_radscale`),
+    # the others by the trials of `_place_molecules!`
+    skip = zeros(Bool, length(packmol_system.structure_types))
+    if _guided_init[] && D == 3 && fit
+        guided_types = [!st.fixed.fixed && st.natoms >= _radscale_min_natoms for st in packmol_system.structure_types]
+        if any(guided_types) && _guided_place_molecules!(packmol_system, RNG, cm_lo_type, cm_hi_type,
+                something(max_shift, packmol_system.tolerance), opt_nit, fit_precision, max_guess_try, guided_types)
+            skip .= guided_types
+        end
+    end
+    all(st.fixed.fixed || skip[ist] for (ist, st) in enumerate(packmol_system.structure_types)) && return packmol_system
     _place_molecules!(
         packmol_system, RNG, task_fixed_syss, fixed_lo, fixed_hi, cm_lo_type, cm_hi_type,
-        has_pbc, uc, center, tol, precision, max_guess_try, max_natoms, ntasks, nfree,
-        fit, something(max_shift, packmol_system.tolerance), opt_nit, fit_precision,
+        has_pbc, uc, center, tol, precision, max_guess_try, max_natoms, ntasks,
+        nfree - sum((st.number_of_molecules for (ist, st) in enumerate(packmol_system.structure_types) if skip[ist]); init = 0),
+        fit, something(max_shift, packmol_system.tolerance), opt_nit, fit_precision, skip,
     )
     return packmol_system
 end
@@ -83,7 +95,7 @@ end
 function _place_molecules!(
     packmol_system::PackmolSystem{D,T}, RNG, task_fixed_syss, fixed_lo, fixed_hi, cm_min, cm_max,
     has_pbc, uc, center, tol, precision, max_guess_try, max_natoms, ntasks, nfree,
-    fit, max_shift, opt_nit, fit_precision,
+    fit, max_shift, opt_nit, fit_precision, skip::Vector{Bool},
 ) where {D,T}
     _println("  Setting initial trial coordinates (best of $max_guess_try per molecule)...")
     progress_meter = ProgressBar(nfree; desc="  Molecules placed: ")
@@ -108,7 +120,7 @@ function _place_molecules!(
     imol_offset = 0
     for (ist, st) in enumerate(packmol_system.structure_types)
         st_offset = imol_offset
-        if st.fixed.fixed
+        if st.fixed.fixed || skip[ist]
             imol_offset += st.number_of_molecules
             continue
         end

@@ -117,9 +117,12 @@ function movebad!(
     # unable to separate on their own) without making every call
     # deterministic.
     moved = Int[]
+    # Guided movebad (void_map.jl): the molecules are chosen first, and placed in the voids
+    # of the map of the others afterwards
+    guided = _guided_movebad[] && D == 3 && !isnothing(fg_output) && !isnothing(atom_positions) && !isnothing(mol_iat_first)
     forced_worst = rand(RNG, T) > T(0.5)
     if forced_worst
-        place!(worst_imol)
+        guided || place!(worst_imol)
         push!(moved, worst_imol)
     end
 
@@ -138,8 +141,32 @@ function movebad!(
         forced_worst && imol == worst_imol && continue
         prob = 0.5 * fmol[imol] / fmol_max_type[mol_structure_type[imol]]
         if rand(RNG, T) < prob
-            place!(imol)
+            guided || place!(imol)
             push!(moved, imol)
+        end
+    end
+    if guided && !isempty(moved)
+        compute_atom_positions!(atom_positions, packmol_system.molecule_positions, packmol_system)
+        vm = _void_map(packmol_system, atom_positions, moved, mol_iat_first, T(_guided_spacing[]))
+        if isnothing(vm)
+            foreach(place!, moved)
+        else
+            for imol in moved
+                ist = mol_structure_type[imol]
+                lo, hi = if !isnothing(cm_lo_type) && !isnothing(cm_hi_type)
+                    l, h = cm_lo_type[ist], cm_hi_type[ist]
+                    all(l .< h) ? _extended_cm_bounds(packmol_system, packmol_system.structure_types[ist], l, h) : (nothing, nothing)
+                else
+                    (nothing, nothing)
+                end
+                _guided_place_molecule!(
+                    vm, packmol_system, imol, packmol_system.structure_types[ist], RNG;
+                    cm_lo=lo, cm_hi=hi,
+                    fixed_sys, fixed_lo, fixed_hi, overlap_tol,
+                    fg_output, atom_positions, mol_structure_type, mol_iat_first,
+                    precision, opt_nit, max_guess_try, max_shift=something(max_shift, packmol_system.tolerance),
+                )
+            end
         end
     end
     return moved

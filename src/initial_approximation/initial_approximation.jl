@@ -9,6 +9,7 @@ include("./fixed_molecules.jl")
 include("./constraint_checks.jl")
 include("./buffers.jl")
 include("./movebad.jl")
+include("./void_map.jl")
 include("./initialize_molecules.jl")
 include("./molecule_badness.jl")
 include("./randomize_molecule.jl")
@@ -66,6 +67,9 @@ function set_initial_approximation!(
         precision=packmol_system.constraint_precision,
         cm_min=cm_min, cm_max=cm_max,
     )
+
+    # (experimental: spreading of the centers of mass, void_map.jl)
+    _spread_centers!(packmol_system, free_mol_indices, packmol_system.constraint_precision)
 
     # Step 4: Full constraint adjustment with the solver and movebad,
     # randomizing bad molecules within the CM bounds from step 2, for as many
