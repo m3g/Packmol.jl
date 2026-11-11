@@ -139,6 +139,13 @@ function adjust_constraints!(
         _build_overlap_check_system(packmol_system, overlap_tol) :
         (nothing, zero(SVector{D,T}), zero(SVector{D,T}))
 
+    # Bounds for the re-placement of the molecules of types whose bounds are degenerate
+    # (a single molecule, or all at the same center of mass): the union of the other
+    # bounds. Without them, the molecule was drawn in the box of ±sidemax around the
+    # origin, out of the region of the system when it is not centered at the origin
+    # (the long RNAs of a cell centered at 1070 Å were drawn 2000 Å from its center).
+    cm_lo_all, cm_hi_all = _union_of_valid_bounds(cm_lo_type, cm_hi_type)
+
     # Build molecule → structure type / first-atom-index mappings
     mol_structure_type = _build_mol_structure_type(packmol_system)
     mol_iat_first = _build_mol_iat_first(packmol_system)
@@ -260,8 +267,12 @@ function adjust_constraints!(
         perm = sortperm(bad_vals; rev=true)
         bad_mols = bad_mols[perm]
 
-        # Move a fraction of the bad molecules to new random positions
-        nmove = domovebad ? max(1, min(nbad, round(Int, movefrac * nfree))) : 0
+        # Move a fraction of the bad molecules to new random positions. Not in the last
+        # loop: the molecules re-placed there would not be fitted again, and the packing
+        # would start from their random positions, possibly far from their constraints
+        # (with the penalties of spheres and cylinders, in Å⁴, an objective of 10¹⁶ and
+        # a first step that threw the atoms of a cell to 10¹⁰ Å).
+        nmove = (domovebad && iloop < nloop) ? max(1, min(nbad, round(Int, movefrac * nfree))) : 0
         if iloop % iprint == 0 || iloop == 1
             @_printf("  Loop %4d: f = %10.4e  bad molecules: %d/%d  moving: %d\n",
                 iloop, spgresult.f, nbad, nfree, nmove)
@@ -273,6 +284,10 @@ function adjust_constraints!(
             # separate calls, for each call to be resolved at compile time.)
             if !isnothing(cm_lo_type) && !isnothing(cm_hi_type) && all(cm_lo_type[ist] .< cm_hi_type[ist])
                 _randomize_molecule!(packmol_system, bad_mols[i], st, RNG, cm_lo_type[ist], cm_hi_type[ist],
+                    randomize_fixed_sys, randomize_fixed_lo, randomize_fixed_hi, overlap_tol,
+                )
+            elseif !isnothing(cm_lo_all) && !isnothing(cm_hi_all)
+                _randomize_molecule!(packmol_system, bad_mols[i], st, RNG, cm_lo_all, cm_hi_all,
                     randomize_fixed_sys, randomize_fixed_lo, randomize_fixed_hi, overlap_tol,
                 )
             else
@@ -301,4 +316,23 @@ function adjust_constraints!(
     total_badness = sum(final_badness[imol] for imol in free_mol_indices)
     @_printf("  WARNING: adjustment for %s did not fully converge after %d loops (f = %.2e)\n", checking_str, nloop, total_badness)
     return false
+end
+
+#
+# The box containing all the non-degenerate bounds of the centers of mass of the
+# structure types (`compute_cm_bounds`), or `(nothing, nothing)` if there are none.
+#
+_union_of_valid_bounds(::Nothing, ::Nothing) = (nothing, nothing)
+function _union_of_valid_bounds(lo_type::Vector{SVector{D,T}}, hi_type::Vector{SVector{D,T}}) where {D,T}
+    lo = SVector{D,T}(ntuple(_ -> typemax(T), D))
+    hi = SVector{D,T}(ntuple(_ -> typemin(T), D))
+    found = false
+    for (l, h) in zip(lo_type, hi_type)
+        all(l .< h) || continue
+        lo = min.(lo, l)
+        hi = max.(hi, h)
+        found = true
+    end
+    found || return nothing, nothing
+    return lo, hi
 end
