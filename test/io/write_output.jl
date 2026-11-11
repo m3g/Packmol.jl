@@ -29,8 +29,10 @@ end
     @test _chainc(27) == '1'
     @test _chainc(35) == '9'
     @test _chainc(36) == '0'
-    @test _chainc(37) == '#'
-    @test _chainc(1000) == '#'
+    # After '0', the sequence starts again (Fortran gives '#', a comment in mmCIF)
+    @test _chainc(37) == 'A'
+    @test _chainc(72) == '0'
+    @test _chainc(1000) == _chainc(1000 - 36 * 27)
 end
 
 @testitem "_unitcell_abc_angles" begin
@@ -443,4 +445,49 @@ end
     @test sort.(output.connectivity) == sort.(reference.connectivity)
     # The 6 carbons of each benzene have a repeated bond (double bond)
     @test count(c -> length(c) != length(unique(c)), output.connectivity) == 12
+end
+
+@testitem "output: a single model, readable as a fixed structure" setup=[TestFiles] begin
+    # The atoms of a fixed molecule built without a model number (0, as an mmCIF file
+    # written by PDBToolsBase from atoms built in Julia) and those of the free molecules
+    # (model 1) were written with different model numbers: read back as a fixed
+    # structure, the output was rejected for having several models
+    using PDBToolsBase: Atom, write_mmcif, read_mmcif
+    dir = mktempdir()
+    cp(TestFiles.test_file("structure_files/water.pdb"), joinpath(dir, "water.pdb"))
+    write_mmcif(joinpath(dir, "plate.cif"),
+        [Atom(; index = i, index_pdb = i, name = "C", resname = "PLT", chain = "P", x = 3.0 * (i % 5), y = 3.0 * (i ÷ 5), z = 0.0) for i in 0:24])
+    write(joinpath(dir, "step1.inp"), """
+        tolerance 2.0
+        output step1.cif
+        structure plate.cif
+          number 1
+          fixed 0. 0. 0. 0. 0. 0.
+        end structure
+        structure water.pdb
+          number 20
+          inside box 0. 0. 3. 12. 12. 12.
+        end structure
+        """)
+    redirect_stdout(devnull) do
+        packmol(joinpath(dir, "step1.inp"))
+    end
+    @test all(at -> at.model == 1, read_mmcif(joinpath(dir, "step1.cif")))
+    write(joinpath(dir, "step2.inp"), """
+        tolerance 2.0
+        output step2.cif
+        structure step1.cif
+          number 1
+          fixed 0. 0. 0. 0. 0. 0.
+        end structure
+        structure water.pdb
+          number 10
+          inside box 0. 0. -12. 12. 12. -3.
+        end structure
+        """)
+    sys = redirect_stdout(devnull) do
+        packmol(joinpath(dir, "step2.inp"))
+    end
+    @test sys.status == :packing_ready
+    @test length(read_mmcif(joinpath(dir, "step2.cif"))) == 25 + 60 + 30
 end
