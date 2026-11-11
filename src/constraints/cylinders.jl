@@ -9,8 +9,9 @@
 #
 export Cylinder, InsideCylinder, OutsideCylinder
 
-# Default weight
-weight_default[:cylinder] = 5.0
+# Default weight: stiffer than the other constraints, as the sphere's (spheres.jl): with
+# 5, the water drop on a Gaussian (inside a cylinder) needed 5 loops (2 with 50)
+weight_default[:cylinder] = 50.0
 
 @kwdef struct Cylinder{Placement,T} <: Constraint{Placement,3,T}
     center::SVector{3,T}
@@ -48,13 +49,14 @@ function _cylinder_axial_radial(c::Cylinder, x)
 end
 
 # Inside: penalty grows if the point is behind the near cap (w < 0), beyond
-# the far cap (w > length), or outside the radius — matching the original
-# Fortran Packmol's `inside cylinder` penalty (sum of the three violations).
+# the far cap (w > length), or outside the radius: the sum of the squares of the three
+# violations, as Fortran Packmol, but all three distances in Å (Fortran's radial
+# violation is `r² - radius²`, in Å², whose square grows as r⁴; see spheres.jl).
 function constraint_penalty(c::Cylinder{Inside}, x)
     _, w, r = _cylinder_axial_radial(c, x)
     t1 = max(-w, zero(w))
     t2 = max(w - c.length, zero(w))
-    t3 = max(sum(abs2, r) - c.radius^2, zero(w))
+    t3 = max(norm(r) - c.radius, zero(w))
     return c.weight * (t1^2 + t2^2 + t3^2)
 end
 
@@ -62,8 +64,10 @@ function constraint_gradient(c::Cylinder{Inside}, x)
     v, w, r = _cylinder_axial_radial(c, x)
     t1 = max(-w, zero(w))
     t2 = max(w - c.length, zero(w))
-    t3 = max(sum(abs2, r) - c.radius^2, zero(w))
-    return c.weight * (2 * v * (t2 - t1) + 4 * t3 * r)
+    rr = norm(r)
+    t3 = max(rr - c.radius, zero(w))
+    # (t3 > 0 only off the axis, rr > radius ≥ 0)
+    return c.weight * (2 * v * (t2 - t1) + (t3 > 0 ? 2 * t3 * r / rr : zero(r)))
 end
 
 # Outside: zero unless the point is inside the forbidden cylinder (past the near cap,

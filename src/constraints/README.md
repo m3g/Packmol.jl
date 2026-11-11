@@ -5,11 +5,12 @@ defines its penalty and gradient as functions of the position of an atom, and ho
 read from an input file:
 
 - `constraint_penalty(c, x)` and `constraint_gradient(c, x)`: the penalty is quadratic,
-  `weight * violation^2`, with the violation about a distance in Å (gradient of norm ≈ 1,
-  or larger: the spheres and the radius of the cylinders use `d² - r²`, in Å², as
-  Fortran). Never without units, as Fortran's ellipsoid (`ρ² - 1`): for large regions the
+  `weight * violation^2`, with the violation about a distance in Å (gradient of norm ≈ 1).
+  Never without units, as Fortran's ellipsoid (`ρ² - 1`): for large regions the
   gradient of small violations falls below the stopping tolerance of SPGBox (1e-5) while
-  the fits of the initial placement ask for penalties below 1e-10, and they stall;
+  the fits of the initial placement ask for penalties below 1e-10, and they stall. Nor in
+  Å², as Fortran's spheres and the radius of its cylinders (`d² - r²`): the penalty grows
+  as d⁴, and atoms far out of a large region give huge objectives and steps;
 - `parse_constraint(::Val{Symbol("inside sphere")}, data, T, filename)`: the constraint of
   an input file line.
 

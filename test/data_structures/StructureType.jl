@@ -81,8 +81,8 @@ The type `T` defines the number type (Float32, Float64, etc.) and `D` the number
     @test s.radii == [1.0, 1.0, 1.0]
     @test s.atom_constraints == [[1, 2], [1, 2], [1, 2]]
     @test s.constraints[1] == Box{Inside, Float64}([20.0, 20.0, 20.0], [40.0, 40.0, 40.0], 5.0)
-    # Sphere's default constraint weight (1e-2) differs from Box's (5.0).
-    @test s.constraints[2] == Sphere{Outside, Float64}([0.0, 0.0, 0.0], 10.0, 1e-2)
+    # Sphere's default constraint weight (500) differs from Box's (5.0).
+    @test s.constraints[2] == Sphere{Outside, Float64}([0.0, 0.0, 0.0], 10.0, 500.0)
 
     input_file_block = """
     structure $file
@@ -100,12 +100,12 @@ The type `T` defines the number type (Float32, Float64, etc.) and `D` the number
     @test s.radii == [1.0, 1.0, 1.0]
     @test s.atom_constraints == [[1, 2], [1], [1, 2]]
     @test s.constraints[1] == Box{Inside, Float64}([20.0, 20.0, 20.0], [40.0, 40.0, 40.0], 5.0)
-    @test s.constraints[2] == Sphere{Outside, Float64}([0.0, 0.0, 0.0], 10.0, 1e-2)
+    @test s.constraints[2] == Sphere{Outside, Float64}([0.0, 0.0, 0.0], 10.0, 500.0)
 
     s = Packmol.read_structure_data(input_file_block, tolerance; T = Float32)
     @test s.radii == Float32[1.0, 1.0, 1.0]
     @test s.constraints[1] == Box{Inside, Float32}([20.0, 20.0, 20.0], [40.0, 40.0, 40.0], 5.0)
-    @test s.constraints[2] == Sphere{Outside, Float32}([0.0, 0.0, 0.0], 10.0, 1e-2)
+    @test s.constraints[2] == Sphere{Outside, Float32}([0.0, 0.0, 0.0], 10.0, 500.0)
 
 
 end

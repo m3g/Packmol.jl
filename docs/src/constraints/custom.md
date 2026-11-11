@@ -47,8 +47,10 @@ packing 20,000 lipids in a shell inside such a sphere shows:
 So:
 
 - prefer a signed distance, or a function with a gradient of about 1 near the boundary of
-  the region (a function that grows faster, as `sum(abs2, x) - R^2`, also works, but it
-  dominates the distances between atoms in the objective function far from the region);
+  the region (a function that grows faster, as `sum(abs2, x) - R^2`, also works near the
+  region, but far from it the penalty grows as the fourth power of the distance: it
+  dominates the distances between atoms in the objective function, and atoms placed
+  hundreds of Å out of a large region make the first steps of the optimizer huge);
 - do not divide `f` by the size of the region: scale a function given without units by a
   length of the region (the inside of an ellipsoid of semi-axes `a, b, c` is `m (ρ - 1)`,
   for `ρ = norm(x ./ (a, b, c))` and `m = min(a, b, c)`, as the `Ellipsoid` constraint);

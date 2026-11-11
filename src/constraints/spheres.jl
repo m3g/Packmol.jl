@@ -4,7 +4,7 @@
 export Sphere, InsideSphere, OutsideSphere
 
 # Default weights
-weight_default[:sphere] = 1e-2
+weight_default[:sphere] = 500.0
 
 #
 # Spheres
@@ -29,46 +29,42 @@ Sphere{Placement}(; center, radius, weight=weight_default[:sphere]) where {Place
 InsideSphere(args...; kwargs...) = Sphere{Inside}(args...; kwargs...)
 OutsideSphere(args...; kwargs...) = Sphere{Outside}(args...; kwargs...)
 
+# The violation is the distance (Å) to the surface, `d - radius` (> 0 outside, < 0
+# inside), and the penalty `weight * violation^2`. Not Fortran Packmol's `d² - radius²`,
+# in Å²: its square grows as d⁴, and atoms of a long molecule placed hundreds of Å out of
+# a large sphere (a cell of 890 Å) gave an objective of 10¹⁶ and a first step of the
+# optimizer that threw them to 10¹⁰ Å. Near the surface, `d² - r²` ≈ 2r (d - r): the old
+# weight (0.01) gave a stiffness of 0.04 r², which the default weight (500) matches at
+# r ≈ 110 Å. A stiff wall matters for packings of many molecules against a sphere: with
+# a weight of 5, the exosome needed 149 loops (59 with 500), and with 5000 Zika needed 21
+# (16 with 500).
+_sphere_w(c::Sphere, x) = norm(x - c.center) - c.radius
+# Gradient of the distance: the radial direction (zero at the center, where it is not
+# differentiable)
+function _sphere_gradw(c::Sphere, x)
+    dx = x - c.center
+    d = norm(dx)
+    return d > 0 ? dx / d : zero(dx)
+end
+
 function constraint_penalty(c::Sphere{Inside}, x)
-    (; center, radius, weight) = c
-    w = sum(abs2, x - center) - radius^2
-    if w > 0
-        return weight * w^2
-    else
-        return zero(eltype(x))
-    end
+    w = _sphere_w(c, x)
+    return w > 0 ? c.weight * w^2 : zero(eltype(x))
 end
 
 function constraint_penalty(c::Sphere{Outside}, x)
-    (; center, radius, weight) = c
-    w = sum(abs2, x - center) - radius^2
-    if w < 0
-        return weight * w^2
-    else
-        return zero(eltype(x))
-    end
+    w = _sphere_w(c, x)
+    return w < 0 ? c.weight * w^2 : zero(eltype(x))
 end
 
 function constraint_gradient(c::Sphere{Inside}, x)
-    (; center, radius, weight) = c
-    dx = x - center
-    w = sum(abs2, dx) - radius^2
-    if w > 0
-        return 4 * weight * w * dx
-    else
-        return zero(x)
-    end
+    w = _sphere_w(c, x)
+    return w > 0 ? 2 * c.weight * w * _sphere_gradw(c, x) : zero(x)
 end
 
 function constraint_gradient(c::Sphere{Outside}, x)
-    (; center, radius, weight) = c
-    dx = x - center
-    w = sum(abs2, dx) - radius^2
-    if w < 0
-        return 4 * weight * w * dx
-    else
-        return zero(x)
-    end
+    w = _sphere_w(c, x)
+    return w < 0 ? 2 * c.weight * w * _sphere_gradw(c, x) : zero(x)
 end
 
 #
