@@ -90,6 +90,7 @@ makedocs(
             "Global options" => "julia_api/global_options.md",
             "Rotation constraints" => "julia_api/rotation_constraints.md",
             "Restart files" => "julia_api/restart_files.md",
+            "Placement on a grid (Bentopy)" => "julia_api/grid_placement.md",
             "Reference" => "julia_api/reference.md",
         ],
         "Recipes" => [

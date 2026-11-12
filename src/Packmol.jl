@@ -41,6 +41,7 @@ export read_packmol_input
 export write_output
 export packmol
 export guess_volume, free_volume
+export voxel_place
 export PackmolSystem
 export StructureType
 export structure_type
@@ -116,6 +117,7 @@ include("./packing/active_set.jl")
 include("./tools/volume.jl")
 include("./tools/shape.jl")
 include("./tools/system_building.jl")
+include("./tools/voxel_place.jl")
 
 # Runner for the legacy packmol (methods in the PackmolJLLExt extension)
 include("./packmol_runner.jl")

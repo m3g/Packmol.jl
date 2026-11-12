@@ -353,6 +353,15 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       atom positions. `restart_to` removed (2026-11-05: ignored with a warning; the output is the restart
       file). Fortran's raw restart files are not supported.
 - [N] Short-range tolerance (`use_short_tol`, `short_tol_dist`, etc.): deprecated, warned and ignored
+- [x] `voxel_place` (`src/tools/voxel_place.jl`, Julia API; docs page "Placement on a grid (Bentopy)"):
+      a direct port to Julia of the placement algorithm of Bentopy's packing step (Westendorp et al.,
+      Protein Science 2026; `src/pack/` of github.com/marrink-lab/bentopy), credited emphatically in the docs, which also point to Bentopy for
+      integrating both tools. Kept as close to Bentopy as possible (the maintainer's requirement: either
+      reproduce it or recommend Bentopy): conservative voxelization (spheres of the atomic radii),
+      compartment masks from the constraints, largest moment first, random free voxels, rotation held
+      for max_tries/100 tries, molecules that do not fit dropped. Returns `(placed, dropped)`, `placed`
+      restarting from the placed atoms. Checked against Bentopy itself on a part of its JCVI-Syn3A cell
+      (`dev/bentopy_cell/small/`, untracked): the same molecules placed, both packings converged at loop 0.
 - [x] Rotation constraints (`constrain_rotation`, `src/constraints/rotations.jl`): a penalty on the
       angle between an axis and a vector of the molecule (between the centers of two atom sets, or the
       longest principal axis). Not Fortran's bounds on Euler angles (by design).
