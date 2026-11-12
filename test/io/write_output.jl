@@ -327,9 +327,10 @@ end
     rm(output; force=true)
 end
 
-@testitem "_FORCED output of a failed packing" setup=[TestFiles] begin
+@testitem "-FORCED output of a failed packing" setup=[TestFiles] begin
     water = TestFiles.test_file("structure_files/water.pdb")
-    output = tempname() * ".pdb"
+    base = tempname()
+    output, forced = base * ".pdb", base * "-FORCED.pdb"
     # Two molecules do not fit in this box: its diagonal (1.91 Å) is shorter than the
     # tolerance, while one water molecule (H-H: 1.51 Å) fits in it
     st = structure_type(water; number=2, constraints=[InsideBox([0.0, 0.0, 0.0], [1.1, 1.1, 1.1])])
@@ -337,15 +338,24 @@ end
     best_positions = copy(sys.molecule_positions)
     @test packmol(sys).status == :failed_packing
     @test isfile(output)
-    @test isfile(output * "_FORCED")
+    @test startswith(readline(forced), "HEADER")
     rm(output; force=true)
-    rm(output * "_FORCED"; force=true)
-    # No _FORCED output when the packing succeeds
+    rm(forced; force=true)
+    # In the format of the output: mmCIF for <name>-FORCED.cif
+    output_cif, forced_cif = base * ".cif", base * "-FORCED.cif"
+    sys = PackmolSystem([st]; output=output_cif, tolerance=2.0, nloop=1, max_iter=2)
+    @test packmol(sys).status == :failed_packing
+    @test startswith(readline(forced_cif), "data_")
+    rm(output_cif; force=true)
+    rm(forced_cif; force=true)
+    @test Packmol._forced_file("out") == "out-FORCED"
+    @test Packmol._forced_file("dir.v1/out.xyz") == "dir.v1/out-FORCED.xyz"
+    # No -FORCED output when the packing succeeds
     st = structure_type(water; number=2, constraints=[InsideBox([0.0, 0.0, 0.0], [20.0, 20.0, 20.0])])
     sys = PackmolSystem([st]; output, tolerance=2.0)
     @test packmol(sys).status == :packing_ready
     @test isfile(output)
-    @test !isfile(output * "_FORCED")
+    @test !isfile(forced)
     rm(output; force=true)
 end
 

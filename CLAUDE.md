@@ -182,7 +182,7 @@ These are the building blocks everything else depends on.
       `inside/outside cylinder`, `inside/outside ellipsoid`, `above/over/below plane`
 - [x] Per-atom blocks (`atoms ... end atoms`) with custom constraints
 - [x] `radscale` (with legacy `discale` mapped to it), global or per structure block; default per type
-      (`_radscale`): 5.0 for free molecules of > 20 atoms, 1.0 for the other free ones, fixed ones the largest of the free (else inflated lipids were pushed into fixed proteins: exosome lipids + proteins failed); `radscale_decay_loops` (loops
+      (`_radscale`): 5.0 for free molecules of > 20 atoms, 1.0 for the other free ones and for restarted ones (`restart_from`: inflated radii undo the restart), fixed ones the largest of the free (else inflated lipids were pushed into fixed proteins: exosome lipids + proteins failed); `radscale_decay_loops` (loops
       for the radii to decay to their values; default 20)
 - [x] Julia-native construction API (no input file needed): `structure_type(pdbfile; number, constraints, atom_constraints, ...)`
       + `PackmolSystem(structure_types; output, ...)`, documented in `docs/src/julia_api/`
@@ -302,7 +302,7 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       at the current orientation), so a unit step moves the atoms by 1 Å RMS; not for linear molecules.
       ~10x fewer evaluations for lipids (bilayer, nanoliposomes, Zika). `packmol(sys; rotation_scaling=false)`
       packs with the Euler angles. Solver experiments (GENCAN, L-BFGS: no gain) in `dev/solvers/`.
-- [x] `<output>_FORCED`: constraint-only adjustment of the best solution, written when packing fails
+- [x] `<name>-FORCED.<ext>` (Fortran: `<output>_FORCED`; the extension kept for the format): constraint-only adjustment of the best solution, written when packing fails
 - [ ] Convergence criteria based on `tolerance_precision` and `constraint_precision`
 - [x] `writeout`: minimum seconds between writes of the output during the packing (default 60; 30 in Fortran)
 - [N] `writebad` (the best solution is written when the packing fails)

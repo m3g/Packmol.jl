@@ -226,7 +226,8 @@ end
     end
 
     @testset "exit codes" begin
-        # Failed packing: the best solution is written to <output>_FORCED (test_failed.sh).
+        # Failed packing: the forced solution is written to <name>-FORCED.<ext> (Fortran:
+        # <output>_FORCED, test_failed.sh).
         # The box of water_box_failed.inp (3 x 3 x 1 Å) holds the two molecules (they fail
         # in Fortran with its `maxit 2`), so it is replaced by one that cannot: its
         # diagonal (1.91 Å) is shorter than the tolerance
@@ -236,7 +237,7 @@ end
         code, out = run_packmol("-i", input_file)
         @test code == 173
         @test occursin("FORCED", out)
-        @test isfile(read_packmol_input(input_file).output_file * "_FORCED")
+        @test isfile(Packmol._forced_file(read_packmol_input(input_file).output_file))
         # Constraints that the initial approximation cannot satisfy: an input error,
         # unless continue_failed_initial_packing is set
         bad = joinpath(dir, "bad_constraints.inp")
