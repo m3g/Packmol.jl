@@ -51,7 +51,7 @@ the volume of the system and of the regions of its molecules, without packing it
 (and no input redirected), a file browser is opened to choose it. The exit codes are those
 of Fortran Packmol: `0` for success, `173` if the packing did not converge (the best
 solution is written to the output file, and a solution satisfying only the constraints to
-`<output>_FORCED`), `171` for errors in the input, `172` if a file could not be opened,
+`<name>-FORCED.<ext>`, e.g. `system-FORCED.pdb` for `system.pdb`), `171` for errors in the input, `172` if a file could not be opened,
 `174` for command-line errors, and `170` for other errors.
 
 The report of the run goes to the standard output, and can be redirected to a file, as

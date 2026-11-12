@@ -1,6 +1,6 @@
 #
 # Output of the packing loop: the terminal report (progress bar, overlaps) and the
-# `<output>_FORCED` file written when the packing fails.
+# `<name>-FORCED.<ext>` file written when the packing fails.
 #
 
 #
@@ -12,7 +12,7 @@ const _packmol_version = string(pkgversion(@__MODULE__))
 
 #
 # When packing fails, write (as Fortran Packmol) the "forced" solution to
-# `<output>_FORCED`: the best solution, after an adjustment that satisfies the
+# `<name>-FORCED.<ext>` (`_forced_file`; Fortran: `<output>_FORCED`): the best solution, after an adjustment that satisfies the
 # constraints regardless of overlaps. The best solution itself is kept in the
 # system (and in the regular output and restart files).
 #
@@ -24,11 +24,17 @@ function _write_forced_output(packmol_system::PackmolSystem, free_mol_indices::V
     adjust_constraints!(packmol_system, free_mol_indices, RNG;
         nloop, cm_lo_type=cm_min, cm_hi_type=cm_max, buffers,
     )
-    forced_file = packmol_system.output_file * "_FORCED"
+    forced_file = _forced_file(packmol_system.output_file)
     write_output(packmol_system; output_file=forced_file)
     _println("  The forced point was written to the output file: ", forced_file)
     copyto!(packmol_system.molecule_positions, best_positions)
     return forced_file
+end
+
+# `system.pdb` -> `system-FORCED.pdb`: the extension kept, so the format is that of the output
+function _forced_file(output_file::AbstractString)
+    base, ext = splitext(output_file)
+    return string(base, "-FORCED", ext)
 end
 
 #

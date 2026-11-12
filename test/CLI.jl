@@ -44,7 +44,7 @@
         @test read(outputs[1], String) != read(outputs[3], String)
         @test CLI.main(["-i", input, "-s", "abc"]) == CLI.exit_code_command_line_error
         @test CLI.main([failing_input]) == CLI.exit_code_failed_to_converge
-        @test isfile(joinpath(dir, "failed.pdb_FORCED"))
+        @test isfile(joinpath(dir, "failed-FORCED.pdb"))
         write(input, "tolerance abc\n")
         @test CLI.main([input]) == CLI.exit_code_input_error
     end

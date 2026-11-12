@@ -21,8 +21,9 @@ longer supported, and what is new. The legacy program is still available (see
   `segid`, `add_amber_ter`, `amber_ter_preserve`, `connect`, `add_box_sides`, ...
 - The conventions of the constraints: `inside cube x y z side` from the lower corner,
   `pbc a b c` as the box from the origin to `(a, b, c)`, the Euler angles of `fixed`.
-- The file formats PDB and XYZ (`filetype`), the output file `<output>_FORCED` (a solution
-  that satisfies only the constraints) when the packing does not converge, and the exit
+- The file formats PDB and XYZ (`filetype`), a solution that satisfies only the constraints
+  when the packing does not converge (named `system-FORCED.pdb` for the output `system.pdb`,
+  so that its extension gives its format; `system.pdb_FORCED` in Fortran Packmol), and the exit
   codes: `0` success, `173` not converged, `171` error in the input, `172` a file could not
   be opened, `170` other errors (and `174` for errors in the command line).
 
