@@ -94,6 +94,7 @@ function _set_global_options!(sys::PackmolSystem{D,T};
     check_initial_placement::Union{Nothing,Bool} = nothing,
     continue_failed_initial_packing::Union{Nothing,Bool} = nothing,
     restart_from::Union{Nothing,AbstractString} = nothing,
+    voxel_place::Union{Nothing,Bool,Integer} = nothing,
     pbc = nothing,
     unitcell = nothing,
 ) where {D,T}
@@ -123,6 +124,9 @@ function _set_global_options!(sys::PackmolSystem{D,T};
     isnothing(check_initial_placement) || (sys.check_initial_placement = check_initial_placement)
     isnothing(continue_failed_initial_packing) || (sys.continue_failed_initial_packing = continue_failed_initial_packing)
     isnothing(restart_from) || (sys.restart_from = expanduser(String(restart_from)))
+    if !isnothing(voxel_place)
+        sys.voxel_place = voxel_place isa Bool ? (voxel_place ? 1000 : nothing) : Int(voxel_place)
+    end
     if !isnothing(pbc)
         _set_pbc!(sys, _keyword_values(pbc))
     elseif !isnothing(unitcell)

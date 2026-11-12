@@ -60,6 +60,10 @@
     # Pack even if the initial approximation does not satisfy the constraints (input
     # keyword `continue_failed_initial_packing`); otherwise `packmol` stops there.
     continue_failed_initial_packing::Bool = false
+    # Place the free molecules first with the voxel placement of Bentopy (`voxel_place`,
+    # src/tools/voxel_place.jl), with this `max_tries_mult` (input keyword `voxel_place
+    # [max_tries_mult]`); `nothing`: not used
+    voxel_place::Union{Nothing,Int} = nothing
     # Whole-system restart (Fortran's `restart_from` with no structure type,
     # i.e. index 0): `nothing` means unset. When
     # `restart_from` is set, packmol() skips the whole initial-approximation

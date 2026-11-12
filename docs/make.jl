@@ -50,6 +50,7 @@ makedocs(
             "Zika virion (a large system)" => "tutorials/zika.md",
             "Lipid nanoparticle (designed with an AI agent)" => "tutorials/lnp.md",
             "Exosome (a very large system)" => "tutorials/exosome.md",
+            "Minimal cell (voxel placement of Bentopy)" => "tutorials/cell.md",
         ],
         "Input files" => [
             "Overview" => "input_files/index.md",
@@ -90,6 +91,7 @@ makedocs(
             "Global options" => "julia_api/global_options.md",
             "Rotation constraints" => "julia_api/rotation_constraints.md",
             "Restart files" => "julia_api/restart_files.md",
+            "Placement on a grid (Bentopy)" => "julia_api/grid_placement.md",
             "Reference" => "julia_api/reference.md",
         ],
         "Recipes" => [

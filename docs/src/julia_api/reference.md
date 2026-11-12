@@ -18,6 +18,15 @@ get_atoms
 write_output
 ```
 
+## Placement on a grid
+
+A direct port to Julia of the placement algorithm of
+[Bentopy](https://github.com/marrink-lab/bentopy): see [Placement on a grid (Bentopy)](@ref).
+
+```@docs
+voxel_place
+```
+
 ## Tools for building systems
 
 Public, but not exported: call them as `Packmol.cross_section`, `Packmol.builtin_lipid`.

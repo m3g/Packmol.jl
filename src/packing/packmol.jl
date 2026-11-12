@@ -36,6 +36,7 @@ const _packmol_global_options = (
     :(check_initial_placement::Union{Nothing,Bool} = nothing),
     :(continue_failed_initial_packing::Union{Nothing,Bool} = nothing),
     :(restart_from::Union{Nothing,AbstractString} = nothing),
+    :(voxel_place::Union{Nothing,Bool,Integer} = nothing),
     :(pbc = nothing),
     :(unitcell = nothing),
 )
@@ -107,8 +108,14 @@ packmol()
         tolerance_precision, constraint_precision, maxit, nloop, movefrac, nthreads, seed,
         max_random_init, adjust_constraints_on_init, add_amber_ter, amber_ter_preserve,
         add_box_sides, periodic_boundary_style, connect, avoid_overlap, screen_log, check_initial_placement,
-        continue_failed_initial_packing, restart_from, pbc, unitcell,
+        continue_failed_initial_packing, restart_from, voxel_place, pbc, unitcell,
     )
+    # The voxel placement of Bentopy first: the system becomes that of the molecules that
+    # fit, starting from their positions
+    voxel_tries = packmol_system.voxel_place
+    if voxel_tries isa Int && isnothing(packmol_system.restart_from)
+        _voxel_place!(packmol_system; max_tries_mult = voxel_tries)
+    end
     ntasks = _ntasks[]
     _ntasks[] = something(packmol_system.nthreads, 0)
     screen_log_before = _screen_log[]

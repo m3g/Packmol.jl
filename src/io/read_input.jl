@@ -112,6 +112,12 @@ function _set_input_keyword!(sys::PackmolSystem{D,T}, keyword::AbstractString, v
         sys.check_initial_placement = true
     elseif keyword == "continue_failed_initial_packing"
         sys.continue_failed_initial_packing = true
+    elseif keyword == "voxel_place"
+        sys.voxel_place = isempty(strip(val)) ? 1000 : _parse_value(Int, "voxel_place", val)
+        sys.voxel_place >= 1 || throw(ArgumentError("""\n
+            voxel_place: max_tries_mult must be at least 1, got $(sys.voxel_place).
+
+        """))
     elseif keyword == "restart_from"
         sys.restart_from = expanduser(_parse_value(String, "restart_from", val))
     else
@@ -165,6 +171,7 @@ const _global_keywords = (
     "adjust_constraints_on_init", "add_amber_ter", "amber_ter_preserve", "add_box_sides",
     "ignore_conect", "seed", "avoid_overlap", "screen_log",
     "check_initial_placement", "check", "continue_failed_initial_packing", "pbc", "unitcell",
+    "voxel_place",
 )
 
 # Keywords of a `structure ... end structure` block with no use in Packmol.jl
