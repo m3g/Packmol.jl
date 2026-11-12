@@ -14,6 +14,12 @@ placement algorithm (see [Placement on a grid (Bentopy)](@ref)), and packed by P
 The cytosol is then solvated with water and glycerol. The final system has about 40
 million beads.
 
+![The minimal cell](images/cell_solvated.webp)
+
+*The cell with a quarter cut out: the membrane lipids (orange) and proteins (blue), the
+chromosome (yellow), and the proteins (green), RNAs (red) and metabolites (purple) of the
+cytosol, in water (light blue) and glycerol (pink).*
+
 The data are those of the paper, not distributed with Packmol: download the archive of
 the models of Bentopy from Zenodo,
 [doi:10.5281/zenodo.17524049](https://doi.org/10.5281/zenodo.17524049) (4 GB, CC-BY
@@ -96,6 +102,11 @@ numbers of Bentopy's own model, which also left out 132 RNAs. The packing then c
 at the first loop: the molecules placed on the voxel grid do not overlap (minimum
 distance 4.05 Å). With reading the input and writing the output, a 4.2 GB mmCIF file,
 this step takes 2 minutes with 14 threads, and 20 GB of memory.
+
+![The cell before the solvation](images/cell.webp)
+
+*The output of the first step, cut as the image above: the molecules placed by the
+voxel placement, and packed.*
 
 ### Step 2: the solvent
 
