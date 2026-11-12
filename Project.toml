@@ -23,9 +23,6 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
 Packmol_jll = "eb89d173-8f78-57a0-9e6e-c2e8c44a5e61"
 
-[sources]
-PDBToolsBase = {path = "/home/leandro/.julia/dev/PDBToolsBase"}
-
 [extensions]
 PackmolJLLExt = "Packmol_jll"
 TestFilesExt = "LazyArtifacts"
