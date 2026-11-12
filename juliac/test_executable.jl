@@ -164,6 +164,32 @@ end
         code, _ = run_packmol("--guess-volume", "--density", "-1", joinpath(inputs, "water_box.inp"))
         @test code == 174
     end
+    @testset "voxel_place" begin
+        # The voxel placement of Bentopy, then the packing of the molecules that fit
+        vdir = mktempdir()
+        cp(joinpath(dir, "structure_files", "water.pdb"), joinpath(vdir, "water.pdb"))
+        cp(joinpath(dir, "structure_files", "protein.pdb"), joinpath(vdir, "protein.pdb"))
+        input_file = joinpath(vdir, "voxel.inp")
+        write(input_file, """
+            tolerance 2.0
+            voxel_place 500
+            pbc 120. 120. 120.
+            output voxel.pdb
+            structure protein.pdb
+              number 1
+              fixed 60. 60. 60. 0. 0. 0.
+            end structure
+            structure water.pdb
+              number 4000
+            end structure
+            """)
+        code, out = run_packmol("-i", input_file)
+        @test code == 0
+        @test occursin("Placing the molecules on a voxel grid", out)
+        @test occursin("Placed 4000 of 4000 free molecules", out)
+        dmin, sys = minimum_intermolecular_distance(input_file)
+        @test dmin >= sys.tolerance - sys.tolerance_precision - pdb_rounding
+    end
     @testset "input from stdin, and -o" begin
         input_file = joinpath(inputs, "water_box.inp")
         code, _ = run_packmol(; stdin_file=input_file)

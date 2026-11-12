@@ -99,9 +99,10 @@ vesicle, solvated protein; the bilayer and the vesicle redone with the all-atom 
 `packmol_lipids` set of MolSimTestFiles, the vesicle as two nanoliposomes in octahedral cells) and others (liquid crystals of 5CB with
 `constrain_rotation`: a nematic phase and a cholesteric phase; the Zika virion; the lipid nanoparticle,
 designed with an AI agent from an illustration (SIRAH, set `packmol_lnp`, files and images by `dev/tutorials/lnp.jl`
-and `lnp_images.jl`); and the all-atom exosome,
+and `lnp_images.jl`); the all-atom exosome,
 13.6 million atoms, whose files are the `packmol_zika` and `packmol_exosome` sets of MolSimTestFiles, the
-exosome's built by `dev/tutorials/exosome.jl` and its images by `dev/tutorials/exosome_images.jl`), each with a command-line and a Julia section; keep
+exosome's built by `dev/tutorials/exosome.jl` and its images by `dev/tutorials/exosome_images.jl`; and the minimal
+cell of Bentopy, built with `voxel_place` from the paper's Zenodo data, not distributed), each with a command-line and a Julia section; keep
 both paths equivalent when changing the input syntax or the Julia API.
 Tutorial images (`docs/src/tutorials/images/*.webp`) are rendered with VMD by the scripts of
 `dev/tutorials/` (`render.jl`; `classic.jl` for the classic examples, `lipids.jl` for the
@@ -362,6 +363,12 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       for max_tries/100 tries, molecules that do not fit dropped. Returns `(placed, dropped)`, `placed`
       restarting from the placed atoms. Checked against Bentopy itself on a part of its JCVI-Syn3A cell
       (`dev/bentopy_cell/small/`, untracked): the same molecules placed, both packings converged at loop 0.
+      Input keyword `voxel_place [max_tries_mult]` (`PackmolSystem.voxel_place`, `packmol(...; voxel_place)`):
+      `_voxel_place!` runs in `packmol` before the packing (trim-compatible: no closures over reassigned
+      variables, typed constraint extents, positional calls). Dropped molecules: a warning; more than 10%
+      of a type, a significant warning (it can fall far short of the free volume: the Zika lipids got
+      a quarter to a half of what `free_volume` allows). Tutorial "Minimal cell" (`docs/src/tutorials/cell.md`,
+      files/cell/prepare.jl + solvation.inp; Bentopy's data not distributed: Zenodo 17524049).
 - [x] Rotation constraints (`constrain_rotation`, `src/constraints/rotations.jl`): a penalty on the
       angle between an axis and a vector of the molecule (between the centers of two atom sets, or the
       longest principal axis). Not Fortran's bounds on Euler angles (by design).

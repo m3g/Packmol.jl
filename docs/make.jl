@@ -50,6 +50,7 @@ makedocs(
             "Zika virion (a large system)" => "tutorials/zika.md",
             "Lipid nanoparticle (designed with an AI agent)" => "tutorials/lnp.md",
             "Exosome (a very large system)" => "tutorials/exosome.md",
+            "Minimal cell (voxel placement of Bentopy)" => "tutorials/cell.md",
         ],
         "Input files" => [
             "Overview" => "input_files/index.md",

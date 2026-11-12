@@ -46,6 +46,24 @@ placed, dropped = voxel_place("cell.inp")   # or voxel_place(system)
 packmol(placed)
 ```
 
+In an input file, the keyword `voxel_place` (optionally followed by `max_tries_mult`) does
+the same within `packmol`, also from the command line: the free molecules are placed by
+`voxel_place`, and the system of those that fit is packed.
+
+```
+tolerance 4.0
+voxel_place 100000
+...
+```
+
+The molecules that do not fit are reported with a warning, and with a **significant
+warning** when more than 10% of the molecules of a structure type are left out. The
+voxel placement puts rigid molecules at random positions and rotations, and can fall far
+short of the space available: for the lipids of the Zika virion membrane (heads and tails
+constrained to opposite sides of a surface), it placed a quarter to a half of the lipids
+that the volume of the leaflets (`free_volume`) could hold. Compare the numbers with the
+volume available before relying on the placement, and pack without it in such cases.
+
 `placed` is a system with the molecules that fit, which starts from their positions
 (`placed.restart_from`, see [Restart files](@ref)), and `dropped` is the number of molecules
 of each structure type that did not fit (the types are listed at the end of the placement).
@@ -69,17 +87,17 @@ periodic cells must be orthorhombic. It works in 3D only.
 
 For crowded systems of many large molecules, where the usual initial placement leaves
 large molecules interpenetrated and the packing stalls with a few of them that cannot
-find room. On Bentopy's model of the JCVI-Syn3A minimal cell (41,835 proteins, RNAs and
-metabolites, 16 million coarse-grained beads, inside a sphere of 950 Å, with the
-membrane and the chromosome fixed, tolerance 4 Å):
+find room. On Bentopy's model of the JCVI-Syn3A minimal cell (the 41,967 proteins, RNAs
+and metabolites of Bentopy's input, 16 million coarse-grained beads, inside a sphere of
+950 Å, with the membrane and the chromosome fixed, tolerance 4 Å; see the
+[Minimal cell](@ref "Minimal cell (voxel placement of Bentopy)") tutorial):
 
 - the usual initial placement did not converge in 40 loops;
-- Bentopy's own placement packed in 2 loops;
-- `voxel_place` (with Bentopy's `max_tries_mult = 100_000` of this model) placed 41,827
-  molecules in about a minute, dropping 8 RNAs, and the packing from it converged at
-  the first loop: 2 min 45 s in all. Solvating it then (17.3 million water beads and 3
-  million glycerol placeholders, the cell fixed, tolerance 2 Å) took 2 loops, 8 min: the
-  whole cell built from scratch in about 11 minutes.
+- `voxel_place` (with Bentopy's `max_tries_mult = 100_000` of this model) placed 41,835
+  molecules in 16 seconds, leaving out 132 RNAs, as Bentopy did, and the packing from it
+  converged at the first loop. Solvating it then (17.3 million water beads and 3 million
+  glycerol placeholders, the cell fixed, tolerance 2 Å) took 2 loops: the whole cell
+  built in about 11 minutes.
 
 On a part of the same cell (3,122 molecules in a sphere of 400 Å), Bentopy and
 `voxel_place` placed the same molecules (both dropped the same RNA) in a few seconds,

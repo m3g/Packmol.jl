@@ -25,6 +25,7 @@ agent from an illustration.
 | [Zika virion](zika.md) | A large system: 2.2 million particles in membranes and spherical shells |
 | [Lipid nanoparticle](lnp.md) | A system designed with an AI agent from an illustration: 5.6 million particles in monolayers, a lipid phase and water compartments with RNA |
 | [Exosome](exosome.md) | A very large system, with all atoms: 13.6 million atoms in an asymmetric bilayer with membrane proteins, macromolecules inside, water and ions |
+| [Minimal cell](cell.md) | The minimal cell JCVI-Syn3A of Bentopy (coarse-grained, about 40 million beads): 41,967 proteins, RNAs and metabolites placed by the voxel placement of Bentopy (`voxel_place`), then solvated |
 
 ## How the tutorials are organized
 

@@ -27,7 +27,16 @@
     # Not everything fits: the molecules that do not fit are dropped, and the rest pack
     sts = [structure_type(protein; number = 30, constraints = [InsideSphere([0., 0., 0.], 70.)])]
     sys = PackmolSystem(sts; output, tolerance = 2.0)
-    placed, dropped = quiet(() -> voxel_place(sys; max_tries_mult = 100))
+    result = Ref{Any}()
+    log = mktemp() do path, io
+        redirect_stdout(io) do
+            result[] = voxel_place(sys; max_tries_mult = 100)
+        end
+        close(io)
+        read(path, String)
+    end
+    placed, dropped = result[]
+    @test occursin("SIGNIFICANT WARNING", log)
     n = placed.structure_types[1].number_of_molecules
     @test 0 < n && dropped[1] > 0
     @test n + dropped[1] == 30
@@ -52,6 +61,17 @@
     placed, dropped = quiet(() -> voxel_place(joinpath(dir, "box.inp")))
     @test dropped == [0, 0]
     @test quiet(() -> packmol(placed)).status == :packing_ready
+
+    # The input keyword: the voxel placement, then the packing of the molecules that fit
+    write(joinpath(dir, "box_voxel.inp"), "voxel_place 500\n" * read(joinpath(dir, "box.inp"), String))
+    sys = Packmol.read_packmol_input(joinpath(dir, "box_voxel.inp"))
+    @test sys.voxel_place == 500
+    sys = quiet(() -> packmol(sys))
+    @test sys.status == :packing_ready
+    @test sys.restart_from isa Vector
+    @test Packmol.read_packmol_input(joinpath(dir, "box.inp")).voxel_place === nothing
+    write(joinpath(dir, "box_voxel.inp"), "voxel_place\n" * read(joinpath(dir, "box.inp"), String))
+    @test Packmol.read_packmol_input(joinpath(dir, "box_voxel.inp")).voxel_place == 1000
 
     # 3D only, and not from a restart
     sys = PackmolSystem([structure_type(water; number = 2)]; output, restart_from = output)

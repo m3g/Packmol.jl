@@ -115,8 +115,8 @@ function _stamp_atoms!(bg::BitArray{3}, s::VoxelSpace{T}, x, r) where {T}
     return bg
 end
 
-# The box of the region of a constraint (`nothing` if unbounded)
-_constraint_extent(c) = nothing
+# The box of the region of a constraint (infinite if unbounded)
+_constraint_extent(::Constraint{P,3,T}) where {P,T} = (fill(T(-Inf), SVector{3,T}), fill(T(Inf), SVector{3,T}))
 _constraint_extent(c::Sphere{Inside}) = (c.center .- c.radius, c.center .+ c.radius)
 _constraint_extent(c::Box{Inside}) = (c.center .- c.sides ./ 2, c.center .+ c.sides ./ 2)
 _constraint_extent(c::Cube{Inside}) = (c.center .- c.side / 2, c.center .+ c.side / 2)
@@ -135,15 +135,31 @@ function _whole_molecule_constraints(st)
     return [ic for ic in eachindex(st.constraints) if all(l -> ic in l, st.atom_constraints)]
 end
 
-# The box of the region of a type (the intersection of the extents of its constraints)
+# The box of the region of a type: the intersection of the extents of its constraints. A
+# constraint on some atoms bounds the molecule too: within its extent, widened by the
+# largest distance of an atom of the molecule to the closest of those atoms (the reference
+# coordinates are centered).
 function _type_extent(st::StructureType{D,T}, whole) where {D,T}
     lo = fill(T(-Inf), SVector{3,T}); hi = fill(T(Inf), SVector{3,T})
-    for ic in whole
-        e = _constraint_dispatch(_constraint_extent, st.constraints[ic])
-        isnothing(e) && continue
-        lo = max.(lo, e[1]); hi = min.(hi, e[2])
+    ref = st.reference_coordinates
+    for ic in eachindex(st.constraints)
+        e::Tuple{SVector{3,T},SVector{3,T}} = _constraint_dispatch(_constraint_extent, st.constraints[ic])
+        if ic in whole
+            lo = max.(lo, e[1]); hi = min.(hi, e[2])
+        else
+            atoms = [j for j in eachindex(ref) if ic in st.atom_constraints[j]]
+            reach = minimum(maximum(norm(ref[k] - ref[j]) for k in eachindex(ref)) for j in atoms)
+            lo = max.(lo, e[1] .- reach); hi = min.(hi, e[2] .+ reach)
+        end
     end
     return lo, hi
+end
+
+# The voxels (from 0) along an axis between the coordinates `lo` and `hi`
+function _voxel_range(lo::T, hi::T, origin::T, h::T, n::Int) where {T}
+    a = isfinite(lo) ? max(0, floor(Int, (lo - origin) / h)) : 0
+    b = isfinite(hi) ? min(n - 1, ceil(Int, (hi - origin) / h)) : n - 1
+    return a:b
 end
 
 # The compartment of the constraints `cs`: true for the voxels out of it
@@ -151,15 +167,12 @@ function _outside_mask(s::VoxelSpace{T}, cs, precision::T) where {T}
     out = trues(s.n)
     lo = fill(T(-Inf), SVector{3,T}); hi = fill(T(Inf), SVector{3,T})
     for c in cs
-        e = _constraint_dispatch(_constraint_extent, c)
-        isnothing(e) && continue
+        e::Tuple{SVector{3,T},SVector{3,T}} = _constraint_dispatch(_constraint_extent, c)
         lo = max.(lo, e[1]); hi = min.(hi, e[2])
     end
-    rng = ntuple(3) do k
-        a = isfinite(lo[k]) ? max(0, floor(Int, (lo[k] - s.origin[k]) / s.h[k])) : 0
-        b = isfinite(hi[k]) ? min(s.n[k] - 1, ceil(Int, (hi[k] - s.origin[k]) / s.h[k])) : s.n[k] - 1
-        a:b
-    end
+    rng = (_voxel_range(lo[1], hi[1], s.origin[1], s.h[1], s.n[1]),
+           _voxel_range(lo[2], hi[2], s.origin[2], s.h[2], s.n[2]),
+           _voxel_range(lo[3], hi[3], s.origin[3], s.h[3], s.n[3]))
     # the corners of the voxels in the region (a voxel is in it if its 8 corners are)
     nc = map(length, rng) .+ 1
     corner_in = falses(nc)
@@ -193,12 +206,39 @@ function _random_rotation(RNG, ::Type{T}) where {T}
     return euler_angles(R)
 end
 
+# A random rotation of a molecule (satisfying its rotation constraints, if possible), and
+# its voxels at it: the angles, the rotation, the voxels (offsets and linear offsets), the
+# dimensions of their box, and the corner of the box relative to the center.
+function _voxel_rotation(st::StructureType{D,T}, r::Vector{T}, space::VoxelSpace{T}, RNG, precision::T) where {D,T}
+    angles = _random_rotation(RNG, T)
+    for _ in 1:1000
+        isempty(st.rotation_constraints) && break
+        _rotation_penalty(st, eulermat(angles)) <= precision && break
+        angles = _random_rotation(RNG, T)
+    end
+    R = eulermat(angles)
+    x = [R * rj for rj in st.reference_coordinates]
+    offsets, dims, lo = _voxelize(x, r, space.h)
+    loffsets = [o[1] + space.n[1] * (o[2] + space.n[2] * o[3]) for o in offsets]
+    return angles, R, offsets, loffsets, dims, lo
+end
+
+# Whether two vectors of constraints are the same (`===`: the same values, for the
+# constraints of plain values)
+function _same_constraints(a::Vector{AnyConstraint{T}}, b::Vector{AnyConstraint{T}}) where {T}
+    length(a) == length(b) || return false
+    for i in eachindex(a)
+        a[i] === b[i] || return false
+    end
+    return true
+end
+
 #
 # Place the free molecules of `packmol_system` (reference coordinates centered), Bentopy's
 # way. Returns the positions of the placed molecules of each free type.
 #
 function _bentopy_pack(
-    packmol_system::PackmolSystem{D,T}, RNG;
+    packmol_system::PackmolSystem{D,T}, RNG,
     resolution::T, radius::Union{Nothing,T}, max_tries_mult::Int, max_tries_rot_div::Int,
 ) where {D,T}
     sts = packmol_system.structure_types
@@ -228,13 +268,15 @@ function _bentopy_pack(
             (all(isfinite, l) && all(isfinite, u)) || throw(ArgumentError("""\n
                 voxel_place: the region of the molecules of $(basename(sts[ist].filename)) is
                 not bounded. Without periodic boundary conditions, each type needs a constraint
-                that bounds it (inside box, cube, sphere, ellipsoid or cylinder), for the space
-                of the grid.
+                that bounds it, on all its atoms or on some (inside box, cube, sphere, ellipsoid
+                or cylinder), for the space of the grid.
 
             """))
             lo = min.(lo, l); hi = max.(hi, u)
         end
-        n = ntuple(k -> max(1, ceil(Int, (hi[k] - lo[k]) / resolution)), 3)
+        d = hi - lo
+        n = (max(1, ceil(Int, d[1] / resolution)), max(1, ceil(Int, d[2] / resolution)),
+             max(1, ceil(Int, d[3] / resolution)))
         VoxelSpace{T}(lo, fill(resolution, SVector{3,T}), n, false)
     end
     @_printf("  Space: %d x %d x %d voxels of %.2f A\n", space.n..., resolution)
@@ -259,7 +301,10 @@ function _bentopy_pack(
             mask_of[ist] = nothing
             continue
         end
-        k = findfirst(m -> isequal(m[1], cs), masks)
+        k = nothing
+        for (im, m) in enumerate(masks)
+            _same_constraints(m[1], cs) && (k = im; break)
+        end
         if isnothing(k)
             push!(masks, (cs, _outside_mask(space, cs, precision)))
             k = length(masks)
@@ -287,26 +332,12 @@ function _bentopy_pack(
         max_tries_per_rotation = max(1, max_tries ÷ max_tries_rot_div)
         tries = 0
         tries_per_rotation = 0
-        # a rotation, and the voxels of the molecule at it
-        function new_rotation()
-            angles = _random_rotation(RNG, T)
-            for _ in 1:1000
-                isempty(st.rotation_constraints) && break
-                _rotation_penalty(st, eulermat(angles)) <= precision && break
-                angles = _random_rotation(RNG, T)
-            end
-            R = eulermat(angles)
-            x = [R * rj for rj in ref]
-            offsets, dims, lo = _voxelize(x, r, space.h)
-            loffsets = [o[1] + space.n[1] * (o[2] + space.n[2] * o[3]) for o in offsets]
-            return angles, R, offsets, loffsets, dims, lo
-        end
-        angles, R, offsets, loffsets, dims, lo = new_rotation()
+        angles, R, offsets, loffsets, dims, lo = _voxel_rotation(st, r, space, RNG, precision)
         while length(placed) < target
             tries >= max_tries && break
-            if !space.periodic && any(k -> dims[k] > space.n[k], 1:3)
+            if !space.periodic && (dims[1] > space.n[1] || dims[2] > space.n[2] || dims[3] > space.n[3])
                 tries += 1
-                angles, R, offsets, loffsets, dims, lo = new_rotation()
+                angles, R, offsets, loffsets, dims, lo = _voxel_rotation(st, r, space, RNG, precision)
                 tries_per_rotation = 0
                 continue
             end
@@ -347,7 +378,7 @@ function _bentopy_pack(
                 tries += 1
                 tries_per_rotation += 1
                 if tries_per_rotation >= max_tries_per_rotation
-                    angles, R, offsets, loffsets, dims, lo = new_rotation()
+                    angles, R, offsets, loffsets, dims, lo = _voxel_rotation(st, r, space, RNG, precision)
                     tries_per_rotation = 0
                 end
                 continue
@@ -358,7 +389,7 @@ function _bentopy_pack(
                 session[i] = true
             end
             push!(placed, MoleculePosition{D,T}(cm, angles))
-            angles, R, offsets, loffsets, dims, lo = new_rotation()
+            angles, R, offsets, loffsets, dims, lo = _voxel_rotation(st, r, space, RNG, precision)
             tries_per_rotation = 0
         end
         positions[ist] = placed
@@ -411,6 +442,27 @@ function voxel_place(
     max_tries_rot_div::Integer = 100,
     seed::Integer = system.seed,
 ) where {D,T}
+    placed = _copy_fields(system)
+    dropped = _voxel_place!(placed;
+        resolution = isnothing(resolution) ? nothing : T(resolution),
+        radius = isnothing(radius) ? nothing : T(radius),
+        max_tries_mult = Int(max_tries_mult), max_tries_rot_div = Int(max_tries_rot_div), seed = Int(seed))
+    return placed, dropped
+end
+
+#
+# The placement, in place: the system becomes that of the placed molecules (the types
+# with their numbers of placed molecules, the types without any left out), starting from
+# their positions. Returns the number of molecules of each type that did not fit.
+#
+function _voxel_place!(
+    system::PackmolSystem{D,T};
+    resolution::Union{Nothing,T} = nothing,
+    radius::Union{Nothing,T} = nothing,
+    max_tries_mult::Int = 1000,
+    max_tries_rot_div::Int = 100,
+    seed::Int = system.seed,
+) where {D,T}
     D == 3 || throw(ArgumentError("""\n
         voxel_place: only 3D systems are supported.
 
@@ -423,16 +475,15 @@ function voxel_place(
     RNG = seed < 0 ? Random.Xoshiro() : Random.Xoshiro(seed)
     sts = system.structure_types
     _center_reference_coordinates!(system)
-    rmax = isnothing(radius) ?
-        maximum(a.radius for a in system.atoms if !sts[a.structure_type_index].fixed.fixed) : T(radius)
-    h = T(something(resolution, T(2.5) * rmax))
+    rmax = zero(T)
+    for a in system.atoms
+        sts[a.structure_type_index].fixed.fixed || (rmax = max(rmax, T(a.radius)))
+    end
+    rmax = something(radius, rmax)
+    h = something(resolution, T(2.5) * rmax)
     _println("  Placing the molecules on a voxel grid (the algorithm of Bentopy)...")
-    positions = _bentopy_pack(system, RNG;
-        resolution = h, radius = isnothing(radius) ? nothing : T(radius),
-        max_tries_mult = Int(max_tries_mult), max_tries_rot_div = Int(max_tries_rot_div))
+    positions = _bentopy_pack(system, RNG, h, radius, max_tries_mult, max_tries_rot_div)
 
-    # The system of the placed molecules: the types with their numbers of placed
-    # molecules (the types without any left out), starting from their positions
     dropped = zeros(Int, length(sts))
     kept_types = StructureType{D,T}[]
     kept_positions = MoleculePosition{D,T}[]
@@ -454,29 +505,62 @@ function voxel_place(
     _renumber_conformations!(kept_types)
     atoms, molecule_positions, nmols = _atoms_and_molecule_positions(kept_types)
     copyto!(molecule_positions, kept_positions)
-    placed = PackmolSystem{D,T}(;
-        (f => getfield(system, f) for f in fieldnames(PackmolSystem{D,T})
-            if !(f in (:structure_types, :atoms, :molecule_positions, :nmols, :restart_from, :status)))...,
-        structure_types = kept_types, atoms, molecule_positions, nmols,
-    )
-    placed.restart_from = _restart_source(get_atoms(placed))
+    system.structure_types = kept_types
+    system.atoms = atoms
+    system.molecule_positions = molecule_positions
+    system.nmols = nmols
+    system.status = :not_packed
+    system.restart_from = _restart_source(get_atoms(system))
 
     ndropped = sum(dropped)
-    @_printf("  Placed %d of %d free molecules in %.1f s", nfree - ndropped, nfree, time() - t0)
-    _println(ndropped == 0 ? "." : "; did not fit:")
+    @_printf("  Placed %d of %d free molecules in %.1f s.\n", nfree - ndropped, nfree, time() - t0)
+    _voxel_place_warnings(sts, dropped)
+    return dropped
+end
+
+#
+# Warnings about the molecules that did not fit: any is a warning (the system is not the
+# one of the input), more than 10% of a type a significant warning (the placement may
+# fall short of the space available: molecules that must be oriented, as lipids).
+#
+function _voxel_place_warnings(sts, dropped)
+    sum(dropped) == 0 && return nothing
+    significant = false
+    _println("")
+    _println("  WARNING: molecules did not fit, and were left out of the system:")
     for (ist, st) in enumerate(sts)
         dropped[ist] > 0 || continue
-        @_printf("    %s: %d of %d\n", basename(st.filename), dropped[ist], st.number_of_molecules)
+        frac = dropped[ist] / st.number_of_molecules
+        frac > 0.1 && (significant = true)
+        @_printf("    %s: %d of %d (%.1f%%)%s\n", basename(st.filename), dropped[ist],
+            st.number_of_molecules, 100 * frac, frac > 0.1 ? "  <- more than 10%" : "")
     end
-    return placed, dropped
+    if significant
+        _println("""
+
+          SIGNIFICANT WARNING: more than 10% of the molecules of some types did not fit.
+          The voxel placement puts rigid molecules at random positions and rotations: it can
+          fall far short of the space available (as for molecules that must be oriented,
+          like the lipids of a membrane). Compare the numbers with the volume available
+          (`free_volume`), and consider packing without the voxel placement.
+        """)
+    end
+    return nothing
+end
+
+# A copy of a struct, field by field (the fields themselves not copied)
+@inline function _copy_fields(x::S) where {S}
+    return S(ntuple(i -> getfield(x, i), Val(fieldcount(S)))...)
+end
+
+# A copy of a struct with the field `name` replaced by `v`
+@inline function _replace_field(x::S, ::Val{name}, v) where {S,name}
+    return S(ntuple(i -> fieldname(S, i) === name ? v : getfield(x, i), Val(fieldcount(S)))...)
 end
 
 # A copy of a structure type with `n` molecules
 function _with_number(st::StructureType{D,T}, n::Int) where {D,T}
-    return StructureType{D,T}(;
-        (f => getfield(st, f) for f in fieldnames(StructureType{D,T}) if f != :number_of_molecules)...,
-        number_of_molecules = n,
-    )
+    return _replace_field(st, Val(:number_of_molecules), n)
 end
 
 # The conformations of a molecule (consecutive types, `conformation = (i, n)`) renumbered
@@ -496,10 +580,7 @@ function _renumber_conformations!(sts::Vector{StructureType{D,T}}) where {D,T}
         end
         n = last - k + 1
         for (i, j) in enumerate(k:last)
-            sts[j] = StructureType{D,T}(;
-                (f => getfield(sts[j], f) for f in fieldnames(StructureType{D,T}) if f != :conformation)...,
-                conformation = (i, n),
-            )
+            sts[j] = _replace_field(sts[j], Val(:conformation), (i, n))
         end
         k = last + 1
     end

@@ -30,6 +30,7 @@
 | `pbc octahedral <cx cy cz d>` | Truncated octahedron periodic box of size `d` centered at `(cx,cy,cz)` — likewise stored as the equivalent triclinic cell. |
 | `unitcell <a b c α β γ>` | Triclinic periodic box, CRYST1-style (centered at the origin). |
 | `restart_from <file>` | Skip initial placement for every free molecule and read their positions from `<file>` instead — see [Restarting a run](@ref) below. Also valid inside a `structure ... end structure` block, to restart only that structure type. |
+| `voxel_place [max_tries_mult]` | Place the free molecules first with the voxel placement of [Bentopy](https://github.com/marrink-lab/bentopy) (a direct port of its algorithm, see [Placement on a grid (Bentopy)](@ref)), then pack from that placement. The molecules that do not fit are left out of the system, with a warning (a significant warning if more than 10% of a structure type). `max_tries_mult`: the unsuccessful tries of each structure type, times its number of molecules (default 1000, as in Bentopy). For crowded systems of many large molecules. |
 
 See [Periodic boundary conditions](../periodic_boundary_conditions/index.md) for the
 full `pbc`/`unitcell` syntax (including the dodecahedral/octahedral shapes)
