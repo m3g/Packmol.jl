@@ -587,6 +587,7 @@ function _packmol(
         end
 
         @_printf("\n  Packing loop ended: %s\n", loop_end_reason)
+        @_printf("  Function evaluations: %d\n", optresult.nfeval)
         _print_overlaps(packmol_system, overlaps) && _println()
         @_printf("  Function value from last loop: f = %10.5e\n", f_true_loop_end)
         @_printf("  Best function value before: f = %10.5e\n", bestf_before_loop)
@@ -615,6 +616,9 @@ function _packmol(
             _println()
             _println(hash_line)
             converged = true
+            # The converged configuration is the solution, even if an earlier one had a
+            # lower function value (fewer but larger overlaps: not converged)
+            copyto!(best_positions, packmol_system.molecule_positions)
             break
         end
 
