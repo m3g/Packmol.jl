@@ -102,7 +102,8 @@ designed with an AI agent from an illustration (SIRAH, set `packmol_lnp`, files 
 and `lnp_images.jl`); the all-atom exosome,
 13.6 million atoms, whose files are the `packmol_zika` and `packmol_exosome` sets of MolSimTestFiles, the
 exosome's built by `dev/tutorials/exosome.jl` and its images by `dev/tutorials/exosome_images.jl`; and the minimal
-cell of Bentopy, built with `voxel_place` from the paper's Zenodo data, not distributed), each with a command-line and a Julia section; keep
+cell of Bentopy, built with `voxel_place` from the paper's Zenodo data, not distributed; its images by
+`dev/tutorials/cell_images.jl`, which streams the outputs and keeps only the visible beads for VMD), each with a command-line and a Julia section; keep
 both paths equivalent when changing the input syntax or the Julia API.
 Tutorial images (`docs/src/tutorials/images/*.webp`) are rendered with VMD by the scripts of
 `dev/tutorials/` (`render.jl`; `classic.jl` for the classic examples, `lipids.jl` for the
