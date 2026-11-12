@@ -1,0 +1,136 @@
+#
+# The monolayers of a lipid nanoparticle of 80 nm (SIRAH coarse-grained lipids of the
+# Zika example): the outer monolayer, heads outwards, and those of three compartments,
+# heads inwards; the chains point to the lipid phase between them.
+#
+tolerance 2.0
+radscale 5.0
+output monolayers.cif
+
+# To write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints), uncomment the line below.
+# check_initial_placement
+
+# The outer monolayer: heads beyond 395.0, ends of the chains within 388.0
+structure popc.pdb
+  number 16216
+  atoms 1
+    outside sphere 0. 0. 0. 395.0
+  end atoms
+  atoms 16
+    inside sphere 0. 0. 0. 388.0
+  end atoms
+end structure
+
+structure pope.pdb
+  number 8108
+  atoms 1
+    outside sphere 0. 0. 0. 395.0
+  end atoms
+  atoms 16
+    inside sphere 0. 0. 0. 388.0
+  end atoms
+end structure
+
+structure pops.pdb
+  number 2703
+  atoms 1
+    outside sphere 0. 0. 0. 395.0
+  end atoms
+  atoms 17
+    inside sphere 0. 0. 0. 388.0
+  end atoms
+end structure
+
+# Compartment 1: center 0.0 0.0 150.0, heads within 105.0, ends of the chains beyond 113.0
+structure popc.pdb
+  number 1187
+  atoms 1
+    inside sphere 0.0 0.0 150.0 105.0
+  end atoms
+  atoms 16
+    outside sphere 0.0 0.0 150.0 113.0
+  end atoms
+end structure
+
+structure pope.pdb
+  number 594
+  atoms 1
+    inside sphere 0.0 0.0 150.0 105.0
+  end atoms
+  atoms 16
+    outside sphere 0.0 0.0 150.0 113.0
+  end atoms
+end structure
+
+structure pops.pdb
+  number 198
+  atoms 1
+    inside sphere 0.0 0.0 150.0 105.0
+  end atoms
+  atoms 17
+    outside sphere 0.0 0.0 150.0 113.0
+  end atoms
+end structure
+
+# Compartment 2: center -130.0 0.0 -75.0, heads within 95.0, ends of the chains beyond 103.0
+structure popc.pdb
+  number 972
+  atoms 1
+    inside sphere -130.0 0.0 -75.0 95.0
+  end atoms
+  atoms 16
+    outside sphere -130.0 0.0 -75.0 103.0
+  end atoms
+end structure
+
+structure pope.pdb
+  number 486
+  atoms 1
+    inside sphere -130.0 0.0 -75.0 95.0
+  end atoms
+  atoms 16
+    outside sphere -130.0 0.0 -75.0 103.0
+  end atoms
+end structure
+
+structure pops.pdb
+  number 162
+  atoms 1
+    inside sphere -130.0 0.0 -75.0 95.0
+  end atoms
+  atoms 17
+    outside sphere -130.0 0.0 -75.0 103.0
+  end atoms
+end structure
+
+# Compartment 3: center 130.0 0.0 -75.0, heads within 85.0, ends of the chains beyond 93.0
+structure popc.pdb
+  number 778
+  atoms 1
+    inside sphere 130.0 0.0 -75.0 85.0
+  end atoms
+  atoms 16
+    outside sphere 130.0 0.0 -75.0 93.0
+  end atoms
+end structure
+
+structure pope.pdb
+  number 389
+  atoms 1
+    inside sphere 130.0 0.0 -75.0 85.0
+  end atoms
+  atoms 16
+    outside sphere 130.0 0.0 -75.0 93.0
+  end atoms
+end structure
+
+structure pops.pdb
+  number 130
+  atoms 1
+    inside sphere 130.0 0.0 -75.0 85.0
+  end atoms
+  atoms 17
+    outside sphere 130.0 0.0 -75.0 93.0
+  end atoms
+end structure
