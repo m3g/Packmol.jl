@@ -65,6 +65,15 @@ end
     @test [Packmol._radscale(s2, st) for st in s2.structure_types] == [1.0, 1.0]
     s2 = PackmolSystem([fx, w, structure_type(lipid; number=2, radscale=2.0)]; output=tempname() * ".pdb")
     @test Packmol._radscale(s2, s2.structure_types[1]) == 2.0
+    # restarted molecules: 1.0 (the system or the type restarted), unless set
+    s2 = PackmolSystem([fx, w, l]; output=tempname() * ".pdb")
+    s2.restart_from = "restart.pdb"
+    @test [Packmol._radscale(s2, st) for st in s2.structure_types] == [1.0, 1.0, 1.0]
+    lr = structure_type(lipid; number=2, restart_from="restart.pdb", constraints=[InsideBox([0, 0, 0], [20, 20, 20])])
+    s2 = PackmolSystem([fx, w, lr, l]; output=tempname() * ".pdb")
+    @test [Packmol._radscale(s2, st) for st in s2.structure_types] == [5.0, 1.0, 1.0, 5.0]
+    s2 = PackmolSystem([fx, w, structure_type(lipid; number=2, restart_from="restart.pdb", radscale=3.0)]; output=tempname() * ".pdb")
+    @test [Packmol._radscale(s2, st) for st in s2.structure_types] == [3.0, 1.0, 3.0]
 
     sys = read_packmol_input(file; T=Float32)
     @test typeof(sys.tolerance) == Float32
