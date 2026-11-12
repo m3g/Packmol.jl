@@ -30,7 +30,7 @@ end structure
 | `connect no` | Don't write the connectivity (`CONECT` records) of this structure to the output. |
 | `center` / `centerofmass` | Only valid together with `fixed`: re-center the molecule (geometric center or mass-weighted center of mass) before applying the fixed position/orientation. Without them, the molecule is rotated about the origin of its coordinates, and then translated. (Fortran Packmol uses unit masses for `centerofmass`, so its center of mass is the geometric center.) |
 | `radius <value>` | Atom radius for every atom of this structure, overriding the default of `tolerance/2`. |
-| `radscale <value>` | Scale of the radii of the atoms of this structure at the start of the packing, decaying to 1 in `radscale_decay_loops` loops (see [Global keywords](@ref)). Overrides the global `radscale` and the default: `5.0` for free molecules of more than 20 atoms, `1.0` for the other free molecules, and the largest of those for fixed molecules. |
+| `radscale <value>` | Scale of the radii of the atoms of this structure at the start of the packing, decaying to 1 in `radscale_decay_loops` loops (see [Global keywords](@ref)). Overrides the global `radscale` and the default: `5.0` for free molecules of more than 20 atoms, `1.0` for the other free molecules and for restarted ones (`restart_from`), and the largest of those for fixed molecules. |
 | `resnumbers <n>` | Residue numbering scheme for the output — see [Residue numbering](@ref) below. |
 | `chain <c>` | Fix every molecule of this type to chain identifier `<c>` in the output, instead of the default auto-assigned one. |
 | `changechains` | Alternate between two auto-assigned chain identifiers every other molecule, instead of one chain for the whole type. Not compatible with `chain`. |

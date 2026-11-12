@@ -16,7 +16,7 @@
     # default) means a scale for each structure type (`_radscale`): 5.0 for the free
     # molecules of more than 20 atoms, which otherwise interpenetrate (lipids, liquid
     # crystals: 2 to 6 times faster, and 18,000 lipids of an exosome that did not pack
-    # at 1.0 packed in 8 loops), 1.0 for the smaller ones (water, ions, small solvents
+    # at 1.0 packed in 8 loops), unless restarted (`restart_from`), 1.0 for the smaller ones (water, ions, small solvents
     # pack in a few loops at 1.0, and 4 to 8 times slower inflated), and the largest scale
     # of the free molecules for the fixed ones (lipids inflated next to a fixed protein at
     # its radii were pushed into it). A `radscale` keyword in a structure block sets the
@@ -231,8 +231,10 @@ end
 #
 # Scale of the radii of the atoms of a structure type at the start of the packing: the
 # `radscale` of the structure block, or the global one, or, if neither is set, 5.0 for
-# the free molecules of more than 20 atoms, 1.0 for the other free molecules, and, for
-# the fixed molecules, the largest scale of the free ones (see the `radscale` field of
+# the free molecules of more than 20 atoms, 1.0 for the other free molecules and for the
+# restarted ones (`restart_from`, of the system or of the type: inflated radii undo the
+# arrangement of a restart, as a packed configuration or one built by another tool), and,
+# for the fixed molecules, the largest scale of the free ones (see the `radscale` field of
 # `PackmolSystem`). The fixed molecules are inflated as the free ones: with lipids
 # inflated 5 times next to a fixed protein at its radii, the targets of the lipid-protein
 # pairs (5 + 1 radii) were much shorter than those of the lipid-lipid pairs (5 + 5), and
@@ -249,7 +251,8 @@ function _radscale(sys::PackmolSystem{D,T}, st::StructureType) where {D,T}
     return T(something(st.radscale, sys.radscale, default))
 end
 function _radscale_free(sys::PackmolSystem{D,T}, st::StructureType) where {D,T}
-    default = st.natoms >= _radscale_min_natoms ? T(_radscale_default) : one(T)
+    restarted = !isnothing(sys.restart_from) || !isnothing(st.restart_from)
+    default = (st.natoms >= _radscale_min_natoms && !restarted) ? T(_radscale_default) : one(T)
     return T(something(st.radscale, sys.radscale, default))
 end
 # Scale of the distance to the fixed atoms in the initial placement and in movebad!:
