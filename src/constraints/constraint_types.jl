@@ -33,6 +33,7 @@ const _BuiltinConstraint{T} = Union{
     Exponential{Over,T}, Exponential{Below,T},
     RadialExponential{Over,T}, RadialExponential{Below,T},
     SurfaceDistance{Inside,T}, SurfaceDistance{Outside,T},
+    SurfaceSide{Inside,T}, SurfaceSide{Outside,T},
 }
 # Constraints defined by functions of the user (CustomConstraint) exist only in Julia
 # code: they are left out of the executable (`_executable_build`), which `juliac --trim`
@@ -73,7 +74,7 @@ const constraint_keywords = (
     "above sin", "below sin", "above cos", "below cos",
     "above radial_sin", "below radial_sin", "above radial_cos", "below radial_cos",
     "above exponential", "below exponential", "above radial_exponential", "below radial_exponential",
-    "within surface", "not within surface",
+    "within surface", "not within surface", "inside surface", "outside surface",
 )
 const _constraint_vals = map(keyword -> Val(Symbol(keyword)), constraint_keywords)
 

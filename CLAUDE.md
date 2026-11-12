@@ -240,6 +240,13 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       points (no NearestNeighbors.jl: allocation-free, thread-safe, trim-compatible) and a descent
       from a seed point of each cell for far queries. Experiments (TS2CG dumbbell, budding and
       invaginated vesicles, the torus) in the session of 2026-11-09; the design note was `ts2cg.md`
+- [x] `inside surface`/`outside surface` (`InsideSurface`/`OutsideSurface`, `SurfaceSide`): the sides
+      of a closed point surface with outward normals, `h ≤ offset` / `h ≥ offset`. `PointSurface.side`
+      stores the side of each grid cell with no point within the smoothing radius (sign of the
+      nearest point's normal at the cell center), so atoms far on the allowed side cost a lookup
+      (no far search). The inside is bounded by the box of the points (direct sampling of the
+      initial placement, `free_volume`, `voxel_place`). Triangulated meshes (exact inside/outside)
+      not done: the user chose point surfaces first (2026-11-12)
 - [x] `CustomConstraint(f; gradient)` (Julia API only, not in input files or the executable): the
       region `f(x) ≤ 0` of a user function, penalty `weight·f²`; gradient given (e.g. ForwardDiff) or
       by central finite differences; stored as `FunctionWrapper`s so it fits the closed union

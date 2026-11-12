@@ -18,7 +18,8 @@
 # propagation from the cells with points), from which the nearest point to a position far
 # from the surface is found by a descent on the points.
 #
-export PointSurface, read_surface, surface_distance, WithinSurface, NotWithinSurface
+export PointSurface, read_surface, surface_distance, WithinSurface, NotWithinSurface,
+    InsideSurface, OutsideSurface
 
 weight_default[:surface] = 5.0
 
@@ -46,6 +47,11 @@ struct PointSurface{T}
     cell_start::Vector{Int32}       # points of cell c: cell_start[c]:cell_start[c+1]-1
     seed::Vector{Int32}             # a point near each cell
     bbox::Tuple{SVector{3,T},SVector{3,T}}  # bounding box of the points
+    # With normals, the side of the surface of each cell without points around it (no
+    # point within the smoothing radius of its positions: the surface does not cross it):
+    # +1 on the side of the normals, -1 on the other, 0 for the cells near the surface.
+    # Empty without normals.
+    side::Vector{Int8}
 end
 
 function PointSurface(points::AbstractVector, normals = nothing; radius = nothing)
@@ -92,7 +98,8 @@ function _point_surface(::Type{T}, points, normals, radius) where {T}
     pts = pts[perm]
     isempty(nrm) || (nrm = nrm[perm])
     seed = _seed_points(cell_start, ncells)
-    return PointSurface{T}(pts, nrm, r, glo, ncells, cell_start, seed, (lo, hi))
+    side = isempty(nrm) ? Int8[] : _cell_sides(pts, nrm, glo, r, ncells, cell_start, seed)
+    return PointSurface{T}(pts, nrm, r, glo, ncells, cell_start, seed, (lo, hi), side)
 end
 
 @inline function _cell_of(lo::SVector{3}, side, ncells::NTuple{3,Int}, x)
@@ -181,16 +188,36 @@ function _seed_points(cell_start::Vector{Int32}, ncells::NTuple{3,Int})
     return seed
 end
 
+# The side of the surface of each cell without points in the 27 cells around it: that of
+# its center, by the normal of the nearest point (see `PointSurface.side`)
+function _cell_sides(pts::Vector{SVector{3,T}}, nrm, lo, r, ncells, cell_start, seed) where {T}
+    nc = prod(ncells)
+    side = zeros(Int8, nc)
+    has_points(lc) = cell_start[lc+1] > cell_start[lc]
+    for k in 1:ncells[3], j in 1:ncells[2], i in 1:ncells[1]
+        c = (i, j, k)
+        any(I -> has_points(_linear_cell(Tuple(I), ncells)), _near_cells(ncells, c)) && continue
+        x = lo + r * SVector{3,T}(i - T(0.5), j - T(0.5), k - T(0.5))
+        lc = _linear_cell(c, ncells)
+        m = Int(seed[lc])
+        m, _ = _descend_points(pts, lo, r, ncells, cell_start, x, m, sum(abs2, x - pts[m]))
+        side[lc] = dot(nrm[m], x - pts[m]) >= 0 ? Int8(1) : Int8(-1)
+    end
+    return side
+end
+
 # The nearest point to x, by a descent from the point k (squared distance d2): moves to
 # the nearest point to x among those of the cells around the current one, until none is
 # nearer
-function _descend(s::PointSurface, x, k::Int, d2)
+_descend(s::PointSurface, x, k::Int, d2) = _descend_points(s.points, s.lo, s.radius, s.ncells, s.cell_start, x, k, d2)
+
+function _descend_points(points, lo, radius, ncells, cell_start, x, k::Int, d2)
     while true
         kk, dd = k, d2
-        for I in _near_cells(s.ncells, _cell_of(s.lo, s.radius, s.ncells, s.points[k]))
-            lc = _linear_cell(Tuple(I), s.ncells)
-            for m in s.cell_start[lc]:s.cell_start[lc+1]-1
-                e = sum(abs2, x - s.points[m])
+        for I in _near_cells(ncells, _cell_of(lo, radius, ncells, points[k]))
+            lc = _linear_cell(Tuple(I), ncells)
+            for m in cell_start[lc]:cell_start[lc+1]-1
+                e = sum(abs2, x - points[m])
                 e < dd && (kk = m; dd = e)
             end
         end
@@ -427,6 +454,79 @@ function constraint_gradient(c::SurfaceDistance{Outside}, x)
     return v > 0 ? (-2 * c.weight * v * s) * g : zero(x)
 end
 
+#
+# The sides of a closed surface: inside (`h ≤ offset`) and outside (`h ≥ offset`), for a
+# surface with normals pointing out of the region it encloses
+#
+struct SurfaceSide{Placement,T} <: Constraint{Placement,3,T}
+    surface::PointSurface{T}
+    offset::T
+    weight::T
+end
+
+function SurfaceSide{Placement}(surface::PointSurface{T}, offset, weight) where {Placement,T}
+    isempty(surface.normals) && throw(ArgumentError("""\n
+        The inside and outside of a surface require a surface with normals (pointing
+        outwards).
+
+    """))
+    return SurfaceSide{Placement,T}(surface, T(offset), T(weight))
+end
+
+"""
+    InsideSurface(surface::PointSurface; offset = 0.0, weight = 5.0)
+
+The atoms inside a closed surface given by points with normals pointing outwards (as
+those of the outer membrane of a vesicle of TS2CG): `h ≤ offset`, where `h` is the
+signed distance to the surface (negative inside). With `offset`, the region is that of
+the surface parallel to it at that distance along the normals (negative: deeper
+inside). Input file syntax: `inside surface file [offset]`.
+"""
+InsideSurface(surface::PointSurface; offset = 0, weight = weight_default[:surface]) =
+    SurfaceSide{Inside}(surface, offset, weight)
+
+"""
+    OutsideSurface(surface::PointSurface; offset = 0.0, weight = 5.0)
+
+The atoms outside a closed surface given by points with normals pointing outwards:
+`h ≥ offset`, where `h` is the signed distance to the surface (positive outside). Input
+file syntax: `outside surface file [offset]`.
+"""
+OutsideSurface(surface::PointSurface; offset = 0, weight = weight_default[:surface]) =
+    SurfaceSide{Outside}(surface, offset, weight)
+
+# The side of a position known without the distance: that of its cell, if no point of
+# the surface is around it (then |h| ≥ radius); 0 otherwise
+@inline function _known_side(s::PointSurface, x)
+    return s.side[_linear_cell(_cell_of(s.lo, s.radius, s.ncells, x), s.ncells)]
+end
+
+# Inside: satisfied far inside (h ≤ -radius ≤ offset)
+_far_inside(c::SurfaceSide{Inside}, x) = c.offset >= -c.surface.radius && _known_side(c.surface, x) < 0
+_far_inside(c::SurfaceSide{Outside}, x) = c.offset <= c.surface.radius && _known_side(c.surface, x) > 0
+
+function constraint_penalty(c::SurfaceSide{P}, x) where {P}
+    _far_inside(c, x) && return zero(eltype(x))
+    h, _, _ = _surface_distance(c.surface, x)
+    v = P === Inside ? h - c.offset : c.offset - h
+    return v > 0 ? c.weight * v^2 : zero(v)
+end
+
+function constraint_gradient(c::SurfaceSide{P}, x) where {P}
+    _far_inside(c, x) && return zero(x)
+    h, g, _ = _surface_distance(c.surface, x)
+    v = P === Inside ? h - c.offset : c.offset - h
+    v > 0 || return zero(x)
+    return P === Inside ? (2 * c.weight * v) * g : (-2 * c.weight * v) * g
+end
+
+function Base.show(io::IO, ::MIME"text/plain", c::SurfaceSide{P,T}) where {P,T}
+    name = P === Inside ? "InsideSurface" : "OutsideSurface"
+    what = P === Inside ? "inside" : "outside"
+    shift = iszero(c.offset) ? "" : " shifted by $(c.offset) Å along the normals"
+    print(io, "$name{$T}: $what the surface of $(length(c.surface.points)) points$shift, weight = $(c.weight)")
+end
+
 function Base.show(io::IO, ::MIME"text/plain", c::SurfaceDistance{P,T}) where {P,T}
     name = P === Inside ? "WithinSurface" : "NotWithinSurface"
     what = P === Inside ? "within" : "not within"
@@ -470,11 +570,40 @@ end
 
 parse_constraint(::Val{Symbol("within surface")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T} =
     _parse_surface_constraint(Inside, "within surface", data, T, filename)
+function _parse_surface_side(::Type{P}, keyword, data, ::Type{T}, filename) where {P,T}
+    length(data) in (1, 2) || throw(ArgumentError("""\n
+        Error parsing '$keyword' constraint data for $filename: expected
+        `$keyword file [offset]`.
+
+    """))
+    offset = try
+        length(data) == 2 ? parse(T, data[2]) : zero(T)
+    catch
+        throw(ArgumentError("""\n
+            Error parsing '$keyword' constraint data for $filename: expected
+            `$keyword file [offset]`.
+
+        """))
+    end
+    surface = _cached_surface(String(data[1]), T)
+    return SurfaceSide{P}(surface, offset, T(weight_default[:surface]))
+end
+
+parse_constraint(::Val{Symbol("inside surface")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T} =
+    _parse_surface_side(Inside, "inside surface", data, T, filename)
+parse_constraint(::Val{Symbol("outside surface")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T} =
+    _parse_surface_side(Outside, "outside surface", data, T, filename)
 parse_constraint(::Val{Symbol("not within surface")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T} =
     _parse_surface_constraint(Outside, "not within surface", data, T, filename)
 
 # The bounding box of the region of a `within` constraint (volume tools)
 function _inside_box(c::SurfaceDistance{Inside})
     m = c.distance + abs(c.offset)
+    return (c.surface.bbox[1] .- m, c.surface.bbox[2] .+ m)
+end
+
+# The bounding box of the region of an `inside` constraint (volume tools, voxel_place)
+function _inside_box(c::SurfaceSide{Inside})
+    m = max(c.offset, zero(c.offset))
     return (c.surface.bbox[1] .- m, c.surface.bbox[2] .+ m)
 end
