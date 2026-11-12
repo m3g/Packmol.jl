@@ -38,7 +38,7 @@
             @test minimum_intermolecular_distance(sys) >= sys.tolerance - sys.tolerance_precision
         end
     end
-    # Failed packings write the _FORCED output (testing/test_failed.sh). The box of
+    # Failed packings write the -FORCED output (testing/test_failed.sh). The box of
     # water_box_failed.inp (3 x 3 x 1 Å) holds the two molecules (they fail in Fortran
     # with its `maxit 2`), so it is replaced by one that cannot: its diagonal (1.91 Å)
     # is shorter than the tolerance
@@ -49,7 +49,7 @@
         packmol(failed_impossible)
     end
     @test sys.status == :failed_packing
-    @test isfile(sys.output_file * "_FORCED")
+    @test isfile(Packmol._forced_file(sys.output_file))
     # A fixed molecule outside the periodic cell is an input error
     @test_throws ArgumentError packmol(TestFiles.test_file("input_files/protein_outside_pbc_error.inp"))
 end

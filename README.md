@@ -73,7 +73,7 @@ of the input, `-s N` its random seed, and `-t N` limits the number of threads; `
 lists the options. Without an input file (and no input redirected), a file browser is
 opened to choose it. The exit codes are those of the legacy Packmol: `0` for success,
 `173` if the packing did not converge (the best solution is written to the output file,
-and a solution satisfying only the constraints to `<output>_FORCED`), `171` for errors in
+and a solution satisfying only the constraints to `<name>-FORCED.<ext>`, e.g. `system-FORCED.pdb`), `171` for errors in
 the input, `172` if a file could not be opened, `174` for command-line errors, and `170`
 for other errors.
 
