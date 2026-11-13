@@ -60,8 +60,10 @@ this margin, in every dimension. By default (`pbc = :cubic`) the box is a
 cube (all three sides set to the largest of the three margined dimensions);
 `pbc = :orthorhombic` instead sizes each side independently, and
 `pbc = :dodecahedral`/`pbc = :octahedral` build a rhombic dodecahedron/
-truncated octahedron cell of that same largest side (see [Running
-Packmol](@ref) above).
+truncated octahedron cell, the smallest in which every atom of the solute (centered in the
+cell, in the orientation of its file) is at least the margin away from the faces of the
+cell (see [Running Packmol](@ref) above). For elongated solutes, these cells can be larger
+than the cube.
 
 Alternatively, the box size can be given explicitly with
 `box_sides = [a, b, c]` (in Å), instead of `margin`.

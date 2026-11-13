@@ -137,8 +137,7 @@
     rm(tmp_input_file, force=true)
     r1 = write_packmol_input(system; concentration = 0.5, margin = 20.0, input = tmp_input_file, debug = true, pbc = :dodecahedral)
     @test isfile(tmp_input_file)
-    @test r1[3] ≈ [118.81, 118.81, 118.81]u"Å"
-    @test r1[1] + r1[2] < 13527 + 13527
+    @test r1[3] ≈ [150.574, 150.574, 150.574]u"Å" rtol = 1e-4
 
     # The generated input file must be valid Packmol syntax for the native engine
     # itself, not just the (more lenient) legacy Fortran binary — regression test
@@ -146,6 +145,7 @@
     # rejected outright.
     psys = Packmol.read_packmol_input(tmp_input_file)
     @test psys.nmols == 1 + r1[1] + r1[2]
+    Packmol._check_fixed_inside_cell(psys) # the solute is inside the cell (no error)
     rm(tmp_input_file, force=true)
 
     # In this test, if we (incorrectly) provide the concentration in mol/L,

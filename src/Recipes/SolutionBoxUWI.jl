@@ -243,7 +243,10 @@ the maximum and minimum coordinates of the solute plus the margin in all 3 dimen
 sides to their maximum, `:orthorhombic` keeps `box_sides`/`margin` as given (possibly
 with unequal sides), and `:dodecahedral`/`:octahedral` build a rhombic
 dodecahedron/truncated octahedron cell (see [`dodecahedral_unitcell`](@ref)/
-[`octahedral_unitcell`](@ref)) of size equal to that same maximum side.
+[`octahedral_unitcell`](@ref)): with `margin`, the smallest in which every atom of the
+solute (centered in the cell, in the orientation of its file) is at least `margin` from the
+faces of the cell, so that solutes of any shape fit in it; with `box_sides`, of minimum-image
+distance equal to their maximum.
 
 """
 #
@@ -394,7 +397,10 @@ the maximum and minimum coordinates of the solute plus the margin in all 3 dimen
 sides to their maximum, `:orthorhombic` keeps `box_sides`/`margin` as given (possibly
 with unequal sides), and `:dodecahedral`/`:octahedral` build a rhombic
 dodecahedron/truncated octahedron cell (see [`dodecahedral_unitcell`](@ref)/
-[`octahedral_unitcell`](@ref)) of size equal to that same maximum side.
+[`octahedral_unitcell`](@ref)): with `margin`, the smallest in which every atom of the
+solute (centered in the cell, in the orientation of its file) is at least `margin` from the
+faces of the cell, so that solutes of any shape fit in it; with `box_sides`, of minimum-image
+distance equal to their maximum.
 
 """
 function write_packmol_input(

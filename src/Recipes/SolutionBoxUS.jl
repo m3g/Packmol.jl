@@ -19,9 +19,14 @@ end
 #   - `:cubic` forces all three sides to their maximum, like `:orthorhombic`
 #     but with a cube instead of a general box.
 #   - `:dodecahedral`/`:octahedral` build a rhombic dodecahedron/truncated
-#     octahedron (see `dodecahedral_unitcell`/`octahedral_unitcell`) of size
-#     `d = maximum(box_sides)` — the same "take the largest requested side"
-#     logic as `:cubic`, just for that shape instead of a cube.
+#     octahedron (see `dodecahedral_unitcell`/`octahedral_unitcell`). With `margin`,
+#     its minimum-image distance `d` is the smallest for which every atom of the
+#     solute, fixed at the center of the cell (its geometric center at the origin, in
+#     the orientation of its file), is at least `margin` from every face of the cell
+#     (`_wigner_seitz_size`): at least twice the margin from the periodic images of
+#     the solute. (The largest side of the box of the solute plus the margin, used
+#     before, left the corners of the box of elongated solutes out of the cell.) With
+#     `box_sides`, `d = maximum(box_sides)`.
 #
 function set_unitcell(system, box_sides, margin, pbc::Symbol)
     pbc in (:cubic, :orthorhombic, :dodecahedral, :octahedral) || throw(ArgumentError(
@@ -40,17 +45,43 @@ function set_unitcell(system, box_sides, margin, pbc::Symbol)
         box_sides = (solute_extrema .+ 2 .* margin)
     end
     box_sides = _ensure_unit.(box_sides, u"Å")
-    unitcell = if pbc == :dodecahedral
-        d = ustrip(u"Å", maximum(box_sides))
-        dodecahedral_unitcell(Float64, d)
-    elseif pbc == :octahedral
-        d = ustrip(u"Å", maximum(box_sides))
-        octahedral_unitcell(Float64, d)
+    unitcell = if pbc in (:dodecahedral, :octahedral)
+        d = if isnothing(margin)
+            ustrip(u"Å", maximum(box_sides))
+        else
+            _wigner_seitz_size(solute_atoms, ustrip(u"Å", margin), pbc)
+        end
+        pbc == :dodecahedral ? dodecahedral_unitcell(Float64, d) : octahedral_unitcell(Float64, d)
     else
         pbc == :cubic && (box_sides = fill(maximum(box_sides), 3))
         Matrix{Float64}(Diagonal(ustrip.(u"Å", box_sides)))
     end
     return unitcell, solute_extrema
+end
+
+#
+# The minimum-image distance `d` of the smallest dodecahedral or octahedral cell (`pbc`),
+# centered at the geometric center of `atoms`, in which every atom is at least `margin`
+# (Å) from every face. The cell is the intersection of the half-spaces `x⋅v̂ ≤ |v|/2` of
+# the lattice vectors `v` (those of the faces and farther ones, redundant), and `|v|`
+# is proportional to `d`: for each `v` of the cell of `d = 1`, `d ≥ 2(max x⋅v̂ + margin)/|v|`.
+#
+function _wigner_seitz_size(atoms, margin::Real, pbc::Symbol)
+    x = [SVector(a.x, a.y, a.z) for a in atoms]
+    center = sum(x) / length(x)
+    x .-= Ref(center)
+    unit_cell = pbc == :dodecahedral ? dodecahedral_unitcell(Float64, 1.0) : octahedral_unitcell(Float64, 1.0)
+    a = SMatrix{3,3,Float64}(unit_cell)
+    d = 0.0
+    for i in -2:2, j in -2:2, k in -2:2
+        (i, j, k) == (0, 0, 0) && continue
+        v = a * SVector(i, j, k)
+        v_norm = norm(v)
+        v_hat = v / v_norm
+        xmax = maximum(dot(xi, v_hat) for xi in x)
+        d = max(d, 2 * (xmax + margin) / v_norm)
+    end
+    return d
 end
 
 _mandatory_keywords(::Type{SolutionBoxUS}) = (:solute_pdbfile, :solvent_pdbfile, :density)
@@ -202,7 +233,10 @@ the maximum and minimum coordinates of the solute plus the margin in all 3 dimen
 sides to their maximum, `:orthorhombic` keeps `box_sides`/`margin` as given (possibly
 with unequal sides), and `:dodecahedral`/`:octahedral` build a rhombic
 dodecahedron/truncated octahedron cell (see [`dodecahedral_unitcell`](@ref)/
-[`octahedral_unitcell`](@ref)) of size equal to that same maximum side.
+[`octahedral_unitcell`](@ref)): with `margin`, the smallest in which every atom of the
+solute (centered in the cell, in the orientation of its file) is at least `margin` from the
+faces of the cell, so that solutes of any shape fit in it; with `box_sides`, of minimum-image
+distance equal to their maximum.
 
 """
 function write_packmol_input(

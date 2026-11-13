@@ -77,17 +77,17 @@
     @test psys.nmols == 1 + r[1] + r[2] + r[3]
     rm(tmp_input_file, force=true)
 
-    # pbc = :dodecahedral: same "size" as the (default) cubic case above, but a
-    # smaller volume (d³/√2 instead of d³), so fewer waters are needed to fill it
+    # pbc = :dodecahedral: the smallest cell with the atoms of the solute at least the
+    # margin from its faces
     r_dodeca = write_packmol_input(
         system; ionic_concentration = 0.15u"mol/L", margin = 20.0, pbc = :dodecahedral,
         input = tmp_input_file, debug = true,
     )
     @test isfile(tmp_input_file)
-    @test r_dodeca[4] ≈ [118.81, 118.81, 118.81]u"Å"
-    @test r_dodeca[1] < r[1]
+    @test r_dodeca[4] ≈ [150.574, 150.574, 150.574]u"Å" rtol = 1e-4
     psys_dodeca = Packmol.read_packmol_input(tmp_input_file)
     @test psys_dodeca.nmols == 1 + r_dodeca[1] + r_dodeca[2] + r_dodeca[3]
+    Packmol._check_fixed_inside_cell(psys_dodeca) # the solute is inside the cell (no error)
     rm(tmp_input_file, force=true)
 
     # Charged solute (+5): extra anions neutralize it, on top of the bulk salt
