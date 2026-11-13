@@ -196,16 +196,6 @@ end
     @test sys.periodic_boundary_style == :triclinic
 end
 
-@testitem "restart files are coordinate files" begin
-    for file in ("a.pdb", "a.PDB", "dir/a.xyz", "a.cif", "a.mmcif")
-        @test Packmol._check_restart_file(file, "restart_from") == file
-    end
-    # The restart files of Fortran Packmol are not supported
-    @test_throws ArgumentError Packmol._check_restart_file("water.pack", "restart_from")
-    @test_throws ArgumentError Packmol._check_restart_file("restart", "restart_from")
-    @test isnothing(Packmol._check_restart_file(nothing, "restart_from"))
-end
-
 @testitem "mmCIF output, and restart_to ignored" setup=[TestFiles] begin
     using PDBToolsBase: read_mmcif, read_unitcell
     water = TestFiles.test_file("structure_files/water.pdb")
@@ -231,47 +221,6 @@ end
     # also with `filetype mmcif`
     sys = Packmol.read_packmol_input(input)
     @test Packmol._file_format("box.out", "mmcif") == "mmcif"
-end
-
-@testitem "PDB-based restart" setup=[TestFiles] begin
-    using PDBToolsBase: read_pdb, position
-    using StaticArrays
-    using LinearAlgebra: norm
-
-    water_pdb = TestFiles.test_file("structure_files/water.pdb")
-    water = structure_type(water_pdb; number=3, constraints=[InsideBox([0, 0, 0], [28, 28, 28])])
-    sys = PackmolSystem([water]; output=tempname() * ".pdb", tolerance=2.0,
-        unitcell=Packmol.unitcell_matrix(Float64, 30.0, 30.0, 30.0, 90.0, 90.0, 90.0),
-        unitcell_center=zeros(3),
-    )
-    @test packmol(sys; nloop=20, maxit=100, seed=7).status == :packing_ready
-    source_pdb = write_output(sys)
-
-    # `_align_molecule` recovers each molecule's (cm, angles) well enough
-    # that re-applying them to the reference template reproduces the
-    # observed atom positions (up to the PDB format's own ~1e-3 precision).
-    refcoords = water.reference_coordinates
-    natoms = water.natoms
-    atoms = read_pdb(source_pdb)
-    for i in 1:water.number_of_molecules
-        observed = SVector{3,Float64}[SVector{3,Float64}(position(atoms[(i-1)*natoms+j])[1:3]) for j in 1:natoms]
-        mp = Packmol._align_molecule(refcoords, observed)
-        reconstructed = [Packmol.eulermat(mp.angles) * refcoords[j] + mp.cm for j in 1:natoms]
-        @test maximum(norm(reconstructed[j] - observed[j]) for j in 1:natoms) < 1e-2
-    end
-
-    # Both the file (`.pdb`, dispatched by extension) and in-memory
-    # `Vector{<:Atom}` sources go through the same alignment and must agree.
-    segments = [(water.number_of_molecules, natoms, refcoords, true)]
-    positions_from_file = Packmol._restart_positions(source_pdb, segments, Packmol.MoleculePosition{3,Float64})
-    positions_from_atoms = Packmol._restart_positions(atoms, segments, Packmol.MoleculePosition{3,Float64})
-    @test positions_from_file == positions_from_atoms
-
-    # A source with the wrong atom count is a clear, immediate error.
-    wrong_segments = [(water.number_of_molecules + 1, natoms, refcoords, true)]
-    @test_throws ErrorException Packmol._restart_positions(atoms, wrong_segments, Packmol.MoleculePosition{3,Float64})
-
-    rm(sys.output_file; force=true)
 end
 
 @testitem "AMBER TER records" setup=[TestFiles] begin

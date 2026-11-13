@@ -117,15 +117,8 @@ function _molecule_badness_constraints!(
                 for i in irange
                     imol = st_mol_offset + i
                     iat_first = st_atom_offset + (i - 1) * st.natoms + 1
-                    # Shift every atom of this molecule by the same offset —
-                    # the one that wraps the molecule's own CM into the
-                    # canonical cell — rather than wrapping each atom's
-                    # absolute position independently. See the comment on
-                    # `_constraint_fg!` in function_and_gradient/constraint_fg.jl for why:
-                    # wrapping atoms independently lets one atom of a
-                    # molecule cross a wrap seam while its CM (and the rest
-                    # of the molecule) doesn't, turning a harmless boundary
-                    # touch into a spurious constraint violation.
+                    # The atoms are shifted by the offset that wraps the center of mass
+                    # of the molecule (see `_constraint_fg!`, function_and_gradient/constraint_fg.jl)
                     cm_shift = if HASPBC
                         cm = packmol_system.molecule_positions[imol].cm
                         _wrap_cm(cm, unitcell, unitcell_center, packmol_system.wigner_seitz_cell) - cm

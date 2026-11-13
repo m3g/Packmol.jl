@@ -253,9 +253,11 @@ function _active_fg!(g, x, sub::ActiveSubsystem, packmol_system::PackmolSystem{D
         end
     end
     # Constraints of the active atoms, and the chain rule
-    lk = ReentrantLock()
     g_mol = reinterpret(MoleculePosition{D,T}, g)
-    @_sync for krange in chunks(eachindex(sub.mols); n=_nbatches())
+    mol_chunks = chunks(eachindex(sub.mols); n=_nbatches())
+    f_chunks = zeros(T, length(mol_chunks))
+    max_chunks = zeros(T, length(mol_chunks))
+    @_sync for (ichunk, krange) in enumerate(mol_chunks)
         @spawn begin
             f_local = zero(T)
             max_local = zero(T)
@@ -288,12 +290,11 @@ function _active_fg!(g, x, sub::ActiveSubsystem, packmol_system::PackmolSystem{D
                     @view(fg.gxcar[i0:i0+st.natoms-1]),
                 )
             end
-            @lock lk begin
-                fg.f += f_local
-                fg.max_constraint_penalty = max(fg.max_constraint_penalty, max_local)
-            end
+            f_chunks[ichunk] = f_local
+            max_chunks[ichunk] = max_local
         end
     end
+    _sum_chunks!(fg, f_chunks, max_chunks)
     return fg.f
 end
 

@@ -165,3 +165,34 @@ exactly on the axis).
 - **radial_sin** / **radial_cos**: `h(r) = d0 + amplitude * sin(2*pi/wavelength * r + phase)`
   (`radial_cos` adds `pi/2` to `phase`)
 - **radial_exponential**: `h(r) = d0 + amplitude * exp(rate * r)`
+
+### Example
+
+430 water molecules (about 1 g/mL) in a box, above a dome of height 6 Å and width 4 Å
+centered at the origin:
+
+```
+structure water.pdb
+    number 430
+    inside box -15. -15. 0. 15. 15. 15.
+    above radial_gaussian 0. 0. 1. 0. 0. 0. 0. 6. 4.
+end structure
+```
+
+The same system, packed with the [Julia API](../julia_api/index.md):
+
+```@example gaussian
+water = structure_type("water.pdb";
+    number = 430,
+    constraints = [InsideBox([-15., -15., 0.], [15., 15., 15.]), AboveRadialGaussian([0., 0., 1.], [0., 0., 0.], 0., 6., 4.)],
+)
+system = PackmolSystem([water]; tolerance = 2.0, output = "radial_gaussian.pdb")
+redirect_stdio(stdout = devnull, stderr = devnull) do # hide
+packmol(system)
+end # hide
+visualize(get_atoms(system); unitcell = UnitCell([30., 30., 15.]), unitcell_origin = [-15., -15., 0.])
+```
+
+The other radial shapes take the same arguments as in the input file, in the same order:
+`AboveRadialSin(up, center, d0, amplitude, wavelength, phase)`,
+`AboveRadialExponential(up, center, d0, amplitude, rate)`, and their `Below` counterparts.

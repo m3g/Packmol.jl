@@ -29,18 +29,21 @@ end
 # free molecules: penalties added to `f` and `fmol`, gradients to `gxcar`.
 #
 function _rotation_constraints_fg!(fg_output::InteratomicDistanceFG{D,T}, packmol_system::PackmolSystem{D,T}) where {D,T}
-    lk = ReentrantLock()
     imol_offset = 0
     iat_offset = 0
     for st in packmol_system.structure_types
         nmols = st.fixed.fixed ? 1 : st.number_of_molecules
         if !st.fixed.fixed && !isempty(st.rotation_constraints)
             mol_offset, at_offset = imol_offset, iat_offset
-            @_sync for irange in index_chunks(1:nmols; n=_nbatches())
+            mol_chunks = index_chunks(1:nmols; n=_nbatches())
+            f_chunks = zeros(T, length(mol_chunks))
+            max_chunks = zeros(T, length(mol_chunks))
+            unconverged_chunks = [Int32[] for _ in 1:length(mol_chunks)]
+            @_sync for (ichunk, irange) in enumerate(mol_chunks)
                 @spawn begin
                     f_local = zero(T)
                     max_local = zero(T)
-                    unconverged_local = Int32[]
+                    unconverged_local = unconverged_chunks[ichunk]
                     for i in irange
                         imol = mol_offset + i
                         R = eulermat(packmol_system.molecule_positions[imol].angles)
@@ -52,12 +55,13 @@ function _rotation_constraints_fg!(fg_output::InteratomicDistanceFG{D,T}, packmo
                             push!(unconverged_local, imol)
                         end
                     end
-                    @lock lk begin
-                        append!(fg_output.unconverged_mols, unconverged_local)
-                        fg_output.f += f_local
-                        fg_output.max_constraint_penalty = max(fg_output.max_constraint_penalty, max_local)
-                    end
+                    f_chunks[ichunk] = f_local
+                    max_chunks[ichunk] = max_local
                 end
+            end
+            _sum_chunks!(fg_output, f_chunks, max_chunks)
+            for u in unconverged_chunks
+                append!(fg_output.unconverged_mols, u)
             end
         end
         imol_offset += nmols
@@ -81,11 +85,19 @@ function _constraint_fg!(
     # contiguous range of molecules, and only the first and last molecules of the
     # range can have atoms in other chunks. The penalties of the molecules
     # strictly inside the range are added directly to `fmol`, and those of the
-    # first and last molecules are accumulated locally and added under the lock.
-    # More chunks than threads balance the load between threads of different speeds.
-    lk_fg = ReentrantLock()
+    # first and last molecules are accumulated locally and added after the tasks, in
+    # the order of the chunks, as the sums of the chunks (the same result whatever the
+    # order in which the tasks finish). More chunks than threads balance the load
+    # between threads of different speeds.
     atoms = packmol_system.atoms
-    @_sync for iat_range in index_chunks(atoms; n=4 * _nbatches())
+    atom_chunks = index_chunks(atoms; n=4 * _nbatches())
+    nchunks = length(atom_chunks)
+    f_chunks = zeros(T, nchunks)
+    max_chunks = zeros(T, nchunks)
+    fmol_first_chunks = zeros(T, nchunks)
+    fmol_last_chunks = zeros(T, nchunks)
+    unconverged_chunks = [Int32[] for _ in 1:nchunks]
+    @_sync for (ichunk, iat_range) in enumerate(atom_chunks)
         @spawn begin
             fg_local = zero(fg_output.f)
             max_penalty_local = zero(T)
@@ -93,24 +105,17 @@ function _constraint_fg!(
             imol_last = atoms[last(iat_range)].molecule_index
             fmol_first = zero(T)
             fmol_last = zero(T)
-            unconverged_local = Int32[]
+            unconverged_local = unconverged_chunks[ichunk]
             for iat in iat_range
                 atom = packmol_system.atoms[iat]
                 x = atom_positions[iat]
                 if HASPBC
-                    # Shift by exactly the offset that wraps this atom's own
-                    # *molecule* CM into the canonical cell, rather than
-                    # wrapping the atom's own absolute position independently
-                    # — see the comment on `_compute_positions_and_constraints_for_mols!`
-                    # above for why: an atom offset from a comfortably
-                    # mid-cell CM by rotation can independently land right at
-                    # a wrap seam even though its own CM never gets near one,
-                    # turning a harmless boundary touch into a spurious
-                    # jump-to-the-opposite-side-of-the-cell constraint
-                    # violation. Shifting every atom of a molecule by the
-                    # same amount (its own CM's wrap offset) instead means an
-                    # atom only ever crosses a wrap seam when its molecule's
-                    # CM does.
+                    # Every atom of a molecule is shifted by the offset that wraps the
+                    # center of mass of the molecule into the cell, not wrapped on its
+                    # own: an atom of a molecule well inside the cell can lie at the
+                    # boundary of the cell, and wrapped alone it would jump to the
+                    # opposite side, with a spurious violation of the constraints. An
+                    # atom crosses the boundary only when its molecule does.
                     cm = packmol_system.molecule_positions[atom.molecule_index].cm
                     x = x + (_wrap_cm(cm, unitcell, unitcell_center, packmol_system.wigner_seitz_cell) - cm)
                 end
@@ -136,16 +141,36 @@ function _constraint_fg!(
                     push!(unconverged_local, imol)
                 end
             end
-            @lock lk_fg begin
-                append!(fg_output.unconverged_mols, unconverged_local)
-                fg_output.f += fg_local
-                fg_output.fmol[imol_first] += fmol_first
-                if imol_last != imol_first
-                    fg_output.fmol[imol_last] += fmol_last
-                end
-                fg_output.max_constraint_penalty = max(fg_output.max_constraint_penalty, max_penalty_local)
-            end
+            f_chunks[ichunk] = fg_local
+            max_chunks[ichunk] = max_penalty_local
+            fmol_first_chunks[ichunk] = fmol_first
+            fmol_last_chunks[ichunk] = fmol_last
         end
     end
+    _sum_chunks!(fg_output, f_chunks, max_chunks)
+    for (ichunk, iat_range) in enumerate(atom_chunks)
+        imol_first = atoms[first(iat_range)].molecule_index
+        imol_last = atoms[last(iat_range)].molecule_index
+        fg_output.fmol[imol_first] += fmol_first_chunks[ichunk]
+        if imol_last != imol_first
+            fg_output.fmol[imol_last] += fmol_last_chunks[ichunk]
+        end
+        append!(fg_output.unconverged_mols, unconverged_chunks[ichunk])
+    end
     return fg_output
+end
+
+#
+# Adds the partial sums of the function of the chunks of a threaded loop to `fg.f`, in
+# the order of the chunks, so that the result does not depend on the order in which the
+# tasks finish (with a lock, the sums were added as each task finished, and runs with
+# the same seed gave different packings), and the maximum penalties to
+# `fg.max_constraint_penalty`.
+#
+function _sum_chunks!(fg, f_chunks::Vector{T}, max_chunks::Vector{T}) where {T}
+    for ichunk in eachindex(f_chunks, max_chunks)
+        fg.f += f_chunks[ichunk]
+        fg.max_constraint_penalty = max(fg.max_constraint_penalty, max_chunks[ichunk])
+    end
+    return fg
 end
