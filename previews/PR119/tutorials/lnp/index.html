@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="referrer" content="no-referrer"/><title>Lipid nanoparticle (designed with an AI agent) · Packmol.jl</title><meta name="title" content="Lipid nanoparticle (designed with an AI agent) · Packmol.jl"/><meta property="og:title" content="Lipid nanoparticle (designed with an AI agent) · Packmol.jl"/><meta property="twitter:title" content="Lipid nanoparticle (designed with an AI agent) · Packmol.jl"/><meta name="description" content="Documentation for Packmol.jl."/><meta property="og:description" content="Documentation for Packmol.jl."/><meta property="twitter:description" content="Documentation for Packmol.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.63.2/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/custom.css" rel="stylesheet" type="text/css"/><script src="../../assets/volume_tools.js"></script><link href="../../assets/documentercodeblocks/juliasyntax-tokens.css" rel="stylesheet" type="text/css"/><link href="../../assets/documentercodeblocks/line-numbers.css" rel="stylesheet" type="text/css"/><script src="../../assets/documentercodeblocks/line-numbers.js"></script><link href="../../assets/documentercodeblocks/ref-popup.css" rel="stylesheet" type="text/css"/><script src="../../assets/documentercodeblocks/ref-popup.js"></script></head><body><div class="has-top-menu" id="documenter"><nav class="docs-top-menu" aria-label="Documentation sections"><div class="container"><ul class="docs-top-menu-list"><li class="docs-top-dropdown"><a class="docs-top-menu-link" href="../../">Home<span class="docs-top-dropdown-caret" aria-hidden="true"></span></a><ul class="docs-top-dropdown-menu"><li><a class="docs-top-dropdown-item" href="../../">Introduction</a></li><li><a class="docs-top-dropdown-item" href="../../installation/">Installation</a></li><li><a class="docs-top-dropdown-item" href="../../migrating/">Migrating from legacy Packmol</a></li></ul></li><li class="docs-top-dropdown is-active"><a class="docs-top-menu-link" href="../" aria-current="true">Tutorials<span class="docs-top-dropdown-caret" aria-hidden="true"></span></a><ul class="docs-top-dropdown-menu"><li><a class="docs-top-dropdown-item" href="../">Overview</a></li><li><a class="docs-top-dropdown-item" href="../ai_agent/">Using your AI agent</a></li><li><a class="docs-top-dropdown-item" href="../mixture/">Water and urea</a></li><li><a class="docs-top-dropdown-item" href="../interface/">Water–chloroform interface</a></li><li><a class="docs-top-dropdown-item" href="../bilayer/">Lipid bilayer</a></li><li><a class="docs-top-dropdown-item" href="../nanoliposome/">Nanoliposomes</a></li><li><a class="docs-top-dropdown-item" href="../solvprotein/">Solvated protein</a></li><li><a class="docs-top-dropdown-item" href="../protein_glycerol/">Protein in glycerol and water</a></li><li><a class="docs-top-dropdown-item" href="../water_drop/">Water drop on graphite</a></li><li><a class="docs-top-dropdown-item" href="../polymer_dmf/">Polymer in DMF</a></li><li><a class="docs-top-dropdown-item" href="../nanotube/">Carbon nanotube filled with water</a></li><li><a class="docs-top-dropdown-item" href="../zeolite/">Gases in a zeolite</a></li><li><a class="docs-top-dropdown-item" href="../gold_nanoparticle/">Gold nanoparticle in toluene</a></li><li><a class="docs-top-dropdown-item" href="../liquid_crystal/">Liquid crystals</a></li><li><a class="docs-top-dropdown-item" href="../zika/">Zika virion (a large system)</a></li><li><a class="docs-top-dropdown-item" href>Lipid nanoparticle (designed with an AI agent)</a></li><li><a class="docs-top-dropdown-item" href="../exosome/">Exosome (a very large system)</a></li><li><a class="docs-top-dropdown-item" href="../cell/">Minimal cell (voxel placement of Bentopy)</a></li></ul></li><li class="docs-top-dropdown"><a class="docs-top-menu-link" href="../../input_files/">Input files<span class="docs-top-dropdown-caret" aria-hidden="true"></span></a><ul class="docs-top-dropdown-menu"><li><a class="docs-top-dropdown-item" href="../../input_files/">Overview</a></li><li><a class="docs-top-dropdown-item" href="../../input_files/global_keywords/">Global keywords</a></li><li><a class="docs-top-dropdown-item" href="../../input_files/structure_blocks/">Structure blocks</a></li><li><a class="docs-top-dropdown-item" href="../../input_files/residue_numbering/">Residue numbering</a></li><li><a class="docs-top-dropdown-item" href="../../input_files/restarting_a_run/">Restarting a run</a></li><li><a class="docs-top-dropdown-item" href="../../input_files/volume_estimates/">Volume estimates</a></li></ul></li><li class="docs-top-dropdown"><a class="docs-top-menu-link" href="../../constraints/">Constraints<span class="docs-top-dropdown-caret" aria-hidden="true"></span></a><ul class="docs-top-dropdown-menu"><li><a class="docs-top-dropdown-item" href="../../constraints/">Overview</a></li><li><a class="docs-top-dropdown-item" href="../../constraints/fixed/">Fixed molecules</a></li><li><a class="docs-top-dropdown-item" href="../../constraints/cube/">Cube</a></li><li><a class="docs-top-dropdown-item" href="../../constraints/box/">Box</a></li><li><a class="docs-top-dropdown-item" href="../../constraints/sphere/">Sphere</a></li><li><a class="docs-top-dropdown-item" href="../../constraints/plane/">Plane</a></li><li><a class="docs-top-dropdown-item" href="../../constraints/cylinder/">Cylinder</a></li><li><a class="docs-top-dropdown-item" href="../../constraints/ellipsoid/">Ellipsoid</a></li><li><a class="docs-top-dropdown-item" href="../../constraints/gaussian_wave_and_exponential_surfaces/">Gaussian, wave, and exponential surfaces</a></li><li><a class="docs-top-dropdown-item" href="../../constraints/surface/">Surfaces given by points</a></li><li><a class="docs-top-dropdown-item" href="../../constraints/rotation_constraint/">Rotation constraint</a></li><li><a class="docs-top-dropdown-item" href="../../constraints/custom/">Custom constraints</a></li><li><a class="docs-top-dropdown-item" href="../../constraints/julia_constructors/">Julia constructors</a></li></ul></li><li class="docs-top-dropdown"><a class="docs-top-menu-link" href="../../periodic_boundary_conditions/">Periodic boundary conditions<span class="docs-top-dropdown-caret" aria-hidden="true"></span></a><ul class="docs-top-dropdown-menu"><li><a class="docs-top-dropdown-item" href="../../periodic_boundary_conditions/">Overview</a></li><li><a class="docs-top-dropdown-item" href="../../periodic_boundary_conditions/orthorhombic_box/">Orthorhombic box</a></li><li><a class="docs-top-dropdown-item" href="../../periodic_boundary_conditions/triclinic_box/">Triclinic box</a></li><li><a class="docs-top-dropdown-item" href="../../periodic_boundary_conditions/rhombic_dodecahedral_box/">Rhombic dodecahedral box</a></li><li><a class="docs-top-dropdown-item" href="../../periodic_boundary_conditions/truncated_octahedral_box/">Truncated octahedral box</a></li><li><a class="docs-top-dropdown-item" href="../../periodic_boundary_conditions/relationship_with_constraints/">Relationship with constraints</a></li></ul></li><li class="docs-top-dropdown"><a class="docs-top-menu-link" href="../../julia_api/">Julia API<span class="docs-top-dropdown-caret" aria-hidden="true"></span></a><ul class="docs-top-dropdown-menu"><li><a class="docs-top-dropdown-item" href="../../julia_api/">Overview</a></li><li><a class="docs-top-dropdown-item" href="../../julia_api/multiple_structure_types/">Multiple structure types</a></li><li><a class="docs-top-dropdown-item" href="../../julia_api/combining_constraints/">Combining constraints</a></li><li><a class="docs-top-dropdown-item" href="../../julia_api/constraints_on_some_atoms/">Constraints on some atoms</a></li><li><a class="docs-top-dropdown-item" href="../../julia_api/global_options/">Global options</a></li><li><a class="docs-top-dropdown-item" href="../../julia_api/rotation_constraints/">Rotation constraints</a></li><li><a class="docs-top-dropdown-item" href="../../julia_api/restart_files/">Restart files</a></li><li><a class="docs-top-dropdown-item" href="../../julia_api/grid_placement/">Placement on a grid (Bentopy)</a></li><li><a class="docs-top-dropdown-item" href="../../julia_api/reference/">Reference</a></li></ul></li><li class="docs-top-dropdown"><a class="docs-top-menu-link" href="../../recipes/">Recipes<span class="docs-top-dropdown-caret" aria-hidden="true"></span></a><ul class="docs-top-dropdown-menu"><li><a class="docs-top-dropdown-item" href="../../recipes/">Overview</a></li><li><a class="docs-top-dropdown-item" href="../../recipes/volume_guesser/">Volume guesser</a></li><li><a class="docs-top-dropdown-item" href="../../recipes/free_volume/">Free volume</a></li><li><a class="docs-top-dropdown-item" href="../../recipes/running_packmol/">Running Packmol</a></li><li><a class="docs-top-dropdown-item" href="../../recipes/solute_solvent_system/">Solute-Solvent system</a></li><li><a class="docs-top-dropdown-item" href="../../recipes/solute_solvent_cossolvent_system/">Solute-Solvent-Cossolvent system</a></li><li><a class="docs-top-dropdown-item" href="../../recipes/solute_water_ions_system/">Solute-Water-Ions system</a></li><li><a class="docs-top-dropdown-item" href="../../recipes/membrane_system/">Membrane system</a></li><li><a class="docs-top-dropdown-item" href="../../recipes/membrane_protein_system/">Membrane protein system</a></li><li><a class="docs-top-dropdown-item" href="../../recipes/concentration_units/">Concentration units</a></li></ul></li></ul></div></nav><div class="docs-content-wrapper"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="Packmol.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Packmol.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../ai_agent/">Using your AI agent</a></li><li><a class="tocitem" href="../mixture/">Water and urea</a></li><li><a class="tocitem" href="../interface/">Water–chloroform interface</a></li><li><a class="tocitem" href="../bilayer/">Lipid bilayer</a></li><li><a class="tocitem" href="../nanoliposome/">Nanoliposomes</a></li><li><a class="tocitem" href="../solvprotein/">Solvated protein</a></li><li><a class="tocitem" href="../protein_glycerol/">Protein in glycerol and water</a></li><li><a class="tocitem" href="../water_drop/">Water drop on graphite</a></li><li><a class="tocitem" href="../polymer_dmf/">Polymer in DMF</a></li><li><a class="tocitem" href="../nanotube/">Carbon nanotube filled with water</a></li><li><a class="tocitem" href="../zeolite/">Gases in a zeolite</a></li><li><a class="tocitem" href="../gold_nanoparticle/">Gold nanoparticle in toluene</a></li><li><a class="tocitem" href="../liquid_crystal/">Liquid crystals</a></li><li><a class="tocitem" href="../zika/">Zika virion (a large system)</a></li><li class="is-active"><a class="tocitem" href>Lipid nanoparticle (designed with an AI agent)</a><ul class="internal"><li><a class="tocitem" href="#From-a-sketch-to-a-system"><span>From a sketch to a system</span></a></li><li><a class="tocitem" href="#The-system"><span>The system</span></a></li><li><a class="tocitem" href="#Command-line"><span>Command line</span></a></li><li><a class="tocitem" href="#Julia"><span>Julia</span></a></li></ul></li><li><a class="tocitem" href="../exosome/">Exosome (a very large system)</a></li><li><a class="tocitem" href="../cell/">Minimal cell (voxel placement of Bentopy)</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Lipid nanoparticle (designed with an AI agent)</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Lipid nanoparticle (designed with an AI agent)</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/m3g/Packmol.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/m3g/Packmol.jl/blob/main/docs/src/tutorials/lnp.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Lipid-nanoparticle-(designed-with-an-AI-agent)"><a class="docs-heading-anchor" href="#Lipid-nanoparticle-(designed-with-an-AI-agent)">Lipid nanoparticle (designed with an AI agent)</a><a id="Lipid-nanoparticle-(designed-with-an-AI-agent)-1"></a><a class="docs-heading-anchor-permalink" href="#Lipid-nanoparticle-(designed-with-an-AI-agent)" title="Permalink"></a></h1><p>A lipid nanoparticle (LNP) of 80 nm, such as those that carry mRNA vaccines, in a coarse-grained model (<a href="https://www.sirahff.com/">SIRAH</a>): an outer monolayer of lipids, a lipid phase inside it, and three water compartments bounded by monolayers, each with a piece of RNA, in water, in a truncated octahedron periodic cell with 860 Å between opposite hexagonal faces. The system has 5.6 million particles and 887 thousand molecules.</p><p>The system was designed by an AI agent (Claude Code) from an illustration of an LNP and a few sentences of description, in a conversation of a few steps. This page shows that conversation, and then the system, built as in the other tutorials. It is a proof of concept: the composition of the lipid phase and the RNA are placeholders, not a model of a real LNP.</p><p><img src="../images/lnp.webp" alt="Lipid nanoparticle"/></p><p><em>The nanoparticle with a quarter cut out: the heads (blue) and the chains (orange) of the lipids of the monolayers, the lipid phase (tan), and, in the compartments, water (light blue) and RNA (red). The water outside is shown behind the particle, up to the faces of the periodic cell.</em></p><p>The files are the <code>packmol_lnp</code> set of <a href="https://github.com/m3g/MolSimTestFiles">MolSimTestFiles</a>: download and extract <a href="https://github.com/m3g/MolSimTestFiles/releases/download/packmol_lnp-v1/packmol_lnp.tar.gz">packmol_lnp.tar.gz</a> (0.2 MB), which contains the two input files, <code>monolayers.inp</code> and <code>lnp.inp</code>, and the structures: <code>popc.pdb</code>, <code>pope.pdb</code> and <code>pops.pdb</code> (the lipids) and <code>wt4.pdb</code> (water), those of the <a href="../zika/">Zika virion</a> tutorial, and <code>rna1.cif</code>, <code>rna2.cif</code> and <code>rna3.cif</code>, the pieces of RNA.</p><h2 id="From-a-sketch-to-a-system"><a class="docs-heading-anchor" href="#From-a-sketch-to-a-system">From a sketch to a system</a><a id="From-a-sketch-to-a-system-1"></a><a class="docs-heading-anchor-permalink" href="#From-a-sketch-to-a-system" title="Permalink"></a></h2><p>The starting point was an illustration of an LNP: a sphere with a lipid shell, and, inside it, smaller spheres bounded by lipids, with RNA and water. The request to the agent was (the prompts are quoted with small corrections):</p><pre><code class="language-text hljs">What I want now is to try to build this system [the illustration]. The liposome
+is about 80 nm wide, and inside there are three smaller ones. Inside each one
+there&#39;s RNA and water; in the middle of the membranes there are lipids. I don&#39;t
+know the composition. Outside there should be water, in an octahedron. The
+system should be built coarse-grained. Can you evaluate that?
+
+The exact details are not critical: this would be a proof of concept.</code></pre><p>The agent read the illustration, proposed a geometry (the sizes and the positions of the compartments, the shells of the lipids), and estimated the numbers of molecules. The design was then corrected and simplified in a few exchanges:</p><ul><li><p><strong>The molecules.</strong> The structures of the molecules are for the user to provide: an agent can build rough models, but not ones fit for a simulation. Here, the lipids and the water of SIRAH of the <a href="../zika/">Zika virion</a> tutorial were used: POPC, POPE and POPS, 60:30:10, and the WT4 water. Before building anything, the agent confirmed with the user how the lipids are oriented by the constraints: the head bead (bead 1) and the end of a chain (bead 16, or 17 in POPS), from the structure files and the input of the Zika virion.</p></li><li><p><strong>The layers.</strong> The layers of the illustration are monolayers, with the chains of the lipids pointing to the lipid phase between them: heads outwards in the outer layer, inwards (towards the water) in the compartments.</p></li><li><p><strong>The geometry first.</strong> Only the four monolayers were packed first (<code>monolayers.inp</code>, half a minute), to check the geometry:</p><p><img src="../images/lnp_monolayers.webp" alt="The monolayers"/></p><p><em>The four monolayers, with a quarter cut out.</em></p></li><li><p><strong>The rest.</strong> Then:</p><pre><code class="language-text hljs">Fill the inner part with POPC, the inner spheres with WT4 and a piece of mRNA
+that fits in those spaces, and an octahedron of WT4 outside.</code></pre><p>The agent wrote a script for the pieces of RNA: compact chains of 3 beads per nucleotide, of 1500, 1000 and 700 nucleotides, with the size that fits in each compartment (placeholders: a real structure of a coarse-grained mRNA would replace them), fixed at the centers of the compartments.</p></li><li><p><strong>The scale of the radii.</strong> The lipids of the monolayers start the packing with their radii scaled by 5 (<code>radscale 5.0</code> in their structure blocks; the default for molecules of up to 20 beads is 1), so that they spread over their surfaces before they settle (see <a href="../../input_files/structure_blocks/#Structure-blocks">Structure blocks</a>). The POPC of the lipid phase was first given the same scale, and the first loop of the packing did not finish in 10 minutes, most likely because, inflated five-fold, it does not fit in its region, which is enclosed by the monolayers. The agent proposed a few alternatives; the one chosen was to start it at its radii. With that, the system packed in 5 minutes.</p></li></ul><div class="admonition is-success" id="The-scale-of-the-radii-at-the-start-7e3b11d33d4558be"><header class="admonition-header">The scale of the radii at the start<a class="admonition-anchor" href="#The-scale-of-the-radii-at-the-start-7e3b11d33d4558be" title="Permalink"></a></header><div class="admonition-body"><p><code>radscale</code> scales the radii of the atoms at the start of the packing, decaying to their values in the first loops. Inflated molecules repel each other from farther, which spreads them over their regions: it is what lipids in a layer need, and Packmol uses it by default for molecules of more than 20 atoms (SIRAH lipids have 16 or 17 beads, so it is set here). But molecules that fill an enclosed region densely, as the lipid phase here, may not fit in it inflated, and the first loops make no progress: start those at their radii (<code>radscale 1.0</code>, the default for small molecules). When the first loop of a packing does not end, look at the <code>radscale</code> of the molecules of the crowded regions.</p></div></div><p>The illustration helped the agent understand what was wanted, but the decisions that mattered were made in the conversation: what to simplify, which models to use, what to check first. The input files below are those the agent wrote, with comments.</p><h2 id="The-system"><a class="docs-heading-anchor" href="#The-system">The system</a><a id="The-system-1"></a><a class="docs-heading-anchor-permalink" href="#The-system" title="Permalink"></a></h2><p>The lipids of the monolayers are oriented by two beads: the head (bead 1) and the end of a chain (bead 16, or 17 in POPS). In the outer monolayer the head is beyond 395 Å from the center and the end of the chain within 388 Å; in a compartment, the head within the radius of the compartment, <code>R</code>, and the end of the chain beyond <code>R + 8</code> Å:</p><table><tr><th style="text-align: right">Component</th><th style="text-align: right">Region (Å)</th></tr><tr><td style="text-align: right">Outer monolayer</td><td style="text-align: right">heads beyond 395, ends of the chains within 388 (from the center)</td></tr><tr><td style="text-align: right">Compartment 1, center (0, 0, 150)</td><td style="text-align: right">heads within 105, ends of the chains beyond 113; water within 102</td></tr><tr><td style="text-align: right">Compartment 2, center (−130, 0, −75)</td><td style="text-align: right">heads within 95, ends of the chains beyond 103; water within 92</td></tr><tr><td style="text-align: right">Compartment 3, center (130, 0, −75)</td><td style="text-align: right">heads within 85, ends of the chains beyond 93; water within 82</td></tr><tr><td style="text-align: right">Lipid phase (POPC)</td><td style="text-align: right">within 388 of the center, beyond the ends of the chains of the compartments</td></tr><tr><td style="text-align: right">Water outside</td><td style="text-align: right">beyond 397 of the center, up to the faces of the periodic cell</td></tr></table><p>The numbers of molecules:</p><ul><li><strong>Monolayers:</strong> 70 Å² per lipid, on the surface of the ends of the chains (outer monolayer) or of the heads (compartments): 27,027 lipids in the outer monolayer, and 1979, 1620 and 1297 in the compartments.</li><li><strong>Lipid phase:</strong> 85% of the volume left between the monolayers (inside the outer one, outside the compartments, minus the part of that volume taken by the chains of the monolayers), at 1250 Å³ per POPC: 138,077.</li><li><strong>Water:</strong> 330 Å³ per WT4 molecule (11 water molecules), in the compartments without the volume of the RNA (11,970, 8884 and 6299), and outside the nanoparticle (689,515).</li></ul><h2 id="Command-line"><a class="docs-heading-anchor" href="#Command-line">Command line</a><a id="Command-line-1"></a><a class="docs-heading-anchor-permalink" href="#Command-line" title="Permalink"></a></h2><p>The whole nanoparticle is packed at once, by <code>lnp.inp</code>: the pieces of RNA are fixed at the centers of the compartments, and everything else is packed around them. <code>monolayers.inp</code> packs the monolayers alone: it is how the geometry was checked while designing the system, and its output is not used by <code>lnp.inp</code>.</p><p>Fixing the pieces of RNA is not required here: free, each within the water sphere of its compartment, they pack too, but in 56 loops and 9 minutes, instead of 21 loops and 5 minutes, with thousands of molecules around them still active for some 30 loops. Large molecules inside a solvent are best fixed (or packed first, and then fixed, as the proteins of the <a href="../exosome/">Exosome</a>); more complex ones, such as a real mRNA, all the more.</p><h3 id="The-geometry-of-the-monolayers-(optional)"><a class="docs-heading-anchor" href="#The-geometry-of-the-monolayers-(optional)">The geometry of the monolayers (optional)</a><a id="The-geometry-of-the-monolayers-(optional)-1"></a><a class="docs-heading-anchor-permalink" href="#The-geometry-of-the-monolayers-(optional)" title="Permalink"></a></h3><details><summary>The input file <code>monolayers.inp</code> (click to expand)</summary><pre><code class="nohighlight hljs">#
+# The monolayers of a lipid nanoparticle of 80 nm (SIRAH coarse-grained lipids of the
+# Zika example): the outer monolayer, heads outwards, and those of three compartments,
+# heads inwards; the chains point to the lipid phase between them.
+#
+tolerance 2.0
+radscale 5.0
+output monolayers.cif
+
+# To write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints), uncomment the line below.
+# check_initial_placement
+
+# The outer monolayer: heads beyond 395.0, ends of the chains within 388.0
+structure popc.pdb
+  number 16216
+  atoms 1
+    outside sphere 0. 0. 0. 395.0
+  end atoms
+  atoms 16
+    inside sphere 0. 0. 0. 388.0
+  end atoms
+end structure
+
+structure pope.pdb
+  number 8108
+  atoms 1
+    outside sphere 0. 0. 0. 395.0
+  end atoms
+  atoms 16
+    inside sphere 0. 0. 0. 388.0
+  end atoms
+end structure
+
+structure pops.pdb
+  number 2703
+  atoms 1
+    outside sphere 0. 0. 0. 395.0
+  end atoms
+  atoms 17
+    inside sphere 0. 0. 0. 388.0
+  end atoms
+end structure
+
+# Compartment 1: center 0.0 0.0 150.0, heads within 105.0, ends of the chains beyond 113.0
+structure popc.pdb
+  number 1187
+  atoms 1
+    inside sphere 0.0 0.0 150.0 105.0
+  end atoms
+  atoms 16
+    outside sphere 0.0 0.0 150.0 113.0
+  end atoms
+end structure
+
+structure pope.pdb
+  number 594
+  atoms 1
+    inside sphere 0.0 0.0 150.0 105.0
+  end atoms
+  atoms 16
+    outside sphere 0.0 0.0 150.0 113.0
+  end atoms
+end structure
+
+structure pops.pdb
+  number 198
+  atoms 1
+    inside sphere 0.0 0.0 150.0 105.0
+  end atoms
+  atoms 17
+    outside sphere 0.0 0.0 150.0 113.0
+  end atoms
+end structure
+
+# Compartment 2: center -130.0 0.0 -75.0, heads within 95.0, ends of the chains beyond 103.0
+structure popc.pdb
+  number 972
+  atoms 1
+    inside sphere -130.0 0.0 -75.0 95.0
+  end atoms
+  atoms 16
+    outside sphere -130.0 0.0 -75.0 103.0
+  end atoms
+end structure
+
+structure pope.pdb
+  number 486
+  atoms 1
+    inside sphere -130.0 0.0 -75.0 95.0
+  end atoms
+  atoms 16
+    outside sphere -130.0 0.0 -75.0 103.0
+  end atoms
+end structure
+
+structure pops.pdb
+  number 162
+  atoms 1
+    inside sphere -130.0 0.0 -75.0 95.0
+  end atoms
+  atoms 17
+    outside sphere -130.0 0.0 -75.0 103.0
+  end atoms
+end structure
+
+# Compartment 3: center 130.0 0.0 -75.0, heads within 85.0, ends of the chains beyond 93.0
+structure popc.pdb
+  number 778
+  atoms 1
+    inside sphere 130.0 0.0 -75.0 85.0
+  end atoms
+  atoms 16
+    outside sphere 130.0 0.0 -75.0 93.0
+  end atoms
+end structure
+
+structure pope.pdb
+  number 389
+  atoms 1
+    inside sphere 130.0 0.0 -75.0 85.0
+  end atoms
+  atoms 16
+    outside sphere 130.0 0.0 -75.0 93.0
+  end atoms
+end structure
+
+structure pops.pdb
+  number 130
+  atoms 1
+    inside sphere 130.0 0.0 -75.0 85.0
+  end atoms
+  atoms 17
+    outside sphere 130.0 0.0 -75.0 93.0
+  end atoms
+end structure
+</code></pre></details><br><pre><code class="nohighlight hljs">packmol monolayers.inp</code></pre><p>This takes about 30 seconds with 14 threads, and writes the monolayers to <code>monolayers.cif</code>.</p><h3 id="The-nanoparticle"><a class="docs-heading-anchor" href="#The-nanoparticle">The nanoparticle</a><a id="The-nanoparticle-1"></a><a class="docs-heading-anchor-permalink" href="#The-nanoparticle" title="Permalink"></a></h3><details><summary>The input file <code>lnp.inp</code> (click to expand)</summary><pre><code class="nohighlight hljs">#
+# A lipid nanoparticle of 80 nm (SIRAH coarse-grained lipids and water of the Zika
+# example): an outer monolayer, heads outwards; three compartments bounded by monolayers,
+# heads inwards, with WT4 water and a piece of RNA (fixed); POPC filling the lipid phase
+# between them; WT4 water outside, in a truncated octahedron.
+#
+tolerance 2.0
+output lnp.cif
+pbc octahedral 0. 0. 0. 860.0
+periodic_boundary_style octahedral
+
+# To write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints), uncomment the line below.
+# check_initial_placement
+
+# The lipids of the monolayers (16 or 17 beads) start with their radii scaled by 5,
+# to spread over the surfaces; the water and the POPC of the lipid phase start at their
+# radii (the default for molecules of up to 20 beads).
+
+# The outer monolayer: heads beyond 395.0, ends of the chains within 388.0
+structure popc.pdb
+  number 16216
+  atoms 1
+    outside sphere 0. 0. 0. 395.0
+  end atoms
+  atoms 16
+    inside sphere 0. 0. 0. 388.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pope.pdb
+  number 8108
+  atoms 1
+    outside sphere 0. 0. 0. 395.0
+  end atoms
+  atoms 16
+    inside sphere 0. 0. 0. 388.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pops.pdb
+  number 2703
+  atoms 1
+    outside sphere 0. 0. 0. 395.0
+  end atoms
+  atoms 17
+    inside sphere 0. 0. 0. 388.0
+  end atoms
+  radscale 5.0
+end structure
+
+# Compartment 1: center 0.0 0.0 150.0, heads within 105.0, ends of the chains beyond 113.0
+structure popc.pdb
+  number 1187
+  atoms 1
+    inside sphere 0.0 0.0 150.0 105.0
+  end atoms
+  atoms 16
+    outside sphere 0.0 0.0 150.0 113.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pope.pdb
+  number 594
+  atoms 1
+    inside sphere 0.0 0.0 150.0 105.0
+  end atoms
+  atoms 16
+    outside sphere 0.0 0.0 150.0 113.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pops.pdb
+  number 198
+  atoms 1
+    inside sphere 0.0 0.0 150.0 105.0
+  end atoms
+  atoms 17
+    outside sphere 0.0 0.0 150.0 113.0
+  end atoms
+  radscale 5.0
+end structure
+
+# Compartment 2: center -130.0 0.0 -75.0, heads within 95.0, ends of the chains beyond 103.0
+structure popc.pdb
+  number 972
+  atoms 1
+    inside sphere -130.0 0.0 -75.0 95.0
+  end atoms
+  atoms 16
+    outside sphere -130.0 0.0 -75.0 103.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pope.pdb
+  number 486
+  atoms 1
+    inside sphere -130.0 0.0 -75.0 95.0
+  end atoms
+  atoms 16
+    outside sphere -130.0 0.0 -75.0 103.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pops.pdb
+  number 162
+  atoms 1
+    inside sphere -130.0 0.0 -75.0 95.0
+  end atoms
+  atoms 17
+    outside sphere -130.0 0.0 -75.0 103.0
+  end atoms
+  radscale 5.0
+end structure
+
+# Compartment 3: center 130.0 0.0 -75.0, heads within 85.0, ends of the chains beyond 93.0
+structure popc.pdb
+  number 778
+  atoms 1
+    inside sphere 130.0 0.0 -75.0 85.0
+  end atoms
+  atoms 16
+    outside sphere 130.0 0.0 -75.0 93.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pope.pdb
+  number 389
+  atoms 1
+    inside sphere 130.0 0.0 -75.0 85.0
+  end atoms
+  atoms 16
+    outside sphere 130.0 0.0 -75.0 93.0
+  end atoms
+  radscale 5.0
+end structure
+
+structure pops.pdb
+  number 130
+  atoms 1
+    inside sphere 130.0 0.0 -75.0 85.0
+  end atoms
+  atoms 17
+    outside sphere 130.0 0.0 -75.0 93.0
+  end atoms
+  radscale 5.0
+end structure
+
+# Compartment 1: the RNA (fixed at the center) and water
+structure rna1.cif
+  number 1
+  center
+  fixed 0.0 0.0 150.0 0. 0. 0.
+end structure
+
+structure wt4.pdb
+  number 11970
+  inside sphere 0.0 0.0 150.0 102.0
+end structure
+
+# Compartment 2: the RNA (fixed at the center) and water
+structure rna2.cif
+  number 1
+  center
+  fixed -130.0 0.0 -75.0 0. 0. 0.
+end structure
+
+structure wt4.pdb
+  number 8884
+  inside sphere -130.0 0.0 -75.0 92.0
+end structure
+
+# Compartment 3: the RNA (fixed at the center) and water
+structure rna3.cif
+  number 1
+  center
+  fixed 130.0 0.0 -75.0 0. 0. 0.
+end structure
+
+structure wt4.pdb
+  number 6299
+  inside sphere 130.0 0.0 -75.0 82.0
+end structure
+
+# The lipid phase: POPC without orientation, between the monolayers (with its radii
+# scaled by 5 at the start, as those of the monolayers, the first loop of the packing
+# did not finish in 10 minutes)
+structure popc.pdb
+  number 138077
+  inside sphere 0. 0. 0. 388.0
+  outside sphere 0.0 0.0 150.0 113.0
+  outside sphere -130.0 0.0 -75.0 103.0
+  outside sphere 130.0 0.0 -75.0 93.0
+end structure
+
+# Outside: water
+structure wt4.pdb
+  number 689515
+  outside sphere 0. 0. 0. 397.0
+end structure
+</code></pre></details><br><p>First check the initial placement: uncomment the <code>check_initial_placement</code> line of the input file, and run it (see <a href="../#check_initial_placement">Checking the initial placement</a>):</p><pre><code class="nohighlight hljs">packmol lnp.inp</code></pre><p>This takes 30 seconds with 14 threads, and 5 GB of memory:</p><p><img src="../images/lnp_check.webp" alt="Initial approximation"/></p><p><em>The initial approximation: the molecules are in their regions, but overlap.</em></p><p>Then comment the line again, and run the packing:</p><pre><code class="nohighlight hljs">packmol lnp.inp</code></pre><p>The packing converged in 21 loops, which took 5 minutes with 14 threads, using 10 GB of memory. The output, <code>lnp.cif</code>, has 1.5 GB.</p><div class="admonition is-info" id="Not-ready-for-a-simulation-d32572dbcb42cb99"><header class="admonition-header">Not ready for a simulation<a class="admonition-anchor" href="#Not-ready-for-a-simulation-d32572dbcb42cb99" title="Permalink"></a></header><div class="admonition-body"><p>The system has no ions, the lipid phase is POPC only, and the RNA pieces are not structures of a model of RNA. For a simulation, the composition of the lipid phase (ionizable lipids, cholesterol), the RNA and the ions would have to be chosen with care, and the system equilibrated (see <a href="../ai_agent/">Using your AI agent</a>).</p></div></div><h2 id="Julia"><a class="docs-heading-anchor" href="#Julia">Julia</a><a id="Julia-1"></a><a class="docs-heading-anchor-permalink" href="#Julia" title="Permalink"></a></h2><p>The same system in Julia:</p><pre id="c-dfa45012"><code class="nohighlight hljs line-numbers"><span class="code-lines"><span class="line"><span class="line-num" aria-hidden="true"></span><span class="julia-keyword">using</span> Packmol</span><span class="line"><span class="line-num" aria-hidden="true"></span></span><span class="line"><span class="line-num" aria-hidden="true"></span>origin <span class="julia-keyword">=</span> [<span class="julia-number">0.</span>, <span class="julia-number">0.</span>, <span class="julia-number">0.</span>]</span><span class="line"><span class="line-num" aria-hidden="true"></span></span><span class="line"><span class="line-num" aria-hidden="true"></span><span class="julia-comment"># The lipids of a monolayer, POPC, POPE and POPS: the head (bead 1) and the end of a</span></span><span class="line"><span class="line-num" aria-hidden="true"></span><span class="julia-comment"># chain (bead 16, or 17 in POPS), with their radii scaled by 5 at the start</span></span><span class="line"><span class="line-num" aria-hidden="true"></span><span class="julia-keyword">function</span> <span class="julia-funcall">monolayer</span>(numbers, head_region, tail_region)</span><span class="line"><span class="line-num" aria-hidden="true"></span>    [<a class="julia-ref" href="../../julia_api/reference/#Packmol.structure_type"><span class="julia-funcall">structure_type</span></a>(file; number, radscale <span class="julia-keyword">=</span> <span class="julia-number">5.0</span>,</span><span class="line"><span class="line-num" aria-hidden="true"></span>        atom_constraints <span class="julia-keyword">=</span> [[<span class="julia-number">1</span>] <span class="julia-operator">=&gt;</span> head_region, [tail] <span class="julia-operator">=&gt;</span> tail_region])</span><span class="line"><span class="line-num" aria-hidden="true"></span>     <span class="julia-keyword">for</span> (file, number, tail) <span class="julia-operator">in</span> <span class="julia-funcall">zip</span>((<span class="julia-string">&quot;</span><span class="julia-string">popc.pdb</span><span class="julia-string">&quot;</span>, <span class="julia-string">&quot;</span><span class="julia-string">pope.pdb</span><span class="julia-string">&quot;</span>, <span class="julia-string">&quot;</span><span class="julia-string">pops.pdb</span><span class="julia-string">&quot;</span>), numbers, (<span class="julia-number">16</span>, <span class="julia-number">16</span>, <span class="julia-number">17</span>))]</span><span class="line"><span class="line-num" aria-hidden="true"></span><span class="julia-keyword">end</span></span><span class="line"><span class="line-num" aria-hidden="true"></span></span><span class="line"><span class="line-num" aria-hidden="true"></span>compartments <span class="julia-keyword">=</span> [</span><span class="line"><span class="line-num" aria-hidden="true"></span>    (center <span class="julia-keyword">=</span> [<span class="julia-number">0.</span>, <span class="julia-number">0.</span>, <span class="julia-number">150.</span>], R <span class="julia-keyword">=</span> <span class="julia-number">105.</span>, lipids <span class="julia-keyword">=</span> (<span class="julia-number">1187</span>, <span class="julia-number">594</span>, <span class="julia-number">198</span>), rna <span class="julia-keyword">=</span> <span class="julia-string">&quot;</span><span class="julia-string">rna1.cif</span><span class="julia-string">&quot;</span>, water <span class="julia-keyword">=</span> <span class="julia-number">11970</span>),</span><span class="line"><span class="line-num" aria-hidden="true"></span>    (center <span class="julia-keyword">=</span> [<span class="julia-number">-130.</span>, <span class="julia-number">0.</span>, <span class="julia-number">-75.</span>], R <span class="julia-keyword">=</span> <span class="julia-number">95.</span>, lipids <span class="julia-keyword">=</span> (<span class="julia-number">972</span>, <span class="julia-number">486</span>, <span class="julia-number">162</span>), rna <span class="julia-keyword">=</span> <span class="julia-string">&quot;</span><span class="julia-string">rna2.cif</span><span class="julia-string">&quot;</span>, water <span class="julia-keyword">=</span> <span class="julia-number">8884</span>),</span><span class="line"><span class="line-num" aria-hidden="true"></span>    (center <span class="julia-keyword">=</span> [<span class="julia-number">130.</span>, <span class="julia-number">0.</span>, <span class="julia-number">-75.</span>], R <span class="julia-keyword">=</span> <span class="julia-number">85.</span>, lipids <span class="julia-keyword">=</span> (<span class="julia-number">778</span>, <span class="julia-number">389</span>, <span class="julia-number">130</span>), rna <span class="julia-keyword">=</span> <span class="julia-string">&quot;</span><span class="julia-string">rna3.cif</span><span class="julia-string">&quot;</span>, water <span class="julia-keyword">=</span> <span class="julia-number">6299</span>),</span><span class="line"><span class="line-num" aria-hidden="true"></span>]</span><span class="line"><span class="line-num" aria-hidden="true"></span></span><span class="line"><span class="line-num" aria-hidden="true"></span>outer <span class="julia-keyword">=</span> <span class="julia-funcall">monolayer</span>((<span class="julia-number">16216</span>, <span class="julia-number">8108</span>, <span class="julia-number">2703</span>), <a class="julia-ref" href="../../julia_api/reference/#Packmol.OutsideSphere"><span class="julia-funcall">OutsideSphere</span></a>(origin, <span class="julia-number">395.</span>), <a class="julia-ref" href="../../julia_api/reference/#Packmol.InsideSphere"><span class="julia-funcall">InsideSphere</span></a>(origin, <span class="julia-number">388.</span>))</span><span class="line"><span class="line-num" aria-hidden="true"></span>inner <span class="julia-keyword">=</span> [<span class="julia-funcall">monolayer</span>(c<span class="julia-operator">.</span>lipids, <a class="julia-ref" href="../../julia_api/reference/#Packmol.InsideSphere"><span class="julia-funcall">InsideSphere</span></a>(c<span class="julia-operator">.</span>center, c<span class="julia-operator">.</span>R), <a class="julia-ref" href="../../julia_api/reference/#Packmol.OutsideSphere"><span class="julia-funcall">OutsideSphere</span></a>(c<span class="julia-operator">.</span>center, c<span class="julia-operator">.</span>R <span class="julia-operator">+</span> <span class="julia-number">8</span>))</span><span class="line"><span class="line-num" aria-hidden="true"></span>         <span class="julia-keyword">for</span> c <span class="julia-operator">in</span> compartments]</span><span class="line"><span class="line-num" aria-hidden="true"></span><span class="julia-comment"># The RNA, fixed at the center of each compartment, and the water around it</span></span><span class="line"><span class="line-num" aria-hidden="true"></span>contents <span class="julia-keyword">=</span> [[<a class="julia-ref" href="../../julia_api/reference/#Packmol.structure_type"><span class="julia-funcall">structure_type</span></a>(c<span class="julia-operator">.</span>rna; number <span class="julia-keyword">=</span> <span class="julia-number">1</span>, center <span class="julia-keyword">=</span> <span class="julia-symbol">:</span><span class="julia-symbol">geometric</span>, fixed <span class="julia-keyword">=</span> (c<span class="julia-operator">.</span>center, [<span class="julia-number">0.</span>, <span class="julia-number">0.</span>, <span class="julia-number">0.</span>])),</span><span class="line"><span class="line-num" aria-hidden="true"></span>             <a class="julia-ref" href="../../julia_api/reference/#Packmol.structure_type"><span class="julia-funcall">structure_type</span></a>(<span class="julia-string">&quot;</span><span class="julia-string">wt4.pdb</span><span class="julia-string">&quot;</span>; number <span class="julia-keyword">=</span> c<span class="julia-operator">.</span>water, constraints <span class="julia-keyword">=</span> [<a class="julia-ref" href="../../julia_api/reference/#Packmol.InsideSphere"><span class="julia-funcall">InsideSphere</span></a>(c<span class="julia-operator">.</span>center, c<span class="julia-operator">.</span>R <span class="julia-operator">-</span> <span class="julia-number">3</span>)])]</span><span class="line"><span class="line-num" aria-hidden="true"></span>            <span class="julia-keyword">for</span> c <span class="julia-operator">in</span> compartments]</span><span class="line"><span class="line-num" aria-hidden="true"></span><span class="julia-comment"># The lipid phase, at its radii from the start</span></span><span class="line"><span class="line-num" aria-hidden="true"></span>filling <span class="julia-keyword">=</span> <a class="julia-ref" href="../../julia_api/reference/#Packmol.structure_type"><span class="julia-funcall">structure_type</span></a>(<span class="julia-string">&quot;</span><span class="julia-string">popc.pdb</span><span class="julia-string">&quot;</span>; number <span class="julia-keyword">=</span> <span class="julia-number">138077</span>,</span><span class="line"><span class="line-num" aria-hidden="true"></span>    constraints <span class="julia-keyword">=</span> [<a class="julia-ref" href="../../julia_api/reference/#Packmol.InsideSphere"><span class="julia-funcall">InsideSphere</span></a>(origin, <span class="julia-number">388.</span>); [<a class="julia-ref" href="../../julia_api/reference/#Packmol.OutsideSphere"><span class="julia-funcall">OutsideSphere</span></a>(c<span class="julia-operator">.</span>center, c<span class="julia-operator">.</span>R <span class="julia-operator">+</span> <span class="julia-number">8</span>) <span class="julia-keyword">for</span> c <span class="julia-operator">in</span> compartments]])</span><span class="line"><span class="line-num" aria-hidden="true"></span>water <span class="julia-keyword">=</span> <a class="julia-ref" href="../../julia_api/reference/#Packmol.structure_type"><span class="julia-funcall">structure_type</span></a>(<span class="julia-string">&quot;</span><span class="julia-string">wt4.pdb</span><span class="julia-string">&quot;</span>; number <span class="julia-keyword">=</span> <span class="julia-number">689515</span>, constraints <span class="julia-keyword">=</span> [<a class="julia-ref" href="../../julia_api/reference/#Packmol.OutsideSphere"><span class="julia-funcall">OutsideSphere</span></a>(origin, <span class="julia-number">397.</span>)])</span><span class="line"><span class="line-num" aria-hidden="true"></span></span><span class="line"><span class="line-num" aria-hidden="true"></span>system <span class="julia-keyword">=</span> <a class="julia-ref" href="../../julia_api/reference/#Packmol.PackmolSystem"><span class="julia-funcall">PackmolSystem</span></a>([outer; <span class="julia-funcall">reduce</span>(vcat, inner); <span class="julia-funcall">reduce</span>(vcat, contents); filling; water];</span><span class="line"><span class="line-num" aria-hidden="true"></span>    output <span class="julia-keyword">=</span> <span class="julia-string">&quot;</span><span class="julia-string">lnp.cif</span><span class="julia-string">&quot;</span>,</span><span class="line"><span class="line-num" aria-hidden="true"></span>    tolerance <span class="julia-keyword">=</span> <span class="julia-number">2.0</span>,</span><span class="line"><span class="line-num" aria-hidden="true"></span>    unitcell <span class="julia-keyword">=</span> <a class="julia-ref" href="../../julia_api/reference/#Packmol.octahedral_unitcell"><span class="julia-funcall">octahedral_unitcell</span></a>(Float64, <span class="julia-number">860.0</span>), <span class="julia-comment"># centered at the origin</span></span><span class="line"><span class="line-num" aria-hidden="true"></span>    <span class="julia-comment"># check_initial_placement = true, # uncomment to only place the molecules</span></span><span class="line"><span class="line-num" aria-hidden="true"></span>)</span><span class="line"><span class="line-num" aria-hidden="true"></span><span class="julia-comment"># Write the output in the shape of the truncated octahedron</span></span><span class="line"><span class="line-num" aria-hidden="true"></span><a class="julia-ref" href="../../julia_api/reference/#Packmol.triclinic_to_octahedral" data-ref-tip="../../julia_api/reference/#Packmol.triclinic_to_octahedral@arity-1"><span class="julia-funcall">triclinic_to_octahedral</span></a>(system)</span><span class="line"><span class="line-num" aria-hidden="true"></span><a class="julia-ref" href="../../julia_api/reference/#Packmol.packmol" data-ref-targets="[[&quot;packmol(input_file::String; options...)&quot;,&quot;../../julia_api/reference/#Packmol.packmol&quot;],[&quot;packmol(system::MembraneProtein; output = \&quot;membrane_protein.pdb\&quot;, kwargs...)&quot;,&quot;../../recipes/membrane_protein_system/#Packmol.packmol-Tuple{MembraneProtein}&quot;],[&quot;packmol(system::Membrane; output=\&quot;membrane.pdb\&quot;, kwargs...)&quot;,&quot;../../recipes/membrane_system/#Packmol.packmol-Tuple{Membrane}&quot;],[&quot;packmol(system::SolutionBoxUSC; concentration::Number, concentration_units::Union{Nothing,String} = nothing, output=\&quot;system.pdb\&quot;, # box size box_sides::AbstractVector{&lt;:Number}, # or margin::Number, pbc::Symbol = :cubic, kwargs...)&quot;,&quot;../../recipes/solute_solvent_cossolvent_system/#Packmol.packmol-Tuple{SolutionBoxUSC}&quot;],[&quot;packmol(system::SolutionBoxUS; output=\&quot;system.pdb\&quot;, # box size box_sides::AbstractVector{&lt;:Number}, # or margin::Number, pbc::Symbol = :cubic, kwargs...)&quot;,&quot;../../recipes/solute_solvent_system/#Packmol.packmol-Tuple{SolutionBoxUS}&quot;],[&quot;packmol(system::SolutionBoxUWI; ionic_concentration::Number=0.15u\&quot;mol/L\&quot;, output=\&quot;system.pdb\&quot;, # box size box_sides::AbstractVector{&lt;:Number}, # or margin::Number, pbc::Symbol = :cubic, kwargs...)&quot;,&quot;../../recipes/solute_water_ions_system/#Packmol.packmol-Tuple{SolutionBoxUWI}&quot;]]"><span class="julia-funcall">packmol</span></a>(system)</span></span></code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../zika/">« Zika virion (a large system)</a><a class="docs-footer-nextpage" href="../exosome/">Exosome (a very large system) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Friday 13 November 2026 13:05">Friday 13 November 2026</span>. Using Julia version 1.13.3.</p></section><footer class="modal-card-foot"></footer></div></div></div><div class="ref-tips" hidden><div class="ref-tip" data-for="../../julia_api/reference/#Packmol.InsideSphere"><code class="ref-tip-sig nohighlight"><span class="julia-funcall">InsideSphere</span>(center, radius; weight)
+<span class="julia-funcall">InsideSphere</span>(; center, radius, weight)</code><p class="ref-tip-brief">Keeps the atoms inside a sphere, as the input file line inside sphere cx cy cz radius.</p></div><div class="ref-tip" data-for="../../julia_api/reference/#Packmol.OutsideSphere"><code class="ref-tip-sig nohighlight"><span class="julia-funcall">OutsideSphere</span>(center, radius; weight)
+<span class="julia-funcall">OutsideSphere</span>(; center, radius, weight)</code><p class="ref-tip-brief">Keeps the atoms outside a sphere, given as in InsideSphere.</p></div><div class="ref-tip" data-for="../../julia_api/reference/#Packmol.PackmolSystem"><code class="ref-tip-sig nohighlight"><span class="julia-funcall">PackmolSystem</span>(structure_types<span class="julia-operator">::</span><span class="julia-type">Vector</span>{<span class="julia-operator">&lt;:</span><span class="julia-type">StructureType</span>}; output<span class="julia-operator">::</span><span class="julia-type">String</span>, kwargs<span class="julia-operator">...</span>)</code><p class="ref-tip-brief">Build a PackmolSystem directly from a vector of StructureTypes (see structure_type), without going through an input file.</p></div><div class="ref-tip" data-for="../../julia_api/reference/#Packmol.octahedral_unitcell"><code class="ref-tip-sig nohighlight"><span class="julia-funcall">octahedral_unitcell</span>(<span class="julia-operator">::</span><span class="julia-type">Type</span>{<span class="julia-type">T</span>}, d) <span class="julia-operator">where</span> {T}</code><p class="ref-tip-brief">3x3 unit cell matrix (columns are the cell vectors) for a truncated octahedron of &quot;size&quot; d, using the standard MD convention (matching GROMACS&#39;s editconf -bt octahedron -d d):</p></div><div class="ref-tip" data-for="../../julia_api/reference/#Packmol.packmol@arity-1"><code class="ref-tip-sig nohighlight"><span class="julia-funcall">packmol</span>(input_file<span class="julia-operator">::</span><span class="julia-type">String</span>; options<span class="julia-operator">...</span>)
+<span class="julia-funcall">packmol</span>(packmol_system<span class="julia-operator">::</span><span class="julia-type">PackmolSystem</span>; options<span class="julia-operator">...</span>)
+<span class="julia-funcall">packmol</span>(
+    system<span class="julia-operator">::</span><span class="julia-type">SolutionBoxUS</span>;
+    output<span class="julia-keyword">=</span><span class="julia-string">&quot;</span><span class="julia-string">system.pdb</span><span class="julia-string">&quot;</span>,
+    <span class="julia-comment"># box size</span>
+    box_sides<span class="julia-operator">::</span><span class="julia-type">AbstractVector</span>{<span class="julia-operator">&lt;:</span><span class="julia-type">Number</span>}, <span class="julia-comment"># or</span>
+    margin<span class="julia-operator">::</span><span class="julia-type">Number</span>,
+    pbc<span class="julia-operator">::</span><span class="julia-type">Symbol</span> <span class="julia-keyword">=</span> <span class="julia-symbol">:</span><span class="julia-symbol">cubic</span>,
+    kwargs<span class="julia-operator">...</span>,
+)
+<span class="julia-funcall">packmol</span>(
+    system<span class="julia-operator">::</span><span class="julia-type">SolutionBoxUSC</span>;
+    concentration<span class="julia-operator">::</span><span class="julia-type">Number</span>,
+    concentration_units<span class="julia-operator">::</span><span class="julia-type">Union</span>{<span class="julia-type">Nothing</span>,<span class="julia-type">String</span>} <span class="julia-keyword">=</span> <span class="julia-symbol">nothing</span>,
+    output<span class="julia-keyword">=</span><span class="julia-string">&quot;</span><span class="julia-string">system.pdb</span><span class="julia-string">&quot;</span>,
+    <span class="julia-comment"># box size</span>
+    box_sides<span class="julia-operator">::</span><span class="julia-type">AbstractVector</span>{<span class="julia-operator">&lt;:</span><span class="julia-type">Number</span>}, <span class="julia-comment"># or</span>
+    margin<span class="julia-operator">::</span><span class="julia-type">Number</span>,
+    pbc<span class="julia-operator">::</span><span class="julia-type">Symbol</span> <span class="julia-keyword">=</span> <span class="julia-symbol">:</span><span class="julia-symbol">cubic</span>,
+    kwargs<span class="julia-operator">...</span>,
+)
+<span class="julia-funcall">packmol</span>(
+    system<span class="julia-operator">::</span><span class="julia-type">SolutionBoxUWI</span>;
+    ionic_concentration<span class="julia-operator">::</span><span class="julia-type">Number</span><span class="julia-keyword">=</span><span class="julia-number">0.15</span><span class="julia-macro">u</span><span class="julia-string">&quot;</span><span class="julia-string">mol/L</span><span class="julia-string">&quot;</span>,
+    output<span class="julia-keyword">=</span><span class="julia-string">&quot;</span><span class="julia-string">system.pdb</span><span class="julia-string">&quot;</span>,
+    <span class="julia-comment"># box size</span>
+    box_sides<span class="julia-operator">::</span><span class="julia-type">AbstractVector</span>{<span class="julia-operator">&lt;:</span><span class="julia-type">Number</span>}, <span class="julia-comment"># or</span>
+    margin<span class="julia-operator">::</span><span class="julia-type">Number</span>,
+    pbc<span class="julia-operator">::</span><span class="julia-type">Symbol</span> <span class="julia-keyword">=</span> <span class="julia-symbol">:</span><span class="julia-symbol">cubic</span>,
+    kwargs<span class="julia-operator">...</span>,
+)
+<span class="julia-funcall">packmol</span>(
+    system<span class="julia-operator">::</span><span class="julia-type">Membrane</span>;
+    output<span class="julia-keyword">=</span><span class="julia-string">&quot;</span><span class="julia-string">membrane.pdb</span><span class="julia-string">&quot;</span>,
+    kwargs<span class="julia-operator">...</span>,
+)
+<span class="julia-funcall">packmol</span>(system<span class="julia-operator">::</span><span class="julia-type">MembraneProtein</span>; output <span class="julia-keyword">=</span> <span class="julia-string">&quot;</span><span class="julia-string">membrane_protein.pdb</span><span class="julia-string">&quot;</span>, kwargs<span class="julia-operator">...</span>)</code><p class="ref-tip-brief">Read a Packmol input file, run the packing optimization, and write the output.</p></div><div class="ref-tip" data-for="../../julia_api/reference/#Packmol.structure_type"><code class="ref-tip-sig nohighlight"><span class="julia-funcall">structure_type</span>(filename; number, constraints<span class="julia-keyword">=</span>Constraint[], tolerance<span class="julia-keyword">=</span><span class="julia-number">2.0</span>, radius<span class="julia-keyword">=</span><span class="julia-symbol">nothing</span>,
+                fixed<span class="julia-keyword">=</span><span class="julia-symbol">nothing</span>, center<span class="julia-keyword">=</span><span class="julia-symbol">:</span><span class="julia-symbol">none</span>, residue_numbering<span class="julia-keyword">=</span><span class="julia-number">-1</span>, D<span class="julia-keyword">=</span><span class="julia-number">3</span>, T<span class="julia-keyword">=</span>Float64)</code><p class="ref-tip-brief">Build a StructureType for number copies of the molecule read from the PDB file filename, without going through an input file.</p></div><div class="ref-tip" data-for="../../julia_api/reference/#Packmol.triclinic_to_octahedral@arity-1"><code class="ref-tip-sig nohighlight"><span class="julia-funcall">triclinic_to_octahedral</span>(x, unitcell, center)
+<span class="julia-funcall">triclinic_to_octahedral</span>(packmol_system<span class="julia-operator">::</span><span class="julia-type">PackmolSystem</span>)</code><p class="ref-tip-brief">Remaps the position(s) x to the truncated-octahedron shape of the periodic cell.</p></div><div class="ref-tip" data-for="../../recipes/membrane_protein_system/#Packmol.packmol-Tuple{MembraneProtein}"><code class="ref-tip-sig nohighlight"><span class="julia-funcall">packmol</span>(system<span class="julia-operator">::</span><span class="julia-type">MembraneProtein</span>; output <span class="julia-keyword">=</span> <span class="julia-string">&quot;</span><span class="julia-string">membrane_protein.pdb</span><span class="julia-string">&quot;</span>, kwargs<span class="julia-operator">...</span>)</code><p class="ref-tip-brief">Builds and packs a membrane protein system, without writing an input file (as write_packmol_input followed by packmol).</p></div><div class="ref-tip" data-for="../../recipes/membrane_system/#Packmol.packmol-Tuple{Membrane}"><code class="ref-tip-sig nohighlight"><span class="julia-funcall">packmol</span>(
+    system<span class="julia-operator">::</span><span class="julia-type">Membrane</span>;
+    output<span class="julia-keyword">=</span><span class="julia-string">&quot;</span><span class="julia-string">membrane.pdb</span><span class="julia-string">&quot;</span>,
+    kwargs<span class="julia-operator">...</span>,
+)</code><p class="ref-tip-brief">Builds and packs a lipid membrane system, without writing an input file.</p></div><div class="ref-tip" data-for="../../recipes/solute_solvent_cossolvent_system/#Packmol.packmol-Tuple{SolutionBoxUSC}"><code class="ref-tip-sig nohighlight"><span class="julia-funcall">packmol</span>(
+    system<span class="julia-operator">::</span><span class="julia-type">SolutionBoxUSC</span>;
+    concentration<span class="julia-operator">::</span><span class="julia-type">Number</span>,
+    concentration_units<span class="julia-operator">::</span><span class="julia-type">Union</span>{<span class="julia-type">Nothing</span>,<span class="julia-type">String</span>} <span class="julia-keyword">=</span> <span class="julia-symbol">nothing</span>,
+    output<span class="julia-keyword">=</span><span class="julia-string">&quot;</span><span class="julia-string">system.pdb</span><span class="julia-string">&quot;</span>,
+    <span class="julia-comment"># box size</span>
+    box_sides<span class="julia-operator">::</span><span class="julia-type">AbstractVector</span>{<span class="julia-operator">&lt;:</span><span class="julia-type">Number</span>}, <span class="julia-comment"># or</span>
+    margin<span class="julia-operator">::</span><span class="julia-type">Number</span>,
+    pbc<span class="julia-operator">::</span><span class="julia-type">Symbol</span> <span class="julia-keyword">=</span> <span class="julia-symbol">:</span><span class="julia-symbol">cubic</span>,
+    kwargs<span class="julia-operator">...</span>,
+)</code><p class="ref-tip-brief">Builds and packs a Solute + Solvent + Cossolvent system, without writing an input file.</p></div><div class="ref-tip" data-for="../../recipes/solute_solvent_system/#Packmol.packmol-Tuple{SolutionBoxUS}"><code class="ref-tip-sig nohighlight"><span class="julia-funcall">packmol</span>(
+    system<span class="julia-operator">::</span><span class="julia-type">SolutionBoxUS</span>;
+    output<span class="julia-keyword">=</span><span class="julia-string">&quot;</span><span class="julia-string">system.pdb</span><span class="julia-string">&quot;</span>,
+    <span class="julia-comment"># box size</span>
+    box_sides<span class="julia-operator">::</span><span class="julia-type">AbstractVector</span>{<span class="julia-operator">&lt;:</span><span class="julia-type">Number</span>}, <span class="julia-comment"># or</span>
+    margin<span class="julia-operator">::</span><span class="julia-type">Number</span>,
+    pbc<span class="julia-operator">::</span><span class="julia-type">Symbol</span> <span class="julia-keyword">=</span> <span class="julia-symbol">:</span><span class="julia-symbol">cubic</span>,
+    kwargs<span class="julia-operator">...</span>,
+)</code><p class="ref-tip-brief">Builds and packs a Solute + Solvent system, without writing an input file.</p></div><div class="ref-tip" data-for="../../recipes/solute_water_ions_system/#Packmol.packmol-Tuple{SolutionBoxUWI}"><code class="ref-tip-sig nohighlight"><span class="julia-funcall">packmol</span>(
+    system<span class="julia-operator">::</span><span class="julia-type">SolutionBoxUWI</span>;
+    ionic_concentration<span class="julia-operator">::</span><span class="julia-type">Number</span><span class="julia-keyword">=</span><span class="julia-number">0.15</span><span class="julia-macro">u</span><span class="julia-string">&quot;</span><span class="julia-string">mol/L</span><span class="julia-string">&quot;</span>,
+    output<span class="julia-keyword">=</span><span class="julia-string">&quot;</span><span class="julia-string">system.pdb</span><span class="julia-string">&quot;</span>,
+    <span class="julia-comment"># box size</span>
+    box_sides<span class="julia-operator">::</span><span class="julia-type">AbstractVector</span>{<span class="julia-operator">&lt;:</span><span class="julia-type">Number</span>}, <span class="julia-comment"># or</span>
+    margin<span class="julia-operator">::</span><span class="julia-type">Number</span>,
+    pbc<span class="julia-operator">::</span><span class="julia-type">Symbol</span> <span class="julia-keyword">=</span> <span class="julia-symbol">:</span><span class="julia-symbol">cubic</span>,
+    kwargs<span class="julia-operator">...</span>,
+)</code><p class="ref-tip-brief">Builds and packs a Solute + Water + Ions system, without writing an input file.</p></div></div></body></html>
