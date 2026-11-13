@@ -29,6 +29,8 @@ const cases = [
     ("water_drop", () -> joinpath(tutorials, "water_drop"), "drop.inp", "< 1 s"),
     ("gaussian_drop", () -> joinpath(tutorials, "water_drop"), "gaussian_drop.inp", "< 1 s"),
     ("zeolite", () -> joinpath(tutorials, "zeolite"), "zeolite.inp", "< 1 s"),
+    ("zif8", () -> joinpath(tutorials, "zif8"), "zif8.inp", "< 1 s"),
+    ("supercapacitor", () -> joinpath(tutorials, "supercapacitor"), "supercapacitor.inp", "1 s"),
     ("gold_nanoparticle", () -> joinpath(tutorials, "gold_nanoparticle"), "gold_nanoparticle.inp", "10 s"),
     ("polymer_dmf", () -> joinpath(tutorials, "polymer_dmf"), "polymer_dmf.inp", "< 1 s"),
     ("nanotube", () -> joinpath(tutorials, "nanotube"), "nanotube.inp", "< 1 s"),

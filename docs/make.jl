@@ -46,6 +46,8 @@ makedocs(
             "Polymer in DMF" => "tutorials/polymer_dmf.md",
             "Carbon nanotube filled with water" => "tutorials/nanotube.md",
             "Gases in a zeolite" => "tutorials/zeolite.md",
+            "ZIF-8 in water and ethanol" => "tutorials/zif8.md",
+            "Ionic liquid in a supercapacitor" => "tutorials/supercapacitor.md",
             "Gold nanoparticle in toluene" => "tutorials/gold_nanoparticle.md",
             "Liquid crystals" => "tutorials/liquid_crystal.md",
             "Zika virion (a large system)" => "tutorials/zika.md",

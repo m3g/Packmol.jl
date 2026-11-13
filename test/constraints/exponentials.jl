@@ -60,7 +60,7 @@ end
     # against ForwardDiff.
     points = [
         SVector{3,Float64}(1.0, 2.0, 3.0),
-        SVector{3,Float64}(0.0, 0.0, 10.0),
+        SVector{3,Float64}(0.5, 0.0, 10.0), # near the axis, not on it (the kink: see below)
         SVector{3,Float64}(-2.0, 3.0, -1.0),
         SVector{3,Float64}(1e-3, 0.0, 0.0),
     ]
