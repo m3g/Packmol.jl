@@ -97,7 +97,9 @@ fraction of a second) and shows it with `PDBTools.visualize` (structure files co
 `docs/src/tutorials/` holds the classic Packmol examples (water–urea, interface, bilayer,
 vesicle, solvated protein; the bilayer and the vesicle redone with the all-atom POPC of the
 `packmol_lipids` set of MolSimTestFiles, the vesicle as two nanoliposomes in octahedral cells) and others (liquid crystals of 5CB with
-`constrain_rotation`: a nematic phase and a cholesteric phase; the Zika virion; the lipid nanoparticle,
+`constrain_rotation`: a nematic phase and a cholesteric phase; an ionic liquid ([BMIM][PF6]) in a supercapacitor
+(graphite electrodes by `files/supercapacitor/electrodes.jl`, the double layers as regions with set numbers of
+ions; images by `dev/tutorials/supercapacitor.jl`); the Zika virion; the lipid nanoparticle,
 designed with an AI agent from an illustration (SIRAH, set `packmol_lnp`, files and images by `dev/tutorials/lnp.jl`
 and `lnp_images.jl`); the all-atom exosome,
 13.6 million atoms, whose files are the `packmol_zika` and `packmol_exosome` sets of MolSimTestFiles, the
