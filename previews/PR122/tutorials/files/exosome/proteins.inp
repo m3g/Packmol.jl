@@ -1,0 +1,47 @@
+#
+# The proteins of the exosome: 40 copies of each of the tetraspanins CD81 and CD9,
+# crossing the membrane (the middle of the membrane at 228.0 Å from the center), and,
+# in the lumen, 8 complexes of Argonaute-2 with a miRNA and 2 nucleosomes. The output
+# is fixed in the packing of the exosome (exosome.inp).
+#
+tolerance 2.0
+output proteins.cif
+
+# To write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints), uncomment the line below.
+
+# check_initial_placement
+
+# The tetraspanins: the Cα atoms 18 to 24 Å from the middle of the membrane on the
+# extracellular side (first atoms block) outside, and on the intracellular side (second
+# atoms block) inside
+structure cd81.cif
+  number 40
+  atoms 574 588 608 629 645 1410 1426 1440 1474 1491 1510 1554 1830 1844 1858 1868 1890 1900 1916 1932 1954 1968 1988 2005 2020 2034 2053 2342 2357 2660 2679 2699 2710 2717
+    outside sphere 0. 0. 0. 245.0
+  end atoms
+  atoms 30 52 3159 3170 3177
+    inside sphere 0. 0. 0. 211.0
+  end atoms
+end structure
+
+structure cd9.cif
+  number 40
+  atoms 621 633 661 675 697 708 727 747 808 875 886 906 927 1740 1757 1791 1806 1863 1878 1926 2175 2231 2246 2301 2311 2347 2368 2378 2853 2869 2901 2915 2937
+    outside sphere 0. 0. 0. 245.0
+  end atoms
+  atoms 21 36 52 74 81 88 3335 3346 3356 3375
+    inside sphere 0. 0. 0. 211.0
+  end atoms
+end structure
+
+# The lumen
+structure ago2_mirna.cif
+  number 8
+  inside sphere 0. 0. 0. 191.7
+end structure
+
+structure nucleosome.cif
+  number 2
+  inside sphere 0. 0. 0. 191.7
+end structure
