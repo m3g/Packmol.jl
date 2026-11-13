@@ -1,3 +1,7 @@
+#
+# The module: its dependencies, the exported names, and the included files, in an order
+# in which every type is defined before it is used in a method signature (see README.md).
+#
 module Packmol
 
 using TestItems: @testitem, @testsnippet
@@ -100,6 +104,16 @@ include("./function_and_gradient/constraint_fg.jl")
 include("./function_and_gradient/fg.jl")
 
 # Initial placement of the molecules, and movebad
+include("./initial_approximation/bounds.jl")
+include("./initial_approximation/fixed_molecules.jl")
+include("./initial_approximation/constraint_checks.jl")
+include("./initial_approximation/buffers.jl")
+include("./initial_approximation/movebad.jl")
+include("./initial_approximation/initialize_molecules.jl")
+include("./initial_approximation/molecule_badness.jl")
+include("./initial_approximation/randomize_molecule.jl")
+include("./initial_approximation/reinitialize_with_bounds.jl")
+include("./initial_approximation/adjust_constraints.jl")
 include("./initial_approximation/initial_approximation.jl")
 
 # Output and restart

@@ -401,8 +401,8 @@ end
     voxel_place(system::PackmolSystem; resolution, radius, max_tries_mult = 1000, max_tries_rot_div = 100, seed)
     voxel_place(input_file::String; kwargs...)
 
-Place the free molecules of a system without overlaps, and drop the molecules that do
-not fit: a direct port to Julia of the placement algorithm of
+Places the free molecules of a system without overlaps, dropping those that do not fit.
+A direct port to Julia of the placement algorithm of
 [Bentopy](https://github.com/marrink-lab/bentopy) (its packing step; Westendorp et al.,
 *Protein Science* 2026, [doi:10.1002/pro.70480](https://doi.org/10.1002/pro.70480)),
 whose algorithm this is.

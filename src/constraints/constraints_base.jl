@@ -1,5 +1,8 @@
 #
-# Types of constraints 
+# The abstract type of the constraints, `Constraint{Placement,N,T}`, and the markers of
+# their placement (`Inside`, `Outside`, `Over`, `Below`); the generic `show`, the default
+# weights of the penalties (set by each constraint file), the generic `parse_constraint`,
+# and the fallback of `_inside_box`.
 #
 abstract type Constraint{Placement,N,T} end
 
@@ -22,7 +25,7 @@ function Base.show(io::IO, ::MIME"text/plain", c::Constraint)
 end
 
 #
-# Default weights
+# Default weights of the penalties, by constraint (set in the file of each constraint)
 const weight_default = Dict{Symbol,Float64}()
 
 #
@@ -33,5 +36,10 @@ const weight_default = Dict{Symbol,Float64}()
 #
 function parse_constraint end
 
-
-
+#
+# The bounding box `(lo, hi)` of the region of an "inside" constraint, defined for the
+# constraints with a bounded region in their files; `nothing` for the others. It bounds
+# the sampling of the initial placement, the Monte Carlo points of `free_volume`, and the
+# grid of `voxel_place`.
+#
+_inside_box(::Constraint) = nothing

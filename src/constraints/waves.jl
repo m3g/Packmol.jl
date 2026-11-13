@@ -45,7 +45,23 @@ end
 Wave{Placement}(; up, along, d0, amplitude, wavelength, phase, weight=weight_default[:wave]) where {Placement} =
     Wave{Placement}(up, along, d0, amplitude, wavelength, phase, weight)
 
+"""
+    AboveSin(up, along, d0, amplitude, wavelength, phase; weight)
+    AboveSin(; up, along, d0, amplitude, wavelength, phase, weight)
+
+Keeps the atoms above a sinusoidal surface, `up⋅x ≥ h(along⋅x)`, with
+`h(s) = d0 + amplitude * sin(2π s / wavelength + phase)`, as the input file line
+`above sin` (`AboveCos`: the same, with a cosine). See
+[Gaussian, wave, and exponential surfaces](@ref).
+"""
 AboveSin(args...; kwargs...) = Wave{Over}(args...; kwargs...)
+"""
+    BelowSin(up, along, d0, amplitude, wavelength, phase; weight)
+    BelowSin(; up, along, d0, amplitude, wavelength, phase, weight)
+
+Keeps the atoms below a sinusoidal surface, given as in [`AboveSin`](@ref) (`BelowCos`:
+the same, with a cosine).
+"""
 BelowSin(args...; kwargs...) = Wave{Below}(args...; kwargs...)
 AboveCos(up, along, d0, amplitude, wavelength, phase, weight=weight_default[:wave]) =
     Wave{Over}(up, along, d0, amplitude, wavelength, phase + oftype(phase, pi) / 2, weight)
@@ -118,7 +134,24 @@ end
 RadialWave{Placement}(; up, center, d0, amplitude, wavelength, phase, weight=weight_default[:radial_wave]) where {Placement} =
     RadialWave{Placement}(up, center, d0, amplitude, wavelength, phase, weight)
 
+"""
+    AboveRadialSin(up, center, d0, amplitude, wavelength, phase; weight)
+    AboveRadialSin(; up, center, d0, amplitude, wavelength, phase, weight)
+
+Keeps the atoms above concentric ripples. That is, `up⋅x ≥ h(r)`, with
+`h(r) = d0 + amplitude * sin(2π r / wavelength + phase)` and `r` the distance to the axis
+along `up` through `center`, as the input file line `above radial_sin`
+(`AboveRadialCos`: the same, with a cosine). See
+[Gaussian, wave, and exponential surfaces](@ref).
+"""
 AboveRadialSin(args...; kwargs...) = RadialWave{Over}(args...; kwargs...)
+"""
+    BelowRadialSin(up, center, d0, amplitude, wavelength, phase; weight)
+    BelowRadialSin(; up, center, d0, amplitude, wavelength, phase, weight)
+
+Keeps the atoms below concentric ripples, given as in [`AboveRadialSin`](@ref)
+(`BelowRadialCos`: the same, with a cosine).
+"""
 BelowRadialSin(args...; kwargs...) = RadialWave{Below}(args...; kwargs...)
 AboveRadialCos(up, center, d0, amplitude, wavelength, phase, weight=weight_default[:radial_wave]) =
     RadialWave{Over}(up, center, d0, amplitude, wavelength, phase + oftype(phase, pi) / 2, weight)

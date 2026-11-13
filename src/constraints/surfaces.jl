@@ -404,9 +404,9 @@ end
 """
     WithinSurface(surface::PointSurface, distance; offset = 0.0, weight = 5.0)
 
-The atoms within `distance` (Å) of the surface, or of the surface parallel to it at the
-signed distance `offset` along its normals: `|h - offset| ≤ distance`, where `h` is the
-(signed) distance to the surface. Input file syntax:
+Keeps the atoms within `distance` (Å) of a surface given by points. With `offset`, the
+distance is to the surface parallel to it at the signed distance `offset` along its
+normals: `|h - offset| ≤ distance`, where `h` is the (signed) distance to the surface. Input file syntax:
 `within surface file distance [offset]`.
 """
 WithinSurface(surface::PointSurface, distance; offset = 0, weight = weight_default[:surface]) =
@@ -476,8 +476,8 @@ end
 """
     InsideSurface(surface::PointSurface; offset = 0.0, weight = 5.0)
 
-The atoms inside a closed surface given by points with normals pointing outwards (as
-those of the outer membrane of a vesicle of TS2CG): `h ≤ offset`, where `h` is the
+Keeps the atoms inside a closed surface given by points. The normals must point
+outwards (as those of the outer membrane of a vesicle of TS2CG): `h ≤ offset`, where `h` is the
 signed distance to the surface (negative inside). With `offset`, the region is that of
 the surface parallel to it at that distance along the normals (negative: deeper
 inside). Input file syntax: `inside surface file [offset]`.

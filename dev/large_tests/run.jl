@@ -32,6 +32,8 @@ const cases = [
     ("zif8", () -> joinpath(tutorials, "zif8"), "zif8.inp", "< 1 s"),
     ("polymer_dmf", () -> joinpath(tutorials, "polymer_dmf"), "polymer_dmf.inp", "< 1 s"),
     ("nanotube", () -> joinpath(tutorials, "nanotube"), "nanotube.inp", "< 1 s"),
+    ("nematic", () -> joinpath(tutorials, "liquid_crystal"), "nematic.inp", "1 s"),
+    ("cholesteric", () -> joinpath(tutorials, "liquid_crystal"), "cholesteric.inp", "1 s"),
     ("bilayer", () -> joinpath(tutorials, "bilayer"), "bilayer.inp", "2 s"),
     ("nanoliposome_small", () -> joinpath(tutorials, "nanoliposome"), "small.inp", "20 s"),
     ("nanoliposome_large", () -> joinpath(tutorials, "nanoliposome"), "large.inp", "30 s"),
