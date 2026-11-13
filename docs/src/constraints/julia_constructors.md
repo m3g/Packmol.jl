@@ -13,6 +13,11 @@ constructors with the same parameters, for building a `PackmolSystem`
 optional `weight` keyword (the constraint penalty's weight in the objective
 function).
 
+The constraints of [surfaces given by points](surface.md) take the surface read by
+`read_surface`: `WithinSurface`, `NotWithinSurface`, `InsideSurface` and
+`OutsideSurface`. The [rotation constraint](rotation_constraint.md) and
+[`CustomConstraint`](@ref) (Julia only) are described in their pages.
+
 For boxes and cubes, the positional arguments are those of the input file:
 `InsideBox([xmin, ymin, zmin], [xmax, ymax, zmax])` and
 `InsideCube([xmin, ymin, zmin], side)`. They can also be given by their center, with

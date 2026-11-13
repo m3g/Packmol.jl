@@ -194,6 +194,17 @@ Decisions of the maintainer (2026-11-05):
   Homebrew, conda-forge, etc. are left to third parties, who can repackage the C1
   archives. The installation page of the docs links to the binaries of the latest
   release and of the development version.
+- **D21 (2026-11-13): exact reproduction of Fortran's results is not a goal**
+  (maintainer): the examples must work, not give Fortran's outputs. Differences found
+  by running Fortran's `testing/` scripts, unmodified, on the executable (session log,
+  2026-11-13), all accepted:
+  - CONECT records: the same bonds and bond orders, one record per atom, where Fortran
+    copies the records of the template as they are (`test_connectivity.sh` compares the
+    text).
+  - Errors go to stderr (Fortran: stdout), so `packmol < in > log` leaves them out of
+    the log; the exit code (171) says it.
+  - Runs with several threads are not reproducible to the last digit (CellListMap
+    distributes the pairs dynamically); with one task (`-t 1`) they are.
 ---
 
 ## Baseline (measured 2026-10-29, Linux x86_64, Julia 1.13.2)
@@ -646,3 +657,17 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   before, the same days: the scaled rotations of the packing loop (#73), centers of mass
   on the faces of the cell no longer wrapped (#75), the Membrane recipe with built-in
   lipids (#74), the liquid crystal tutorial (#76).
+- **2026-11-13** (Claude): Fortran's `testing/` scripts (m3g/packmol master, 21.2.3),
+  unmodified, run on the trimmed executable:
+  - `runtests.jl` (17 inputs): all pack, but 15 fail its 0.99 × tolerance check (D12:
+    minimum distances 1.90–1.97 Å for 2 Å); with the D12 criterion, all pass.
+  - `test_failed.sh`: `water_box_failed` passes (FORCED); `protein_outside_pbc_error`
+    fails it only because the error is on stderr (D21).
+  - `test_connectivity.sh`: fails on the text of the CONECT records, same bonds (D21).
+  - `test_cli.sh`: fails by D1 (paths relative to the input file); with the inputs laid
+    out so that both conventions agree, the outputs of stdin, `-i` and `-i -o` differed
+    on `bilayer`. Cause: the partial sums of the threaded constraint loops were added
+    under a lock as the tasks finished, so even `-t 1` (the constraint loop has 4 tasks)
+    was not reproducible. Fixed: sums per chunk, added in order (`_sum_chunks!`).
+    Several threads remain non-reproducible (D21). After the fix, `test_cli.sh` passes
+    on all 19 inputs with `-t 1` (in that layout).

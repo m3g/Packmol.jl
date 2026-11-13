@@ -104,8 +104,12 @@ function _compute_positions_and_constraints_for_mols!(
 ) where {D,T,HASPBC}
     fg_output.f = zero(T)
     fg_output.max_constraint_penalty = zero(T)
-    lk = ReentrantLock()
-    @_sync for (_, mrange) in enumerate(chunks(1:length(mol_list); n=_nbatches()))
+    # Partial sums per chunk, added in chunk order: the same result whatever the order
+    # in which the tasks finish (see _sum_chunks!)
+    mol_chunks = chunks(1:length(mol_list); n=_nbatches())
+    f_chunks = zeros(T, length(mol_chunks))
+    max_chunks = zeros(T, length(mol_chunks))
+    @_sync for (ichunk, mrange) in enumerate(mol_chunks)
         @spawn begin
             f_local = zero(T)
             max_penalty_local = zero(T)
@@ -151,12 +155,11 @@ function _compute_positions_and_constraints_for_mols!(
                 fg_output.fmol[imol] = fmol_local
                 max_penalty_local = max(max_penalty_local, fmol_local)
             end
-            @lock lk begin
-                fg_output.f += f_local
-                fg_output.max_constraint_penalty = max(fg_output.max_constraint_penalty, max_penalty_local)
-            end
+            f_chunks[ichunk] = f_local
+            max_chunks[ichunk] = max_penalty_local
         end
     end
+    _sum_chunks!(fg_output, f_chunks, max_chunks)
     return atom_positions
 end
 
