@@ -239,6 +239,26 @@ end
         code == 0 || println(out)
         r = [sqrt(sum(abs2, position(at))) for at in read_pdb(joinpath(sdir, "shell.pdb"))]
         @test 19.5 < minimum(r) && maximum(r) < 24.5
+        # Inside and outside the sphere
+        input_file = joinpath(sdir, "sides.inp")
+        write(input_file, """
+            tolerance 2.0
+            output sides.pdb
+            structure water.pdb
+              number 300
+              inside surface sphere.dat
+            end structure
+            structure water.pdb
+              number 300
+              outside surface sphere.dat 2.0
+              inside box -25. -25. -25. 25. 25. 25.
+            end structure
+            """)
+        code, out = run_packmol("-i", input_file; cwd=sdir)
+        @test code == 0
+        code == 0 || println(out)
+        r = [sqrt(sum(abs2, position(at))) for at in read_pdb(joinpath(sdir, "sides.pdb"))]
+        @test maximum(r[1:900]) < 15.5 && minimum(r[901:end]) > 16.5
     end
 
     @testset "examples" begin

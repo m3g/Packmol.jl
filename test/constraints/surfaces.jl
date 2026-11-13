@@ -164,3 +164,85 @@ end
     write(input, replace(read(input, String), "within surface surf/sphere.dat 2.0 7.0" => "within surface surf/sphere.dat"))
     @test_throws ArgumentError Packmol.read_packmol_input(input)
 end
+
+@testitem "Inside and outside of a surface" setup = [TestFiles, SphereSurface] begin
+    R = 15.0
+    pts = sphere_points(R, 1500)
+    s = PointSurface(pts, pts)
+    inside = InsideSurface(s)
+    outside = OutsideSurface(s; offset = 3.0)
+    deeper = InsideSurface(s; offset = -4.0)
+    # The penalties: zero on the allowed side, quadratic in the distance beyond the surface
+    # (the smoothed distance: within its curvature bias)
+    for u in (SVector(1.0, 0.2, 0.1), SVector(-0.3, 0.8, -0.5)), r in (0.0, 5.0, 12.0, 14.0, 16.0, 20.0, 60.0)
+        x = r * normalize(u)
+        h = r - R
+        p = Packmol.constraint_penalty(inside, x)
+        h <= -0.5 && @test p == 0
+        h >= 0.5 && @test sqrt(p / 5.0) ≈ h atol = 0.3
+        q = Packmol.constraint_penalty(outside, x)
+        h >= 3.5 && @test q == 0
+        h <= 2.5 && @test sqrt(q / 5.0) ≈ 3.0 - h atol = 0.3
+        d = Packmol.constraint_penalty(deeper, x)
+        h <= -4.5 && @test d == 0
+        h >= -3.5 && @test d > 0
+    end
+    # The gradients, by finite differences
+    for x in (SVector(16.0, 3.0, -2.0), SVector(30.0, -10.0, 4.0), SVector(2.0, 3.0, 1.0))
+        for c in (inside, outside, deeper)
+            @test isapprox(Packmol.constraint_gradient(c, x),
+                fd_gradient(y -> Packmol.constraint_penalty(c, y), x); atol = 1e-4)
+        end
+    end
+    # The cells far from the surface know their side
+    @test count(>(0), s.side) > 0 && count(<(0), s.side) > 0
+    @test Packmol._known_side(s, SVector(0.0, 0.0, 0.0)) == -1
+    @test Packmol._known_side(s, SVector(100.0, 0.0, 0.0)) == 1
+    # Without normals: an error
+    @test_throws ArgumentError InsideSurface(PointSurface(pts))
+    @test occursin("inside the surface", sprint(show, MIME"text/plain"(), inside))
+
+    # Input files: water inside the sphere, and outside it in a box
+    water = TestFiles.test_file("structure_files/water.pdb")
+    dir = mktempdir()
+    cp(water, joinpath(dir, "water.pdb"))
+    open(joinpath(dir, "sphere.dat"), "w") do io
+        for p in pts
+            println(io, join(p, " "), " ", join(normalize(p), " "))
+        end
+    end
+    input = joinpath(dir, "sides.inp")
+    write(input, """
+        tolerance 2.0
+        output sides.pdb
+        structure water.pdb
+          number 300
+          inside surface sphere.dat
+        end structure
+        structure water.pdb
+          number 300
+          outside surface sphere.dat 2.0
+          inside box -25. -25. -25. 25. 25. 25.
+        end structure
+        """)
+    sys = redirect_stdout(devnull) do
+        packmol(input)
+    end
+    @test sys.status == :packing_ready
+    @test sys.structure_types[1].constraints[1] isa Packmol.SurfaceSide{Inside,Float64}
+    @test sys.structure_types[2].constraints[1] isa Packmol.SurfaceSide{Outside,Float64}
+    @test sys.structure_types[2].constraints[1].offset == 2.0
+    atoms = get_atoms(sys)
+    r = [norm(SVector(a.x, a.y, a.z)) for a in atoms]
+    nin = 300 * 3
+    @test maximum(r[1:nin]) < R + 0.5
+    @test minimum(r[nin+1:end]) > R + 2.0 - 0.5
+    # The volume inside the surface
+    v = redirect_stdout(devnull) do
+        free_volume(input; npoints = 200_000)
+    end
+    @test v[1].volume ≈ 4π / 3 * R^3 rtol = 0.05
+    # Errors of the constraint line
+    write(input, replace(read(input, String), "inside surface sphere.dat" => "inside surface sphere.dat 1.0 2.0"))
+    @test_throws ArgumentError Packmol.read_packmol_input(input)
+end

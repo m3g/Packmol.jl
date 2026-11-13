@@ -3,6 +3,8 @@
 ```
 within surface     file distance [offset]
 not within surface file distance [offset]
+inside surface     file [offset]
+outside surface    file [offset]
 ```
 
 A surface, or a curve, given by points in a file: the atoms are kept within `distance`
@@ -37,9 +39,22 @@ and `R` = 100 Å).
 smoothing radius satisfies it (if `distance + |offset|` is not larger than the radius),
 without further search.
 
+**Inside and outside.** For a closed surface whose normals point outwards (as those of
+the outer membrane of a vesicle of TS2CG, or of any closed shape), `inside surface` keeps
+the atoms inside it, `h ≤ offset`, and `outside surface` outside it, `h ≥ offset`. With
+`offset`, the region is bounded by the surface parallel to it at that distance along the
+normals: `inside surface cell.dat -5.0` keeps the atoms 5 Å within the surface,
+`outside surface cell.dat 3.0` 3 Å beyond it. These constraints need normals, and the
+normals decide the side: they must point out of the enclosed region everywhere, and the
+surface must have no holes wider than the smoothing radius. Far from the surface, the
+side is that of a precomputed cell of the grid of the points, so that the solvent filling
+a large compartment costs little. For the initial placement and the volume tools, the
+region inside the surface is bounded by the box of its points.
+
 In Julia code, the surface is a [`PointSurface`](@ref), built from vectors of points and
 normals or read from a file with [`read_surface`](@ref), and the constraints are
-[`WithinSurface`](@ref) and [`NotWithinSurface`](@ref). Several constraints can share a
+[`WithinSurface`](@ref), [`NotWithinSurface`](@ref), [`InsideSurface`](@ref) and
+[`OutsideSurface`](@ref). Several constraints can share a
 surface; in input files, constraints naming the same file share it.
 
 ```@docs
@@ -48,6 +63,8 @@ read_surface
 surface_distance
 WithinSurface
 NotWithinSurface
+InsideSurface
+OutsideSurface
 ```
 
 ## Example
@@ -123,6 +140,36 @@ water = structure_type("water.pdb"; number = 1000,
     constraints = [NotWithinSurface(torus, 12.0), InsideBox([-60., -60., -25.], [60., 60., 25.])],
 )
 system = PackmolSystem([outer, inner, water]; tolerance = 2.0, output = "torus.pdb")
+redirect_stdio(stdout = devnull, stderr = devnull) do # hide
+packmol(system)
+end # hide
+visualize(get_atoms(system))
+```
+
+## Example: inside and outside
+
+Water inside the same torus, and outside it, at least 3 Å away from its surface, in a
+box:
+
+```
+structure water.pdb
+  number 400
+  inside surface torus.dat
+end structure
+
+structure water.pdb
+  number 1500
+  outside surface torus.dat 3.0
+  inside box -60. -60. -25. 60. 60. 25.
+end structure
+```
+
+```@example surface
+inside = structure_type("water.pdb"; number = 400, constraints = [InsideSurface(torus)])
+outside = structure_type("water.pdb"; number = 1500,
+    constraints = [OutsideSurface(torus; offset = 3.0), InsideBox([-60., -60., -25.], [60., 60., 25.])],
+)
+system = PackmolSystem([inside, outside]; tolerance = 2.0, output = "torus_water.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide

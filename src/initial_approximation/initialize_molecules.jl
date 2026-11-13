@@ -49,6 +49,12 @@ function _inside_bound(c::Union{Box{Inside},Cube{Inside},Sphere{Inside}}, margin
     # invert the range; fall back to the raw (unshrunk) region instead.
     return all(lo_shrunk .<= hi_shrunk) ? (lo_shrunk, hi_shrunk) : (lo, hi)
 end
+# The inside of a closed surface: the bounding box of its points
+function _inside_bound(c::SurfaceSide{Inside}, margin::T) where {T}
+    lo, hi = _inside_box(c)
+    m = SVector{3,T}(margin, margin, margin)
+    return all(lo .+ m .<= hi .- m) ? (lo .+ m, hi .- m) : (lo, hi)
+end
 _inside_bound(::Constraint, margin) = nothing
 
 function _direct_cm_region(st::StructureType{D,T}, max_extent::T) where {D,T}

@@ -586,3 +586,6 @@ function _renumber_conformations!(sts::Vector{StructureType{D,T}}) where {D,T}
     end
     return sts
 end
+
+# The box of the region of the inside of a closed surface
+_constraint_extent(c::SurfaceSide{Inside}) = _inside_box(c)
