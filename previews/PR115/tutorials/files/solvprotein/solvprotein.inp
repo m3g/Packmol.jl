@@ -1,0 +1,56 @@
+#
+# Protein solvated by water and ions, in a rhombic dodecahedron periodic cell
+#
+
+# All atoms from different molecules will be at least 2.0 Angstroms apart
+# in the solution
+
+tolerance 2.0
+
+# The name of the output file
+
+output solvprotein.pdb
+
+# To write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints), uncomment the line below.
+
+# check_initial_placement
+
+# The periodic cell: a rhombic dodecahedron centered at the origin, with a
+# distance of 116 Angstroms between opposite faces (and between periodic
+# images). The atoms of the protein are at most 45.9 Angstroms from its
+# center, so that there are at least 12 Angstroms of water between the
+# protein and the faces of the cell. The output is written in the shape of
+# the dodecahedron.
+
+pbc dodecahedral 0. 0. 0. 116.
+periodic_boundary_style dodecahedral
+
+# The protein will be fixed with its center of mass at the center of the
+# cell, and no rotation (the first three zeros are the position of the
+# center of mass and the last three are the rotation angles, in radians,
+# relative to the orientation in the input file).
+
+structure protein.pdb
+  number 1
+  fixed 0. 0. 0. 0. 0. 0.
+  centerofmass
+end structure
+
+# The water and the ions fill the cell: no constraint is needed. The
+# cell has 1,103,700 cubic Angstroms, and the protein about 35,600, which
+# leaves room for 35,480 water molecules (1 g/mL). The protein has a
+# charge of -10: 96 chloride and 106 sodium ions give a concentration of
+# 0.15 mol/L of NaCl, and a neutral system.
+
+structure water.pdb
+  number 35480
+end structure
+
+structure CLA.pdb
+  number 96
+end structure
+
+structure SOD.pdb
+  number 106
+end structure
