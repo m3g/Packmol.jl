@@ -80,5 +80,6 @@ visualize(get_atoms(system),
     "resname DMF" => (style = :lines,);
     unitcell = UnitCell(system.unitcell),
     unitcell_origin = -sum(eachcol(system.unitcell)) / 2,
+    rotate = [(:z, 30), (:x, -70)],
 )
 ```

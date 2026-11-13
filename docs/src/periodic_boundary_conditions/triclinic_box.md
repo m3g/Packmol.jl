@@ -47,5 +47,9 @@ system = PackmolSystem([water]; tolerance = 2.0, output = "triclinic.pdb",
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system); unitcell = UnitCell(system.unitcell), unitcell_origin = -sum(eachcol(system.unitcell)) / 2)
+visualize(get_atoms(system);
+    unitcell = UnitCell(system.unitcell),
+    unitcell_origin = -sum(eachcol(system.unitcell)) / 2,
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```

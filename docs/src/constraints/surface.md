@@ -145,7 +145,9 @@ system = PackmolSystem([outer, inner, water]; tolerance = 2.0, output = "torus.p
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system))
+visualize(get_atoms(system);
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```
 
 ## Example: inside and outside
@@ -175,5 +177,7 @@ system = PackmolSystem([inside, outside]; tolerance = 2.0, output = "torus_water
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system))
+visualize(get_atoms(system);
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```

@@ -47,5 +47,7 @@ system = PackmolSystem([water]; tolerance = 2.0, output = "ellipsoid.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system))
+visualize(get_atoms(system);
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```

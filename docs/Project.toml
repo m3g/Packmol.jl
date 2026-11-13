@@ -13,4 +13,4 @@ Documenter = {rev = "top_menu_from_pages", url = "https://github.com/lmiq/Docume
 Packmol = {path = ".."}
 
 [compat]
-PDBTools = "4.1"
+PDBTools = "4.2"

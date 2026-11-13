@@ -92,7 +92,7 @@ topic (its dropdown items): Home, Tutorials, Input files, Constraints, Periodic 
 conditions, Julia API (ending with Reference) and Recipes (ending with Concentration units).
 Every constraint and periodic cell page ends with an "Example" section: the structure
 block of an input file, then the same system as an `@example` block that packs it (in a
-fraction of a second) and shows it with `PDBTools.visualize` (structure files copied from
+fraction of a second) and shows it with `PDBTools.visualize` (PDBTools ≥ 4.2; every view with `rotate = [(:z, 30), (:x, -70)]`, `z` up seen from above at an angle; structure files copied from
 `Packmol.RecipesDirectory` in a hidden `@setup` block). New constraints get one too.
 `docs/src/tutorials/` holds the classic Packmol examples (water–urea, interface, bilayer,
 vesicle, solvated protein; the bilayer and the vesicle redone with the all-atom POPC of the

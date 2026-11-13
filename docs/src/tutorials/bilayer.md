@@ -23,6 +23,7 @@ show_system(system) = visualize(get_atoms(system),
     "resname POPC" => (style = :sticks,);
     unitcell = UnitCell(system.unitcell),
     unitcell_origin = system.unitcell_center - sum(eachcol(system.unitcell)) / 2,
+    rotate = [(:z, 30), (:x, -70)],
 )
 ```
 

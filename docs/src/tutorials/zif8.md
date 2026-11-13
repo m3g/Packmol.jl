@@ -27,6 +27,7 @@ visualize(get_atoms(final), # hide
     "resname ETOH" => (style = :spheres, color = "orange"), # hide
     "water" => (style = :sticks, color = "blue", water = true, opacity = 0.5); # hide
     unitcell = UnitCell(final.unitcell), # hide
+    rotate = [(:z, 30), (:x, -70)], # hide
 ) # hide
 ```
 
@@ -197,6 +198,7 @@ function show_system(system)
         "resname ETOH" => (style = :spheres, color = "orange"),
         "water" => (style = :sticks, color = "blue", water = true, opacity = 0.5);
         unitcell = UnitCell(system.unitcell),
+        rotate = [(:z, 30), (:x, -70)],
     )
 end
 show_system(system)

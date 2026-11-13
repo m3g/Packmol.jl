@@ -118,6 +118,7 @@ the framework of the zeolite, methane and carbon dioxide (drag to rotate, scroll
 visualize(get_atoms(system);
     unitcell = UnitCell(system.unitcell),
     unitcell_origin = -sum(eachcol(system.unitcell)) / 2,
+    rotate = [(:z, 30), (:x, -70)],
 )
 ```
 

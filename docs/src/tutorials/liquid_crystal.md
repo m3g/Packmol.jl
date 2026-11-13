@@ -91,6 +91,7 @@ visualize(get_atoms(nematic),
     "chain B" => (style = :sticks, color = "blue");
     unitcell = UnitCell(nematic.unitcell),
     unitcell_origin = -sum(eachcol(nematic.unitcell)) / 2,
+    rotate = [(:z, 30), (:x, -70)],
 )
 ```
 
@@ -176,5 +177,6 @@ visualize(get_atoms(cholesteric),
     "chain G or chain H" => (style = :sticks, color = "blue");
     unitcell = UnitCell(cholesteric.unitcell),
     unitcell_origin = -sum(eachcol(cholesteric.unitcell)) / 2,
+    rotate = [(:z, 30), (:x, -70)],
 )
 ```

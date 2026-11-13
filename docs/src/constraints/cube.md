@@ -39,5 +39,8 @@ system = PackmolSystem([water]; tolerance = 2.0, output = "cube.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system); unitcell = UnitCell([20., 20., 20.]))
+visualize(get_atoms(system);
+    unitcell = UnitCell([20., 20., 20.]),
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```

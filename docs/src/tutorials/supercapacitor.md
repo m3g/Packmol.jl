@@ -24,6 +24,7 @@ visualize(get_atoms(final), # hide
     "resname BMIM" => (style = :sticks, color = "blue"), # hide
     "resname PF6" => (style = :spheres, color = "red"); # hide
     unitcell = UnitCell(final.unitcell), # hide
+    rotate = [(:z, 30), (:x, -70)], # hide
 ) # hide
 ```
 
@@ -193,6 +194,7 @@ function show_system(system)
         "resname BMIM" => (style = :sticks, color = "blue"),
         "resname PF6" => (style = :spheres, color = "red");
         unitcell = UnitCell(system.unitcell),
+        rotate = [(:z, 30), (:x, -70)],
     )
 end
 show_system(system)

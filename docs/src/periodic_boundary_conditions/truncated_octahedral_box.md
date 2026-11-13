@@ -47,6 +47,7 @@ end # hide
 visualize(get_atoms(system);
     unitcell = UnitCell(system.unitcell),
     unitcell_origin = -sum(eachcol(system.unitcell)) / 2,
+    rotate = [(:z, 30), (:x, -70)],
 )
 ```
 
@@ -66,7 +67,9 @@ constraints](relationship_with_constraints.md)); only the output is affected:
 
 ```@example octahedral
 triclinic_to_octahedral(system)
-visualize(get_atoms(system))
+visualize(get_atoms(system);
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```
 
 [`octahedral_to_triclinic`](@ref)`(system)` goes back to the parallelepiped shape (the
