@@ -1,0 +1,50 @@
+#
+# A supercapacitor: the ionic liquid [BMIM][PF6] between two graphite electrodes, periodic
+# in x and y, with a vacuum gap closing the cell in z. The electrodes carry -10 e (cathode,
+# z < 7.7) and +10 e (anode, z > 62.7), about 9.6 uC/cm2, screened by the first layer of
+# ions on each electrode (8 A): 35 cations and 25 anions on the cathode, 25 cations and
+# 35 anions on the anode. Everywhere the density of the liquid (1.37 g/mL).
+#
+# check_initial_placement
+tolerance 2.0
+output supercapacitor.pdb
+pbc 39.36 42.6 100.0
+
+structure electrodes.pdb
+  number 1
+  fixed 0. 0. 0. 0. 0. 0.
+  radius 1.5
+end structure
+
+# The layer on the cathode: net charge +10
+structure bmim.pdb
+  number 35
+  inside box 0. 0. 7.7 39.36 42.6 15.7
+end structure
+
+structure pf6.pdb
+  number 25
+  inside box 0. 0. 7.7 39.36 42.6 15.7
+end structure
+
+# The neutral liquid between the layers
+structure bmim.pdb
+  number 190
+  inside box 0. 0. 15.7 39.36 42.6 54.7
+end structure
+
+structure pf6.pdb
+  number 190
+  inside box 0. 0. 15.7 39.36 42.6 54.7
+end structure
+
+# The layer on the anode: net charge -10
+structure bmim.pdb
+  number 25
+  inside box 0. 0. 54.7 39.36 42.6 62.7
+end structure
+
+structure pf6.pdb
+  number 35
+  inside box 0. 0. 54.7 39.36 42.6 62.7
+end structure
