@@ -29,7 +29,19 @@ end
 Plane{Placement}(; normal, d, weight=weight_default[:plane]) where {Placement} =
     Plane{Placement}(normal, d, weight)
 
+"""
+    AbovePlane(normal, d; weight)
+    AbovePlane(; normal, d, weight)
+
+Keeps the atoms above a plane, `normal⋅x ≥ d`, as the input file line `above plane a b c d`.
+"""
 AbovePlane(args...; kwargs...) = Plane{Over}(args...; kwargs...)
+"""
+    BelowPlane(normal, d; weight)
+    BelowPlane(; normal, d, weight)
+
+Keeps the atoms below a plane, `normal⋅x ≤ d`, given as in [`AbovePlane`](@ref).
+"""
 BelowPlane(args...; kwargs...) = Plane{Below}(args...; kwargs...)
 
 # Above plane: atom must satisfy n·x >= d, penalty when n·x < d

@@ -1,17 +1,21 @@
 #
-# Initialize molecule positions randomly within constraint bounding box
-# (or within the unit cell for PBC), and center reference coordinates
-# at the origin (required for chain rule).
+# Step 1 of the initial placement: random positions of the molecules, in the region of
+# their constraints when these bound it (sampled directly), in the periodic cell, or
+# else in a large box (`sidemax`); and the centering of the reference coordinates at
+# the origin (required by the chain rule).
 #
 # This is just the first rough placement — no constraint checking is done here.
 # The subsequent steps will estimate bounds from the best molecules and
 # re-initialize within those bounds.
 #
 
+# Half-width of the large box of the initial placement, when the constraints do not bound it
+const DEFAULT_SIDEMAX = 1000.0
+
 #
 # For the common case of a structure type constrained entirely by whole-molecule
-# Box/Cube/Sphere constraints (i.e. every atom references the same full set of
-# constraints — no per-atom sub-constraints), derive a direct CM sampling region
+# constraints (i.e. every atom references the same full set of constraints — no
+# per-atom sub-constraints), of which some bound a region, derive a direct CM sampling region
 # from the geometry of the "Inside" constraints (their bounding-box intersection,
 # shrunk by the molecule's maximum reference-coordinate extent so a randomly
 # rotated molecule tends to stay inside), and reject/retry samples against the
@@ -29,31 +33,20 @@
 # for a spherical shell, everything collapses onto the outer sphere.
 #
 # Returns `nothing` if no direct region can be derived (per-atom sub-constraints,
-# no Box/Cube/Sphere Inside constraint to bound the region, or a shrink margin
+# no inside box, cube, sphere or closed surface to bound the region, or a shrink margin
 # too large relative to the region), in which case the caller falls back to the
 # sidemax bootstrap.
 #
-function _inside_bound(c::Union{Box{Inside},Cube{Inside},Sphere{Inside}}, margin::T) where {T}
-    center, sides = if c isa Box{Inside}
-        c.center, c.sides
-    elseif c isa Cube{Inside}
-        c.center, SVector{3,T}(c.side, c.side, c.side)
-    else
-        c.center, SVector{3,T}(2c.radius, 2c.radius, 2c.radius)
-    end
-    half = sides ./ 2
-    lo, hi = center .- half, center .+ half
+# (The bounding box of the region of the constraint, `_inside_box`, shrunk by the margin.
+# Not for cylinders and ellipsoids, whose boxes can be much larger than their regions.
+# The inside of a closed surface: the bounding box of its points.)
+function _inside_bound(c::Union{Box{Inside},Cube{Inside},Sphere{Inside},SurfaceSide{Inside}}, margin::T) where {T}
+    lo, hi = _inside_box(c)
     m = SVector{3,T}(margin, margin, margin)
     lo_shrunk, hi_shrunk = lo .+ m, hi .- m
     # If the margin is too large relative to the region, the shrink would
     # invert the range; fall back to the raw (unshrunk) region instead.
     return all(lo_shrunk .<= hi_shrunk) ? (lo_shrunk, hi_shrunk) : (lo, hi)
-end
-# The inside of a closed surface: the bounding box of its points
-function _inside_bound(c::SurfaceSide{Inside}, margin::T) where {T}
-    lo, hi = _inside_box(c)
-    m = SVector{3,T}(margin, margin, margin)
-    return all(lo .+ m .<= hi .- m) ? (lo .+ m, hi .- m) : (lo, hi)
 end
 _inside_bound(::Constraint, margin) = nothing
 

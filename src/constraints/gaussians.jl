@@ -42,7 +42,21 @@ end
 Gaussian{Placement}(; up, along, d0, amplitude, center, sigma, weight=weight_default[:gaussian]) where {Placement} =
     Gaussian{Placement}(up, along, d0, amplitude, center, sigma, weight)
 
+"""
+    AboveGaussian(up, along, d0, amplitude, center, sigma; weight)
+    AboveGaussian(; up, along, d0, amplitude, center, sigma, weight)
+
+Keeps the atoms above a Gaussian ridge, `up⋅x ≥ h(along⋅x)`, with
+`h(s) = d0 + amplitude * exp(-(s - center)^2 / (2sigma^2))`, as the input file line
+`above gaussian`. See [Gaussian, wave, and exponential surfaces](@ref).
+"""
 AboveGaussian(args...; kwargs...) = Gaussian{Over}(args...; kwargs...)
+"""
+    BelowGaussian(up, along, d0, amplitude, center, sigma; weight)
+    BelowGaussian(; up, along, d0, amplitude, center, sigma, weight)
+
+Keeps the atoms below a Gaussian ridge, given as in [`AboveGaussian`](@ref).
+"""
 BelowGaussian(args...; kwargs...) = Gaussian{Below}(args...; kwargs...)
 
 # Profile value and derivative at s = along_unit·x
@@ -102,7 +116,22 @@ end
 RadialGaussian{Placement}(; up, center, d0, amplitude, sigma, weight=weight_default[:radial_gaussian]) where {Placement} =
     RadialGaussian{Placement}(up, center, d0, amplitude, sigma, weight)
 
+"""
+    AboveRadialGaussian(up, center, d0, amplitude, sigma; weight)
+    AboveRadialGaussian(; up, center, d0, amplitude, sigma, weight)
+
+Keeps the atoms above a Gaussian dome. That is, `up⋅x ≥ h(r)`, with
+`h(r) = d0 + amplitude * exp(-r^2 / (2sigma^2))` and `r` the distance to the axis along
+`up` through `center`, as the input file line `above radial_gaussian`. See
+[Gaussian, wave, and exponential surfaces](@ref).
+"""
 AboveRadialGaussian(args...; kwargs...) = RadialGaussian{Over}(args...; kwargs...)
+"""
+    BelowRadialGaussian(up, center, d0, amplitude, sigma; weight)
+    BelowRadialGaussian(; up, center, d0, amplitude, sigma, weight)
+
+Keeps the atoms below a Gaussian dome, given as in [`AboveRadialGaussian`](@ref).
+"""
 BelowRadialGaussian(args...; kwargs...) = RadialGaussian{Below}(args...; kwargs...)
 
 # Decompose x - center into the axial coordinate `w` (along the normalized
