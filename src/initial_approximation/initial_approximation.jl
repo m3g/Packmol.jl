@@ -1,25 +1,15 @@
 #
-# Functions related to the generation of the initial approximation for the packing problem.
+# The initial placement of the molecules (`set_initial_approximation!`): the sequence of
+# its steps, each in its own file of this directory (see README.md).
 #
-# Default sidemax: half-width of the large box for initial placement.
-const DEFAULT_SIDEMAX = 1000.0
 
-include("./bounds.jl")
-include("./fixed_molecules.jl")
-include("./constraint_checks.jl")
-include("./buffers.jl")
-include("./movebad.jl")
-include("./initialize_molecules.jl")
-include("./molecule_badness.jl")
-include("./randomize_molecule.jl")
-include("./reinitialize_with_bounds.jl")
-include("./adjust_constraints.jl")
 
 #
 # Set the initial approximation for the packing problem.
 #
 # Steps:
-#   1. Random positions in large sidemax box (initialize_molecules!)
+#   1. Random positions (initialize_molecules!): in the region of the constraints when
+#      they bound it, in the periodic cell, or else in a large sidemax box
 #   2. Constraint-only optimization (no movebad) to push molecules toward
 #      feasible regions, then compute CM bounds from the result
 #   3. Re-initialize molecules within estimated bounds (best-of-N per molecule)

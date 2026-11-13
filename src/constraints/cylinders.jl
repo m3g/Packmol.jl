@@ -32,7 +32,22 @@ end
 Cylinder{Placement}(; center, axis, radius, length, weight=weight_default[:cylinder]) where {Placement} =
     Cylinder{Placement}(center, axis, radius, length, weight)
 
+"""
+    InsideCylinder(center, axis, radius, length; weight)
+    InsideCylinder(; center, axis, radius, length, weight)
+
+Keeps the atoms inside a capped cylinder. As the input file line
+`inside cylinder cx cy cz vx vy vz radius length`: `center` is the center of one end,
+`axis` the direction of the axis (normalized internally), and `length` the length along
+it from `center`.
+"""
 InsideCylinder(args...; kwargs...) = Cylinder{Inside}(args...; kwargs...)
+"""
+    OutsideCylinder(center, axis, radius, length; weight)
+    OutsideCylinder(; center, axis, radius, length, weight)
+
+Keeps the atoms outside a capped cylinder, given as in [`InsideCylinder`](@ref).
+"""
 OutsideCylinder(args...; kwargs...) = Cylinder{Outside}(args...; kwargs...)
 
 # Decompose x - center into its axial coordinate `w` (signed distance from
@@ -119,4 +134,10 @@ function parse_constraint(::Val{Symbol("outside cylinder")}, data::AbstractVecto
         error("Error parsing 'outside cylinder' constraint data for $filename.")
     end
     return Cylinder{Outside,T}(; center, axis, radius, length)
+end
+
+# The bounding box of the region (see constraints_base.jl)
+function _inside_box(c::Cylinder{Inside})
+    tip = c.center + c.axis / norm(c.axis) * c.length
+    return (min.(c.center, tip) .- c.radius, max.(c.center, tip) .+ c.radius)
 end

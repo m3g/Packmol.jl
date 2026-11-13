@@ -1,8 +1,8 @@
 # Lipids of the Membrane recipe
 
 One conformation of each of seven common phospholipids (CHARMM36 atom names and order),
-and a water molecule (TIP3P), the built-in molecules of `Membrane`
-(`src/Recipes/Membrane.jl`). The lipids are the `<lipid>.pdb` files of the `packmol_lipids`
+a water molecule (TIP3P), and sodium and chloride ions: the built-in molecules of
+`Membrane` and `MembraneProtein` (`src/Recipes/Membrane.jl`, `MembraneProtein.jl`). The lipids are the `<lipid>.pdb` files of the `packmol_lipids`
 set (release `packmol_lipids-v1`) of [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles),
 whose README describes how they were obtained: the most rod-like frames of 2 ns of
 restrained Langevin dynamics of each lipid in vacuum, centered at the origin, with the axis

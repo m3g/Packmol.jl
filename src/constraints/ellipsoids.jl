@@ -33,7 +33,21 @@ end
 Ellipsoid{Placement}(; center, a, b, c, scale, weight=weight_default[:ellipsoid]) where {Placement} =
     Ellipsoid{Placement}(center, a, b, c, scale, weight)
 
+"""
+    InsideEllipsoid(center, a, b, c, scale; weight)
+    InsideEllipsoid(; center, a, b, c, scale, weight)
+
+Keeps the atoms inside an axis-aligned ellipsoid, as the input file line
+`inside ellipsoid cx cy cz a b c scale`: semi-axes `a`, `b` and `c`, all multiplied by
+`scale`.
+"""
 InsideEllipsoid(args...; kwargs...) = Ellipsoid{Inside}(args...; kwargs...)
+"""
+    OutsideEllipsoid(center, a, b, c, scale; weight)
+    OutsideEllipsoid(; center, a, b, c, scale, weight)
+
+Keeps the atoms outside an axis-aligned ellipsoid, given as in [`InsideEllipsoid`](@ref).
+"""
 OutsideEllipsoid(args...; kwargs...) = Ellipsoid{Outside}(args...; kwargs...)
 
 # The violation, about the distance (Å) to the surface: `m (ρ - |scale|)`, for ρ² =
@@ -111,4 +125,10 @@ function parse_constraint(::Val{Symbol("outside ellipsoid")}, data::AbstractVect
         error("Error parsing 'outside ellipsoid' constraint data for $filename.")
     end
     return Ellipsoid{Outside,T}(; center, a, b, c, scale)
+end
+
+# The bounding box of the region (see constraints_base.jl)
+function _inside_box(c::Ellipsoid{Inside})
+    half = abs(c.scale) * SVector(c.a, c.b, c.c)
+    return (c.center - half, c.center + half)
 end

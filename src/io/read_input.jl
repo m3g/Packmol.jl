@@ -186,16 +186,15 @@ const packmol_legacy_structure_keywords = Dict{String,String}(
 # Packmol) and surrounding whitespace.
 _strip_comment(line::AbstractString) = strip(first(split(line, '#'; limit=2)))
 
-#=
-
+"""
     read_packmol_input(input_file::String)
     read_packmol_input(io::IO)
 
-Reads the packmol input file to create a `PackmolSystem` object. Paths in the
-input are relative to the directory of `input_file`, or to the current
-directory if the input is read from an `IO` stream (e.g. `stdin`).
-
-=#
+Reads a Packmol input file and returns the `PackmolSystem` it describes, not packed
+(pack it with `packmol(system)`). Paths in the input are relative to the directory of
+`input_file`, or to the current directory if the input is read from an `IO` stream
+(e.g. `stdin`).
+"""
 read_packmol_input(input::Union{String,IO}; D::Int=3, T::DataType=Float64) =
     read_packmol_input(input, Val(D), T)
 
