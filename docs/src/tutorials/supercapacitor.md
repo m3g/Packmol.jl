@@ -7,11 +7,29 @@ electrodes. The electrodes are fixed, periodic in `x` and `y`, and the liquid is
 between them, with the composition of the first layer of ions on each electrode set by
 the charge of the electrode.
 
-![Ionic liquid in a supercapacitor](images/supercapacitor.webp)
+```@setup supercapacitor_final
+using Packmol, PDBTools
+dir = mktempdir()
+for file in readdir(joinpath("files", "supercapacitor"))
+    cp(joinpath("files", "supercapacitor", file), joinpath(dir, file))
+end
+final = redirect_stdio(stdout = devnull, stderr = devnull) do
+    packmol(joinpath(dir, "supercapacitor.inp"))
+end
+```
 
-*A slice of 12 Å of the system, seen along `y`: the cathode (left) and the anode
-(right), the cations (blue) and the anions (red), and the periodic cell, closed by a
-vacuum gap beyond the anode.*
+```@example supercapacitor_final
+visualize(get_atoms(final), # hide
+    "resname CAT ANO" => (style = :sticks, color = "gray"), # hide
+    "resname BMIM" => (style = :sticks, color = "blue"), # hide
+    "resname PF6" => (style = :spheres, color = "red"); # hide
+    unitcell = UnitCell(final.unitcell), # hide
+) # hide
+```
+
+*The packed system (drag to rotate, scroll to zoom), built in the [Julia](#Julia) section
+below: the cathode (`z < 7.7`) and the anode (`z > 62.7`), the cations (blue) and the
+anions (red), and the periodic cell, closed by a vacuum gap beyond the anode.*
 
 Files: [`electrodes.pdb`](files/supercapacitor/electrodes.pdb),
 [`bmim.pdb`](files/supercapacitor/bmim.pdb), [`pf6.pdb`](files/supercapacitor/pf6.pdb),
@@ -42,10 +60,13 @@ Main.input_file("files/supercapacitor/electrodes.jl")
 ## The numbers of ions
 
 The periodic cell, `pbc 39.36 42.6 100.0`, has the electrodes and the liquid between them,
-and a vacuum gap of 30 Å beyond the anode, which separates the anode from the periodic
-image of the cathode. The cell is periodic in `z` too, as Packmol's periodic cells are,
-but the gap keeps the two electrodes apart, as in the simulations of electrode
-interfaces (with a correction of the electrostatics of the slab).
+and a vacuum gap of 30 Å beyond the anode. The cell is periodic in `z` too, so without
+the gap the anode would touch the periodic image of the cathode: the two electrodes
+would be a single block of graphite, a capacitor whose plates are connected. The gap
+keeps them apart, as in the simulations of electrode interfaces, which correct the
+electrostatics of a slab periodic in `x` and `y` only (or use Ewald sums periodic in two
+dimensions). Its width is the third side of the cell: the corrections of the
+electrostatics usually ask for a gap wider than the slab of the system.
 
 The space between the electrodes available to the ions, given by [`free_volume`](@ref)
 (see [Volume estimates](@ref)), is 85900 Å³, which holds 250 ion pairs at the density of
@@ -91,11 +112,10 @@ packing does not cross, and a simulation relaxes them.
 Uncomment the `check_initial_placement` line of the input file, and run it as below
 (see [Checking the initial placement](@ref check_initial_placement)): the initial
 placement, written to the output file in a fraction of a second, has the ions in their
-regions, between the electrodes:
+regions, between the electrodes.
 
-![The initial placement](images/supercapacitor_check.webp)
-
-When it does, comment the line again, and run the packing.
+When it does (see the views in the [Julia](#Julia) section), comment the line again, and
+run the packing.
 
 ### Packing
 
@@ -107,33 +127,85 @@ The packing (11840 atoms) takes about a second.
 
 ## Julia
 
-```julia
-using Packmol
+```@setup supercapacitor
+for file in readdir(joinpath("files", "supercapacitor"))
+    cp(joinpath("files", "supercapacitor", file), file; force = true)
+end
+```
+
+The electrodes, fixed, and the regions between them, in `z`:
+
+```@example supercapacitor
+using Packmol, PDBTools
 
 electrodes = structure_type("electrodes.pdb";
     number = 1,
     fixed = ([0., 0., 0.], [0., 0., 0.]),
     radius = 1.5,
 )
-# The regions between the electrodes, in z
-region(zmin, zmax) = InsideBox([0., 0., zmin], [39.36, 42.6, zmax])
-cathode_layer, bulk, anode_layer = region(7.7, 15.7), region(15.7, 54.7), region(54.7, 62.7)
-ions = [
-    structure_type("bmim.pdb"; number = 35, constraints = [cathode_layer]),
-    structure_type("pf6.pdb"; number = 25, constraints = [cathode_layer]),
-    structure_type("bmim.pdb"; number = 190, constraints = [bulk]),
-    structure_type("pf6.pdb"; number = 190, constraints = [bulk]),
-    structure_type("bmim.pdb"; number = 25, constraints = [anode_layer]),
-    structure_type("pf6.pdb"; number = 35, constraints = [anode_layer]),
-]
-system = PackmolSystem([electrodes; ions];
+cathode_layer = InsideBox([0., 0., 7.7], [39.36, 42.6, 15.7])
+bulk = InsideBox([0., 0., 15.7], [39.36, 42.6, 54.7])
+anode_layer = InsideBox([0., 0., 54.7], [39.36, 42.6, 62.7])
+nothing # hide
+```
+
+The ions of each region, with the numbers of the table above:
+
+```@example supercapacitor
+cations_cathode = structure_type("bmim.pdb"; number = 35, constraints = [cathode_layer])
+anions_cathode = structure_type("pf6.pdb"; number = 25, constraints = [cathode_layer])
+cations_bulk = structure_type("bmim.pdb"; number = 190, constraints = [bulk])
+anions_bulk = structure_type("pf6.pdb"; number = 190, constraints = [bulk])
+cations_anode = structure_type("bmim.pdb"; number = 25, constraints = [anode_layer])
+anions_anode = structure_type("pf6.pdb"; number = 35, constraints = [anode_layer])
+nothing # hide
+```
+
+The system, in the periodic cell of `pbc 39.36 42.6 100.0` (from the origin), first with
+only the initial placement:
+
+```@example supercapacitor
+system = PackmolSystem(
+    [electrodes,
+     cations_cathode, anions_cathode,
+     cations_bulk, anions_bulk,
+     cations_anode, anions_anode];
     output = "supercapacitor.pdb",
     tolerance = 2.0,
     unitcell = [39.36 0. 0.; 0. 42.6 0.; 0. 0. 100.0],
-    unitcell_center = [19.68, 21.3, 50.0], # the cell of `pbc`, from the origin
-    # check_initial_placement = true, # uncomment to only place the molecules
+    unitcell_center = [19.68, 21.3, 50.0],
+    check_initial_placement = true, # first, only the initial placement
 )
+redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
+end # hide
+system.status
+```
+
+The initial placement, with the `visualize` function of
+[PDBTools.jl](https://github.com/m3g/PDBTools.jl) (drag to rotate, scroll to zoom): the ions
+are in their regions, but may overlap:
+
+```@example supercapacitor
+function show_system(system)
+    return visualize(get_atoms(system),
+        "resname CAT ANO" => (style = :sticks, color = "gray"),
+        "resname BMIM" => (style = :sticks, color = "blue"),
+        "resname PF6" => (style = :spheres, color = "red");
+        unitcell = UnitCell(system.unitcell),
+    )
+end
+show_system(system)
+```
+
+Then the packing:
+
+```@example supercapacitor
+system.check_initial_placement = false
+redirect_stdio(stdout = devnull, stderr = devnull) do # hide
+packmol(system)
+end # hide
+show_system(system)
 ```
 
 To build the capacitor at another voltage, change the numbers of the layers: the charge of

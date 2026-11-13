@@ -31,7 +31,8 @@ function zif8_slab(ucfile, outfile; a = 17.033, n = 3)
         append!(remove, setdiff(hs, keep))
     end
     keepat = setdiff(eachindex(x), remove)
-    x, el = x[keepat], el[keepat]
+    x = x[keepat]
+    el = el[keepat]
     println("unit cell: ", length(x), " atoms") # Zn12 (C4H5N2)24: 276 atoms
 
     # n x n cells in x and y (periodic), 3 cells stacked in z (not periodic)

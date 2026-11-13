@@ -122,8 +122,10 @@ end
 ```@example surface
 using Packmol, PDBTools
 # Points of the torus, about 1.5 Å apart, and the normals
-R, r = 35.0, 14.0
-points, normals = NTuple{3,Float64}[], NTuple{3,Float64}[]
+R = 35.0 # the radius of the circle of the centers of the tube
+r = 14.0 # the radius of the tube
+points = NTuple{3,Float64}[]
+normals = NTuple{3,Float64}[]
 for u in range(0, 2π; length = 200)[1:end-1], v in range(0, 2π; length = 70)[1:end-1]
     n = (cos(v) * cos(u), cos(v) * sin(u), sin(v))
     push!(points, (R * cos(u) + r * n[1], R * sin(u) + r * n[2], r * n[3]))

@@ -131,7 +131,9 @@ using PDBTools
 
 uc = read_pdb("CHA_uc.pdb")
 cell = Matrix{Float64}(UnitCell(13.675, 13.675, 14.767, 90, 90, 120))
-A, B, C = cell[:, 1], cell[:, 2], cell[:, 3] # the cell vectors
+A = cell[:, 1] # the cell vectors
+B = cell[:, 2]
+C = cell[:, 3]
 center = A + B + C # the center of the supercell
 atoms = Atom{Nothing}[]
 for i in 0:1, j in 0:1, k in 0:1, at in uc

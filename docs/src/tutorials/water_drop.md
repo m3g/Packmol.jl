@@ -126,7 +126,8 @@ using PDBTools
 
 function build_graphite(; nx = 40, ny = 23, nlayers = 3, a = 2.46, d = 1.42)
     cell = [(0.0, 0.0), (a / 2, d / 2), (a / 2, 3d / 2), (0.0, 2d)]
-    Lx, Ly = nx * a, ny * 3d
+    Lx = nx * a
+    Ly = ny * 3d
     atoms = Atom{Nothing}[]
     for layer in 0:nlayers-1, i in 0:nx-1, j in 0:ny-1, (x, y) in cell
         shift = isodd(layer) ? d : 0.0

@@ -112,8 +112,12 @@ cp(joinpath(Packmol.RecipesDirectory, "lipids", "popc.pdb"), "popc.pdb"; force =
 
 ```@example wavy
 using Packmol, PDBTools
-up, along = [0., 0., 1.], [1., 0., 0.]       # the surface z = 6 sin(2π x / 60)
-amplitude, wavelength, phase = 6., 60., 0.
+# The surface z = 6 sin(2π x / 60)
+up = [0., 0., 1.]
+along = [1., 0., 0.]
+amplitude = 6.
+wavelength = 60.
+phase = 0.
 popc = structure_type("popc.pdb";
     number = 42,
     atom_constraints = [

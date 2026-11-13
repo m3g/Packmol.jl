@@ -8,14 +8,24 @@
 #
 using PDBTools
 
-nx, ny = 16, 10                   # rectangular cells of graphene, of 2.46 x 4.26 Å
-a, b = 2.46, 4.26
+# Rectangular cells of graphene, of a x b = 2.46 x 4.26 Å: nx x ny of them
+nx = 16
+ny = 10
+a = 2.46
+b = 4.26
 basis = [(0.0, 0.0), (1.23, 0.71), (1.23, 2.13), (0.0, 2.84)]   # C–C bonds of 1.42 Å
 layers = [(1.0, 0.0), (4.35, 1.42), (7.70, 0.0),        # (z, shift in y of the B layers)
           (62.70, 0.0), (66.05, 1.42), (69.40, 0.0)]
 atoms = Atom{Nothing}[]
 for (il, (z, dy)) in enumerate(layers), i in 0:nx-1, j in 0:ny-1, (bx, by) in basis
-    resname, chain = il <= 3 ? ("CAT", "A") : ("ANO", "B")    # cathode, anode
+    # The first three layers are the cathode, the others the anode
+    if il <= 3
+        resname = "CAT"
+        chain = "A"
+    else
+        resname = "ANO"
+        chain = "B"
+    end
     push!(atoms, Atom(; name = "C", resname, resnum = 1, chain,
         x = i * a + bx, y = mod(j * b + by + dy, ny * b), z, pdb_element = "C"))
 end
