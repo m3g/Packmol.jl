@@ -1,0 +1,22 @@
+#
+# A polyacrylamide chain in N,N-dimethylformamide (DMF, 0.944 g/mL), in a
+# periodic cubic box with sides of 40 Å.
+#
+tolerance 2.0
+output polymer_dmf.pdb
+pbc -20. -20. -20. 20. 20. 20.
+
+# Uncomment to write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints):
+# check_initial_placement
+
+# The polymer, fixed with its center at the origin, the center of the box
+structure polyacrylamide.pdb
+  number 1
+  fixed 0. 0. 0. 0. 0. 0.
+  center
+end structure
+
+structure dmf.pdb
+  number 495
+end structure
