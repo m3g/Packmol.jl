@@ -127,7 +127,7 @@ end
             ai, aj = sys.atoms[i], sys.atoms[j]
             ai.molecule_index == aj.molecule_index ? 0.0 : ai.radius + aj.radius - d
         end
-        @test worst < sys.tolerance_precision
+        @test worst < Packmol._tolerance_precision(sys)
     end
 end
 
@@ -238,7 +238,7 @@ end
     sys = PackmolSystem([st]; output=tempname() * ".pdb", tolerance=2.0)
     initialize_molecules!(sys, Random.Xoshiro(1))
     angles = SVector(0.0, 0.0, 0.0)
-    # 1 and 2 overlap by 0.2 Å (more than tolerance_precision, 0.01 Å), 3 is 0.3 Å outside
+    # 1 and 2 overlap by 0.2 Å (more than tolerance_precision, 0.1 Å), 3 is 0.3 Å outside
     # its box, 4 is fine
     sys.molecule_positions[1] = MoleculePosition(SVector(10.0, 10.0, 10.0), angles)
     sys.molecule_positions[2] = MoleculePosition(SVector(10.0, 10.0, 11.8), angles)
@@ -261,7 +261,7 @@ end
     fg!(g, x, cl, sys, ap, free)
     cl.fg.count_overlaps[] = false
     _mark_unconverged!(unconverged, cl.fg)
-    @test cl.fg.max_overlap >= sys.tolerance_precision
+    @test cl.fg.max_overlap >= Packmol._tolerance_precision(sys)
     @test cl.fg.max_constraint_penalty >= sys.constraint_precision
     @test unconverged == [true, true, true, false]
 end
