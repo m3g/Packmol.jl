@@ -23,7 +23,7 @@ end
 
 ```@example zif8_final
 visualize(get_atoms(final), # hide
-    "resname ZIF" => (style = :sticks, color = "gray"), # hide
+    "resname ZIF" => (style = :sticks, color = "darkblue"), # hide
     "resname ETOH and element C" => (style = :spheres, color = "palegreen"), # hide
     "resname ETOH and not element C" => (style = :spheres, color = :element), # hide
     "water" => (style = :sticks, color = :element, water = true); # hide
@@ -33,7 +33,7 @@ visualize(get_atoms(final), # hide
 ```
 
 *The packed system (drag to rotate, scroll to zoom), built in the [Julia](#Julia) section
-below: the framework (gray), ethanol (spheres, carbon pale green) and water (sticks), with
+below: the framework (dark blue), ethanol (spheres, carbon pale green) and water (sticks), with
 hydrogen white and oxygen red.*
 
 Files: [`zif8.pdb`](files/zif8/zif8.pdb), [`ethanol.pdb`](files/zif8/ethanol.pdb),
@@ -196,7 +196,7 @@ ethanol molecules are already in the cages, and the liquid above the crystal:
 ```@example zif8
 function show_system(system)
     return visualize(get_atoms(system),
-        "resname ZIF" => (style = :sticks, color = "gray"),
+        "resname ZIF" => (style = :sticks, color = "darkblue"),
         "resname ETOH and element C" => (style = :spheres, color = "palegreen"),
         "resname ETOH and not element C" => (style = :spheres, color = :element),
         "water" => (style = :sticks, color = :element, water = true);
