@@ -44,7 +44,21 @@ end
 Exponential{Placement}(; up, along, d0, amplitude, center, rate, weight=weight_default[:exponential]) where {Placement} =
     Exponential{Placement}(up, along, d0, amplitude, center, rate, weight)
 
+"""
+    AboveExponential(up, along, d0, amplitude, center, rate; weight)
+    AboveExponential(; up, along, d0, amplitude, center, rate, weight)
+
+Keeps the atoms above an exponential ramp, `up⋅x ≥ h(along⋅x)`, with
+`h(s) = d0 + amplitude * exp(rate * (s - center))`, as the input file line
+`above exponential`. See [Gaussian, wave, and exponential surfaces](@ref).
+"""
 AboveExponential(args...; kwargs...) = Exponential{Over}(args...; kwargs...)
+"""
+    BelowExponential(up, along, d0, amplitude, center, rate; weight)
+    BelowExponential(; up, along, d0, amplitude, center, rate, weight)
+
+Keeps the atoms below an exponential ramp, given as in [`AboveExponential`](@ref).
+"""
 BelowExponential(args...; kwargs...) = Exponential{Below}(args...; kwargs...)
 
 # Profile value and derivative at s = along_unit·x
@@ -104,7 +118,22 @@ end
 RadialExponential{Placement}(; up, center, d0, amplitude, rate, weight=weight_default[:radial_exponential]) where {Placement} =
     RadialExponential{Placement}(up, center, d0, amplitude, rate, weight)
 
+"""
+    AboveRadialExponential(up, center, d0, amplitude, rate; weight)
+    AboveRadialExponential(; up, center, d0, amplitude, rate, weight)
+
+Keeps the atoms above a cone-like spike. That is, `up⋅x ≥ h(r)`, with
+`h(r) = d0 + amplitude * exp(rate * r)` and `r` the distance to the axis along `up`
+through `center`, as the input file line `above radial_exponential`. See
+[Gaussian, wave, and exponential surfaces](@ref).
+"""
 AboveRadialExponential(args...; kwargs...) = RadialExponential{Over}(args...; kwargs...)
+"""
+    BelowRadialExponential(up, center, d0, amplitude, rate; weight)
+    BelowRadialExponential(; up, center, d0, amplitude, rate, weight)
+
+Keeps the atoms below a cone-like spike, given as in [`AboveRadialExponential`](@ref).
+"""
 BelowRadialExponential(args...; kwargs...) = RadialExponential{Below}(args...; kwargs...)
 
 # Decompose x - center into the axial coordinate `w` (along the normalized

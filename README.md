@@ -26,9 +26,14 @@ Relative to the legacy (Fortran) Packmol:
   atoms in 33 minutes, with 14 threads.
 - **Periodic boundary conditions** in orthorhombic, triclinic, rhombic dodecahedral and
   truncated octahedral cells.
-- **New constraints**: curved surfaces (Gaussian, waves, exponentials), and
-  `constrain_rotation` for the angle between an axis and a vector of the molecule (to
-  build oriented phases, such as liquid crystals).
+- **New constraints**: curved surfaces (Gaussian, waves, exponentials), surfaces given by
+  points (the distance to them, and the inside or outside of closed ones, e.g. the
+  surfaces of [TS2CG](https://github.com/marrink-lab/TS2CG)), and `constrain_rotation`
+  for the angle between an axis and a vector of the molecule (to build oriented phases,
+  such as liquid crystals).
+- **Voxel placement** of crowded systems (`voxel_place`), a direct port to Julia of the
+  placement algorithm of [Bentopy](https://github.com/marrink-lab/bentopy) (Westendorp et
+  al., Protein Science 2026), before the packing.
 - **mmCIF** files, for structures, outputs and restarts, and restarts from the output of a
   previous run.
 - **Several conformations** of a molecule, from a structure file with several models.

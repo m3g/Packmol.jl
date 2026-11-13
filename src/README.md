@@ -28,7 +28,9 @@ Files at this level:
 - `precompile.jl`: the precompilation workload (skipped when the executable is built).
 
 The tests (`test/`) mirror this layout: the tests of `src/<dir>/<file>.jl` are in
-`test/<dir>/<file>.jl`.
+`test/<dir>/<file>.jl`. The internal steps of the packing without a test file of their
+own are tested through the packings of `test/packing/`; `test/examples.jl` and
+`test/fortran_test_suite.jl` pack the examples and the test inputs of Fortran Packmol.
 
 ## Conventions
 

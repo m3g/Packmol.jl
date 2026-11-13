@@ -96,22 +96,6 @@ _rpad(s::AbstractString, n::Int) = _pad(s, n, false)
 # A number with `digits` decimals, for the summaries (an integer from 10⁴ on)
 _fmt(x::Real, digits::Int) = !isfinite(x) ? string(x) : abs(x) >= 1e4 ? string(round(Int, x)) : string(round(x; digits))
 
-#
-# The bounding box of an "inside" constraint (`nothing` for the others)
-#
-_inside_box(c::Box{Inside}) = (c.center - c.sides / 2, c.center + c.sides / 2)
-_inside_box(c::Cube{Inside,T}) where {T} = (c.center .- c.side / 2, c.center .+ c.side / 2)
-_inside_box(c::Sphere{Inside}) = (c.center .- c.radius, c.center .+ c.radius)
-function _inside_box(c::Cylinder{Inside})
-    tip = c.center + c.axis / norm(c.axis) * c.length
-    return (min.(c.center, tip) .- c.radius, max.(c.center, tip) .+ c.radius)
-end
-function _inside_box(c::Ellipsoid{Inside})
-    half = abs(c.scale) * SVector(c.a, c.b, c.c)
-    return (c.center - half, c.center + half)
-end
-_inside_box(::Constraint) = nothing
-
 """
     free_volume(input_file::String; npoints = 1_000_000, seed = 1)
     free_volume(system::PackmolSystem; npoints = 1_000_000, seed = 1)

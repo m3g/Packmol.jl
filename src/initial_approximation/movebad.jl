@@ -1,7 +1,8 @@
 #
 # Move the worst molecules to new random positions.
-# Scans fmol for free molecules with fmol > precision, computes the number
-# of bad molecules and moves a fraction of them randomly. Returns the
+# The bad molecules are the free molecules that fail the convergence criterion (from
+# the packing loop), or else those whose contribution to the function exceeds
+# `precision / nmols`; a fraction of them is moved randomly. Returns the
 # indices of the molecules actually moved, so the caller can act on them
 # individually (e.g. the packing loop, packing/packing_loop.jl, fattens their atom radii back up).
 # Following the Fortran Packmol heuristic (heuristics.f90 movebad subroutine).

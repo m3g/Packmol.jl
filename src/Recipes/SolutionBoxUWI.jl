@@ -1,3 +1,8 @@
+#
+# SolutionBoxUWI: a solute in water with ions, at a salt concentration, with the
+# counterions that neutralize the charge of the solute.
+#
+
 # Reference density of pure water at 25°C, used only as a coarse volume
 # estimate for the solute (mirroring how SolutionBoxUS/SolutionBoxUSC use the
 # pure-solvent density for the same purpose) and as the density assumed when

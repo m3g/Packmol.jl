@@ -1,5 +1,5 @@
 #
-# Box types of constraints: Cubes, Boxes, Planes
+# Boxes and cubes (axis-aligned): inside box, outside box, inside cube, outside cube.
 #
 export Cube, InsideCube, OutsideCube
 export Box, InsideBox, OutsideBox
@@ -230,3 +230,7 @@ function parse_constraint(::Val{Symbol("outside cube")}, data::AbstractVector{<:
     end
     return Cube{Outside,T}(; center=center .+ side / 2, side)
 end
+
+# The bounding box of the region of an "inside" constraint (see constraints_base.jl)
+_inside_box(c::Box{Inside}) = (c.center - c.sides / 2, c.center + c.sides / 2)
+_inside_box(c::Cube{Inside,T}) where {T} = (c.center .- c.side / 2, c.center .+ c.side / 2)

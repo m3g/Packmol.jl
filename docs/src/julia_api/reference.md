@@ -12,6 +12,7 @@ documented on the [Recipes](../recipes/index.md) page, and the volume estimates,
 
 ```@docs
 packmol
+read_packmol_input
 structure_type
 PackmolSystem
 get_atoms
@@ -43,13 +44,38 @@ shape_descriptors
 select_conformations
 ```
 
-## Box constraints
+## Constraints
+
+The constraints of the input files, with their parameters in the same order (see
+[Constraints](../constraints/index.md)). The surfaces given by points are documented in
+[Surfaces given by points](@ref), and [`CustomConstraint`](@ref) in
+[Custom constraints](@ref).
 
 ```@docs
 InsideBox
 OutsideBox
 InsideCube
 OutsideCube
+InsideSphere
+OutsideSphere
+InsideCylinder
+OutsideCylinder
+InsideEllipsoid
+OutsideEllipsoid
+AbovePlane
+BelowPlane
+AboveGaussian
+BelowGaussian
+AboveSin
+BelowSin
+AboveExponential
+BelowExponential
+AboveRadialGaussian
+BelowRadialGaussian
+AboveRadialSin
+BelowRadialSin
+AboveRadialExponential
+BelowRadialExponential
 ```
 
 ## Dodecahedral periodic box

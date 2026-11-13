@@ -16,10 +16,10 @@ read from an input file:
 
 | File | Contents |
 |---|---|
-| `constraints_base.jl` | The abstract `Constraint`, the `Inside`/`Outside`/`Over`/`Below` markers, `show`, and the generic `parse_constraint`. |
+| `constraints_base.jl` | The abstract `Constraint`, the `Inside`/`Outside`/`Over`/`Below` markers, `show`, the default weights of the penalties (`weight_default`), the generic `parse_constraint`, and the fallback of `_inside_box` (the bounding box of the region of an inside constraint, defined in the file of each constraint with a bounded region; used by the initial placement, `free_volume` and `voxel_place`). |
 | `boxes.jl`, `spheres.jl`, `planes.jl`, `cylinders.jl`, `ellipsoids.jl` | The constraints of Fortran Packmol. |
 | `gaussians.jl`, `waves.jl`, `exponentials.jl` | Curved surfaces (Packmol.jl only), generalizing the planes, and their radial versions. |
-| `surfaces.jl` | Surfaces (or curves) given by points, with or without normals (`PointSurface`, `read_surface`, TS2CG point files), and the `within surface`/`not within surface` constraints of the distance to them (`SurfaceDistance`): a smooth signed distance (implicit moving least squares) near the points, cell lists of the points, and a descent on the points for the nearest one far from them. Not isbits (it holds the points): the union is not stored inline. |
+| `surfaces.jl` | Surfaces (or curves) given by points, with or without normals (`PointSurface`, `read_surface`, TS2CG point files), the `within surface`/`not within surface` constraints of the distance to them (`SurfaceDistance`), and the `inside surface`/`outside surface` constraints of the sides of a closed surface with outward normals (`SurfaceSide`): a smooth signed distance (implicit moving least squares) near the points, cell lists of the points, a descent on the points for the nearest one far from them, and the side of each empty cell of the grid, so that positions far from the surface cost a lookup. Not isbits (it holds the points): the union is not stored inline. |
 | `custom.jl` | `CustomConstraint`: the region `f(x) ≤ 0` of a function of the user (Julia only, not in the executable). |
 | `constraint_types.jl` | `AnyConstraint{T}`, the closed union of the constraint types (the element type of the constraint lists), and `_constraint_dispatch`, through which functions are called on its elements (the union is too large for automatic union splitting). |
 | `rotations.jl` | Rotation constraints (`constrain_rotation`): the angle between an axis and a vector of the molecule. |

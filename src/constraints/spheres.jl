@@ -26,7 +26,19 @@ end
 Sphere{Placement}(; center, radius, weight=weight_default[:sphere]) where {Placement} =
     Sphere{Placement}(center, radius, weight)
 
+"""
+    InsideSphere(center, radius; weight)
+    InsideSphere(; center, radius, weight)
+
+Keeps the atoms inside a sphere, as the input file line `inside sphere cx cy cz radius`.
+"""
 InsideSphere(args...; kwargs...) = Sphere{Inside}(args...; kwargs...)
+"""
+    OutsideSphere(center, radius; weight)
+    OutsideSphere(; center, radius, weight)
+
+Keeps the atoms outside a sphere, given as in [`InsideSphere`](@ref).
+"""
 OutsideSphere(args...; kwargs...) = Sphere{Outside}(args...; kwargs...)
 
 # The violation is the distance (Å) to the surface, `d - radius` (> 0 outside, < 0
@@ -88,3 +100,6 @@ function parse_constraint(::Val{Symbol("outside sphere")}, data::AbstractVector{
     end
     return Sphere{Outside,T}(;center, radius)
 end
+
+# The bounding box of the region (see constraints_base.jl)
+_inside_box(c::Sphere{Inside}) = (c.center .- c.radius, c.center .+ c.radius)
