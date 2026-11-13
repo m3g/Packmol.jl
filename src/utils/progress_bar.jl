@@ -2,8 +2,8 @@
 # A progress bar printed as Fortran Packmol's: a header line, then the bar, drawn by
 # appending `*` characters to a line of `stdout`, ended by the elapsed time:
 #
-#       Iterations: |0                                                     100%|
-#                   |************************************************************| 0.3 s
+#       Iterations:       |0                                        100%|
+#                         |*********************************************| 0.3 s
 #
 # Nothing is redrawn (no carriage returns or escape sequences), so the bar is the same on
 # a terminal, in a file (`packmol input.inp > log`), in a pipe and in a notebook, and the
@@ -20,7 +20,9 @@ mutable struct ProgressBar
     nprinted::Int # characters of the bar already printed
     finished::Bool
 end
-function ProgressBar(n::Integer; desc::String="Progress: ", width::Int=60)
+# The default `width` keeps the line within the 80 columns of the report (`dash_line`), with
+# labels of 20 characters and times up to `100:00:00`
+function ProgressBar(n::Integer; desc::String="Progress: ", width::Int=45)
     p = ProgressBar(n, length(desc), width, time(), ReentrantLock(), 0, 0, false)
     _with_stdout() do io
         # The header: `0` at the start of the bar, `100%` at its end
