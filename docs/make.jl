@@ -46,6 +46,7 @@ makedocs(
             "Polymer in DMF" => "tutorials/polymer_dmf.md",
             "Carbon nanotube filled with water" => "tutorials/nanotube.md",
             "Gases in a zeolite" => "tutorials/zeolite.md",
+            "ZIF-8 in water and ethanol" => "tutorials/zif8.md",
             "Liquid crystals" => "tutorials/liquid_crystal.md",
             "Zika virion (a large system)" => "tutorials/zika.md",
             "Lipid nanoparticle (designed with an AI agent)" => "tutorials/lnp.md",
