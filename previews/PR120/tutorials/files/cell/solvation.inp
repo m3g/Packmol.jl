@@ -1,0 +1,25 @@
+#
+# The cytosol of the minimal cell (cell.cif, packed from cell.inp, fixed) solvated with
+# Martini water and glycerol: 15% v/v of the free volume (2.44e9 Å³, from free_volume),
+# glycerol as a two-bead placeholder. Tolerance of 2 Å: enough for the energy
+# minimization of a coarse-grained model.
+#
+# check_initial_placement
+tolerance 2.0
+seed 1
+output cell_solvated.cif
+
+structure cell.cif
+  number 1
+  fixed 0. 0. 0. 0. 0. 0.
+end structure
+
+structure w.pdb
+  number 17300000
+  inside sphere 1070.8055 1068.5261 1064.6063 940.0
+end structure
+
+structure gly.pdb
+  number 3020000
+  inside sphere 1070.8055 1068.5261 1064.6063 940.0
+end structure
