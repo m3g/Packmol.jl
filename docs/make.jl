@@ -47,6 +47,7 @@ makedocs(
             "Carbon nanotube filled with water" => "tutorials/nanotube.md",
             "Gases in a zeolite" => "tutorials/zeolite.md",
             "ZIF-8 in water and ethanol" => "tutorials/zif8.md",
+            "Ionic liquid in a supercapacitor" => "tutorials/supercapacitor.md",
             "Liquid crystals" => "tutorials/liquid_crystal.md",
             "Zika virion (a large system)" => "tutorials/zika.md",
             "Lipid nanoparticle (designed with an AI agent)" => "tutorials/lnp.md",

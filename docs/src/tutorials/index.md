@@ -22,6 +22,7 @@ agent from an illustration.
 | [Carbon nanotube filled with water](nanotube.md) | A fixed nanotube crossing the periodic boundary, with water inside and outside |
 | [Gases in a zeolite](zeolite.md) | A fixed crystal in its triclinic periodic cell, with gases in its pores |
 | [ZIF-8 in water and ethanol](zif8.md) | A slab of a metal–organic framework in a liquid: ethanol in its pores, water kept out by a constraint; the numbers from `free_volume` |
+| [Ionic liquid in a supercapacitor](supercapacitor.md) | An ionic liquid between charged graphite electrodes: the electric double layers set by the numbers of ions in regions |
 | [Liquid crystals](liquid_crystal.md) | Oriented molecules (rotation constraints): a nematic phase and a cholesteric (twisted) phase |
 | [Zika virion](zika.md) | A large system: 2.2 million particles in membranes and spherical shells |
 | [Lipid nanoparticle](lnp.md) | A system designed with an AI agent from an illustration: 5.6 million particles in monolayers, a lipid phase and water compartments with RNA |
