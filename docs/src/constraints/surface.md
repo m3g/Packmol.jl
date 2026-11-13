@@ -69,11 +69,13 @@ OutsideSurface
 
 ## Example
 
-A bilayer of a coarse-grained lipid on a torus given by points with normals, and some
-water around it, not within 12 Å of the middle of the bilayer. The lipid is a chain of 5
-beads, 8 Å long: the head (bead 1) goes at 9 Å from the middle surface, on either side,
-and the end of the chain (bead 5) near it. The numbers of lipids follow from the areas of
-the two leaflets (about 60 Å² per lipid):
+A bilayer of a coarse-grained lipid on a torus given by points with normals, half
+immersed in a pool of water, not within 12 Å of the middle of the bilayer. The lipid is a
+chain of 5 beads, 8 Å long: the head (bead 1) goes at 9 Å from the middle surface, on
+either side, and the end of the chain (bead 5) near it. The numbers of lipids follow from
+the areas of the two leaflets (about 60 Å² per lipid). The box of the water, below
+`z = 0`, cuts the torus in half; its volume available to the water, given by
+[`free_volume`](@ref), is 200400 Å³: 6700 molecules at 1 g/mL.
 
 ```
 structure lipid.pdb
@@ -97,9 +99,9 @@ structure lipid.pdb
 end structure
 
 structure water.pdb
-  number 1000
+  number 6700
   not within surface torus.dat 12.0
-  inside box -60. -60. -25. 60. 60. 25.
+  inside box -60. -60. -30. 60. 60. 0.
 end structure
 ```
 
@@ -122,56 +124,85 @@ end
 ```@example surface
 using Packmol, PDBTools
 # Points of the torus, about 1.5 Å apart, and the normals
-R, r = 35.0, 14.0
-points, normals = NTuple{3,Float64}[], NTuple{3,Float64}[]
+R = 35.0 # radius of the ring
+r = 14.0 # radius of the tube
+points = NTuple{3,Float64}[]
+normals = NTuple{3,Float64}[]
 for u in range(0, 2π; length = 200)[1:end-1], v in range(0, 2π; length = 70)[1:end-1]
     n = (cos(v) * cos(u), cos(v) * sin(u), sin(v))
     push!(points, (R * cos(u) + r * n[1], R * sin(u) + r * n[2], r * n[3]))
     push!(normals, n)
 end
 torus = PointSurface(points, normals)
-outer = structure_type("lipid.pdb"; number = 530,
-    atom_constraints = [[1] => WithinSurface(torus, 1.5; offset = 9.0), [5] => WithinSurface(torus, 1.5)],
+outer = structure_type("lipid.pdb";
+    number = 530,
+    atom_constraints = [
+        [1] => WithinSurface(torus, 1.5; offset = 9.0),
+        [5] => WithinSurface(torus, 1.5),
+    ],
 )
-inner = structure_type("lipid.pdb"; number = 115,
-    atom_constraints = [[1] => WithinSurface(torus, 1.5; offset = -9.0), [5] => WithinSurface(torus, 1.5)],
+inner = structure_type("lipid.pdb";
+    number = 115,
+    atom_constraints = [
+        [1] => WithinSurface(torus, 1.5; offset = -9.0),
+        [5] => WithinSurface(torus, 1.5),
+    ],
 )
-water = structure_type("water.pdb"; number = 1000,
-    constraints = [NotWithinSurface(torus, 12.0), InsideBox([-60., -60., -25.], [60., 60., 25.])],
+pool = InsideBox([-60., -60., -30.], [60., 60., 0.])
+water = structure_type("water.pdb";
+    number = 6700,
+    constraints = [NotWithinSurface(torus, 12.0), pool],
 )
 system = PackmolSystem([outer, inner, water]; tolerance = 2.0, output = "torus.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system))
+visualize(get_atoms(system),
+    "resname LIP and name C1" => (style = :spheres, color = "orange"), # the heads
+    "resname LIP and not name C1" => (style = :spheres, color = "gray"),
+    "water" => (style = :sticks, color = :element, water = true);
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```
+
+The beads of the lipid are 2 Å apart, too far for bonds to be drawn: they are shown as
+spheres.
 
 ## Example: inside and outside
 
-Water inside the same torus, and outside it, at least 3 Å away from its surface, in a
-box:
+Water inside the same torus, and outside it, at least 3 Å away from its surface, in the
+pool below `z = 0`. The volumes available to them, given by [`free_volume`](@ref), are
+135900 and 332800 Å³: 4500 and 11100 molecules at 1 g/mL.
 
 ```
 structure water.pdb
-  number 400
+  number 4500
   inside surface torus.dat
 end structure
 
 structure water.pdb
-  number 1500
+  number 11100
   outside surface torus.dat 3.0
-  inside box -60. -60. -25. 60. 60. 25.
+  inside box -60. -60. -30. 60. 60. 0.
 end structure
 ```
 
 ```@example surface
-inside = structure_type("water.pdb"; number = 400, constraints = [InsideSurface(torus)])
-outside = structure_type("water.pdb"; number = 1500,
-    constraints = [OutsideSurface(torus; offset = 3.0), InsideBox([-60., -60., -25.], [60., 60., 25.])],
+inside = structure_type("water.pdb";
+    number = 4500,
+    constraints = [InsideSurface(torus)],
+)
+outside = structure_type("water.pdb";
+    number = 11100,
+    constraints = [OutsideSurface(torus; offset = 3.0), pool],
 )
 system = PackmolSystem([inside, outside]; tolerance = 2.0, output = "torus_water.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system))
+visualize(get_atoms(system),
+    "index <= 13500" => (style = :spheres, color = "blue", water = true), # the 4500 inside
+    "index > 13500" => (style = :sticks, color = :element, water = true);
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```

@@ -60,7 +60,11 @@ system = PackmolSystem([water]; tolerance = 2.0, output = "gaussian.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system); unitcell = UnitCell([30., 30., 15.]), unitcell_origin = [-15., -15., 0.])
+visualize(get_atoms(system);
+    unitcell = UnitCell([30., 30., 15.]),
+    unitcell_origin = [-15., -15., 0.],
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```
 
 ## Example: a periodic wavy monolayer
@@ -112,8 +116,12 @@ cp(joinpath(Packmol.RecipesDirectory, "lipids", "popc.pdb"), "popc.pdb"; force =
 
 ```@example wavy
 using Packmol, PDBTools
-up, along = [0., 0., 1.], [1., 0., 0.]       # the surface z = 6 sin(2π x / 60)
-amplitude, wavelength, phase = 6., 60., 0.
+# The surface z = 6 sin(2π x / 60)
+up = [0., 0., 1.]
+along = [1., 0., 0.]
+amplitude = 6.
+wavelength = 60.
+phase = 0.
 popc = structure_type("popc.pdb";
     number = 42,
     atom_constraints = [
@@ -135,7 +143,11 @@ system = PackmolSystem([popc, water_below, water_above];
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system); unitcell = UnitCell([60., 40., 64.]), unitcell_origin = [0., 0., -20.])
+visualize(get_atoms(system);
+    unitcell = UnitCell([60., 40., 64.]),
+    unitcell_origin = [0., 0., -20.],
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```
 
 ## Radial variants
@@ -190,7 +202,11 @@ system = PackmolSystem([water]; tolerance = 2.0, output = "radial_gaussian.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system); unitcell = UnitCell([30., 30., 15.]), unitcell_origin = [-15., -15., 0.])
+visualize(get_atoms(system);
+    unitcell = UnitCell([30., 30., 15.]),
+    unitcell_origin = [-15., -15., 0.],
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```
 
 The other radial shapes take the same arguments as in the input file, in the same order:

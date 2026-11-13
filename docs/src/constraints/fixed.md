@@ -68,5 +68,8 @@ system = PackmolSystem([protein, water]; tolerance = 2.0, output = "fixed.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system); water = true)
+visualize(get_atoms(system);
+    water = true,
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```

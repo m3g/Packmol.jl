@@ -84,7 +84,9 @@ system = PackmolSystem([water]; tolerance = 2.0, output = "torus.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system))
+visualize(get_atoms(system);
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```
 
 Custom constraints can also be applied to some atoms of each molecule, with

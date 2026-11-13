@@ -92,16 +92,16 @@ topic (its dropdown items): Home, Tutorials, Input files, Constraints, Periodic 
 conditions, Julia API (ending with Reference) and Recipes (ending with Concentration units).
 Every constraint and periodic cell page ends with an "Example" section: the structure
 block of an input file, then the same system as an `@example` block that packs it (in a
-fraction of a second) and shows it with `PDBTools.visualize` (structure files copied from
+fraction of a second) and shows it with `PDBTools.visualize` (PDBTools ≥ 4.2; every view with `rotate = [(:z, 30), (:x, -70)]`, `z` up seen from above at an angle; structure files copied from
 `Packmol.RecipesDirectory` in a hidden `@setup` block). New constraints get one too.
 `docs/src/tutorials/` holds the classic Packmol examples (water–urea, interface, bilayer,
 vesicle, solvated protein; the bilayer and the vesicle redone with the all-atom POPC of the
 `packmol_lipids` set of MolSimTestFiles, the vesicle as two nanoliposomes in octahedral cells) and others (liquid crystals of 5CB with
 `constrain_rotation`: a nematic phase and a cholesteric phase; ZIF-8 in water and ethanol (a slab of the
 metal–organic framework from COD 7111973, built by `files/zif8/build_slab.jl`, ethanol in its pores and water
-kept out by a constraint, the numbers from `free_volume`; images by `dev/tutorials/zif8.jl`); an ionic liquid
+kept out by a constraint, the numbers from `free_volume`); an ionic liquid
 ([BMIM][PF6]) in a supercapacitor (graphite electrodes by `files/supercapacitor/electrodes.jl`, the double layers
-as regions with set numbers of ions; images by `dev/tutorials/supercapacitor.jl`); a gold nanoparticle with
+as regions with set numbers of ions); a gold nanoparticle with
 dodecanethiolates in toluene (core by `files/gold_nanoparticle/gold.jl`, ligands bound and oriented by constraints
 on two atoms; images by `dev/tutorials/gold_nanoparticle.jl`); the Zika virion; the lipid nanoparticle,
 designed with an AI agent from an illustration (SIRAH, set `packmol_lnp`, files and images by `dev/tutorials/lnp.jl`
@@ -114,13 +114,15 @@ both paths equivalent when changing the input syntax or the Julia API.
 Tutorial images (`docs/src/tutorials/images/*.webp`) are rendered with VMD by the scripts of
 `dev/tutorials/` (`render.jl`; `classic.jl` for the classic examples, `lipids.jl` for the
 nanoliposomes; `cake.jl`, the quarter cut of the LNP, Zika and exosome images, the solvent
-outside kept behind the particle; the bilayer, zeolite, polymer, nanotube and liquid crystal pages have live
+outside kept behind the particle; the bilayer, zeolite, ZIF-8, supercapacitor, polymer, nanotube and liquid crystal pages have live
 `visualize` views instead). Tutorials of non-trivial
 systems first show the initial placement (`check_initial_placement`), then the packing.
 The input files of the tutorials are files of `docs/src/tutorials/files/<tutorial>/`, shown in
 the pages with `@eval Main.input_file(path)` (`docs/make.jl`; in a `<details>` drop-down box
 when long), never written into the pages; every one has the line `# check_initial_placement`
-(commented), and the Julia code `# check_initial_placement = true`. The overview page
+(commented), and the Julia code `# check_initial_placement = true`. The Julia code of the docs (and the scripts
+shown in them) is written for readability: one assignment per line, no compact patterns that only
+save lines (`a, b, c = f(1), f(2), f(3)`); unpacking the values returned by a function is fine. The overview page
 (`tutorials/index.md`) explains how to follow the tutorials and how to check the initial
 placement.
 

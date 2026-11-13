@@ -21,6 +21,7 @@ visualize(get_atoms(final), # hide
     "water" => (style = :sticks, water = true); # hide
     unitcell = UnitCell(final.unitcell), # hide
     unitcell_origin = -sum(eachcol(final.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -70)], # hide
 ) # hide
 ```
 
@@ -112,6 +113,7 @@ show_system(system) = visualize(get_atoms(system),
     "water" => (style = :sticks, water = true);
     unitcell = UnitCell(system.unitcell),
     unitcell_origin = -sum(eachcol(system.unitcell)) / 2,
+    rotate = [(:z, 30), (:x, -70)],
 )
 show_system(system)
 ```

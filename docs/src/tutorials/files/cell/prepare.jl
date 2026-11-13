@@ -49,7 +49,8 @@ write_mmcif("chromosome.cif", chromosome)
 # The cytosol: within 950 Å of the center (the reach of the cytosol of Bentopy's model; the
 # membrane bounds it). The peripheral proteins (Bentopy: within 20 nm of the membrane): the
 # atom closest to their center beyond 630 Å.
-R_cytosol, R_peripheral = 950.0, 630.0
+R_cytosol = 950.0
+R_peripheral = 630.0
 sphere(R) = @sprintf("sphere %.4f %.4f %.4f %.1f", center..., R)
 
 mkpath("structures")

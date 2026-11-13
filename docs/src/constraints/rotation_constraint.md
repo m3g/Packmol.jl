@@ -80,5 +80,8 @@ system = PackmolSystem([octane]; tolerance = 2.0, output = "rotation.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system); unitcell = UnitCell([20., 20., 30.]))
+visualize(get_atoms(system);
+    unitcell = UnitCell([20., 20., 30.]),
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```

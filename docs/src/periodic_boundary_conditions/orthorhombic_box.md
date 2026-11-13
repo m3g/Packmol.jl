@@ -41,5 +41,8 @@ system = PackmolSystem([water]; tolerance = 2.0, output = "orthorhombic.pdb",
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
-visualize(get_atoms(system); unitcell = UnitCell(system.unitcell))
+visualize(get_atoms(system);
+    unitcell = UnitCell(system.unitcell),
+    rotate = [(:z, 30), (:x, -70)],
+)
 ```
