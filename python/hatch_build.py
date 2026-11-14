@@ -34,7 +34,10 @@ def _macos_min_version(bundle: Path) -> tuple[int, int]:
             continue
         out = subprocess.run(["otool", "-l", str(f)], capture_output=True, text=True)
         for m in re.finditer(r"minos (\d+)\.(\d+)", out.stdout):
-            vmax = max(vmax, (int(m.group(1)), int(m.group(2))))
+            v = (int(m.group(1)), int(m.group(2)))
+            if v > vmax:
+                print(f"minimum macOS {v[0]}.{v[1]}: {f.relative_to(bundle)}")
+                vmax = v
     # From macOS 11 on, the minor version of the tag is 0
     return (vmax[0], 0) if vmax[0] >= 11 else vmax
 

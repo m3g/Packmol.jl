@@ -67,6 +67,15 @@ jobs:
           docker run --rm -v "$PWD":/work -w /work -v ~/.julia:/depot \
             -e JULIA_DEPOT_PATH=/depot -e JULIA_VERSION -e HOME=/tmp \
             --user "$(id -u):$(id -g)" ${{ matrix.manylinux }} bash juliac/build_manylinux.sh
+      - name: macOS deployment target
+        if: runner.os == 'macOS'
+        run: |
+          # The minimum macOS version of Julia's libraries; otherwise the executable is linked
+          # for the macOS of the runner, and the wheels would be tagged for it
+          lib=$(julia -e 'print(joinpath(Sys.BINDIR, "..", "lib", "libjulia.dylib"))')
+          minos=$(otool -l "$lib" | awk '/minos/ {print $2; exit}')
+          echo "MACOSX_DEPLOYMENT_TARGET=$minos"
+          echo "MACOSX_DEPLOYMENT_TARGET=$minos" >> $GITHUB_ENV
       - name: build
         if: ${{ !matrix.manylinux }}
         run: |
