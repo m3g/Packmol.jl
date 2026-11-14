@@ -62,6 +62,30 @@ errors are printed to the standard error, and scripts can rely on the exit code.
 global keyword `screen_log no` suppresses all the output of a run (including the
 warnings), except the errors.
 
+### Standalone executable (without Julia)
+
+The `packmol` command is also distributed as an executable compiled from Packmol.jl, which
+does not need Julia. From version 100.0.0 on:
+
+- With Python's package managers (versions before 100 are the Fortran Packmol):
+  ```bash
+  pip install packmol        # or: uv tool install packmol
+  uvx packmol -i input.inp   # run it without installing it
+  ```
+- As an archive of the
+  [GitHub releases](https://github.com/m3g/Packmol.jl/releases/latest), for Linux (x86_64
+  and aarch64, glibc ≥ 2.28: RHEL/Rocky 8, Ubuntu 20.04, Debian 11 and newer), macOS (arm64
+  and x86_64) and Windows (x86_64): `packmol-<os>-<arch>.tar.gz` (`.zip` on Windows). Extract
+  it anywhere and run `bin/packmol` (`bin\packmol.exe` on Windows), or add its `bin`
+  directory to the path. Keep the extracted directory whole: the executable needs the
+  libraries of its `lib` directory. On macOS, archives downloaded with a browser are
+  quarantined; remove the quarantine with `xattr -dr com.apple.quarantine <directory>`.
+  The [`dev` pre-release](https://github.com/m3g/Packmol.jl/releases/tag/dev) has the
+  archives of the latest development version.
+
+The executable has every feature of the input files. The Julia API (the recipes,
+user-defined constraints, ...) needs the Julia package.
+
 ### Replicas of a system
 
 `-o` writes the packed system to another file than the `output` of the input file, so the
