@@ -67,6 +67,22 @@ _keyword_values(v) = String[string(x) for x in v]
 # The global options of the input files given as keyword arguments of
 # `packmol(::PackmolSystem)`: they are set in the system (see `packmol`).
 #
+#
+# The largest overlap of a pair of atoms of a packed system, `max(r_i + r_j - d)`: the
+# `tolerance_precision` set, or 5% of twice the smallest radius of the atoms (of the
+# shortest distance allowed between two atoms); with the default radii (half the
+# tolerance), 5% of the tolerance: 0.1 Å for the default tolerance of 2 Å
+#
+function _tolerance_precision(sys::PackmolSystem{D,T})::T where {D,T}
+    isnothing(sys.tolerance_precision) || return sys.tolerance_precision
+    rmin = typemax(T)
+    for atom in sys.atoms
+        atom.radius > 0 && (rmin = min(rmin, atom.radius))
+    end
+    rmin == typemax(T) && (rmin = sys.tolerance / 2) # no atoms (or no radii)
+    return T(0.05) * 2 * rmin
+end
+
 function _set_global_options!(sys::PackmolSystem{D,T};
     output::Union{Nothing,AbstractString} = nothing,
     filetype::Union{Nothing,AbstractString,Symbol} = nothing,

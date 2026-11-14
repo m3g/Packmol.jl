@@ -46,9 +46,11 @@ longer supported, and what is new. The legacy program is still available (see
 - **`centerofmass`** (of fixed molecules) uses the masses of the atoms. The legacy Packmol
   used unit masses, that is, the geometric center (the same as `center`).
 - **Convergence.** The packing has converged when no two atoms of different molecules
-  overlap by more than `tolerance_precision` (0.1 Å by default), with the overlap measured
-  with the radii of the atoms (`tolerance/2` by default, or `radius`), and the constraints
-  are satisfied within `constraint_precision`.
+  overlap by more than `tolerance_precision`, with the overlap measured with the radii of
+  the atoms (`tolerance/2` by default, or `radius`), and the constraints are satisfied
+  within `constraint_precision`. By default, `tolerance_precision` is 5% of twice the
+  smallest radius: 5% of the tolerance with the default radii (0.1 Å for a tolerance of
+  2 Å).
 - **Misspelled keywords** in structure blocks are errors (the legacy Packmol ignored them,
   which could pack zero molecules of a type without notice).
 - **The configurations differ.** The algorithm (the optimizer, the initial placement and

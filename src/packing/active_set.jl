@@ -69,7 +69,7 @@ function _active_output(packmol_system::PackmolSystem{D,T}, n::Int) where {D,T}
         fmol=zeros(T, packmol_system.nmols),
         gxcar=fill(zero(SVector{D,T}), n),
         max_constraint_penalty=zero(T),
-        overlap_precision=T(packmol_system.tolerance_precision),
+        overlap_precision=_tolerance_precision(packmol_system),
     )
 end
 
@@ -327,7 +327,7 @@ function _optimize_active_subsystem!(
             collect(reinterpret(T, reinterpret(MoleculePosition{D,T}, upper)[sub.kfree]))
     end
     callback = (result) -> packmol_callback(sub.cl,
-        packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter)
+        _tolerance_precision(packmol_system), packmol_system.constraint_precision, progress_meter)
     res = if scale_rotations
         rs_act = _subset(rot_scaling, sub.kfree)
         _update_rotation_scaling!(rs_act, xa_mol)

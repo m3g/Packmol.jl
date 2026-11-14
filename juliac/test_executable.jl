@@ -128,7 +128,7 @@ end
         @test code == 0
         code == 0 || println(out)
         dmin, sys = minimum_intermolecular_distance(input_file)
-        @test dmin >= sys.tolerance - sys.tolerance_precision - pdb_rounding
+        @test dmin >= sys.tolerance - Packmol._tolerance_precision(sys) - pdb_rounding
         println("  $name: $(round(elapsed; digits=2)) s")
     end
 
@@ -188,20 +188,20 @@ end
         @test occursin("Placing the molecules on a voxel grid", out)
         @test occursin("Placed 4000 of 4000 free molecules", out)
         dmin, sys = minimum_intermolecular_distance(input_file)
-        @test dmin >= sys.tolerance - sys.tolerance_precision - pdb_rounding
+        @test dmin >= sys.tolerance - Packmol._tolerance_precision(sys) - pdb_rounding
     end
     @testset "input from stdin, and -o" begin
         input_file = joinpath(inputs, "water_box.inp")
         code, _ = run_packmol(; stdin_file=input_file)
         @test code == 0
         dmin, sys = minimum_intermolecular_distance(input_file)
-        @test dmin >= sys.tolerance - sys.tolerance_precision - pdb_rounding
+        @test dmin >= sys.tolerance - Packmol._tolerance_precision(sys) - pdb_rounding
         output_file = joinpath(dir, "water_box_o.pdb")
         code, _ = run_packmol("-i", input_file, "-o", output_file)
         @test code == 0
         @test isfile(output_file)
         dmin, sys = minimum_intermolecular_distance(input_file, output_file)
-        @test dmin >= sys.tolerance - sys.tolerance_precision - pdb_rounding
+        @test dmin >= sys.tolerance - Packmol._tolerance_precision(sys) - pdb_rounding
         # The input file as the first positional argument
         rm(output_file)
         code, _ = run_packmol(input_file, "-o", output_file)

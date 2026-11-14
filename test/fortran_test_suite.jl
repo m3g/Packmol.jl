@@ -35,7 +35,7 @@
         end
         @testset "$name" begin
             @test sys.status == :packing_ready
-            @test minimum_intermolecular_distance(sys) >= sys.tolerance - sys.tolerance_precision
+            @test minimum_intermolecular_distance(sys) >= sys.tolerance - Packmol._tolerance_precision(sys)
         end
     end
     # Failed packings write the -FORCED output (testing/test_failed.sh). The box of

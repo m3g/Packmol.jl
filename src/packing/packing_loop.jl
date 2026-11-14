@@ -344,7 +344,7 @@ function _packmol(
     # Placement region for movebad! randomization
     mol_structure_type = _build_mol_structure_type(packmol_system)
     mol_iat_first = _build_mol_iat_first(packmol_system)
-    precision = packmol_system.tolerance_precision
+    precision = _tolerance_precision(packmol_system)
     # Worst fmol ever observed per structure type, across every movebad! call
     # over the whole run (see movebad.jl for why this must persist rather
     # than being recomputed fresh each call).
@@ -490,7 +490,7 @@ function _packmol(
                 fg_closure,
                 x, lower, upper;
                 callback=(result) -> packmol_callback(cl_system,
-                    packmol_system.tolerance_precision, packmol_system.constraint_precision, progress_meter),
+                    _tolerance_precision(packmol_system), packmol_system.constraint_precision, progress_meter),
                 vaux=auxvecs,
                 nitmax=maxit,
                 nfevalmax=10 * maxit,
@@ -569,7 +569,7 @@ function _packmol(
         # Check convergence: both tolerance and constraint precisions must be satisfied.
         # The overlap of each pair is measured with the radii of its atoms (by default
         # tolerance/2, so that the criterion is `tolerance - dmin < tolerance_precision`).
-        tol_ok = max_overlap < packmol_system.tolerance_precision
+        tol_ok = max_overlap < _tolerance_precision(packmol_system)
         const_ok = max_const < packmol_system.constraint_precision
 
         finish!(progress_meter)

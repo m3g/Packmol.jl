@@ -29,7 +29,10 @@
     # packing (input keyword `writeout`, as in Fortran Packmol): `nothing` means 60 s.
     writeout::Union{Nothing,T} = nothing
     structure_types::Vector{StructureType{D,T}} = StructureType{D,T}[]
-    tolerance_precision::T = 1e-1
+    # The largest overlap of a pair of atoms of a packed system (input keyword
+    # `tolerance_precision`): `nothing` means 5% of twice the smallest radius of the atoms
+    # (5% of the tolerance, with the default radii; see `_tolerance_precision`)
+    tolerance_precision::Union{Nothing,T} = nothing
     constraint_precision::T = 1e-2
     # Packing loops and optimizer iterations per loop (input keywords `nloop`
     # and `maxit`): `nothing` means unset, and the keyword arguments of

@@ -46,7 +46,7 @@ function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
         fmol = zeros(T, packmol_system.nmols),
         gxcar = fill(zero(SVector{D,T}), natoms),
         max_constraint_penalty = zero(T),
-        overlap_precision = T(packmol_system.tolerance_precision),
+        overlap_precision = _tolerance_precision(packmol_system),
         overlaps = zeros(Int, length(packmol_system.structure_types), length(packmol_system.structure_types)),
         constraint_precision = T(packmol_system.constraint_precision),
     )

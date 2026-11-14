@@ -145,6 +145,10 @@ Decisions of the maintainer (2026-11-05):
   thing with the default radii (tolerance/2), but `radius` larger than tolerance/2 is
   now respected (it was ignored: overlaps of 0.25 Å were accepted), and a smaller
   `radius` allows closer pairs, as in Fortran.
+  *Refined 2026-11-13 (maintainer):* the default `tolerance_precision` is 5% of twice the
+  smallest radius of the atoms (5% of the tolerance with the default radii), not a fixed
+  0.1 Å: the same for the default tolerance of 2 Å, and proportional to the scale of
+  coarse-grained or tightly packed systems.
 - **D13 (2026-10-29): no Fortran restart files.** Restarts use coordinate files only
   (PDB, XYZ or mmCIF, by extension): `restart_from` recovers each molecule's position
   from coordinates by rigid-body alignment to its template. Since 2026-11-05,
