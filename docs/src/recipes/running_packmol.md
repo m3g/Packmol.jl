@@ -25,7 +25,8 @@ engine itself — see `packmol(::PackmolSystem)`.
 `:cubic` (the default) forces all 3 sides to their maximum, giving a cube;
 `:orthorhombic` keeps the (possibly unequal) sides as computed; and
 `:dodecahedral`/`:octahedral` build a rhombic dodecahedron/truncated
-octahedron cell of that same maximum side (see
+octahedron cell, the smallest that holds the solute with the margin from its faces (or,
+with `box_sides`, of their maximum; see
 [`dodecahedral_unitcell`](@ref)/[`octahedral_unitcell`](@ref) and [Periodic
 boundary conditions](../periodic_boundary_conditions/index.md)) — smaller-volume,
 more sphere-like alternatives to the cube, useful for solvating a single

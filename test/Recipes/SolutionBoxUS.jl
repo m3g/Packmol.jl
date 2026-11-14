@@ -85,12 +85,11 @@
     @test r1[2] ≈ [118.81, 118.81, 118.81]u"Å"
     @test isfile(tmp_input_file)
     rm(tmp_input_file, force=true)
-    # :dodecahedral: same "size" (d = 118.81 Å) as the cubic case above, but a
-    # smaller volume (d³/√2 instead of d³) since the shape wastes less volume
-    # relative to the sphere it needs to enclose in every direction.
+    # :dodecahedral: the smallest cell with every atom of the (elongated) solute at least
+    # the margin from its faces, larger than the cube of the box of the solute (118.81 Å),
+    # whose corners are outside a dodecahedron of that size
     r1 = write_packmol_input(system; margin = 20.0, input = tmp_input_file, debug = true, pbc = :dodecahedral)
-    @test r1[2] ≈ [118.81, 118.81, 118.81]u"Å"
-    @test r1[1] < 55750
+    @test r1[2] ≈ [150.574, 150.574, 150.574]u"Å" rtol = 1e-4
     @test isfile(tmp_input_file)
 
     # The generated input file must be valid Packmol syntax for the native engine
@@ -100,7 +99,8 @@
     psys = Packmol.read_packmol_input(tmp_input_file)
     @test psys.nmols == 1 + r1[1]
     a, b, c, α, β, γ = Packmol._unitcell_abc_angles(psys.unitcell)
-    @test a ≈ b ≈ c ≈ 118.81
+    @test isapprox(a, 150.574; rtol = 1e-4) && b ≈ a && c ≈ a
+    Packmol._check_fixed_inside_cell(psys) # the solute is inside the cell (no error)
     @test α ≈ β ≈ 60.0
     @test γ ≈ 90.0
     rm(tmp_input_file, force=true)
@@ -158,5 +158,22 @@ end
         @test err isa ArgumentError
         @test contains(err.msg, "`$(first(Packmol._mandatory_keywords(R)))` is mandatory")
         @test contains(err.msg, "Optional keyword arguments:")
+    end
+end
+
+@testitem "dodecahedral and octahedral cells: the solute within the margin from the faces" begin
+    using PDBToolsBase: read_pdb
+    using StaticArrays, LinearAlgebra
+    atoms = read_pdb(joinpath(Packmol.RecipesDirectory, "test", "data", "poly_h.pdb"))
+    x = [SVector(a.x, a.y, a.z) for a in atoms]
+    x .-= Ref(sum(x) / length(x))
+    for pbc in (:dodecahedral, :octahedral), margin in (5.0, 20.0)
+        d = Packmol._wigner_seitz_size(atoms, margin, pbc)
+        cell = pbc == :dodecahedral ? dodecahedral_unitcell(Float64, d) : octahedral_unitcell(Float64, d)
+        # every atom at least the margin from every face: x⋅v̂ + margin ≤ |v|/2
+        worst = maximum(dot(xi, v / norm(v)) + margin - norm(v) / 2
+            for xi in x, v in (cell * SVector(i, j, k) for i in -2:2, j in -2:2, k in -2:2 if (i, j, k) != (0, 0, 0)))
+        @test worst <= 1e-8
+        @test worst >= -1e-6 # the smallest such cell: some atom touches the margin
     end
 end
