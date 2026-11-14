@@ -129,7 +129,7 @@ function run_case(name, dir, inputs, workdir, seed)
     loops = count("Starting packing loop", s)
     evaluations = sum(m -> parse(Int, m[1]), eachmatch(r"Function evaluations:\s+(\d+)", s); init = 0)
     max_overlap, dmin = check_overlaps(sys)
-    ok = sys.status == :packing_ready && max_overlap < sys.tolerance_precision
+    ok = sys.status == :packing_ready && max_overlap < Packmol._tolerance_precision(sys)
     return (; ok, status = sys.status, loops, evaluations, time, dmin, max_overlap, log)
 end
 
