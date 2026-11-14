@@ -69,6 +69,9 @@ ext/
   PackmolJLLExt.jl        # run_packmol_legacy methods (loaded with Packmol_jll)
   TestFilesExt.jl         # test_file (loaded with LazyArtifacts)
 juliac/                   # Executable: app.jl, build.jl (juliac), test_executable.jl
+                          # build_manylinux.sh (Linux build in a manylinux_2_28 container),
+                          # smoke_test.sh (runs the bundle on a system)
+python/                   # Python wheels of the bundle (pip/uvx `packmol`); version from Project.toml
 ```
 
 ## Key Dependencies
@@ -458,10 +461,11 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 ### Phase 8: Polish & Release
 
 - [x] Resolve Project.toml merge conflict
-- [ ] Documentation (Documenter.jl, hosted on GitHub Pages)
-- [ ] CI/CD pipeline for tests
-- [ ] Package registration
-- [ ] Migration guide from Fortran Packmol
+- [x] Documentation (Documenter.jl, hosted on GitHub Pages)
+- [x] CI/CD pipeline for tests, and the executable on five platforms (`BuildExecutable.yml`)
+- [ ] Release 100.0.0 (registration, then the archives and wheels): the maintainer's decision;
+      plan in `dev/drop-in-replacement.md`
+- [x] Migration guide from Fortran Packmol (`docs/src/migrating.md`)
 
 ---
 

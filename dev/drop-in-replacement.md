@@ -68,19 +68,19 @@ Decisions of the maintainer (2026-11-05):
    rejects version skips), TagBot tag, stable docs deployed from the tag.
 
 **Stage 2: the executable and the wheels (after feedback on stage 1)**
-8. [ ] B5: Linux executables built in a `manylinux_2_28` container (x86_64, aarch64), with
+8. [~] (PR #125) B5: Linux executables built in a `manylinux_2_28` container (x86_64, aarch64), with
    no symbol newer than `GLIBC_2.28`; tested on Rocky Linux 8 and Ubuntu 22.04.
-9. [ ] C1: a release workflow attaching the archives of the bundles
+9. [~] (PR #125) C1: a release workflow attaching the archives of the bundles
    (`packmol-<ver>-<os>-<arch>.tar.gz`, `.zip` on Windows), SHA256 sums and versionless
    aliases to the GitHub release; a rolling `dev` pre-release from `main`.
-10. [ ] C2: `python/` (hatchling, `cli.py` execs the bundled binary), one wheel per
+10. [~] (PR #125) C2: `python/` (hatchling, `cli.py` execs the bundled binary), one wheel per
     platform from the C1 bundles. TestPyPI first (D2), `pip install`/`uvx packmol` tested
     on clean machines; then the maintainer adds this repository as a trusted publisher of
     the PyPI project `packmol`, and `100.0.0` replaces the Fortran wheels as the latest.
 11. [ ] macOS: no signing at first (pip/uvx installs are not quarantined; the archives
     need `xattr -d com.apple.quarantine`). B6 (size) not needed. Windows `pick_file`:
     manual test.
-12. [ ] Installation page: the executable and pip/uvx.
+12. [~] (PR #125) Installation page: the executable and pip/uvx.
 
 ---
 
@@ -452,7 +452,8 @@ Fixed (branch `fixed-molecules-compat`):
     35 MB, macOS arm64 15 MB, x86_64 21 MB, Windows 49 MB.
   - Still open: code signing/notarization on macOS, and `pick_file` (PowerShell) on
     Windows, which can't be tested in CI.
-- [ ] **B5** Linux portability: the build host's glibc sets the minimum (≥ 2.34 today).
+- [~] **B5** (PR #125: `juliac/build_manylinux.sh`, glibc check and Rocky 8 / Ubuntu 22.04
+  runs in `BuildExecutable.yml`) Linux portability: the build host's glibc sets the minimum (≥ 2.34 today).
   Checked on the CI-built executable (2026-10-30): the newest glibc symbol it needs is
   `GLIBC_2.34`, from the executable itself (the bundled Julia libraries need ≤ 2.17).
   So it runs on Ubuntu ≥ 22.04, Debian ≥ 12, RHEL/Rocky/Alma ≥ 9, but not on RHEL 8
@@ -485,12 +486,12 @@ Fixed (branch `fixed-molecules-compat`):
 
 ## Workstream C: distribution
 
-- [ ] **C1** Release archives on GitHub Releases: `packmol-<ver>-<os>-<arch>.tar.gz`
+- [~] **C1** (PR #125: jobs `release` and `dev` of `BuildExecutable.yml`) Release archives on GitHub Releases: `packmol-<ver>-<os>-<arch>.tar.gz`
   (or `.zip` on Windows) with SHA256 sums, produced by B3. Package managers consume these
   archives. Also a rolling `dev` pre-release, replaced on every push to `main`. Link both
   from the installation page of the docs (D20); the `releases/latest/download/<name>`
   URLs need asset names without the version (or a stable alias next to the versioned one).
-- [ ] **C2** Python wheels (`pip install packmol`, `uvx packmol`). Reuse the Fortran
+- [~] **C2** (PR #125: `python/`, symlinks restored by `cli.py` at first run, no sdist) Python wheels (`pip install packmol`, `uvx packmol`). Reuse the Fortran
   repo's layout: a hatchling package whose `cli.py` execs the bundled binary. The wheel
   carries the prebuilt bundle (no compilation in the build hook). Platform tags:
   `manylinux_2_28_x86_64`/`aarch64`, `macosx_*_arm64`/`x86_64`, `win_amd64`. Size is fine
@@ -506,7 +507,7 @@ Fixed (branch `fixed-molecules-compat`):
   versions must sort after 21.2.3 (C5).
 - [N] **C4** conda-forge, Homebrew, AUR, distribution packages: left to third parties
   (D20). They are possible by repackaging the C1 archives.
-- [ ] **C5** Versioning scheme: binary version, Packmol.jl version and PyPI version.
+- [x] **C5** (100.0.0 for all: the wheels take the version of Project.toml) Versioning scheme: binary version, Packmol.jl version and PyPI version.
   Reported by `packmol --version` (A1.5).
 
 ---
@@ -675,3 +676,21 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
     was not reproducible. Fixed: sums per chunk, added in order (`_sum_chunks!`).
     Several threads remain non-reproducible (D21). After the fix, `test_cli.sh` passes
     on all 19 inputs with `-t 1` (in that layout).
+- **2026-11-14** (Claude): stage 2 prepared (PR #125, draft), nothing published.
+  B5: the Linux bundles are built in `quay.io/pypa/manylinux_2_28_*` containers by
+  `juliac/build_manylinux.sh` (Julia tarball, the host depot mounted), CI checks the newest
+  `GLIBC_` symbol of every file (≤ 2.28) and runs `juliac/smoke_test.sh` on `rockylinux:8`
+  and `ubuntu:22.04`. C1: archives `packmol-<ver>-<platform>` (platforms `linux-x86_64`,
+  `linux-aarch64`, `macos-arm64`, `macos-x86_64`, `windows-x86_64`); the `release` job
+  waits for TagBot's release (TagBot pushes the tag with the deploy key, so the tag
+  triggers the workflow) and uploads versioned + versionless copies and `SHA256SUMS.txt`;
+  the `dev` job keeps a `dev` pre-release with its tag moved to main. C2: `python/`
+  (hatchling hook copies `$PACKMOL_BUNDLE` into `packmol/binaries`). Wheels can't hold
+  symlinks, and the loader does not only look for sonames (the executable dlopens
+  `libopenlibm.so` and `libpcre2-8.so`, not their sonames: `LD_DEBUG=libs`), so all 39
+  links are listed in `symlinks.txt` and recreated by `cli.py` at first run; in a
+  read-only installation the bundle is copied to the user cache (tested locally: venv,
+  read-only venv, `uv run --with`). Linux wheel 40 MB. No sdist, on purpose: platforms
+  without a wheel (Windows arm64, musl) get the Fortran 21.x wheels. Upload only by
+  `workflow_dispatch` with `publish = testpypi|pypi` (PyPI only from a `v*` tag), after
+  the maintainer registers the trusted publisher (environments `testpypi`, `pypi`).
