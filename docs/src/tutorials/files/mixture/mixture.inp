@@ -20,17 +20,19 @@ output mixture.pdb
 
 # check_initial_placement
 
-# 1000 water molecules and 400 urea molecules will be put in a box
-# defined by the minimum coordinates x, y and z = 0. 0. 0. and maximum
-# coordinates 40. 40. 40. That is, they will be put in a cube of side
-# 40. (the keyword "inside cube 0. 0. 0. 40." could be used as well).
+# The periodic box: from the origin to x, y and z = 40. 40. 40., a cube of
+# side 40. The molecules are packed in it, and they are kept 2.0 Angstroms
+# apart also from the periodic images of the other molecules.
+
+pbc 40. 40. 40.
+
+# 1000 water molecules and 400 urea molecules. The periodic box confines
+# them: no constraint is needed.
 
 structure water.pdb
   number 1000
-  inside box 0. 0. 0. 40. 40. 40.
 end structure
 
 structure urea.pdb
   number 400
-  inside box 0. 0. 0. 40. 40. 40.
 end structure

@@ -1,7 +1,7 @@
 # Water and urea
 
-A box of 1000 water molecules and 400 urea molecules: the simplest kind of system, in
-which every molecule is placed in the same region.
+A periodic box of 1000 water molecules and 400 urea molecules: the simplest kind of
+system, a homogeneous liquid, in which every molecule can be anywhere in the cell.
 
 ```@setup mixture_view
 using Packmol, PDBTools
@@ -12,23 +12,32 @@ system = Main.pack_tutorial("mixture", "mixture.inp")
 visualize(get_atoms(system), # hide
     "water" => (style = :sticks, color = :element, water = true), # hide
     "not water" => (style = :ballandstick, color = :element); # hide
-    unitcell = UnitCell([40., 40., 40.]), # hide
+    unitcell = UnitCell(system.unitcell), # hide
+    unitcell_origin = system.unitcell_center - sum(eachcol(system.unitcell)) / 2, # hide
     rotate = [(:z, 30), (:x, -70)], # hide
 ) # hide
 ```
 
-*Water (sticks) and urea (balls and sticks), in the box of their constraints (drag to rotate, scroll to zoom).*
+*Water (sticks) and urea (balls and sticks), with the edges of the periodic box (drag to rotate, scroll to zoom).*
 
 Files: [`water.pdb`](files/mixture/water.pdb), [`urea.pdb`](files/mixture/urea.pdb) and
 the input file [`mixture.inp`](files/mixture/mixture.inp).
 
-## The box
+## The periodic box
 
 The input file:
 
 ```@eval
 Main.input_file("files/mixture/mixture.inp")
 ```
+
+`pbc 40. 40. 40.` sets a periodic box from the origin to `(40, 40, 40)` (see [Orthorhombic
+box](../periodic_boundary_conditions/orthorhombic_box.md)). The box confines the
+molecules, so they need no constraint, and the distances between them are computed
+across its faces: the molecules near a face are kept `tolerance` away from those near the
+opposite face, and the box can be used in a simulation with periodic boundary conditions
+as it is, with no gaps or overlaps at the faces. The output file has the `CRYST1` record
+of the box.
 
 Run it with:
 
@@ -44,30 +53,26 @@ this simple needs no check of the initial placement, but the input has the
 ## Julia script
 
 Each `structure ... end structure` block is a [`structure_type`](@ref), and the global
-keywords (`tolerance`, `output`) are keyword arguments of [`PackmolSystem`](@ref):
+keywords (`tolerance`, `output`, `pbc`) are keyword arguments of [`PackmolSystem`](@ref):
 
 ```julia
 using Packmol
 
-water = structure_type("water.pdb";
-    number = 1000,
-    constraints = [InsideBox([0., 0., 0.], [40., 40., 40.])],
-)
-urea = structure_type("urea.pdb";
-    number = 400,
-    constraints = [InsideBox([0., 0., 0.], [40., 40., 40.])],
-)
+water = structure_type("water.pdb"; number = 1000)
+urea = structure_type("urea.pdb"; number = 400)
 
 system = PackmolSystem([water, urea];
     output = "mixture.pdb",
     tolerance = 2.0,
+    unitcell = [40. 0. 0.; 0. 40. 0.; 0. 0. 40.], # centered at the origin
     # check_initial_placement = true, # uncomment to only place the molecules
 )
 packmol(system)
 ```
 
-`InsideBox(lower, upper)` takes the same parameters as `inside box`: the minimum and
-maximum coordinates. The output format follows the extension of the output file, so
+`unitcell` is the matrix of the cell vectors (as columns); the cell is centered at the
+origin, unless `unitcell_center` is given (`unitcell_center = [20., 20., 20.]` is the box
+of `pbc 40. 40. 40.`). The output format follows the extension of the output file, so
 `filetype` is not needed.
 
 The packed coordinates are also available without reading the output file:
