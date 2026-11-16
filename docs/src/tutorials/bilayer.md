@@ -150,7 +150,8 @@ water_below = structure_type("water.pdb";
     constraints = [BelowPlane(z, -30.0)],
 )
 
-system = PackmolSystem([upper_leaflet, lower_leaflet, water_above, water_below];
+molecules = [upper_leaflet, lower_leaflet, water_above, water_below]
+system = PackmolSystem(molecules;
     output = "bilayer.pdb",
     tolerance = 2.0,
     unitcell = [61.96 0. 0.; 0. 61.96 0.; 0. 0. 90.], # centered at the origin

@@ -136,7 +136,8 @@ The same steps in Julia (after `julia prepare.jl path/to/zenodo/cell`):
 ```julia
 using Packmol
 
-# Step 1: the voxel placement, and the packing (the keyword voxel_place of cell.inp)
+# Step 1: the voxel placement, and the packing
+# (the keyword voxel_place of cell.inp)
 packmol("cell.inp") # check_initial_placement = true
 
 # Step 2: the solvent

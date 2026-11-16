@@ -9,7 +9,8 @@ solvates it with water and ions, under orthorhombic periodic boundary conditions
 ```@setup membrane_protein_view
 using Packmol, PDBTools
 system = MembraneProtein(
-    protein = joinpath(Packmol.RecipesDirectory, "test", "data", "integrin_tm.pdb"),
+    protein = joinpath(Packmol.RecipesDirectory,
+        "test", "data", "integrin_tm.pdb"),
     lipids = ["POPC", "POPS"],
     lipid_molar_ratio = [4, 1],
 )
@@ -57,7 +58,8 @@ The integrin in a POPC/POPS 4:1 bilayer, with 0.15 M NaCl:
 ```@example membrane_protein
 using Packmol
 system = MembraneProtein(
-    protein = joinpath(Packmol.RecipesDirectory, "test", "data", "integrin_tm.pdb"),
+    protein = joinpath(Packmol.RecipesDirectory,
+        "test", "data", "integrin_tm.pdb"),
     lipids = ["POPC", "POPS"],
     lipid_molar_ratio = [4, 1],
 )
@@ -103,5 +105,8 @@ Instead of packing the system, `write_packmol_input` writes the input file of Pa
 for it, to be inspected, edited or run later (see [Writing a Packmol input file](@ref recipes_input)):
 
 ```@example membrane_protein
-write_packmol_input(system; input = "membrane_protein.inp", output = "membrane_protein.pdb")
+write_packmol_input(system;
+    input = "membrane_protein.inp",
+    output = "membrane_protein.pdb",
+)
 ```

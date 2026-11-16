@@ -55,7 +55,8 @@ function build_nanotube(; n = 12, nz = 20, a = 2.46, d = 1.42)
     atoms = Atom{Nothing}[]
     for i in 0:nz-1, j in 0:n-1, (z, y) in cell
         θ = 2π * (j * 3d + y) / circumference
-        push!(atoms, Atom(; name = "C", resname = "CNT", resnum = 1, chain = "A",
+        push!(atoms, Atom(;
+            name = "C", resname = "CNT", resnum = 1, chain = "A",
             x = radius * cos(θ), y = radius * sin(θ), z = i * a + z - Lz / 2,
             pdb_element = "C",
         ))
@@ -115,7 +116,10 @@ end
 ```@example nanotube
 using Packmol, PDBTools
 
-cnt = structure_type("cnt.pdb"; number = 1, fixed = ([0., 0., 0.], [0., 0., 0.]))
+cnt = structure_type("cnt.pdb";
+    number = 1,
+    fixed = ([0., 0., 0.], [0., 0., 0.]),
+)
 water_inside = structure_type("water.pdb";
     number = 150,
     constraints = [InsideCylinder([0., 0., -100.], [0., 0., 1.], 6., 200.)],

@@ -35,7 +35,10 @@ cp(joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb"), "water.pdb";
 using Packmol, PDBTools
 water = structure_type("water.pdb";
     number = 134,
-    constraints = [InsideBox([0., 0., 0.], [20., 20., 20.]), BelowPlane([1., 1., 0.], 20.)],
+    constraints = [
+        InsideBox([0., 0., 0.], [20., 20., 20.]),
+        BelowPlane([1., 1., 0.], 20.),
+    ],
 )
 system = PackmolSystem([water]; tolerance = 2.0, output = "plane.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide

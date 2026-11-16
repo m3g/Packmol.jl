@@ -67,7 +67,11 @@ is specific to NaCl.
 The system is built and packed directly, at a target ionic concentration:
 
 ```julia
-packmol(system; ionic_concentration = 0.15u"mol/L", margin = 20.0, output = "system.pdb")
+packmol(system;
+    ionic_concentration = 0.15u"mol/L",
+    margin = 20.0,
+    output = "system.pdb",
+)
 ```
 
 This gives the system shown at the top of this page.

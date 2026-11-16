@@ -186,13 +186,16 @@ function nanoliposome(R, n_inner, n_outer, output)
         ],
     )
     water_outside = structure_type("water.pdb";
-        number = round(Int, (4 * sqrt(3) / 9 * d^3 - 4/3 * π * (R + 58)^3) / 29.9),
+        number = round(Int,
+            (4 * sqrt(3) / 9 * d^3 - 4/3 * π * (R + 58)^3) / 29.9),
         constraints = [OutsideSphere(origin, R + 58)],
     )
-    system = PackmolSystem([water_inside, inner_leaflet, outer_leaflet, water_outside];
+    molecules = [water_inside, inner_leaflet, outer_leaflet, water_outside]
+    system = PackmolSystem(molecules;
         output, tolerance = 2.0,
         unitcell = octahedral_unitcell(Float64, d), # centered at the origin
-        # check_initial_placement = true, # uncomment to only place the molecules
+        # uncomment to only place the molecules
+        # check_initial_placement = true,
     )
     # Write the output in the shape of the truncated octahedron
     triclinic_to_octahedral(system)

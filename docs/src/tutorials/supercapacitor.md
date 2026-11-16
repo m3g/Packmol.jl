@@ -153,12 +153,18 @@ nothing # hide
 The ions of each region, with the numbers of the table above:
 
 ```@example supercapacitor
-cations_cathode = structure_type("bmim.pdb"; number = 35, constraints = [cathode_layer])
-anions_cathode = structure_type("pf6.pdb"; number = 25, constraints = [cathode_layer])
-cations_bulk = structure_type("bmim.pdb"; number = 190, constraints = [bulk])
-anions_bulk = structure_type("pf6.pdb"; number = 190, constraints = [bulk])
-cations_anode = structure_type("bmim.pdb"; number = 25, constraints = [anode_layer])
-anions_anode = structure_type("pf6.pdb"; number = 35, constraints = [anode_layer])
+cations_cathode = structure_type("bmim.pdb";
+    number = 35, constraints = [cathode_layer])
+anions_cathode = structure_type("pf6.pdb";
+    number = 25, constraints = [cathode_layer])
+cations_bulk = structure_type("bmim.pdb";
+    number = 190, constraints = [bulk])
+anions_bulk = structure_type("pf6.pdb";
+    number = 190, constraints = [bulk])
+cations_anode = structure_type("bmim.pdb";
+    number = 25, constraints = [anode_layer])
+anions_anode = structure_type("pf6.pdb";
+    number = 35, constraints = [anode_layer])
 nothing # hide
 ```
 

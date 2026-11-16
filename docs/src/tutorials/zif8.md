@@ -197,8 +197,10 @@ ethanol molecules are already in the cages, and the liquid above the crystal:
 function show_system(system)
     return visualize(get_atoms(system),
         "resname ZIF" => (style = :sticks, color = "darkblue"),
-        "resname ETOH and element C" => (style = :spheres, color = "palegreen"),
-        "resname ETOH and not element C" => (style = :spheres, color = :element),
+        "resname ETOH and element C" =>
+            (style = :spheres, color = "palegreen"),
+        "resname ETOH and not element C" =>
+            (style = :spheres, color = :element),
         "water" => (style = :sticks, color = :element, water = true);
         unitcell = UnitCell(system.unitcell),
         rotate = [(:z, 30), (:x, -70)],

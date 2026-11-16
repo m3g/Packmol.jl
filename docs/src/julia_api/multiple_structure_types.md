@@ -4,14 +4,22 @@ Pass one `structure_type` per kind of molecule; each gets its own
 constraints:
 
 ```julia
-solute = structure_type("solute.pdb"; number=1, fixed=([0.,0.,0.],[0.,0.,0.]))
-water = structure_type(
-    "water.pdb";
+solute = structure_type("solute.pdb";
+    number = 1,
+    fixed = ([0.0, 0.0, 0.0], [0.0, 0.0, 0.0]),
+)
+water = structure_type("water.pdb";
     number = 1000,
-    constraints = [OutsideSphere([0.,0.,0.],15.), InsideBox([-30.,-30.,-30.],[30.,30.,30.])],
+    constraints = [
+        OutsideSphere([0.0, 0.0, 0.0], 15.0),
+        InsideBox([-30.0, -30.0, -30.0], [30.0, 30.0, 30.0]),
+    ],
 )
 
-sys = PackmolSystem([solute, water]; output = "solvated.pdb", tolerance = 2.0)
+sys = PackmolSystem([solute, water];
+    output = "solvated.pdb",
+    tolerance = 2.0,
+)
 packmol(sys)
 ```
 
@@ -26,9 +34,15 @@ possible. It goes into the system as a single structure type:
 ```julia
 lipids = structure_type(["popc_1.pdb", "popc_2.pdb", "popc_3.pdb"];
     number = 60, # 20 molecules of each conformation
-    atom_constraints = [[1] => AbovePlane([0., 0., 1.], 19.5), [88, 131] => BelowPlane([0., 0., 1.], 6.)],
+    atom_constraints = [
+        [1] => AbovePlane([0.0, 0.0, 1.0], 19.5),
+        [88, 131] => BelowPlane([0.0, 0.0, 1.0], 6.0),
+    ],
 )
-water = structure_type("water.pdb"; number = 1000, constraints = [InsideBox([-30.,-30.,20.], [30.,30.,40.])])
+water = structure_type("water.pdb";
+    number = 1000,
+    constraints = [InsideBox([-30.0, -30.0, 20.0], [30.0, 30.0, 40.0])],
+)
 sys = PackmolSystem([lipids, water]; output = "membrane.pdb")
 ```
 
@@ -47,8 +61,12 @@ of a PDB file, or from the molecules of an equilibrated system (for example, the
 of a membrane):
 
 ```julia
-select_conformations("popc_conformations.pdb", "popc_rod.pdb") # the most rod-like one
-lipids = structure_type("popc_rod.pdb"; number = 60, atom_constraints = [...])
+# the most rod-like conformation
+select_conformations("popc_conformations.pdb", "popc_rod.pdb")
+lipids = structure_type("popc_rod.pdb";
+    number = 60,
+    atom_constraints = [...],
+)
 ```
 
 For example, a bilayer of POPC, constraining only the head and the ends of the chains

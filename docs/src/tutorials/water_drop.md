@@ -46,7 +46,8 @@ function build_graphite(; nx = 40, ny = 23, nlayers = 3, a = 2.46, d = 1.42)
     atoms = Atom{Nothing}[]
     for layer in 0:nlayers-1, i in 0:nx-1, j in 0:ny-1, (x, y) in cell
         shift = isodd(layer) ? d : 0.0
-        push!(atoms, Atom(; name = "C", resname = "GRA", resnum = layer + 1, chain = "A",
+        push!(atoms, Atom(;
+            name = "C", resname = "GRA", resnum = layer + 1, chain = "A",
             x = i * a + x - Lx / 2,
             y = mod(j * 3d + y + shift, Ly) - Ly / 2,
             z = -3.35 * layer,
@@ -166,7 +167,10 @@ graphite = structure_type("graphite.pdb";
 )
 water = structure_type("water.pdb";
     number = 1700,
-    constraints = [InsideSphere([0., 0., 0.], 30.), AbovePlane([0., 0., 1.], 2.)],
+    constraints = [
+        InsideSphere([0., 0., 0.], 30.),
+        AbovePlane([0., 0., 1.], 2.),
+    ],
 )
 system = PackmolSystem([graphite, water];
     output = "drop.pdb",

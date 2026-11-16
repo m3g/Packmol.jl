@@ -140,7 +140,8 @@ co2 = structure_type("co2.pdb"; number = 72, radius = 1.5)
 system = PackmolSystem([cha, methane, co2];
     output = "zeolite.pdb",
     tolerance = 2.0,
-    unitcell = UnitCell(27.350, 27.350, 29.534, 90., 90., 120.), # centered at the origin
+    # centered at the origin
+    unitcell = UnitCell(27.350, 27.350, 29.534, 90., 90., 120.),
     # check_initial_placement = true, # uncomment to only place the molecules
 )
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide

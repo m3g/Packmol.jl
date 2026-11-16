@@ -28,7 +28,11 @@ For such conversion the molar masses and the densities of the pure solute and so
 an error is thrown:
 
 ```julia-repl
-julia> cconvert(40.0, "%v/v" => "x"; M_solute=46.068u"g/mol", M_solvent=18.015u"g/mol", rho_solute=0.789u"g/mL")
+julia> cconvert(40.0, "%v/v" => "x";
+           M_solute = 46.068u"g/mol",
+           M_solvent = 18.015u"g/mol",
+           rho_solute = 0.789u"g/mL",
+       )
 ERROR: UndefKeywordError: keyword argument `rho_solvent` not assigned
 ```
 
@@ -101,7 +105,11 @@ rho_sol_50ww = 0.914u"kg/L" # Approx. density for 50% w/w EtOH
 rho_sol_chi02 = 0.94u"kg/L"  # Approx. density for mole fraction χ_EtOH = 0.2
 
 C_in1 = 10.0u"mol/L"
-m1 = cconvert(C_in1, "mol/L" => "mol/kg"; M_solute=M_EtOH, rho_solution=rho_sol_10M) # Expect ~22.76 mol/kg
+# Expect ~22.76 mol/kg
+m1 = cconvert(C_in1, "mol/L" => "mol/kg";
+    M_solute = M_EtOH,
+    rho_solution = rho_sol_10M,
+)
 println("10.0 mol/L -> $m1")
 ```
 
@@ -109,7 +117,11 @@ println("10.0 mol/L -> $m1")
 
 ```@example cconvert
 mass_perc_in = 50.0
-C1 = cconvert(mass_perc_in, "%m/m" => "Molarity"; M_solute=M_EtOH, rho_solution=rho_sol_50ww) # Expect ~9.92 mol/L
+# Expect ~9.92 mol/L
+C1 = cconvert(mass_perc_in, "%m/m" => "Molarity";
+    M_solute = M_EtOH,
+    rho_solution = rho_sol_50ww,
+)
 println("50.0 %m/m -> $C1")
 ```
 
@@ -117,14 +129,21 @@ println("50.0 %m/m -> $C1")
 
 ```@example cconvert
 chi_in = 0.2
-m2 = cconvert(chi_in, "mole fraction" => "molality"; M_solvent=M_H2O) # Expect ~13.88 mol/kg
+# Expect ~13.88 mol/kg
+m2 = cconvert(chi_in, "mole fraction" => "molality"; M_solvent = M_H2O)
 println("χ=0.2 -> $m2")
 ```
 
 #### Molarity (input Quantity) to Volume Percent (output %)
 ```@example cconvert
 C_in2 = 10.0u"M" # Unitful recognizes M as mol/L
-vp1 = cconvert(C_in2, "M" => "%v/v"; M_solute=M_EtOH, M_solvent=M_H2O, rho_solution=rho_sol_10M, rho_solute=rho_EtOH_pure, rho_solvent=rho_H2O_pure)
+vp1 = cconvert(C_in2, "M" => "%v/v";
+    M_solute = M_EtOH,
+    M_solvent = M_H2O,
+    rho_solution = rho_sol_10M,
+    rho_solute = rho_EtOH_pure,
+    rho_solvent = rho_H2O_pure,
+)
 println("10.0 M -> $vp1 %v/v")
 ```
 
@@ -137,7 +156,8 @@ println("$N_in -> $C2")
 
 #### Example using plain numbers for kwargs (assuming default units)
 ```@example cconvert
-m3 = cconvert(0.2, "mole fraction" => "molality"; M_solvent=18.015) # M_H2O in g/mol
+# M_H2O in g/mol
+m3 = cconvert(0.2, "mole fraction" => "molality"; M_solvent = 18.015)
 println("χ=0.2 (default units) -> $m3")
 ```
 

@@ -131,7 +131,10 @@ radial direction on average, with their ends at 31 to 33 Å from the center.
 ```julia
 using Packmol
 
-gold = structure_type("gold.pdb"; number = 1, fixed = ([0., 0., 0.], [0., 0., 0.]))
+gold = structure_type("gold.pdb";
+    number = 1,
+    fixed = ([0., 0., 0.], [0., 0., 0.]),
+)
 ligands = structure_type("ddt.pdb";
     number = 132,
     constraints = [OutsideSphere([0., 0., 0.], 16.)],

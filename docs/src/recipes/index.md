@@ -75,7 +75,11 @@ edited or run later, with the `packmol` executable or in Julia:
 
 ```julia
 using Packmol
-write_packmol_input(system; margin = 20.0, input = "box.inp", output = "system.pdb")
+write_packmol_input(system;
+    margin = 20.0,
+    input = "box.inp",
+    output = "system.pdb",
+)
 packmol("box.inp")
 ```
 

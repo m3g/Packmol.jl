@@ -10,7 +10,10 @@ shells = [
     (r_in, r_out) -> structure_type(
         "water.pdb";
         number = 500,
-        constraints = [InsideSphere([0.,0.,0.],r_out), OutsideSphere([0.,0.,0.],r_in)],
+        constraints = [
+            InsideSphere([0., 0., 0.], r_out),
+            OutsideSphere([0., 0., 0.], r_in),
+        ],
     )
     for (r_in, r_out) in [(0.,120.), (150.,200.)]
 ]

@@ -132,7 +132,8 @@ cp(joinpath("files", "liquid_crystal", "5cb.pdb"), "5cb.pdb"; force = true)
 ```@example liquid_crystal
 using Packmol, PDBTools
 
-# The vector from atom 1 (end of the chain) to atom 19 (cyano N) within 20° of +z and -z
+# The vector from atom 1 (end of the chain) to atom 19 (cyano N)
+# within 20° of +z and -z
 up = structure_type("5cb.pdb"; number = 154,
     constrain_rotation = Dict(:z => (0.0, 20.0, [1], [19])),
 )
@@ -169,11 +170,14 @@ visualize(get_atoms(nematic),
 The same input, with the structure types of the layers built in a loop:
 
 ```@example liquid_crystal
-# The vector from atom 1 to atom 19 at the angle φ from x, in the xy plane: within 15°
-# of its angles with x and y, and 10° of the plane
+# The vector from atom 1 to atom 19 at the angle φ from x, in the xy
+# plane: within 15° of its angles with x and y, and 10° of the plane
 function layer(z1, z2, φ)
     return structure_type("5cb.pdb"; number = 46,
-        constraints = [AbovePlane([0., 0., 1.], z1), BelowPlane([0., 0., 1.], z2)],
+        constraints = [
+            AbovePlane([0., 0., 1.], z1),
+            BelowPlane([0., 0., 1.], z2),
+        ],
         constrain_rotation = Dict(
             :x => (acosd(cosd(φ)), 15.0, [1], [19]),
             :y => (acosd(sind(φ)), 15.0, [1], [19]),

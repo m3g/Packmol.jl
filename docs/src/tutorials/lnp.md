@@ -208,33 +208,48 @@ using Packmol
 
 origin = [0., 0., 0.]
 
-# The lipids of a monolayer, POPC, POPE and POPS: the head (bead 1) and the end of a
-# chain (bead 16, or 17 in POPS), with their radii scaled by 5 at the start
+# The lipids of a monolayer, POPC, POPE and POPS: the head (bead 1) and
+# the end of a chain (bead 16, or 17 in POPS), with their radii scaled
+# by 5 at the start
 function monolayer(numbers, head_region, tail_region)
+    files = ("popc.pdb", "pope.pdb", "pops.pdb")
+    tails = (16, 16, 17)
     [structure_type(file; number, radscale = 5.0,
         atom_constraints = [[1] => head_region, [tail] => tail_region])
-     for (file, number, tail) in zip(("popc.pdb", "pope.pdb", "pops.pdb"), numbers, (16, 16, 17))]
+     for (file, number, tail) in zip(files, numbers, tails)]
 end
 
 compartments = [
-    (center = [0., 0., 150.], R = 105., lipids = (1187, 594, 198), rna = "rna1.cif", water = 11970),
-    (center = [-130., 0., -75.], R = 95., lipids = (972, 486, 162), rna = "rna2.cif", water = 8884),
-    (center = [130., 0., -75.], R = 85., lipids = (778, 389, 130), rna = "rna3.cif", water = 6299),
+    (center = [0., 0., 150.], R = 105., lipids = (1187, 594, 198),
+     rna = "rna1.cif", water = 11970),
+    (center = [-130., 0., -75.], R = 95., lipids = (972, 486, 162),
+     rna = "rna2.cif", water = 8884),
+    (center = [130., 0., -75.], R = 85., lipids = (778, 389, 130),
+     rna = "rna3.cif", water = 6299),
 ]
 
-outer = monolayer((16216, 8108, 2703), OutsideSphere(origin, 395.), InsideSphere(origin, 388.))
-inner = [monolayer(c.lipids, InsideSphere(c.center, c.R), OutsideSphere(c.center, c.R + 8))
+outer = monolayer((16216, 8108, 2703),
+    OutsideSphere(origin, 395.), InsideSphere(origin, 388.))
+inner = [monolayer(c.lipids,
+            InsideSphere(c.center, c.R), OutsideSphere(c.center, c.R + 8))
          for c in compartments]
 # The RNA, fixed at the center of each compartment, and the water around it
-contents = [[structure_type(c.rna; number = 1, center = :geometric, fixed = (c.center, [0., 0., 0.])),
-             structure_type("wt4.pdb"; number = c.water, constraints = [InsideSphere(c.center, c.R - 3)])]
-            for c in compartments]
+contents = [
+    [structure_type(c.rna; number = 1, center = :geometric,
+         fixed = (c.center, [0., 0., 0.])),
+     structure_type("wt4.pdb"; number = c.water,
+         constraints = [InsideSphere(c.center, c.R - 3)])]
+    for c in compartments]
 # The lipid phase, at its radii from the start
 filling = structure_type("popc.pdb"; number = 138077,
-    constraints = [InsideSphere(origin, 388.); [OutsideSphere(c.center, c.R + 8) for c in compartments]])
-water = structure_type("wt4.pdb"; number = 689515, constraints = [OutsideSphere(origin, 397.)])
+    constraints = [InsideSphere(origin, 388.);
+                   [OutsideSphere(c.center, c.R + 8) for c in compartments]])
+water = structure_type("wt4.pdb"; number = 689515,
+    constraints = [OutsideSphere(origin, 397.)])
 
-system = PackmolSystem([outer; reduce(vcat, inner); reduce(vcat, contents); filling; water];
+molecules = [outer; reduce(vcat, inner); reduce(vcat, contents)
+             filling; water]
+system = PackmolSystem(molecules;
     output = "lnp.cif",
     tolerance = 2.0,
     unitcell = octahedral_unitcell(Float64, 860.0), # centered at the origin

@@ -131,7 +131,9 @@ R = 35.0 # radius of the ring
 r = 14.0 # radius of the tube
 points = NTuple{3,Float64}[]
 normals = NTuple{3,Float64}[]
-for u in range(0, 2π; length = 200)[1:end-1], v in range(0, 2π; length = 70)[1:end-1]
+us = range(0, 2π; length = 200)[1:end-1]
+vs = range(0, 2π; length = 70)[1:end-1]
+for u in us, v in vs
     n = (cos(v) * cos(u), cos(v) * sin(u), sin(v))
     push!(points, (R * cos(u) + r * n[1], R * sin(u) + r * n[2], r * n[3]))
     push!(normals, n)
@@ -156,12 +158,16 @@ water = structure_type("water.pdb";
     number = 6700,
     constraints = [NotWithinSurface(torus, 12.0), pool],
 )
-system = PackmolSystem([outer, inner, water]; tolerance = 2.0, output = "torus.pdb")
+system = PackmolSystem([outer, inner, water];
+    tolerance = 2.0,
+    output = "torus.pdb",
+)
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
 visualize(get_atoms(system),
-    "resname LIP and name C1" => (style = :spheres, color = "orange"), # the heads
+    # the heads
+    "resname LIP and name C1" => (style = :spheres, color = "orange"),
     "resname LIP and not name C1" => (style = :spheres, color = "gray"),
     "water" => (style = :sticks, color = :element, water = true);
     rotate = [(:z, 30), (:x, -70)],
@@ -199,12 +205,16 @@ outside = structure_type("water.pdb";
     number = 11100,
     constraints = [OutsideSurface(torus; offset = 3.0), pool],
 )
-system = PackmolSystem([inside, outside]; tolerance = 2.0, output = "torus_water.pdb")
+system = PackmolSystem([inside, outside];
+    tolerance = 2.0,
+    output = "torus_water.pdb",
+)
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
 visualize(get_atoms(system),
-    "index <= 13500" => (style = :spheres, color = "blue", water = true), # the 4500 inside
+    # the 4500 inside
+    "index <= 13500" => (style = :spheres, color = "blue", water = true),
     "index > 13500" => (style = :sticks, color = :element, water = true);
     rotate = [(:z, 30), (:x, -70)],
 )

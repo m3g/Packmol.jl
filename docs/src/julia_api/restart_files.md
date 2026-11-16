@@ -7,9 +7,13 @@ structure type only), works as in the input file's
 shortcuts the initial placement step:
 
 ```julia
-sys = PackmolSystem(structure_types; output="box.pdb", tolerance=2.0)
+sys = PackmolSystem(structure_types; output = "box.pdb", tolerance = 2.0)
 packmol(sys)  # ... later, resume packing (or extend a run that stopped early):
-sys2 = PackmolSystem(structure_types; output="box2.pdb", tolerance=2.0, restart_from="box.pdb")
+sys2 = PackmolSystem(structure_types;
+    output = "box2.pdb",
+    tolerance = 2.0,
+    restart_from = "box.pdb",
+)
 packmol(sys2)
 ```
 
@@ -20,5 +24,9 @@ instead of a file path, skipping the file entirely:
 ```julia
 using PDBTools: read_pdb
 atoms = read_pdb("some_configuration.pdb")
-sys3 = PackmolSystem(structure_types; output="box3.pdb", tolerance=2.0, restart_from=atoms)
+sys3 = PackmolSystem(structure_types;
+    output = "box3.pdb",
+    tolerance = 2.0,
+    restart_from = atoms,
+)
 ```

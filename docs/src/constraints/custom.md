@@ -81,7 +81,10 @@ using Packmol, PDBTools, ForwardDiff
 torus(x) = hypot(hypot(x[1], x[2]) - 14, x[3]) - 6
 water = structure_type("water.pdb";
     number = 330,
-    constraints = [CustomConstraint(torus; gradient = x -> ForwardDiff.gradient(torus, x))],
+    constraints = [
+        CustomConstraint(torus;
+            gradient = x -> ForwardDiff.gradient(torus, x)),
+    ],
 )
 system = PackmolSystem([water]; tolerance = 2.0, output = "torus.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide

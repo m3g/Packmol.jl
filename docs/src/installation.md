@@ -53,7 +53,8 @@ directory whole: the executable needs the libraries of its `lib` directory. For 
 on Linux:
 
 ```bash
-curl -LO https://github.com/m3g/Packmol.jl/releases/latest/download/packmol-linux-x86_64.tar.gz
+curl -LO https://github.com/m3g/Packmol.jl/releases/latest/download/\
+packmol-linux-x86_64.tar.gz
 tar xzf packmol-linux-x86_64.tar.gz
 ./packmol-*-linux-x86_64/bin/packmol -i input.inp
 ```
