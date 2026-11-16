@@ -57,8 +57,8 @@ dodecahedron with at least 12 Å between the protein and the faces of the cell.
 Use PDBTools.jl to download the structure and to compute what you need. Check
 the initial placement first, then pack, and verify that the water has a
 density close to 1 g/mL. Write the system to lysozyme.pdb, in the shape of the
-dodecahedron. Read the section "For AI agents" of this page before starting:
-<paste here the address of that section>
+dodecahedron. Before starting, read the section "For AI agents" of
+https://m3g.github.io/Packmol.jl/stable/tutorials/ai_agent/#For-AI-agents
 ```
 
 ## For AI agents
