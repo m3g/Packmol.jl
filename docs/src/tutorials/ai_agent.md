@@ -215,7 +215,8 @@ Public functions, not exported (call them with the `Packmol.` prefix):
 
 ### Practical advice
 
-- The tolerance of 2.0 Å is the usual one for all-atom systems.
+- Use a tolerance of 2.0 Å for any system, all-atom or coarse-grained, unless the user
+  asks for another value for a specific reason.
 - `radscale` (in an input file, globally or per structure block; `radscale` keyword of
   `structure_type`) scales the radii of the atoms at the start of the packing, decaying to
   their values in the first loops (`radscale_decay_loops`, 20). The default is 5.0 for free
