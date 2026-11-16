@@ -29,7 +29,7 @@ visualize(get_atoms(packed), # hide
 ) # hide
 ```
 
-*A POPC bilayer in water (a slab of 16 Å of it), the first example below, with the edges of the periodic cell (drag to rotate, scroll to zoom).*
+*A POPC bilayer in water, the first example below (only a 16 Å thick section of the water shown), with the edges of the periodic cell (drag to rotate, scroll to zoom).*
 
 ```@docs
 Membrane
@@ -96,7 +96,7 @@ visualize(get_atoms(packed), # hide
 ) # hide
 ```
 
-*POPC (gray), POPE (blue), POPS (red) and POPG (green), and the water of a slab of 16 Å, with the edges of the periodic cell (drag to rotate, scroll to zoom).*
+*POPC (gray), POPE (blue), POPS (red) and POPG (green), and water (only a 16 Å thick section shown), with the edges of the periodic cell (drag to rotate, scroll to zoom).*
 
 Lipids of different lengths are packed with their heads at their own
 heights, from the same middle of the bilayer. DPPC and DOPC, 1:1:
@@ -124,7 +124,7 @@ visualize(get_atoms(packed), # hide
 ) # hide
 ```
 
-*DPPC (gray) and DOPC (orange), and the water of a slab of 16 Å (drag to rotate, scroll to zoom).*
+*DPPC (gray) and DOPC (orange), and water (only a 16 Å thick section shown) (drag to rotate, scroll to zoom).*
 
 ## A monolayer
 
@@ -153,7 +153,7 @@ visualize(get_atoms(packed), # hide
 ) # hide
 ```
 
-*A DPPC monolayer, with the water of a slab of 16 Å above it (drag to rotate, scroll to zoom).*
+*A DPPC monolayer, with water above it (only a 16 Å thick section shown) (drag to rotate, scroll to zoom).*
 
 ## How the lipids are placed
 
@@ -219,7 +219,7 @@ visualize(get_atoms(packed), # hide
 ) # hide
 ```
 
-*The single-chain lipid (gray), in water (a slab of 16 Å of it) and ethanol (green) (drag to rotate, scroll to zoom).*
+*The single-chain lipid (gray), in water and ethanol (green) (only a 16 Å thick section of the water shown) (drag to rotate, scroll to zoom).*
 
 ## Writing a Packmol input file
 

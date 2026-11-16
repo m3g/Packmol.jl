@@ -21,7 +21,7 @@ visualize(get_atoms(system), # hide
 ) # hide
 ```
 
-*The gold core (yellow), the sulfur atoms of the ligands (orange), their chains (gray), and the toluene of a slab of 16 Å through the center (green) (drag to rotate, scroll to zoom).*
+*The gold core (yellow), the sulfur atoms of the ligands (orange), their chains (gray), and toluene (green; only a 16 Å thick section through the center shown) (drag to rotate, scroll to zoom).*
 
 Files: [`gold.pdb`](files/gold_nanoparticle/gold.pdb),
 [`ddt.pdb`](files/gold_nanoparticle/ddt.pdb),

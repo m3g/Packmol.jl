@@ -35,7 +35,7 @@ visualize(get_atoms(packed), # hide
 ) # hide
 ```
 
-*The example below: the polymer in water, with sodium (orange) and chloride (green) ions, and the water of a slab of 10 Å through the center (drag to rotate, scroll to zoom).*
+*The example below: the polymer in water, with sodium (orange) and chloride (green) ions, and only a 10 Å thick section of the water shown, through the center (drag to rotate, scroll to zoom).*
 
 ```@docs
 SolutionBoxUWI

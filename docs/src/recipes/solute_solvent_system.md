@@ -31,7 +31,7 @@ visualize(get_atoms(packed), # hide
 ) # hide
 ```
 
-*The example below: the polymer in water, in a cubic periodic box, with the water of a slab of 10 Å through the center (drag to rotate, scroll to zoom).*
+*The example below: the polymer in water, in a cubic periodic box, with only a 10 Å thick section of the water shown, through the center (drag to rotate, scroll to zoom).*
 
 ```@docs
 SolutionBoxUS

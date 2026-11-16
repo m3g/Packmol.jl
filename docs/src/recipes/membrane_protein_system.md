@@ -32,7 +32,7 @@ visualize(get_atoms(packed), # hide
 ) # hide
 ```
 
-*The example below: the protein (red), POPC (gray), POPS (green), sodium (orange) and chloride (cyan) ions, and the water of a slab of 16 Å through the protein (drag to rotate, scroll to zoom).*
+*The example below: the protein (red), POPC (gray), POPS (green), sodium (orange) and chloride (cyan) ions, and water (only a 16 Å thick section through the protein shown) (drag to rotate, scroll to zoom).*
 
 ```@docs
 MembraneProtein
