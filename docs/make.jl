@@ -43,9 +43,9 @@ makedocs(
         # The interactive 3D views of the examples are embedded in the pages
         example_size_threshold = nothing,
         size_threshold_ignore = [
-            joinpath(dir, file) for dir in ("constraints", "periodic_boundary_conditions", "tutorials")
+            joinpath(dir, file) for dir in ("constraints", "periodic_boundary_conditions", "tutorials", "recipes")
             for file in readdir(joinpath(@__DIR__, "src", dir)) if endswith(file, ".md")
-        ] ∪ ["recipes/membrane_system.md", "recipes/membrane_protein_system.md"],
+        ],
     ),
     plugins = [CodeBlocks()],
     pages = [
@@ -122,7 +122,6 @@ makedocs(
             "Overview" => "recipes/index.md",
             "Volume guesser" => "recipes/volume_guesser.md",
             "Free volume" => "recipes/free_volume.md",
-            "Running Packmol" => "recipes/running_packmol.md",
             "Solute-Solvent system" => "recipes/solute_solvent_system.md",
             "Solute-Solvent-Cossolvent system" => "recipes/solute_solvent_cossolvent_system.md",
             "Solute-Water-Ions system" => "recipes/solute_water_ions_system.md",

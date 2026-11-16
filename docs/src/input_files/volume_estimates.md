@@ -1,3 +1,6 @@
+```@meta
+CollapsedDocStrings = true
+```
 # Volume estimates
 
 Two estimates help to choose the numbers of molecules, or the size of the box, of an

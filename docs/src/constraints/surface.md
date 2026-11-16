@@ -1,3 +1,6 @@
+```@meta
+CollapsedDocStrings = true
+```
 # Surfaces given by points
 
 ```

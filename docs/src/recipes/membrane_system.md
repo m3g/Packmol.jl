@@ -8,13 +8,33 @@ boundary conditions, with the membrane normal along z. Seven common
 phospholipids are built in, POPC, POPE, POPS, POPG, DPPC, DOPC and DMPC: for
 them, only the composition and the size of the membrane are needed. Unlike the
 solvation recipes, every parameter is given in the `Membrane` constructor:
-`write_packmol_input`/`packmol` take only `input`/`output` (and, for
-`packmol`, any keyword of the packing engine).
+`packmol` takes only `output` and the keywords of the packing engine
+(`write_packmol_input`, `input` and `output`).
+
+```@setup membrane_view
+using Packmol, PDBTools
+system = Membrane(lipids = "POPC", total_lipids = 128)
+packed = redirect_stdio(stdout = devnull, stderr = devnull) do
+    packmol(system; output = joinpath(mktempdir(), "popc.pdb"), seed = 1)
+end
+```
+
+```@example membrane_view
+visualize(get_atoms(packed), # hide
+    "resname POPC" => (style = :sticks, color = "gray"), # hide
+    (at -> iswater(at) && abs(at.y - packed.unitcell_center[2]) < 8) => (style = :lines, color = :element, water = true); # hide
+    unitcell = UnitCell(packed.unitcell), # hide
+    unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -80)], # hide
+) # hide
+```
+
+*A POPC bilayer in water (a slab of 16 Å of it), the first example below, with the edges of the periodic cell (drag to rotate, scroll to zoom).*
 
 ```@docs
 Membrane
-write_packmol_input(::Membrane)
 packmol(::Membrane)
+write_packmol_input(::Membrane)
 ```
 
 ## A bilayer of a single lipid
@@ -30,15 +50,13 @@ The area per lipid is, by default, that of the actual membrane (64 Å² for
 POPC). The size can also be given by the lateral area of the box,
 `total_area` (Å²), instead of the number of lipids.
 
-Generate the input file, or pack the system directly:
-
-```@example membrane
-write_packmol_input(system; input = "popc.inp", output = "popc.pdb")
-```
+Pack it:
 
 ```julia
 packmol(system; output = "popc.pdb")
 ```
+
+The packed system is the one shown at the top of this page.
 
 ## Mixtures
 
@@ -51,7 +69,10 @@ system = Membrane(
     lipid_molar_ratio = [4, 3, 2, 1],
     total_lipids = 200,
 )
-write_packmol_input(system; input = "mixture.inp", output = "mixture.pdb")
+```
+
+```julia
+packmol(system; output = "mixture.pdb")
 ```
 
 Both leaflets have the same composition, and the area per lipid is the molar
@@ -68,21 +89,24 @@ visualize(get_atoms(packed), # hide
     "resname POPE" => (style = :sticks, color = "blue"), # hide
     "resname POPS" => (style = :sticks, color = "red"), # hide
     "resname POPG" => (style = :sticks, color = "green"), # hide
-    "water" => (style = :lines, color = :element, water = true); # hide
+    (at -> iswater(at) && abs(at.y - packed.unitcell_center[2]) < 8) => (style = :lines, color = :element, water = true); # hide
     unitcell = UnitCell(packed.unitcell), # hide
     unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
     rotate = [(:z, 30), (:x, -80)], # hide
 ) # hide
 ```
 
-*POPC (gray), POPE (blue), POPS (red) and POPG (green), and water, with the edges of the periodic cell (drag to rotate, scroll to zoom).*
+*POPC (gray), POPE (blue), POPS (red) and POPG (green), and the water of a slab of 16 Å, with the edges of the periodic cell (drag to rotate, scroll to zoom).*
 
 Lipids of different lengths are packed with their heads at their own
 heights, from the same middle of the bilayer. DPPC and DOPC, 1:1:
 
 ```@example membrane
 system = Membrane(lipids = ["DPPC", "DOPC"], total_lipids = 200)
-write_packmol_input(system; input = "dppc_dopc.inp", output = "dppc_dopc.pdb")
+```
+
+```julia
+packmol(system; output = "dppc_dopc.pdb")
 ```
 
 ```@example membrane
@@ -93,14 +117,14 @@ end # hide
 visualize(get_atoms(packed), # hide
     "resname DPPC" => (style = :sticks, color = "gray"), # hide
     "resname DOPC" => (style = :sticks, color = "orange"), # hide
-    "water" => (style = :lines, color = :element, water = true); # hide
+    (at -> iswater(at) && abs(at.y - packed.unitcell_center[2]) < 8) => (style = :lines, color = :element, water = true); # hide
     unitcell = UnitCell(packed.unitcell), # hide
     unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
     rotate = [(:z, 30), (:x, -80)], # hide
 ) # hide
 ```
 
-*DPPC (gray) and DOPC (orange), and water (drag to rotate, scroll to zoom).*
+*DPPC (gray) and DOPC (orange), and the water of a slab of 16 Å (drag to rotate, scroll to zoom).*
 
 ## A monolayer
 
@@ -109,8 +133,27 @@ solvent above it:
 
 ```@example membrane
 system = Membrane(type = :monolayer, lipids = "DPPC", total_lipids = 64)
-write_packmol_input(system; input = "monolayer.inp", output = "monolayer.pdb")
 ```
+
+```julia
+packmol(system; output = "monolayer.pdb")
+```
+
+```@example membrane
+using PDBTools # hide
+packed = redirect_stdio(stdout = devnull, stderr = devnull) do # hide
+    packmol(system; seed = 1) # hide
+end # hide
+visualize(get_atoms(packed), # hide
+    "resname DPPC" => (style = :sticks, color = "gray"), # hide
+    (at -> iswater(at) && abs(at.y - packed.unitcell_center[2]) < 8) => (style = :lines, color = :element, water = true); # hide
+    unitcell = UnitCell(packed.unitcell), # hide
+    unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -80)], # hide
+) # hide
+```
+
+*A DPPC monolayer, with the water of a slab of 16 Å above it (drag to rotate, scroll to zoom).*
 
 ## How the lipids are placed
 
@@ -155,5 +198,34 @@ system = Membrane(
     solvent_density = 0.98u"g/mL",
     solvent_layer_width = 20.0,
 )
+```
+
+```julia
+packmol(system; output = "membrane.pdb")
+```
+
+```@example membrane
+using PDBTools # hide
+packed = redirect_stdio(stdout = devnull, stderr = devnull) do # hide
+    packmol(system; seed = 1) # hide
+end # hide
+visualize(get_atoms(packed), # hide
+    "not water and not resname ETO" => (style = :sticks, color = "gray"), # hide
+    "resname ETO" => (style = :sticks, color = "green"), # hide
+    (at -> iswater(at) && abs(at.y - packed.unitcell_center[2]) < 8) => (style = :lines, color = :element, water = true); # hide
+    unitcell = UnitCell(packed.unitcell), # hide
+    unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -80)], # hide
+) # hide
+```
+
+*The single-chain lipid (gray), in water (a slab of 16 Å of it) and ethanol (green) (drag to rotate, scroll to zoom).*
+
+## Writing a Packmol input file
+
+Instead of packing the system, `write_packmol_input` writes the input file of Packmol
+for it, to be inspected, edited or run later (see [Writing a Packmol input file](@ref recipes_input)):
+
+```@example membrane
 write_packmol_input(system; input = "membrane.inp", output = "membrane.pdb")
 ```

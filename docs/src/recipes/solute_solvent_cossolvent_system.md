@@ -8,10 +8,53 @@ Here, `SolutionBoxUSC` stands for `Solute (U)`, `Solvent (S)`, and
 fraction (`"x"`), mass fraction (`"w/w"` or `"mm"`), or volume fraction (`"v/v"` or
 `"vv"`); see [Concentration Unit Conversion](@ref) for the full list of unit aliases.
 
+```@setup usc_view
+using Packmol, PDBTools
+test_dir = Packmol.RecipesDirectory * "/test"
+density_table = [
+#   x cossolvent (ethanol)     density (g/mL)
+             0.0000                 0.9981
+             0.0416                 0.9820
+             0.0890                 0.9685
+             0.1434                 0.9537
+             0.2066                 0.9369
+             0.2809                 0.9151
+             0.3695                 0.8923
+             0.4769                 0.8685
+             0.6098                 0.8450
+             0.7786                 0.8195
+             1.0000                 0.7906
+]
+system = SolutionBoxUSC(
+    solute_pdbfile = "$test_dir/data/poly_h.pdb",
+    solvent_pdbfile = "$test_dir/data/water.pdb",
+    cossolvent_pdbfile = "$test_dir/data/ethanol.pdb",
+    density_table = density_table,
+    concentration_units = "x",
+)
+packed = redirect_stdio(stdout = devnull, stderr = devnull) do
+    packmol(system; concentration = 0.5, margin = 20.0, output = joinpath(mktempdir(), "system.pdb"), seed = 1)
+end
+slab(at) = abs(at.y - packed.unitcell_center[2]) < 5 # a slab of 10 Å through the center
+```
+
+```@example usc_view
+visualize(get_atoms(packed), # hide
+    "resname LIG" => (style = :ballandstick,), # hide
+    (at -> resname(at) == "ETO" && slab(at)) => (style = :sticks, color = "green"), # hide
+    (at -> iswater(at) && slab(at)) => (style = :lines, color = :element, water = true); # hide
+    unitcell = UnitCell(packed.unitcell), # hide
+    unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -70)], # hide
+) # hide
+```
+
+*The example below: the polymer in water and ethanol (green), at a molar fraction of ethanol of 0.5, with the solvent of a slab of 10 Å through the center (drag to rotate, scroll to zoom).*
+
 ```@docs
 SolutionBoxUSC
-write_packmol_input(::SolutionBoxUSC)
 packmol(::SolutionBoxUSC)
+write_packmol_input(::SolutionBoxUSC)
 convert_concentration
 convert_density_table!
 get_density_table
@@ -58,19 +101,16 @@ system = SolutionBoxUSC(
 As with `SolutionBoxUS`, molar masses are computed from the PDB files unless
 given explicitly.
 
-Finally, we generate the input file at a target cossolvent concentration:
+## Packing the system
 
-```@example usc
-write_packmol_input(
-    system;
-    concentration = 0.5, # molar fraction of ethanol, by the density_table's default units
-    margin = 20.0,
-    input = "box.inp",
-    output = "system.pdb",
-)
+The system is built and packed directly, at a target cossolvent concentration:
+
+```julia
+packmol(system; concentration = 0.5, margin = 20.0, output = "system.pdb")
 ```
 
-or, equivalently, pack it directly with `packmol(system; concentration=0.5, margin=20.0, output="system.pdb")`.
+with `concentration` the molar fraction of ethanol (the units of the density table).
+This gives the system shown at the top of this page.
 
 `concentration_units` can be passed to interpret `concentration` in units
 other than the density table's own (e.g. request a concentration in
@@ -89,7 +129,7 @@ convert_concentration(system, 0.5, "x" => "mol/L")
 ```
 
 `convert_density_table!` changes the units in which the system takes and shows the
-concentrations: after it, `concentration` in `write_packmol_input` is read in the new
+concentrations: after it, `concentration` in `packmol` (and `write_packmol_input`) is read in the new
 units, and `get_density_table` returns the table in them:
 
 ```@example usc
@@ -102,3 +142,18 @@ get_density_table(system)
     the sum of the volumes of the pure components, before mixing. Computing it requires
     the densities of the pure solvent and cossolvent, so the density table must include
     both (concentrations 0 and 1 in molar fraction).
+
+## Writing a Packmol input file
+
+Instead of packing the system, `write_packmol_input` writes the input file of Packmol
+for it, to be inspected, edited or run later (see [Writing a Packmol input file](@ref recipes_input)):
+
+```@example usc
+write_packmol_input(
+    system;
+    concentration = 0.5, # molar fraction of ethanol
+    margin = 20.0,
+    input = "box.inp",
+    output = "system.pdb",
+)
+```

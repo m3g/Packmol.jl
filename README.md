@@ -9,7 +9,7 @@ Packmol creates initial configurations for molecular dynamics simulations, by pa
 molecules in regions of space defined by geometric constraints, such that the atoms of
 different molecules are kept at a safe distance from each other.
 
-Packmol.jl is the new implementation of [Packmol](http://github.com/m3g/packmol). It reads
+Packmol.jl is the new implementation of [Packmol](https://doi.org/10.1002/jcc.21224). It reads
 the input files of the legacy (Fortran) Packmol and runs them with the same command line,
 and it can also be used from Julia code, where systems are defined without input files and
 can be built from target densities and concentrations (recipes). See the
