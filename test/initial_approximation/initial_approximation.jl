@@ -36,3 +36,33 @@
     @test mean(stat) > 0.826
     rm(rod; force = true)
 end
+
+@testitem "initial approximation: a Gaussian drop inside a cylinder fills the dome" begin
+    # Regression test: the region below a radial Gaussian, above a plane and inside a
+    # cylinder (the water drop tutorial) was not used for the direct sampling of the
+    # initial placement (cylinders were left out), so the molecules started in the large
+    # box and the constraint fit pulled them to the nearest points of the region: a flat
+    # layer on the plane, never higher than 9 Å, under a Gaussian 27 Å high at the axis.
+    using Packmol
+    point = tempname() * ".pdb"
+    open(point, "w") do io
+        println(io, "ATOM      1  O   WAT A   1       0.000   0.000   0.000  1.00  0.00           O")
+        println(io, "END")
+    end
+    st = structure_type(point; number = 1000, constraints = [
+        BelowRadialGaussian([0., 0., 1.], [0., 0., 0.], 2., 25., 15.),
+        AbovePlane([0., 0., 1.], 2.),
+        InsideCylinder([0., 0., 0.], [0., 0., 1.], 35., 40.),
+    ])
+    system = PackmolSystem([st]; output = "", tolerance = 2.0, check_initial_placement = true)
+    redirect_stdout(devnull) do
+        packmol(system)
+    end
+    atoms = Packmol.get_atoms(system)
+    near_axis = [a.z for a in atoms if hypot(a.x, a.y) < 8]
+    @test !isempty(near_axis)
+    @test maximum(near_axis) > 18
+    # and all within the cylinder
+    @test all(hypot(a.x, a.y) < 35.1 for a in atoms)
+    rm(point; force = true)
+end
