@@ -6,10 +6,23 @@ system of the [ComplexMixtures.jl](https://github.com/m3g/ComplexMixtures.jl)
 protein by each component of the mixture is studied. The protein is fixed at the center
 of the box, and the mixture fills the rest of it.
 
-![Protein in glycerol and water](images/protein_glycerol.webp)
+```@setup protein_glycerol_view
+using Packmol, PDBTools
+system = Main.pack_tutorial("protein_glycerol", "protein_glycerol.inp")
+```
 
-*The protein, glycerol (green) and water (red), in the half of the box behind the protein,
-with the edges of the periodic box.*
+```@example protein_glycerol_view
+visualize(get_atoms(system), # hide
+    "protein" => (style = :cartoon,), # hide
+    "resname GLYC and y > 0" => (style = :sticks, color = "green"), # hide
+    "water and y > 0" => (style = :sticks, color = :element, water = true); # hide
+    unitcell = UnitCell(system.unitcell), # hide
+    unitcell_origin = system.unitcell_center - sum(eachcol(system.unitcell)) / 2, # hide
+    rotate = [(:x, -90)], # hide
+) # hide
+```
+
+*The protein, glycerol (green) and water, in the half of the box behind the protein, with the edges of the periodic box (drag to rotate, scroll to zoom).*
 
 Files: [`protein.pdb`](files/protein_glycerol/protein.pdb),
 [`glycerol.pdb`](files/protein_glycerol/glycerol.pdb),

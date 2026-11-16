@@ -5,7 +5,20 @@ cages, connected by windows of eight oxygen atoms (3.8 Å), are those of the zeo
 to separate carbon dioxide from methane. The zeolite is a fixed molecule filling its
 periodic cell, which is triclinic, and the gas molecules are packed in its free space.
 
-An interactive view of the packed system is at the end of the [Julia](#Julia) section.
+```@setup zeolite_view
+using Packmol, PDBTools
+system = Main.pack_tutorial("zeolite", "zeolite.inp")
+```
+
+```@example zeolite_view
+visualize(get_atoms(system), # hide
+    unitcell = UnitCell(system.unitcell), # hide
+    unitcell_origin = system.unitcell_center - sum(eachcol(system.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -70)], # hide
+) # hide
+```
+
+*The framework of the zeolite, methane and carbon dioxide, with the edges of the triclinic cell (drag to rotate, scroll to zoom).*
 
 Files: [`cha.pdb`](files/zeolite/cha.pdb), [`methane.pdb`](files/zeolite/methane.pdb),
 [`co2.pdb`](files/zeolite/co2.pdb), and the input file [`zeolite.inp`](files/zeolite/zeolite.inp).

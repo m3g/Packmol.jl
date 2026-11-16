@@ -3,7 +3,21 @@
 A box of 1000 water molecules and 400 urea molecules: the simplest kind of system, in
 which every molecule is placed in the same region.
 
-![Water and urea](images/mixture.webp)
+```@setup mixture_view
+using Packmol, PDBTools
+system = Main.pack_tutorial("mixture", "mixture.inp")
+```
+
+```@example mixture_view
+visualize(get_atoms(system), # hide
+    "water" => (style = :sticks, color = :element, water = true), # hide
+    "not water" => (style = :ballandstick, color = :element); # hide
+    unitcell = UnitCell([40., 40., 40.]), # hide
+    rotate = [(:z, 30), (:x, -70)], # hide
+) # hide
+```
+
+*Water (sticks) and urea (balls and sticks), in the box of their constraints (drag to rotate, scroll to zoom).*
 
 Files: [`water.pdb`](files/mixture/water.pdb), [`urea.pdb`](files/mixture/urea.pdb) and
 the input file [`mixture.inp`](files/mixture/mixture.inp).

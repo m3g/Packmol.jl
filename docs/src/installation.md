@@ -2,65 +2,15 @@
 
 Packmol can be installed in these ways:
 
-- **[Julia package](@ref julia_package)** (recommended): the `packmol` function, and the
-  whole Julia API, with features that the executable does not have.
-- **[pip or uv](@ref pip)**: the `packmol` command, a standalone executable, with no Julia
-  needed.
-- **[Binaries](@ref binaries)**: the same executable, as an archive for each platform.
+- **[pip or uv](@ref pip)** and **[binaries](@ref binaries)**: the `packmol` command, a
+  standalone executable, with no Julia needed. It runs input files, with every feature
+  of them, and is the simplest to integrate in scripts and workflows.
+- **[Julia package](@ref julia_package)**: recommended for building systems with an AI
+  agent, and to use all the features of Packmol.jl, some of which are only available
+  from Julia code.
 - **[Julia app](@ref julia_app)**: the `packmol` command, installed with Julia.
 
-The executable reads the input files, and has every feature of them. All the options
-run the same packing engine.
-
-## [Julia package (recommended)](@id julia_package)
-
-The Julia package is the recommended installation, also for automating the building of
-systems with an **AI agent**. Besides running input files, it has:
-
-- the definition of systems in Julia code, without input files (see
-  [Defining systems in Julia](julia_api/index.md));
-- the **recipes**: solvated systems and membranes built from target densities and
-  concentrations (see [Recipes](recipes/index.md));
-- user-defined constraints ([`CustomConstraint`](@ref));
-- the packed atoms in memory, for analysis with
-  [PDBTools.jl](https://github.com/m3g/PDBTools.jl) and the other packages of the Julia
-  ecosystem.
-
-An agent that writes a Julia script can, in a single script, obtain and prepare the
-molecules, compute the numbers of molecules and the size of the box, pack the system,
-and check the result; the script is a record of how the system was built. See
-[Using your AI agent](tutorials/ai_agent.md).
-
-Install the latest Julia version in your system, with
-[juliaup](https://github.com/JuliaLang/juliaup#juliaup---julia-version-manager). Then
-install the Packmol package within Julia:
-
-```julia-repl
-julia> import Pkg; Pkg.add("Packmol")
-```
-
-Run packmol in your input file with:
-
-```julia-repl
-julia> using Packmol
-
-julia> packmol()
-```
-
-This will open a file browser, from which you can choose the input file for `packmol`.
-Packmol will run immediately once the file is open.
-
-Alternatively, you can provide the path to the file explicitly, with:
-
-```julia-repl
-julia> packmol(raw"C:\users\my_user\my_files\my_input_file.inp")
-```
-
-To keep Packmol up-to-date, use:
-```julia-repl
-julia> import Pkg; Pkg.update()
-```
-(or type `] up`, at the `julia>` prompt).
+All the options run the same packing engine.
 
 ## [pip or uv](@id pip)
 
@@ -114,6 +64,57 @@ quarantine with `xattr -dr com.apple.quarantine <extracted directory>`. Each rel
 lists the SHA256 sums of its archives in `SHA256SUMS.txt`.
 
 See [Using the command line](@ref) for its options.
+
+## [Julia package](@id julia_package)
+
+The Julia package is the recommended installation for building systems with an **AI
+agent**, and the one that supports all the features of Packmol.jl. Besides running input
+files, it has:
+
+- the definition of systems in Julia code, without input files (see
+  [Defining systems in Julia](julia_api/index.md));
+- the **recipes**: solvated systems and membranes built from target densities and
+  concentrations (see [Recipes](recipes/index.md));
+- user-defined constraints ([`CustomConstraint`](@ref));
+- the packed atoms in memory, for analysis with
+  [PDBTools.jl](https://github.com/m3g/PDBTools.jl) and the other packages of the Julia
+  ecosystem.
+
+An agent that writes a Julia script can, in a single script, obtain and prepare the
+molecules, compute the numbers of molecules and the size of the box, pack the system,
+and check the result; the script is a record of how the system was built. See
+[Using your AI agent](tutorials/ai_agent.md).
+
+Install the latest Julia version in your system, with
+[juliaup](https://github.com/JuliaLang/juliaup#juliaup---julia-version-manager). Then
+install the Packmol package within Julia:
+
+```julia-repl
+julia> import Pkg; Pkg.add("Packmol")
+```
+
+Run packmol in your input file with:
+
+```julia-repl
+julia> using Packmol
+
+julia> packmol()
+```
+
+This will open a file browser, from which you can choose the input file for `packmol`.
+Packmol will run immediately once the file is open.
+
+Alternatively, you can provide the path to the file explicitly, with:
+
+```julia-repl
+julia> packmol(raw"C:\users\my_user\my_files\my_input_file.inp")
+```
+
+To keep Packmol up-to-date, use:
+```julia-repl
+julia> import Pkg; Pkg.update()
+```
+(or type `] up`, at the `julia>` prompt).
 
 ## [Julia app](@id julia_app)
 

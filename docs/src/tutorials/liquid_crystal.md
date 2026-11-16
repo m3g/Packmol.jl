@@ -9,6 +9,42 @@ the next, along a helix. The orientations are
 set by the [rotation constraint](@ref "Rotation constraint"), `constrain_rotation`, which
 keeps the angle between an axis and a vector of the molecule within a range.
 
+```@setup nematic_view
+using Packmol, PDBTools
+system = Main.pack_tutorial("liquid_crystal", "nematic.inp")
+```
+
+```@example nematic_view
+visualize(get_atoms(system), # hide
+    "chain A" => (style = :sticks, color = "red"), # hide
+    "chain B" => (style = :sticks, color = "blue"); # hide
+    unitcell = UnitCell(system.unitcell), # hide
+    unitcell_origin = system.unitcell_center - sum(eachcol(system.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -70)], # hide
+) # hide
+```
+
+*The nematic phase: the molecules pointing up in red, and those pointing down in blue (drag to rotate, scroll to zoom).*
+
+```@setup cholesteric_view
+using Packmol, PDBTools
+system = Main.pack_tutorial("liquid_crystal", "cholesteric.inp")
+```
+
+```@example cholesteric_view
+visualize(get_atoms(system), # hide
+    "chain A or chain B" => (style = :sticks, color = "red"), # hide
+    "chain C or chain D" => (style = :sticks, color = "orange"), # hide
+    "chain E or chain F" => (style = :sticks, color = "green"), # hide
+    "chain G or chain H" => (style = :sticks, color = "blue"); # hide
+    unitcell = UnitCell(system.unitcell), # hide
+    unitcell_origin = system.unitcell_center - sum(eachcol(system.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -70)], # hide
+) # hide
+```
+
+*The cholesteric phase: the layers, from the bottom to the top, in red, orange, green and blue; the director turns by 45° from one layer to the next.*
+
 Files: [`5cb.pdb`](files/liquid_crystal/5cb.pdb), and the input files
 [`nematic.inp`](files/liquid_crystal/nematic.inp) and
 [`cholesteric.inp`](files/liquid_crystal/cholesteric.inp).

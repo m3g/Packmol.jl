@@ -6,10 +6,22 @@ core is a fixed molecule, the ligands are bound to its surface by their sulfur a
 their chains pointing outwards, and the solvent fills the cell around the particle and the
 space between the chains.
 
-![Gold nanoparticle in toluene](images/gold_nanoparticle.webp)
+```@setup gold_view
+using Packmol, PDBTools
+system = Main.pack_tutorial("gold_nanoparticle", "gold_nanoparticle.inp")
+```
 
-*A slab of 16 Å through the center of the system: the gold core (yellow), the sulfur
-atoms of the ligands (orange), their chains (gray), and toluene (green).*
+```@example gold_view
+visualize(get_atoms(system), # hide
+    "resname AU" => (style = :spheres, color = "gold"), # hide
+    "resname DDT and element S" => (style = :spheres, color = "orange"), # hide
+    "resname DDT and not element S" => (style = :sticks, color = "gray"), # hide
+    "resname TOL and y > -8 and y < 8" => (style = :lines, color = "green"); # hide
+    rotate = [(:x, -90)], # hide
+) # hide
+```
+
+*The gold core (yellow), the sulfur atoms of the ligands (orange), their chains (gray), and the toluene of a slab of 16 Å through the center (green) (drag to rotate, scroll to zoom).*
 
 Files: [`gold.pdb`](files/gold_nanoparticle/gold.pdb),
 [`ddt.pdb`](files/gold_nanoparticle/ddt.pdb),
@@ -85,7 +97,22 @@ placement, written to the output file in a fraction of a second, has the sulfur 
 the surface and the chains around the core, but the chains are still tilted and
 crowded:
 
-![The initial placement](images/gold_nanoparticle_check.webp)
+```@setup gold_check
+using Packmol, PDBTools
+system = Main.pack_tutorial("gold_nanoparticle", "gold_nanoparticle.inp"; check = true)
+```
+
+```@example gold_check
+visualize(get_atoms(system), # hide
+    "resname AU" => (style = :spheres, color = "gold"), # hide
+    "resname DDT and element S" => (style = :spheres, color = "orange"), # hide
+    "resname DDT and not element S" => (style = :sticks, color = "gray"), # hide
+    "resname TOL and y > -8 and y < 8" => (style = :lines, color = "green"); # hide
+    rotate = [(:x, -90)], # hide
+) # hide
+```
+
+*The initial placement.*
 
 When it looks like this, comment the line again, and run the packing.
 

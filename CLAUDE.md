@@ -106,7 +106,7 @@ kept out by a constraint, the numbers from `free_volume`); an ionic liquid
 ([BMIM][PF6]) in a supercapacitor (graphite electrodes by `files/supercapacitor/electrodes.jl`, the double layers
 as regions with set numbers of ions); a gold nanoparticle with
 dodecanethiolates in toluene (core by `files/gold_nanoparticle/gold.jl`, ligands bound and oriented by constraints
-on two atoms; images by `dev/tutorials/gold_nanoparticle.jl`); the Zika virion; the lipid nanoparticle,
+on two atoms); the Zika virion; the lipid nanoparticle,
 designed with an AI agent from an illustration (SIRAH, set `packmol_lnp`, files and images by `dev/tutorials/lnp.jl`
 and `lnp_images.jl`); the all-atom exosome,
 13.6 million atoms, whose files are the `packmol_zika` and `packmol_exosome` sets of MolSimTestFiles, the
@@ -114,11 +114,15 @@ exosome's built by `dev/tutorials/exosome.jl` and its images by `dev/tutorials/e
 cell of Bentopy, built with `voxel_place` from the paper's Zenodo data, not distributed; its images by
 `dev/tutorials/cell_images.jl`, which streams the outputs and keeps only the visible beads for VMD), each with a command-line and a Julia section; keep
 both paths equivalent when changing the input syntax or the Julia API.
-Tutorial images (`docs/src/tutorials/images/*.webp`) are rendered with VMD by the scripts of
-`dev/tutorials/` (`render.jl`; `classic.jl` for the classic examples, `lipids.jl` for the
-nanoliposomes; `cake.jl`, the quarter cut of the LNP, Zika and exosome images, the solvent
-outside kept behind the particle; the bilayer, zeolite, ZIF-8, supercapacitor, polymer, nanotube and liquid crystal pages have live
-`visualize` views instead). Tutorials of non-trivial
+Every tutorial page shows the packed system right after its opening description. The views
+are live (`PDBTools.visualize`, with `rotate = [(:z, 30), (:x, -70)]` or a side view), made by
+hidden blocks that pack the input file with `Main.pack_tutorial(dir, input; check)`
+(`docs/make.jl`; the docs are built with `--threads=auto`); large systems show a subset
+(e.g. one water in ten, or a slab). Static images (`docs/src/tutorials/images/*.webp`,
+rendered with VMD by the scripts of `dev/tutorials/`: `render.jl`, `lipids.jl` for the
+nanoliposomes, `cake.jl` for the quarter cut of the LNP, Zika and exosome images) only
+for the systems too large for a live view: the nanoliposomes, Zika, the LNP, the exosome
+and the minimal cell. Tutorials of non-trivial
 systems first show the initial placement (`check_initial_placement`), then the packing.
 The input files of the tutorials are files of `docs/src/tutorials/files/<tutorial>/`, shown in
 the pages with `@eval Main.input_file(path)` (`docs/make.jl`; in a `<details>` drop-down box
@@ -437,7 +441,7 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       6 Å of the middle of the bilayer, the head of each lipid beyond 6 Å + (1 - `flexibility`) L
       (L: head to midpoint of the chain ends; `flexibility` 0.15), no constraint on the whole molecule
       (it made every lipid tilt), the solvent from 2 Å beyond the heads. Size: `total_lipids` xor
-      `total_area`. Examples (images by `dev/recipes/membrane.jl`) in `docs/src/recipes/membrane_system.md`.
+      `total_area`. Examples (live views) in `docs/src/recipes/membrane_system.md`.
 - [x] `MembraneProtein` - a membrane protein (pre-oriented as in OPM: normal along z, bilayer middle at
       z = 0; kept fixed) in a bilayer of the lipids of `Membrane` (same placement rule; lipids per
       leaflet from the cell area minus the protein cross-section), solvated by water and ions (free

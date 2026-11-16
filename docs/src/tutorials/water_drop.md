@@ -5,7 +5,20 @@ molecule, and the water is packed in the shape of the drop: the cap of a sphere,
 Gaussian. The drops are drawn with constraints only, so their shape is chosen freely: it
 can be adjusted to a contact angle, for instance.
 
-![Water drop on graphite](images/drop.webp)
+```@setup drop_view
+using Packmol, PDBTools
+system = Main.pack_tutorial("water_drop", "drop.inp")
+```
+
+```@example drop_view
+visualize(get_atoms(system), # hide
+    "resname GRA" => (style = :spheres, color = "gray"), # hide
+    "water" => (style = :sticks, color = :element, water = true); # hide
+    rotate = [(:z, 30), (:x, -75)], # hide
+) # hide
+```
+
+*The drop on the graphite (drag to rotate, scroll to zoom).*
 
 Files: [`graphite.pdb`](files/water_drop/graphite.pdb),
 [`water.pdb`](files/water_drop/water.pdb), and the input files
@@ -35,7 +48,20 @@ Uncomment the `check_initial_placement` line of the input file, and run it as be
 written to the output file (`drop.pdb`) in a fraction of a second, has the molecules in
 the drop, but they may still overlap:
 
-![Initial approximation](images/drop_check.webp)
+```@setup drop_check
+using Packmol, PDBTools
+system = Main.pack_tutorial("water_drop", "drop.inp"; check = true)
+```
+
+```@example drop_check
+visualize(get_atoms(system), # hide
+    "resname GRA" => (style = :spheres, color = "gray"), # hide
+    "water" => (style = :sticks, color = :element, water = true); # hide
+    rotate = [(:z, 30), (:x, -75)], # hide
+) # hide
+```
+
+*The initial placement.*
 
 When the drop has the intended shape, comment the line again, and run the packing.
 
@@ -70,7 +96,20 @@ approximation with an error: an example of how badly designed constraints are de
 early. Within the cylinder, the drop has a volume of about 33000 Å³ (1050 water
 molecules). The complete input file is [`gaussian_drop.inp`](files/water_drop/gaussian_drop.inp).
 
-![Gaussian drop](images/gaussian_drop.webp)
+```@setup gaussian_view
+using Packmol, PDBTools
+system = Main.pack_tutorial("water_drop", "gaussian_drop.inp")
+```
+
+```@example gaussian_view
+visualize(get_atoms(system), # hide
+    "resname GRA" => (style = :spheres, color = "gray"), # hide
+    "water" => (style = :sticks, color = :element, water = true); # hide
+    rotate = [(:z, 30), (:x, -75)], # hide
+) # hide
+```
+
+*The Gaussian drop (drag to rotate, scroll to zoom).*
 
 ## Julia
 

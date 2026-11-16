@@ -44,10 +44,27 @@ write_packmol_input(system; input = "membrane_protein.inp", output = "membrane_p
 packmol(system; output = "membrane_protein.pdb")
 ```
 
-It packs in about 10 seconds with 14 threads. A slab through the protein (the protein in
-red):
+It packs in about 10 seconds with 14 threads:
 
-![The integrin in a POPC/POPS bilayer](images/membrane_protein.webp)
+```@example membrane_protein
+using PDBTools # hide
+packed = redirect_stdio(stdout = devnull, stderr = devnull) do # hide
+    packmol(system; seed = 1) # hide
+end # hide
+visualize(get_atoms(packed), # hide
+    "protein" => (style = :cartoon, color = "red"), # hide
+    "resname POPC" => (style = :sticks, color = "gray"), # hide
+    "resname POPS" => (style = :sticks, color = "green"), # hide
+    "resname SOD" => (style = :spheres, color = "orange"), # hide
+    "resname CLA" => (style = :spheres, color = "cyan"), # hide
+    "water and y > -8 and y < 8" => (style = :lines, color = :element, water = true); # hide
+    unitcell = UnitCell(packed.unitcell), # hide
+    unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -80)], # hide
+) # hide
+```
+
+*The protein (red), POPC (gray), POPS (green), sodium (orange) and chloride (cyan) ions, and the water of a slab of 16 Å through the protein (drag to rotate, scroll to zoom).*
 
 ## How the system is built
 

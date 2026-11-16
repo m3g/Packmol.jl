@@ -56,9 +56,26 @@ write_packmol_input(system; input = "mixture.inp", output = "mixture.pdb")
 
 Both leaflets have the same composition, and the area per lipid is the molar
 average of those of the lipids. The system packs in about 20
-seconds with 14 threads, and looks like this (the lipids colored by type):
+seconds with 14 threads, and looks like this:
 
-![POPC/POPE/POPS/POPG bilayer](images/membrane_mixture.webp)
+```@example membrane
+using PDBTools # hide
+packed = redirect_stdio(stdout = devnull, stderr = devnull) do # hide
+    packmol(system; seed = 1) # hide
+end # hide
+visualize(get_atoms(packed), # hide
+    "resname POPC" => (style = :sticks, color = "gray"), # hide
+    "resname POPE" => (style = :sticks, color = "blue"), # hide
+    "resname POPS" => (style = :sticks, color = "red"), # hide
+    "resname POPG" => (style = :sticks, color = "green"), # hide
+    "water" => (style = :lines, color = :element, water = true); # hide
+    unitcell = UnitCell(packed.unitcell), # hide
+    unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -80)], # hide
+) # hide
+```
+
+*POPC (gray), POPE (blue), POPS (red) and POPG (green), and water, with the edges of the periodic cell (drag to rotate, scroll to zoom).*
 
 Lipids of different lengths are packed with their heads at their own
 heights, from the same middle of the bilayer. DPPC and DOPC, 1:1:
@@ -68,7 +85,22 @@ system = Membrane(lipids = ["DPPC", "DOPC"], total_lipids = 200)
 write_packmol_input(system; input = "dppc_dopc.inp", output = "dppc_dopc.pdb")
 ```
 
-![DPPC/DOPC bilayer](images/membrane_dppc_dopc.webp)
+```@example membrane
+using PDBTools # hide
+packed = redirect_stdio(stdout = devnull, stderr = devnull) do # hide
+    packmol(system; seed = 1) # hide
+end # hide
+visualize(get_atoms(packed), # hide
+    "resname DPPC" => (style = :sticks, color = "gray"), # hide
+    "resname DOPC" => (style = :sticks, color = "orange"), # hide
+    "water" => (style = :lines, color = :element, water = true); # hide
+    unitcell = UnitCell(packed.unitcell), # hide
+    unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -80)], # hide
+) # hide
+```
+
+*DPPC (gray) and DOPC (orange), and water (drag to rotate, scroll to zoom).*
 
 ## A monolayer
 

@@ -4,7 +4,21 @@ A thyroid hormone at the interface between water and chloroform. The two solvent
 adjacent boxes, which share the plane `x = 0`, and the hormone is fixed at a given
 position and orientation on that plane. The files are in the XYZ format.
 
-![Water–chloroform interface](images/interface.webp)
+```@setup interface_view
+using Packmol, PDBTools
+system = Main.pack_tutorial("interface", "interface.inp")
+```
+
+```@example interface_view
+visualize(get_atoms(system), # hide
+    "index <= 3057 and z < 20" => (style = :sticks, color = :element), # hide
+    "index > 3057 and index <= 4052 and z < 20" => (style = :spheres, color = "lightgreen"), # hide
+    "index > 4052" => (style = :spheres, color = :element); # hide
+    rotate = [(:x, -50)], # hide
+) # hide
+```
+
+*Water (left), chloroform (right, green) and the hormone at the interface, with the solvents below the plane of the hormone (drag to rotate, scroll to zoom).*
 
 Files: [`water.xyz`](files/interface/water.xyz), [`chlor.xyz`](files/interface/chlor.xyz),
 [`t3.xyz`](files/interface/t3.xyz) and the input file
@@ -28,7 +42,19 @@ Uncomment the `check_initial_placement` line of the input file, and run it as be
 (see [Checking the initial placement](@ref check_initial_placement)): the initial
 placement of the molecules is written to the output file (`interface.xyz`):
 
-![Initial approximation](images/interface_check.webp)
+```@setup interface_check
+using Packmol, PDBTools
+system = Main.pack_tutorial("interface", "interface.inp"; check = true)
+```
+
+```@example interface_check
+visualize(get_atoms(system), # hide
+    "index <= 3057 and z < 20" => (style = :sticks, color = :element), # hide
+    "index > 3057 and index <= 4052 and z < 20" => (style = :spheres, color = "lightgreen"), # hide
+    "index > 4052" => (style = :spheres, color = :element); # hide
+    rotate = [(:x, -50)], # hide
+) # hide
+```
 
 *Water (left) and chloroform (right) in the initial approximation: the molecules are in their boxes, but may overlap. The hormone is fixed at the interface.*
 
