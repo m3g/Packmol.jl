@@ -18,20 +18,19 @@ system = SolutionBoxUS(
 packed = redirect_stdio(stdout = devnull, stderr = devnull) do
     packmol(system; margin = 20.0, output = joinpath(mktempdir(), "system.pdb"), seed = 1)
 end
-slab(at) = abs(at.y - packed.unitcell_center[2]) < 5 # a slab of 10 Å through the center
 ```
 
 ```@example us_view
 visualize(get_atoms(packed), # hide
     "resname LIG" => (style = :ballandstick,), # hide
-    (at -> iswater(at) && slab(at)) => (style = :lines, color = :element, water = true); # hide
+    (at -> iswater(at) && element(at) == "O" && resnum(at) % 10 == 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
     unitcell = UnitCell(packed.unitcell), # hide
     unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
     rotate = [(:z, 30), (:x, -70)], # hide
 ) # hide
 ```
 
-*The example below: the polymer in water, in a cubic periodic box, with only a 10 Å thick section of the water shown, through the center (drag to rotate, scroll to zoom).*
+*The example below: the polymer in water, in a cubic periodic box, with the oxygen atoms of one in ten water molecules (light blue) (drag to rotate, scroll to zoom).*
 
 ```@docs
 SolutionBoxUS

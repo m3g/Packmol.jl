@@ -9,7 +9,7 @@ the main subject of this tutorial.
 
 ![Larger nanoliposome](images/nanoliposome_large.webp)
 
-*A slab through the center of the larger nanoliposome: the water inside, the two
+*The larger nanoliposome, cut through its center: the water inside, the two
 leaflets, and the water outside, which fills the truncated octahedron.*
 
 Files: [`popc.pdb`](files/nanoliposome/popc.pdb),
@@ -137,7 +137,7 @@ placement of the molecules is written to the output file (`small.pdb`):
 
 ![Initial approximation](images/nanoliposome_small_check.webp)
 
-*A slab through the center of the initial approximation of the small nanoliposome: the
+*The initial approximation of the small nanoliposome, cut through its center: the
 two leaflets and the water are already in their shells, but molecules may overlap.*
 
 Then comment the line again, and run the packing.

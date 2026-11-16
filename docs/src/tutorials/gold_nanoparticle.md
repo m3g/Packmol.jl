@@ -16,12 +16,12 @@ visualize(get_atoms(system), # hide
     "resname AU" => (style = :spheres, color = "gold"), # hide
     "resname DDT and element S" => (style = :spheres, color = "orange"), # hide
     "resname DDT and not element S" => (style = :sticks, color = "gray"), # hide
-    "resname TOL and y > -8 and y < 8" => (style = :lines, color = "green"); # hide
+    (at -> resname(at) == "TOL" && resnum(at) % 5 == 0 && at.y > 0) => (style = :sticks, color = "green"); # hide
     rotate = [(:x, -90)], # hide
 ) # hide
 ```
 
-*The gold core (yellow), the sulfur atoms of the ligands (orange), their chains (gray), and toluene (green; only a 16 Å thick section through the center shown) (drag to rotate, scroll to zoom).*
+*The gold core (yellow), the sulfur atoms of the ligands (orange), their chains (gray), and, to show the solvent without hiding the nanoparticle, one in five toluene molecules (green) of the half of the cell behind it (drag to rotate, scroll to zoom).*
 
 Files: [`gold.pdb`](files/gold_nanoparticle/gold.pdb),
 [`ddt.pdb`](files/gold_nanoparticle/ddt.pdb),
@@ -107,7 +107,7 @@ visualize(get_atoms(system), # hide
     "resname AU" => (style = :spheres, color = "gold"), # hide
     "resname DDT and element S" => (style = :spheres, color = "orange"), # hide
     "resname DDT and not element S" => (style = :sticks, color = "gray"), # hide
-    "resname TOL and y > -8 and y < 8" => (style = :lines, color = "green"); # hide
+    (at -> resname(at) == "TOL" && resnum(at) % 5 == 0 && at.y > 0) => (style = :sticks, color = "green"); # hide
     rotate = [(:x, -90)], # hide
 ) # hide
 ```

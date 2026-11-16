@@ -35,21 +35,20 @@ system = SolutionBoxUSC(
 packed = redirect_stdio(stdout = devnull, stderr = devnull) do
     packmol(system; concentration = 0.5, margin = 20.0, output = joinpath(mktempdir(), "system.pdb"), seed = 1)
 end
-slab(at) = abs(at.y - packed.unitcell_center[2]) < 5 # a slab of 10 Å through the center
 ```
 
 ```@example usc_view
 visualize(get_atoms(packed), # hide
     "resname LIG" => (style = :ballandstick,), # hide
-    (at -> resname(at) == "ETO" && slab(at)) => (style = :sticks, color = "green"), # hide
-    (at -> iswater(at) && slab(at)) => (style = :lines, color = :element, water = true); # hide
+    (at -> resname(at) == "ETO" && resnum(at) % 10 == 0) => (style = :sticks, color = "green"), # hide
+    (at -> iswater(at) && element(at) == "O" && resnum(at) % 10 == 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
     unitcell = UnitCell(packed.unitcell), # hide
     unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
     rotate = [(:z, 30), (:x, -70)], # hide
 ) # hide
 ```
 
-*The example below: the polymer in water and ethanol (green), at a molar fraction of ethanol of 0.5, with only a 10 Å thick section of the solvent shown, through the center (drag to rotate, scroll to zoom).*
+*The example below: the polymer in water and ethanol, at a molar fraction of ethanol of 0.5: one in ten ethanol molecules (green) and the oxygen atoms of one in ten water molecules (light blue) (drag to rotate, scroll to zoom).*
 
 ```@docs
 SolutionBoxUSC
