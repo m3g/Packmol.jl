@@ -21,15 +21,15 @@ end
 
 ```@example membrane_view
 visualize(get_atoms(packed), # hide
-    "resname POPC" => (style = :sticks, color = "gray"), # hide
-    (at -> iswater(at) && abs(at.y - packed.unitcell_center[2]) < 8) => (style = :lines, color = :element, water = true); # hide
+    "not water" => (style = :sticks, color = :element), # hide
+    (at -> iswater(at) && element(at) == "O" && resnum(at) % 10 == 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
     unitcell = UnitCell(packed.unitcell), # hide
     unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
     rotate = [(:z, 30), (:x, -80)], # hide
 ) # hide
 ```
 
-*A POPC bilayer in water, the first example below (only a 16 Å thick section of the water shown), with the edges of the periodic cell (drag to rotate, scroll to zoom).*
+*A POPC bilayer in water, the first example below: the lipids in the standard colors of the elements (carbon gray, the heads with their nitrogen, phosphorus and oxygen atoms), and the oxygen atoms of one in ten water molecules (light blue), with the edges of the periodic cell (drag to rotate, scroll to zoom).*
 
 ```@docs
 Membrane
@@ -85,18 +85,15 @@ packed = redirect_stdio(stdout = devnull, stderr = devnull) do # hide
     packmol(system; seed = 1) # hide
 end # hide
 visualize(get_atoms(packed), # hide
-    "resname POPC" => (style = :sticks, color = "gray"), # hide
-    "resname POPE" => (style = :sticks, color = "blue"), # hide
-    "resname POPS" => (style = :sticks, color = "red"), # hide
-    "resname POPG" => (style = :sticks, color = "green"), # hide
-    (at -> iswater(at) && abs(at.y - packed.unitcell_center[2]) < 8) => (style = :lines, color = :element, water = true); # hide
+    "not water" => (style = :sticks, color = :element), # hide
+    (at -> iswater(at) && element(at) == "O" && resnum(at) % 10 == 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
     unitcell = UnitCell(packed.unitcell), # hide
     unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
     rotate = [(:z, 30), (:x, -80)], # hide
 ) # hide
 ```
 
-*POPC (gray), POPE (blue), POPS (red) and POPG (green), and water (only a 16 Å thick section shown), with the edges of the periodic cell (drag to rotate, scroll to zoom).*
+*The bilayer of POPC, POPE, POPS and POPG, and the oxygen atoms of one in ten water molecules (light blue), with the edges of the periodic cell (drag to rotate, scroll to zoom).*
 
 Lipids of different lengths are packed with their heads at their own
 heights, from the same middle of the bilayer. DPPC and DOPC, 1:1:
@@ -115,16 +112,15 @@ packed = redirect_stdio(stdout = devnull, stderr = devnull) do # hide
     packmol(system; seed = 1) # hide
 end # hide
 visualize(get_atoms(packed), # hide
-    "resname DPPC" => (style = :sticks, color = "gray"), # hide
-    "resname DOPC" => (style = :sticks, color = "orange"), # hide
-    (at -> iswater(at) && abs(at.y - packed.unitcell_center[2]) < 8) => (style = :lines, color = :element, water = true); # hide
+    "not water" => (style = :sticks, color = :element), # hide
+    (at -> iswater(at) && element(at) == "O" && resnum(at) % 10 == 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
     unitcell = UnitCell(packed.unitcell), # hide
     unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
     rotate = [(:z, 30), (:x, -80)], # hide
 ) # hide
 ```
 
-*DPPC (gray) and DOPC (orange), and water (only a 16 Å thick section shown) (drag to rotate, scroll to zoom).*
+*The bilayer of DPPC and DOPC, and the oxygen atoms of one in ten water molecules (light blue) (drag to rotate, scroll to zoom).*
 
 ## A monolayer
 
@@ -145,15 +141,15 @@ packed = redirect_stdio(stdout = devnull, stderr = devnull) do # hide
     packmol(system; seed = 1) # hide
 end # hide
 visualize(get_atoms(packed), # hide
-    "resname DPPC" => (style = :sticks, color = "gray"), # hide
-    (at -> iswater(at) && abs(at.y - packed.unitcell_center[2]) < 8) => (style = :lines, color = :element, water = true); # hide
+    "not water" => (style = :sticks, color = :element), # hide
+    (at -> iswater(at) && element(at) == "O" && resnum(at) % 10 == 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
     unitcell = UnitCell(packed.unitcell), # hide
     unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
     rotate = [(:z, 30), (:x, -80)], # hide
 ) # hide
 ```
 
-*A DPPC monolayer, with water above it (only a 16 Å thick section shown) (drag to rotate, scroll to zoom).*
+*A DPPC monolayer, and the oxygen atoms of one in ten water molecules (light blue) above it (drag to rotate, scroll to zoom).*
 
 ## How the lipids are placed
 
@@ -210,16 +206,16 @@ packed = redirect_stdio(stdout = devnull, stderr = devnull) do # hide
     packmol(system; seed = 1) # hide
 end # hide
 visualize(get_atoms(packed), # hide
-    "not water and not resname ETO" => (style = :sticks, color = "gray"), # hide
+    "not water and not resname ETO" => (style = :sticks, color = :element), # hide
     "resname ETO" => (style = :sticks, color = "green"), # hide
-    (at -> iswater(at) && abs(at.y - packed.unitcell_center[2]) < 8) => (style = :lines, color = :element, water = true); # hide
+    (at -> iswater(at) && element(at) == "O" && resnum(at) % 10 == 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
     unitcell = UnitCell(packed.unitcell), # hide
     unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
     rotate = [(:z, 30), (:x, -80)], # hide
 ) # hide
 ```
 
-*The single-chain lipid (gray), in water and ethanol (green) (only a 16 Å thick section of the water shown) (drag to rotate, scroll to zoom).*
+*The single-chain lipid, in water and ethanol (green), with the oxygen atoms of one in ten water molecules (light blue) shown (drag to rotate, scroll to zoom).*
 
 ## Writing a Packmol input file
 

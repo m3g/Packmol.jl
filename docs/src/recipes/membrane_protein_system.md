@@ -21,18 +21,17 @@ end
 ```@example membrane_protein_view
 visualize(get_atoms(packed), # hide
     "protein" => (style = :cartoon, color = "red"), # hide
-    "resname POPC" => (style = :sticks, color = "gray"), # hide
-    "resname POPS" => (style = :sticks, color = "green"), # hide
+    "resname POPC POPS" => (style = :sticks, color = :element), # hide
     "resname SOD" => (style = :spheres, color = "orange"), # hide
     "resname CLA" => (style = :spheres, color = "cyan"), # hide
-    "water and y > -8 and y < 8" => (style = :lines, color = :element, water = true); # hide
+    (at -> iswater(at) && element(at) == "O" && resnum(at) % 10 == 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
     unitcell = UnitCell(packed.unitcell), # hide
     unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
     rotate = [(:z, 30), (:x, -80)], # hide
 ) # hide
 ```
 
-*The example below: the protein (red), POPC (gray), POPS (green), sodium (orange) and chloride (cyan) ions, and water (only a 16 Å thick section through the protein shown) (drag to rotate, scroll to zoom).*
+*The example below: the protein (red), the lipids (POPC and POPS) in the standard colors of the elements, sodium (orange) and chloride (cyan) ions, and the oxygen atoms of one in ten water molecules (light blue) (drag to rotate, scroll to zoom).*
 
 ```@docs
 MembraneProtein
