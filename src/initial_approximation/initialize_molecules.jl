@@ -33,14 +33,18 @@ const DEFAULT_SIDEMAX = 1000.0
 # for a spherical shell, everything collapses onto the outer sphere.
 #
 # Returns `nothing` if no direct region can be derived (per-atom sub-constraints,
-# no inside box, cube, sphere or closed surface to bound the region, or a shrink margin
+# no inside box, cube, sphere, cylinder, ellipsoid or closed surface to bound the region, or a shrink margin
 # too large relative to the region), in which case the caller falls back to the
 # sidemax bootstrap.
 #
-# (The bounding box of the region of the constraint, `_inside_box`, shrunk by the margin.
-# Not for cylinders and ellipsoids, whose boxes can be much larger than their regions.
-# The inside of a closed surface: the bounding box of its points.)
-function _inside_bound(c::Union{Box{Inside},Cube{Inside},Sphere{Inside},SurfaceSide{Inside}}, margin::T) where {T}
+# (The bounding box of the region of the constraint, `_inside_box`, shrunk by the margin:
+# exact for boxes, cubes, spheres and ellipsoids, a box containing the region for
+# cylinders (from their end points ± the radius), the bounding box of the points for the
+# inside of a closed surface. The samples are tested against the constraints, so a box
+# larger than the region only costs tries. Without the cylinders, the water drop on a
+# Gaussian, inside a cylinder and above a plane, was placed in the large box and pulled
+# to the nearest points of its region: all of it in a flat layer on the plane.)
+function _inside_bound(c::Union{Box{Inside},Cube{Inside},Sphere{Inside},Cylinder{Inside},Ellipsoid{Inside},SurfaceSide{Inside}}, margin::T) where {T}
     lo, hi = _inside_box(c)
     m = SVector{3,T}(margin, margin, margin)
     lo_shrunk, hi_shrunk = lo .+ m, hi .- m
