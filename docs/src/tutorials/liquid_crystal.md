@@ -9,6 +9,42 @@ the next, along a helix. The orientations are
 set by the [rotation constraint](@ref "Rotation constraint"), `constrain_rotation`, which
 keeps the angle between an axis and a vector of the molecule within a range.
 
+```@setup nematic_view
+using Packmol, PDBTools
+system = Main.pack_tutorial("liquid_crystal", "nematic.inp")
+```
+
+```@example nematic_view
+visualize(get_atoms(system), # hide
+    "chain A" => (style = :sticks, color = "red"), # hide
+    "chain B" => (style = :sticks, color = "blue"); # hide
+    unitcell = UnitCell(system.unitcell), # hide
+    unitcell_origin = system.unitcell_center - sum(eachcol(system.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -70)], # hide
+) # hide
+```
+
+*The nematic phase: the molecules pointing up in red, and those pointing down in blue (drag to rotate, scroll to zoom).*
+
+```@setup cholesteric_view
+using Packmol, PDBTools
+system = Main.pack_tutorial("liquid_crystal", "cholesteric.inp")
+```
+
+```@example cholesteric_view
+visualize(get_atoms(system), # hide
+    "chain A or chain B" => (style = :sticks, color = "red"), # hide
+    "chain C or chain D" => (style = :sticks, color = "orange"), # hide
+    "chain E or chain F" => (style = :sticks, color = "green"), # hide
+    "chain G or chain H" => (style = :sticks, color = "blue"); # hide
+    unitcell = UnitCell(system.unitcell), # hide
+    unitcell_origin = system.unitcell_center - sum(eachcol(system.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -70)], # hide
+) # hide
+```
+
+*The cholesteric phase: the layers, from the bottom to the top, in red, orange, green and blue; the director turns by 45° from one layer to the next.*
+
 Files: [`5cb.pdb`](files/liquid_crystal/5cb.pdb), and the input files
 [`nematic.inp`](files/liquid_crystal/nematic.inp) and
 [`cholesteric.inp`](files/liquid_crystal/cholesteric.inp).
@@ -35,8 +71,6 @@ phase is 50 × 50 × 15 Å (37500 Å³), with 92 molecules, 46 in each direction
 
 ## Nematic phase
 
-### Command line
-
 ```@eval
 Main.input_file("files/liquid_crystal/nematic.inp")
 ```
@@ -53,7 +87,43 @@ order parameter, ``S = \langle 3\cos^2\theta - 1 \rangle / 2`` (``\theta`` the a
 of a molecule with the director), is 0.89 in the packed system, while 5CB has about 0.6
 near room temperature: a cone of 45° gives 0.59.
 
-### Julia
+## Cholesteric phase
+
+In a cholesteric (chiral nematic) phase, the director turns along a helix: the molecules
+of each layer lie in the xy plane, aligned along a director that turns from one layer to
+the next. 5CB forms it when a chiral molecule is added to it; in a twisted nematic cell,
+the arrangement of a pixel of a liquid crystal display, the twist is instead imposed by the
+walls of the cell. Here, the cell has four layers of 15 Å, with the director at 0°, 45°,
+90° and 135° from `x`: the next layer, through the periodic boundary along `z`, would be
+at 180°, the same as 0° for an apolar director, so the twist continues through the
+boundary, along a helix of a pitch of 120 Å (a full turn of the director).
+
+The direction of a molecule in a plane takes more than one angle: at 45° from `x`, the
+vector is also at 45° from `y` (at -45° from `x`, it would be at 135° from `y`), and at
+90° from `z`. So each structure block has three rotation constraints, one for each axis:
+for a vector at an angle φ from `x` in the plane, `(cos φ, sin φ, 0)`, its angles are
+`acos(cos φ)` with `x`, `acos(sin φ)` with `y`, and 90° with `z`. The molecules pointing
+the other way are at φ + 180°.
+
+```@raw html
+<details><summary>The input file <code>cholesteric.inp</code> (click to expand)</summary>
+```
+```@eval
+Main.input_file("files/liquid_crystal/cholesteric.inp")
+```
+```@raw html
+</details><br>
+```
+
+```
+packmol cholesteric.inp
+```
+
+It packs in about a second with 14 threads.
+
+## Julia script
+
+### The nematic phase
 
 ```@setup liquid_crystal
 cp(joinpath("files", "liquid_crystal", "5cb.pdb"), "5cb.pdb"; force = true)
@@ -62,7 +132,8 @@ cp(joinpath("files", "liquid_crystal", "5cb.pdb"), "5cb.pdb"; force = true)
 ```@example liquid_crystal
 using Packmol, PDBTools
 
-# The vector from atom 1 (end of the chain) to atom 19 (cyano N) within 20° of +z and -z
+# The vector from atom 1 (end of the chain) to atom 19 (cyano N)
+# within 20° of +z and -z
 up = structure_type("5cb.pdb"; number = 154,
     constrain_rotation = Dict(:z => (0.0, 20.0, [1], [19])),
 )
@@ -95,52 +166,18 @@ visualize(get_atoms(nematic),
 )
 ```
 
-## Cholesteric phase
-
-In a cholesteric (chiral nematic) phase, the director turns along a helix: the molecules
-of each layer lie in the xy plane, aligned along a director that turns from one layer to
-the next. 5CB forms it when a chiral molecule is added to it; in a twisted nematic cell,
-the arrangement of a pixel of a liquid crystal display, the twist is instead imposed by the
-walls of the cell. Here, the cell has four layers of 15 Å, with the director at 0°, 45°,
-90° and 135° from `x`: the next layer, through the periodic boundary along `z`, would be
-at 180°, the same as 0° for an apolar director, so the twist continues through the
-boundary, along a helix of a pitch of 120 Å (a full turn of the director).
-
-The direction of a molecule in a plane takes more than one angle: at 45° from `x`, the
-vector is also at 45° from `y` (at -45° from `x`, it would be at 135° from `y`), and at
-90° from `z`. So each structure block has three rotation constraints, one for each axis:
-for a vector at an angle φ from `x` in the plane, `(cos φ, sin φ, 0)`, its angles are
-`acos(cos φ)` with `x`, `acos(sin φ)` with `y`, and 90° with `z`. The molecules pointing
-the other way are at φ + 180°.
-
-### Command line
-
-```@raw html
-<details><summary>The input file <code>cholesteric.inp</code> (click to expand)</summary>
-```
-```@eval
-Main.input_file("files/liquid_crystal/cholesteric.inp")
-```
-```@raw html
-</details><br>
-```
-
-```
-packmol cholesteric.inp
-```
-
-It packs in about a second with 14 threads.
-
-### Julia
-
+### The cholesteric phase
 The same input, with the structure types of the layers built in a loop:
 
 ```@example liquid_crystal
-# The vector from atom 1 to atom 19 at the angle φ from x, in the xy plane: within 15°
-# of its angles with x and y, and 10° of the plane
+# The vector from atom 1 to atom 19 at the angle φ from x, in the xy
+# plane: within 15° of its angles with x and y, and 10° of the plane
 function layer(z1, z2, φ)
     return structure_type("5cb.pdb"; number = 46,
-        constraints = [AbovePlane([0., 0., 1.], z1), BelowPlane([0., 0., 1.], z2)],
+        constraints = [
+            AbovePlane([0., 0., 1.], z1),
+            BelowPlane([0., 0., 1.], z2),
+        ],
         constrain_rotation = Dict(
             :x => (acosd(cosd(φ)), 15.0, [1], [19]),
             :y => (acosd(sind(φ)), 15.0, [1], [19]),

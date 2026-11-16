@@ -6,9 +6,22 @@ solvent fills the space around it. The protein is that of
 [Martínez L., et al. J. Med. Chem. 49, 23–26, 2006](https://doi.org/10.1021/jm050805n),
 where it was solvated in a sphere of water (the classic example of Packmol).
 
-![Solvated protein](images/solvprotein.webp)
+```@setup solvprotein_view
+using Packmol, PDBTools
+system = Main.pack_tutorial("solvprotein", "solvprotein.inp")
+```
 
-*The protein, the ions, and the water behind the protein, in the rhombic dodecahedron.*
+```@example solvprotein_view
+visualize(get_atoms(system), # hide
+    "protein" => (style = :cartoon,), # hide
+    "resname SOD" => (style = :spheres, color = "orange"), # hide
+    "resname CLA" => (style = :spheres, color = "green"), # hide
+    (at -> iswater(at) && name(at) == "O" && resnum(at) % 10 == 0 && at.y > 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
+    rotate = [(:x, -90)], # hide
+) # hide
+```
+
+*The protein, sodium (orange) and chloride (green) ions, and, to show the shape of the rhombic dodecahedron without hiding the protein, the oxygen atoms of one in ten water molecules, those of the half of the cell behind the protein (light blue) (drag to rotate, scroll to zoom).*
 
 Files: [`protein.pdb`](files/solvprotein/protein.pdb),
 [`water.pdb`](files/solvprotein/water.pdb), [`CLA.pdb`](files/solvprotein/CLA.pdb),
@@ -33,7 +46,7 @@ and thus 30% fewer water molecules to simulate.
   −10 (30 arginines and lysines, 40 aspartates and glutamates), neutralized by 10 more
   sodium ions: 96 chloride and 106 sodium ions.
 
-## Command line
+## The protein in the periodic cell
 
 ```@raw html
 <details><summary>The input file <code>solvprotein.inp</code> (click to expand)</summary>
@@ -58,9 +71,22 @@ Uncomment the `check_initial_placement` line of the input file, and run it as be
 (see [Checking the initial placement](@ref check_initial_placement)): the initial
 placement of the molecules is written to the output file (`solvprotein.pdb`):
 
-![Initial approximation](images/solvprotein_check.webp)
+```@setup solvprotein_check
+using Packmol, PDBTools
+system = Main.pack_tutorial("solvprotein", "solvprotein.inp"; check = true)
+```
 
-*The initial placement: the solvent fills the cell around the fixed protein, but molecules may overlap, also with the protein.*
+```@example solvprotein_check
+visualize(get_atoms(system), # hide
+    "protein" => (style = :cartoon,), # hide
+    "resname SOD" => (style = :spheres, color = "orange"), # hide
+    "resname CLA" => (style = :spheres, color = "green"), # hide
+    (at -> iswater(at) && name(at) == "O" && resnum(at) % 10 == 0 && at.y > 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
+    rotate = [(:x, -90)], # hide
+) # hide
+```
+
+*The initial placement (as above, one in ten water molecules of the back half of the cell): the solvent fills the cell around the fixed protein, but molecules may overlap, also with the protein.*
 
 Then comment the line again, and run the packing.
 
@@ -75,7 +101,7 @@ packmol solvprotein.inp
 The packed system (about 111 thousand atoms) is written to `solvprotein.pdb`; the packing
 takes about a second.
 
-## Julia
+## Julia script
 
 ```julia
 using Packmol

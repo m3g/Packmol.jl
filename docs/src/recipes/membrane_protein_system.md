@@ -6,10 +6,38 @@ CollapsedDocStrings = true
 `MembraneProtein` inserts a membrane protein in a lipid bilayer of a given composition, and
 solvates it with water and ions, under orthorhombic periodic boundary conditions.
 
+```@setup membrane_protein_view
+using Packmol, PDBTools
+system = MembraneProtein(
+    protein = joinpath(Packmol.RecipesDirectory,
+        "test", "data", "integrin_tm.pdb"),
+    lipids = ["POPC", "POPS"],
+    lipid_molar_ratio = [4, 1],
+)
+packed = redirect_stdio(stdout = devnull, stderr = devnull) do
+    packmol(system; output = joinpath(mktempdir(), "membrane_protein.pdb"), seed = 1)
+end
+```
+
+```@example membrane_protein_view
+visualize(get_atoms(packed), # hide
+    "protein" => (style = :cartoon, color = "red"), # hide
+    "resname POPC POPS" => (style = :sticks, color = :element), # hide
+    "resname SOD" => (style = :spheres, color = "orange"), # hide
+    "resname CLA" => (style = :spheres, color = "cyan"), # hide
+    (at -> iswater(at) && element(at) == "O" && resnum(at) % 10 == 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
+    unitcell = UnitCell(packed.unitcell), # hide
+    unitcell_origin = packed.unitcell_center - sum(eachcol(packed.unitcell)) / 2, # hide
+    rotate = [(:z, 30), (:x, -80)], # hide
+) # hide
+```
+
+*The example below: the protein (red), the lipids (POPC and POPS) in the standard colors of the elements, sodium (orange) and chloride (cyan) ions, and the oxygen atoms of one in ten water molecules (light blue) (drag to rotate, scroll to zoom).*
+
 ```@docs
 MembraneProtein
-write_packmol_input(::MembraneProtein)
 packmol(::MembraneProtein)
+write_packmol_input(::MembraneProtein)
 ```
 
 ## The protein
@@ -30,24 +58,19 @@ The integrin in a POPC/POPS 4:1 bilayer, with 0.15 M NaCl:
 ```@example membrane_protein
 using Packmol
 system = MembraneProtein(
-    protein = joinpath(Packmol.RecipesDirectory, "test", "data", "integrin_tm.pdb"),
+    protein = joinpath(Packmol.RecipesDirectory,
+        "test", "data", "integrin_tm.pdb"),
     lipids = ["POPC", "POPS"],
     lipid_molar_ratio = [4, 1],
 )
-```
-
-```@example membrane_protein
-write_packmol_input(system; input = "membrane_protein.inp", output = "membrane_protein.pdb")
 ```
 
 ```julia
 packmol(system; output = "membrane_protein.pdb")
 ```
 
-It packs in about 10 seconds with 14 threads. A slab through the protein (the protein in
-red):
-
-![The integrin in a POPC/POPS bilayer](images/membrane_protein.webp)
+It packs in about 10 seconds with 14 threads, giving the system shown at the top of this
+page.
 
 ## How the system is built
 
@@ -75,3 +98,15 @@ that the area and the thickness of the membrane relax independently), with posit
 restraints on the atoms of the protein (on its heavy atoms, or on its backbone), released
 gradually, until the area per lipid and the thickness of the membrane are stable. Only then
 start the production simulation.
+
+## Writing a Packmol input file
+
+Instead of packing the system, `write_packmol_input` writes the input file of Packmol
+for it, to be inspected, edited or run later (see [Writing a Packmol input file](@ref recipes_input)):
+
+```@example membrane_protein
+write_packmol_input(system;
+    input = "membrane_protein.inp",
+    output = "membrane_protein.pdb",
+)
+```

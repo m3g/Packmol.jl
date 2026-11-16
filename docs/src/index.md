@@ -4,7 +4,7 @@ Packmol creates initial configurations for molecular dynamics simulations, by pa
 molecules in regions of space defined by geometric constraints, such that the atoms of
 different molecules are kept at a safe distance from each other.
 
-Packmol.jl is the new implementation of [Packmol](http://github.com/m3g/packmol). It
+Packmol.jl is the new implementation of [Packmol](https://doi.org/10.1002/jcc.21224). It
 reads the input files of the legacy (Fortran) Packmol and runs them with the same command
 line, and it can also be used from Julia code, where systems are defined without input
 files and can be built from target densities and concentrations (see
@@ -16,35 +16,34 @@ and [SPGBox.jl](https://github.com/m3g/SPGBox.jl) as the optimizer.
 
 Relative to the legacy (Fortran) Packmol:
 
-- **Much faster**: 2 to 16 times faster in a single thread, and multithreaded, up to about
-  45 times faster on a multicore computer (see the table below). Large systems are packed in
-  seconds or minutes: nanoliposomes of 350 and 600 thousand atoms in 16 and 31 seconds, a
-  whole Zika virion (2.2 million particles) in 47 seconds, and an exosome of 13.6 million
-  atoms in 33 minutes, with 14 threads.
+- **Much faster, which makes new systems possible.** Packmol.jl is 2 to 16 times faster in
+  a single thread, and it is multithreaded. Systems that were out of reach become routine:
+  nanoliposomes of 350 and 600 thousand atoms are packed in 16 and 31 seconds, a whole
+  [Zika virion](tutorials/zika.md) (2.2 million particles) in under a minute, an
+  [exosome](tutorials/exosome.md) of 13.6 million atoms in about 26 minutes, and the
+  [minimal cell](tutorials/cell.md) of Bentopy, with about 40 million beads, in about 11
+  minutes (14 threads).
 - **Periodic boundary conditions** in orthorhombic, triclinic, rhombic dodecahedral and
   truncated octahedral cells.
-- **New constraints**: curved surfaces (Gaussian, waves, exponentials), and
+- **New constraints**: curved surfaces (Gaussian, waves, exponentials, and their radial
+  versions), surfaces given by points (`within surface`, `inside surface`), and
   `constrain_rotation` for the angle between an axis and a vector of the molecule (to
   build oriented phases, such as liquid crystals).
+- **Crowded systems**: [`voxel_place`](@ref), a direct port to Julia of the placement
+  algorithm of [Bentopy](https://github.com/marrink-lab/bentopy), for the initial
+  placement of very crowded systems, such as the cytosol of a cell.
 - **mmCIF** files, for structures, outputs and restarts, and restarts from the output of a
   previous run.
 - **Several conformations** of a molecule, from a structure file with several models.
 - **Volume estimates**, to compute the numbers of molecules (`--guess-volume`,
   `--free-volume`), and `check_initial_placement`, to check the constraints before packing.
 - **A Julia API**: systems defined without input files, **recipes** for solvated systems
-  and membranes built from target densities and concentrations, user-defined constraints ([`CustomConstraint`](@ref)),
-  and the packed atoms in memory, for analysis with
-  [PDBTools.jl](https://github.com/m3g/PDBTools.jl).
-
-Packing times of the examples of the legacy Packmol (seconds; the executable of
-Packmol.jl, and of Packmol 21.1.4, on an Intel Core i9-14900KF):
-
-| Input | Legacy Packmol | Packmol.jl, 1 thread | Packmol.jl, 14 threads |
-|:--|--:|--:|--:|
-| water and urea (`mixture`) | 1.4 | 0.12 | 0.11 |
-| solvated protein (`solvprotein`) | 13.1 | 0.81 | 0.37 |
-| lipid bilayer (`bilayer`) | 26.1 | 2.3 | 0.57 |
-| spherical vesicle (`spherical`) | 36.3 | 17.4 | 2.6 |
+  and membranes built from target densities and concentrations, user-defined constraints
+  ([`CustomConstraint`](@ref)), and the packed atoms in memory, for analysis with
+  [PDBTools.jl](https://github.com/m3g/PDBTools.jl). It is also the best way to build
+  systems with an [AI agent](tutorials/ai_agent.md).
+- **A standalone executable** for Linux, macOS and Windows, installed with `pip`/`uvx` or
+  downloaded (see [Installation](installation.md)).
 
 The input files of the legacy Packmol run unchanged, with few exceptions: see
 [Migrating from legacy Packmol](migrating.md).
@@ -80,11 +79,3 @@ If Packmol contributed to your work, please cite the following references:
 - J. M. Martínez and L. Martínez. Packing optimization for automated generation of complex
   system's initial configurations for molecular dynamics and docking. *Journal of
   Computational Chemistry*, 24(7):819-825, 2003. [doi:10.1002/jcc.10216](https://doi.org/10.1002/jcc.10216)
-
-## About the logo
-
-The logo is an image of the [Zika virion](tutorials/zika.md) built with Packmol.jl: a
-complete virion of the Zika virus, in a coarse-grained model, with its protein shell, a
-membrane of two layers of lipids beneath it, and water and ions inside and around it, in
-a rhombic dodecahedron periodic cell. The system has 2.2 million particles, and it is
-packed in a few minutes.

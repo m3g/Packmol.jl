@@ -1,0 +1,50 @@
+# Python wheels of the `packmol` executable (the bundle built by juliac/build.jl).
+#
+# The wheel carries the prebuilt bundle: nothing is compiled when it is built. From the
+# root of the repository, after building the bundle:
+#
+#     PACKMOL_BUNDLE=juliac/build uv build --wheel python
+#
+# The version is that of Packmol.jl (Project.toml). There is no source distribution: on a
+# platform without a wheel, pip falls back to the latest version that has one.
+[project]
+name = "packmol"
+dynamic = ["version"]
+description = "Packmol - Creates Initial Configurations for Molecular Dynamics Simulations"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+license = "MIT"
+authors = [
+    { name = "Leandro Martínez" },
+    { name = "Ernesto G. Birgin" },
+    { name = "José Mario Martínez" },
+    { name = "Packmol Contributors" },
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+
+[project.scripts]
+packmol = "packmol.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/m3g/Packmol.jl"
+Documentation = "https://m3g.github.io/Packmol.jl"
+Repository = "https://github.com/m3g/Packmol.jl"
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "../Project.toml"
+pattern = '(?m)^version = "(?P<version>[^"]+)"'
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["packmol"]

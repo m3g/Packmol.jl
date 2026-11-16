@@ -32,7 +32,7 @@ visualize(get_atoms(final), # hide
 ) # hide
 ```
 
-*The packed system (drag to rotate, scroll to zoom), built in the [Julia](#Julia) section
+*The packed system (drag to rotate, scroll to zoom), built in the [Julia script](#Julia-script) section
 below: the framework (dark blue), ethanol (spheres, carbon pale green) and water (sticks), with
 hydrogen white and oxygen red.*
 
@@ -101,7 +101,7 @@ bound of what the crystal adsorbs: the adsorbed phase is less dense than the liq
 other two lines check the liquid: ethanol and water fill it at 0.158 + 0.801 = 0.959
 g/mL, the density of the mixture.
 
-## Command line
+## Ethanol in the pores, water in the liquid
 
 ```@raw html
 <details><summary>The input file <code>zif8.inp</code> (click to expand)</summary>
@@ -127,7 +127,7 @@ Uncomment the `check_initial_placement` line of the input file, and run it as be
 placement, written to the output file in a fraction of a second, already has the ethanol
 molecules in the cages, and the liquid above the crystal.
 
-When it does (see the views in the [Julia](#Julia) section), comment the line again, and
+When it does (see the views in the [Julia script](#Julia-script) section), comment the line again, and
 run the packing.
 
 ### Packing
@@ -138,7 +138,7 @@ packmol zif8.inp
 
 The packing (19386 atoms) takes half a second.
 
-## Julia
+## Julia script
 
 ```@setup zif8
 for file in readdir(joinpath("files", "zif8"))
@@ -197,8 +197,10 @@ ethanol molecules are already in the cages, and the liquid above the crystal:
 function show_system(system)
     return visualize(get_atoms(system),
         "resname ZIF" => (style = :sticks, color = "darkblue"),
-        "resname ETOH and element C" => (style = :spheres, color = "palegreen"),
-        "resname ETOH and not element C" => (style = :spheres, color = :element),
+        "resname ETOH and element C" =>
+            (style = :spheres, color = "palegreen"),
+        "resname ETOH and not element C" =>
+            (style = :spheres, color = :element),
         "water" => (style = :sticks, color = :element, water = true);
         unitcell = UnitCell(system.unitcell),
         rotate = [(:z, 30), (:x, -70)],

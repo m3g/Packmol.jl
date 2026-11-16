@@ -54,7 +54,10 @@ cp(joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb"), "water.pdb";
 using Packmol, PDBTools
 water = structure_type("water.pdb";
     number = 390,
-    constraints = [InsideBox([-15., -15., 0.], [15., 15., 15.]), AboveGaussian([0., 0., 1.], [1., 0., 0.], 0., 6., 0., 4.)],
+    constraints = [
+        InsideBox([-15., -15., 0.], [15., 15., 15.]),
+        AboveGaussian([0., 0., 1.], [1., 0., 0.], 0., 6., 0., 4.),
+    ],
 )
 system = PackmolSystem([water]; tolerance = 2.0, output = "gaussian.pdb")
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
@@ -138,7 +141,8 @@ system = PackmolSystem([popc, water_below, water_above];
     tolerance = 2.0,
     output = "wavy_monolayer.pdb",
     unitcell = [60. 0. 0.; 0. 40. 0.; 0. 0. 64.],
-    unitcell_center = [30., 20., 12.],      # the cell from (0, 0, -20) to (60, 40, 44)
+    # the cell from (0, 0, -20) to (60, 40, 44)
+    unitcell_center = [30., 20., 12.],
 )
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
@@ -196,9 +200,15 @@ The same system, packed with the [Julia API](../julia_api/index.md):
 ```@example gaussian
 water = structure_type("water.pdb";
     number = 430,
-    constraints = [InsideBox([-15., -15., 0.], [15., 15., 15.]), AboveRadialGaussian([0., 0., 1.], [0., 0., 0.], 0., 6., 4.)],
+    constraints = [
+        InsideBox([-15., -15., 0.], [15., 15., 15.]),
+        AboveRadialGaussian([0., 0., 1.], [0., 0., 0.], 0., 6., 4.),
+    ],
 )
-system = PackmolSystem([water]; tolerance = 2.0, output = "radial_gaussian.pdb")
+system = PackmolSystem([water];
+    tolerance = 2.0,
+    output = "radial_gaussian.pdb",
+)
 redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide

@@ -68,7 +68,7 @@ band. Keep these planes close to the length of the lipid: with the heads only 50
 the length away from the chain ends, the lipids slide along their axes, the chains of
 one leaflet push into the other, and the packing gets stuck.
 
-## Command line
+## Orienting the lipids
 
 ```@raw html
 <details><summary>The input file <code>bilayer.inp</code> (click to expand)</summary>
@@ -116,7 +116,7 @@ packmol bilayer.inp
 The packed system (about 28 thousand atoms) is written to `bilayer.pdb`, in a few
 seconds with 14 threads.
 
-## Julia
+## Julia script
 
 The `atom_constraints` keyword of [`structure_type`](@ref) is the equivalent of the
 `atoms ... end atoms` blocks: a list of `atom indices => constraints` pairs.
@@ -150,7 +150,8 @@ water_below = structure_type("water.pdb";
     constraints = [BelowPlane(z, -30.0)],
 )
 
-system = PackmolSystem([upper_leaflet, lower_leaflet, water_above, water_below];
+molecules = [upper_leaflet, lower_leaflet, water_above, water_below]
+system = PackmolSystem(molecules;
     output = "bilayer.pdb",
     tolerance = 2.0,
     unitcell = [61.96 0. 0.; 0. 61.96 0.; 0. 0. 90.], # centered at the origin

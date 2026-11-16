@@ -1,3 +1,6 @@
+```@meta
+CollapsedDocStrings = true
+```
 # Volume estimates
 
 Two estimates help to choose the numbers of molecules, or the size of the box, of an
@@ -34,7 +37,8 @@ which is the cube of 40 Å of the input. The molecules can also be given as stru
 or molar masses (g/mol), with their numbers:
 
 ```@example volumes
-guess_volume(["../tutorials/files/mixture/water.pdb" => 1000, 60.06 => 400]; density = 1.09)
+water = "../tutorials/files/mixture/water.pdb"
+guess_volume([water => 1000, 60.06 => 400]; density = 1.09)
 nothing # hide
 ```
 
@@ -51,7 +55,8 @@ For the [solvated protein](@ref "Solvated protein"), the water, sodium and chlor
 the rhombic dodecahedron, without the volume of the protein:
 
 ```@example volumes
-free_volume("../tutorials/files/solvprotein/solvprotein.inp"; npoints = 500_000)
+input = "../tutorials/files/solvprotein/solvprotein.inp"
+free_volume(input; npoints = 500_000)
 nothing # hide
 ```
 

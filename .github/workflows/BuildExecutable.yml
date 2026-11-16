@@ -1,6 +1,13 @@
 name: Build executable
 # Builds the `packmol` executable with juliac (juliac/build.jl), tests it
-# (juliac/test_executable.jl), and uploads the bundle as an artifact.
+# (juliac/test_executable.jl), and packs it as an archive and a Python wheel, uploaded as
+# artifacts. The Linux executables are built in manylinux_2_28 containers (glibc 2.28).
+#
+# - Pushes to main: the archives replace those of the `dev` pre-release.
+# - Version tags (v*, pushed by TagBot): the archives are attached to the release.
+# - Manual runs (workflow_dispatch) can upload the wheels to TestPyPI or PyPI (`publish`),
+#   which needs this repository registered as a trusted publisher of the PyPI project and
+#   the environments `testpypi`/`pypi`. PyPI only from a version tag.
 on:
   push:
     branches:
@@ -9,9 +16,21 @@ on:
       - '*'
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Upload the wheels to'
+        type: choice
+        options:
+          - none
+          - testpypi
+          - pypi
+        default: none
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+env:
+  # The Julia version the executable is built with
+  JULIA_VERSION: '1.13.2'
 jobs:
   build:
     name: ${{ matrix.os }}
@@ -19,12 +38,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - ubuntu-24.04-arm
-          - macos-latest
-          - macos-15-intel
-          - windows-latest
+        include:
+          - os: ubuntu-latest
+            platform: linux-x86_64
+            manylinux: quay.io/pypa/manylinux_2_28_x86_64
+          - os: ubuntu-24.04-arm
+            platform: linux-aarch64
+            manylinux: quay.io/pypa/manylinux_2_28_aarch64
+          - os: macos-latest
+            platform: macos-arm64
+          - os: macos-15-intel
+            platform: macos-x86_64
+          - os: windows-latest
+            platform: windows-x86_64
     defaults:
       run:
         shell: bash
@@ -32,21 +58,168 @@ jobs:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
-          # The Julia version the executable is built with
-          version: '1.13.2'
+          version: ${{ env.JULIA_VERSION }}
       - uses: julia-actions/cache@v3
-      - name: instantiate
-        run: julia --project=juliac -e 'using Pkg; Pkg.instantiate()'
+      - name: build (manylinux_2_28 container)
+        if: matrix.manylinux
+        run: |
+          mkdir -p ~/.julia
+          docker run --rm -v "$PWD":/work -w /work -v ~/.julia:/depot \
+            -e JULIA_DEPOT_PATH=/depot -e JULIA_VERSION -e HOME=/tmp \
+            --user "$(id -u):$(id -g)" ${{ matrix.manylinux }} bash juliac/build_manylinux.sh
+      - name: macOS deployment target
+        if: runner.os == 'macOS'
+        run: |
+          # The minimum macOS version of Julia's libraries; otherwise the executable is linked
+          # for the macOS of the runner, and the wheels would be tagged for it
+          lib=$(julia -e 'print(joinpath(Sys.BINDIR, "..", "lib", "libjulia.dylib"))')
+          minos=$(otool -l "$lib" | awk '/minos/ {print $2; exit}')
+          echo "MACOSX_DEPLOYMENT_TARGET=$minos"
+          echo "MACOSX_DEPLOYMENT_TARGET=$minos" >> $GITHUB_ENV
       - name: build
-        run: julia --project=juliac juliac/build.jl
+        if: ${{ !matrix.manylinux }}
+        run: |
+          julia --project=juliac -e 'using Pkg; Pkg.instantiate()'
+          julia --project=juliac juliac/build.jl
+      - name: glibc ≤ 2.28
+        if: matrix.manylinux
+        run: |
+          # (objdump fails on the files that are not ELF, those of share/)
+          newest=$( (find juliac/build -type f -exec objdump -T {} + 2>/dev/null || true) |
+            grep -oE 'GLIBC_[0-9]+(\.[0-9]+)+' | sort -uV | tail -1)
+          echo "newest glibc symbol: $newest"
+          [ "$(printf '%s\n' GLIBC_2.28 "$newest" | sort -V | tail -1)" = GLIBC_2.28 ]
+      - name: run on Rocky Linux 8 and Ubuntu 22.04
+        if: matrix.manylinux
+        run: |
+          for image in rockylinux:8 ubuntu:22.04; do
+            docker run --rm -v "$PWD":/work -w /work $image bash juliac/smoke_test.sh
+          done
       - name: test
-        run: julia --project=juliac juliac/test_executable.jl
+        run: |
+          julia --project=juliac -e 'using Pkg; Pkg.instantiate()'
+          julia --project=juliac juliac/test_executable.jl
       - name: archive
         run: |
-          name=packmol-${{ runner.os }}-${{ runner.arch }}
-          tar czf $name.tar.gz -C juliac/build .
-          echo "archive=$name" >> $GITHUB_ENV
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then version=${GITHUB_REF_NAME#v}; else version=dev; fi
+          name=packmol-$version-${{ matrix.platform }}
+          mkdir -p dist/$name
+          cp -R juliac/build/. dist/$name/
+          cp LICENSE dist/$name/
+          cd dist
+          if [ "$RUNNER_OS" = Windows ]; then
+            7z a -tzip -bd $name.zip $name > /dev/null
+          else
+            tar czf $name.tar.gz $name
+          fi
+          rm -rf $name
+          ls -l
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.archive }}
-          path: ${{ env.archive }}.tar.gz
+          name: packmol-${{ matrix.platform }}
+          path: dist/*
+      - uses: astral-sh/setup-uv@v6
+      - name: wheel
+        run: PACKMOL_BUNDLE=juliac/build uv build --wheel python -o wheelhouse
+      - name: test wheel
+        if: ${{ !matrix.manylinux }}
+        run: uv run --no-project --isolated --with "$(ls wheelhouse/*.whl)" --with pytest pytest -v python/tests
+      - name: test wheel (manylinux_2_28 container)
+        if: matrix.manylinux
+        run: |
+          docker run --rm -v "$PWD":/work -w /work -e PYTHONDONTWRITEBYTECODE=1 ${{ matrix.manylinux }} bash -c '
+            set -e
+            /opt/python/cp312-cp312/bin/python -m venv /tmp/venv
+            /tmp/venv/bin/pip install -q wheelhouse/*.whl pytest
+            PATH=/tmp/venv/bin:$PATH pytest -v -p no:cacheprovider python/tests'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.platform }}
+          path: wheelhouse/*.whl
+
+  # Archives of a version tag: attached to its release (created by TagBot), with versionless
+  # copies (for releases/latest/download/<name> links) and their SHA256 sums
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packmol-*
+          path: dist
+          merge-multiple: true
+      - name: upload to the release
+        run: |
+          cd dist
+          version=${GITHUB_REF_NAME#v}
+          for f in packmol-$version-*; do cp "$f" "${f/-$version/}"; done
+          sha256sum packmol-* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          # TagBot pushes the tag before it creates the release
+          for i in $(seq 30); do
+            gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 && break
+            sleep 60
+          done
+          gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --clobber packmol-* SHA256SUMS.txt
+
+  # Archives of main: the rolling `dev` pre-release (its tag moved to the commit)
+  dev:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packmol-*
+          path: dist
+          merge-multiple: true
+      - name: update the dev pre-release
+        run: |
+          cd dist
+          for f in packmol-dev-*; do mv "$f" "${f/-dev/}"; done
+          sha256sum packmol-* > SHA256SUMS.txt
+          repo=$GITHUB_REPOSITORY
+          if gh release view dev -R $repo > /dev/null 2>&1; then
+            gh api -X PATCH repos/$repo/git/refs/tags/dev -f sha=$GITHUB_SHA -F force=true > /dev/null
+          else
+            gh release create dev -R $repo --prerelease --target $GITHUB_SHA --title "Development build" \
+              --notes "Executables built from the latest commit of main (not a release): packmol-<os>-<arch> archives. For the releases, see the versions below."
+          fi
+          gh release upload dev -R $repo --clobber packmol-* SHA256SUMS.txt
+
+  # Upload of the wheels, on request only (workflow_dispatch with publish = testpypi or pypi)
+  publish:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && (inputs.publish == 'testpypi' || (inputs.publish == 'pypi' && startsWith(github.ref, 'refs/tags/v')))
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.publish }}
+      url: ${{ inputs.publish == 'pypi' && 'https://pypi.org/p/packmol' || 'https://test.pypi.org/p/packmol' }}
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheel-*
+          path: wheelhouse
+          merge-multiple: true
+      - name: check the version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          ls wheelhouse
+          for f in wheelhouse/*.whl; do
+            [[ "$(basename $f)" == packmol-${GITHUB_REF_NAME#v}-* ]] || { echo "version of $f differs from the tag"; exit 1; }
+          done
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: wheelhouse
+          repository-url: ${{ inputs.publish == 'pypi' && 'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}

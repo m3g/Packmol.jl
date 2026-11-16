@@ -11,7 +11,12 @@ constructor) before the packing:
 
 ```julia
 system = read_packmol_input("mixture.inp")
-packmol(system; tolerance = 2.5, maxit = 50, seed = 7, output = "mixture_tol2.5.pdb")
+packmol(system;
+    tolerance = 2.5,
+    maxit = 50,
+    seed = 7,
+    output = "mixture_tol2.5.pdb",
+)
 ```
 
 Options take the values of the input keywords (`periodic_boundary_style = :octahedral`,

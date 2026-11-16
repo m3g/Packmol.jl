@@ -47,7 +47,7 @@ jobs:
             using Documenter: doctest
             using Packmol
             doctest(Packmol)'
-      - run: julia --project=docs docs/make.jl
+      - run: julia --project=docs --threads=auto docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}

@@ -12,6 +12,27 @@ push!(LOAD_PATH, "../src/")
 #     ```
 #
 input_file(file) = Markdown.MD(Markdown.Code("", read(file, String)))
+
+# The views of the packed systems of the tutorials, at the top of their pages, are made in
+# hidden blocks that pack the input files of the tutorials (docs/src/tutorials/files/<dir>)
+# in a temporary copy of their directories, without output to the page:
+#
+#     ```@setup mixture_view
+#     using Packmol, PDBTools
+#     system = Main.pack_tutorial("mixture", "mixture.inp")
+#     ```
+#
+# `check = true` only places the molecules (the input's `check_initial_placement`).
+function pack_tutorial(dir, input; check = false)
+    tmp = mktempdir()
+    cp(joinpath(@__DIR__, "src", "tutorials", "files", dir), joinpath(tmp, dir))
+    return redirect_stdio(stdout = devnull, stderr = devnull) do
+        system = read_packmol_input(joinpath(tmp, dir, input))
+        system.check_initial_placement = check
+        packmol(system)
+        system
+    end
+end
 makedocs(
     modules = [Packmol],
     sitename = "Packmol.jl",
@@ -22,9 +43,9 @@ makedocs(
         # The interactive 3D views of the examples are embedded in the pages
         example_size_threshold = nothing,
         size_threshold_ignore = [
-            joinpath(dir, file) for dir in ("constraints", "periodic_boundary_conditions")
+            joinpath(dir, file) for dir in ("constraints", "periodic_boundary_conditions", "tutorials", "recipes")
             for file in readdir(joinpath(@__DIR__, "src", dir)) if endswith(file, ".md")
-        ] ∪ ["tutorials/zeolite.md", "tutorials/polymer_dmf.md", "tutorials/nanotube.md", "tutorials/liquid_crystal.md", "tutorials/bilayer.md", "tutorials/zif8.md", "tutorials/supercapacitor.md"],
+        ],
     ),
     plugins = [CodeBlocks()],
     pages = [
@@ -54,6 +75,17 @@ makedocs(
             "Lipid nanoparticle (designed with an AI agent)" => "tutorials/lnp.md",
             "Exosome (a very large system)" => "tutorials/exosome.md",
             "Minimal cell (voxel placement of Bentopy)" => "tutorials/cell.md",
+        ],
+        "Recipes" => [
+            "Overview" => "recipes/index.md",
+            "Volume guesser" => "recipes/volume_guesser.md",
+            "Free volume" => "recipes/free_volume.md",
+            "Solute-Solvent system" => "recipes/solute_solvent_system.md",
+            "Solute-Solvent-Cossolvent system" => "recipes/solute_solvent_cossolvent_system.md",
+            "Solute-Water-Ions system" => "recipes/solute_water_ions_system.md",
+            "Membrane system" => "recipes/membrane_system.md",
+            "Membrane protein system" => "recipes/membrane_protein_system.md",
+            "Concentration units" => "recipes/concentration_units.md",
         ],
         "Input files" => [
             "Overview" => "input_files/index.md",
@@ -96,18 +128,6 @@ makedocs(
             "Restart files" => "julia_api/restart_files.md",
             "Placement on a grid (Bentopy)" => "julia_api/grid_placement.md",
             "Reference" => "julia_api/reference.md",
-        ],
-        "Recipes" => [
-            "Overview" => "recipes/index.md",
-            "Volume guesser" => "recipes/volume_guesser.md",
-            "Free volume" => "recipes/free_volume.md",
-            "Running Packmol" => "recipes/running_packmol.md",
-            "Solute-Solvent system" => "recipes/solute_solvent_system.md",
-            "Solute-Solvent-Cossolvent system" => "recipes/solute_solvent_cossolvent_system.md",
-            "Solute-Water-Ions system" => "recipes/solute_water_ions_system.md",
-            "Membrane system" => "recipes/membrane_system.md",
-            "Membrane protein system" => "recipes/membrane_protein_system.md",
-            "Concentration units" => "recipes/concentration_units.md",
         ],
     ],
 )

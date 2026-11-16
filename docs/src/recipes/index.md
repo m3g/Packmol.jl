@@ -24,16 +24,7 @@ solvation setups:
   database) in a lipid bilayer of a given composition, solvated by water and
   ions.
 
-Vesicles and nanotubes are planned as future recipes; a rhombic
-dodecahedron or truncated octahedron box is already available today, for
-the three solvation recipes above, via the `pbc` keyword (see [Running
-Packmol](@ref)) — `Membrane` is always orthorhombic.
-
-Each solvation recipe is built the same way: construct a `SolutionBoxU*`
-data structure describing the components of the system (PDB files, molar
-masses, densities), then either call `write_packmol_input` on it to generate
-a `.inp` file, or call `packmol` on it directly to build and pack the system
-without ever writing one (see [Running Packmol](@ref)).
+Vesicles and nanotubes are planned as future recipes.
 
 Concentrations and densities can be given as plain numbers (assumed to be in
 the units noted in each function's docstring) or as [Unitful.jl](https://painterqubits.github.io/Unitful.jl/stable/)
@@ -41,12 +32,61 @@ quantities (`55.5u"mol/L"`, `1.0u"g/mL"`, ...). See
 [Concentration Unit Conversion](@ref) for the underlying `cconvert` machinery
 used to convert between them.
 
-## How to use it
+## [Packing a recipe](@id recipes_packing)
 
-```julia-repl
-julia> using Packmol
+A recipe is a data structure describing the components of the system (structure files,
+molar masses, densities), and `packmol` builds and packs it directly, without an input
+file:
+
+```julia
+using Packmol
+system = SolutionBoxUS(...)
+packmol(system; margin = 20.0, output = "system.pdb")
 ```
 
-`SolutionBoxUS`, `SolutionBoxUSC`, `SolutionBoxUWI`, `Membrane`, `MembraneProtein`,
-`write_packmol_input`, `convert_concentration`, `convert_density_table!` and
-`get_density_table` are exported directly from `Packmol`.
+This builds a `PackmolSystem` in memory (the structure of the [Julia
+API](../julia_api/index.md)) and packs it with `packmol(::PackmolSystem)`: `output` is the
+only file written, and the packed system is returned. The keywords of each recipe
+(`margin`/`box_sides`/`pbc`, and `concentration`/`ionic_concentration` where relevant) are
+documented in its page; any other keyword (`nloop`, `maxit`, `seed`, ...) is passed to the
+packing engine (see `packmol(::PackmolSystem)`).
+
+### The periodic cell
+
+In the solvation recipes, `pbc` selects the shape of the periodic cell that
+`margin`/`box_sides` size:
+
+- `:cubic` (the default): all three sides set to the largest, a cube;
+- `:orthorhombic`: the sides as computed, possibly unequal;
+- `:dodecahedral`/`:octahedral`: a rhombic dodecahedron or a truncated octahedron, the
+  smallest that holds the solute with the margin from its faces (or, with `box_sides`, of
+  their maximum; see [`dodecahedral_unitcell`](@ref)/[`octahedral_unitcell`](@ref) and
+  [Periodic boundary conditions](../periodic_boundary_conditions/index.md)). They are
+  more sphere-like than the cube, and solvate a single, roughly spherical, solute with
+  fewer solvent molecules.
+
+The numbers of molecules follow from the volume of the cell, `det(unitcell)`, whatever
+its shape. `Membrane` and `MembraneProtein` are always orthorhombic.
+
+## [Writing a Packmol input file](@id recipes_input)
+
+`write_packmol_input` writes the input file of Packmol for a recipe, to be inspected,
+edited or run later, with the `packmol` executable or in Julia:
+
+```julia
+using Packmol
+write_packmol_input(system;
+    margin = 20.0,
+    input = "box.inp",
+    output = "system.pdb",
+)
+packmol("box.inp")
+```
+
+The input file can also be run with the Fortran Packmol, wrapped by
+[`run_packmol_legacy`](@ref):
+
+```julia
+using Packmol, Packmol_jll
+run_packmol_legacy("box.inp")
+```

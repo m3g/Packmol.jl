@@ -9,7 +9,7 @@ the main subject of this tutorial.
 
 ![Larger nanoliposome](images/nanoliposome_large.webp)
 
-*A slab through the center of the larger nanoliposome: the water inside, the two
+*The larger nanoliposome, cut through its center: the water inside, the two
 leaflets, and the water outside, which fills the truncated octahedron.*
 
 Files: [`popc.pdb`](files/nanoliposome/popc.pdb),
@@ -106,7 +106,7 @@ the small nanoliposome, 4/3 π 22³ / 29.9 = 1492 molecules. The water outside f
 volume of the cell, 4√3/9 d³, minus that of the sphere of radius R + 58:
 (4√3/9 × 186³ − 4/3 π 83³) / 29.9 = 85567 molecules.
 
-## Command line
+## Lipids and water in spherical shells
 
 ```@raw html
 <details><summary>The input file <code>small.inp</code> (click to expand)</summary>
@@ -137,7 +137,7 @@ placement of the molecules is written to the output file (`small.pdb`):
 
 ![Initial approximation](images/nanoliposome_small_check.webp)
 
-*A slab through the center of the initial approximation of the small nanoliposome: the
+*The initial approximation of the small nanoliposome, cut through its center: the
 two leaflets and the water are already in their shells, but molecules may overlap.*
 
 Then comment the line again, and run the packing.
@@ -153,7 +153,7 @@ packmol small.inp
 The packed system is written to `small.pdb`, in about 16 seconds with 14 threads.
 The larger nanoliposome (`packmol large.inp`) takes about 30 seconds.
 
-## Julia
+## Julia script
 
 In Julia, the geometry of the table above can be written once, as a function of the
 radius of the inner heads, and of the numbers of lipids of the two leaflets:
@@ -186,13 +186,16 @@ function nanoliposome(R, n_inner, n_outer, output)
         ],
     )
     water_outside = structure_type("water.pdb";
-        number = round(Int, (4 * sqrt(3) / 9 * d^3 - 4/3 * π * (R + 58)^3) / 29.9),
+        number = round(Int,
+            (4 * sqrt(3) / 9 * d^3 - 4/3 * π * (R + 58)^3) / 29.9),
         constraints = [OutsideSphere(origin, R + 58)],
     )
-    system = PackmolSystem([water_inside, inner_leaflet, outer_leaflet, water_outside];
+    molecules = [water_inside, inner_leaflet, outer_leaflet, water_outside]
+    system = PackmolSystem(molecules;
         output, tolerance = 2.0,
         unitcell = octahedral_unitcell(Float64, d), # centered at the origin
-        # check_initial_placement = true, # uncomment to only place the molecules
+        # uncomment to only place the molecules
+        # check_initial_placement = true,
     )
     # Write the output in the shape of the truncated octahedron
     triclinic_to_octahedral(system)

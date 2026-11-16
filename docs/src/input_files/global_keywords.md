@@ -2,7 +2,7 @@
 
 | Keyword | Meaning |
 |:--|:--|
-| `tolerance <value>` | Minimum distance between atoms of different molecules (required). |
+| `tolerance <value>` | Minimum distance between atoms of different molecules (required). `2.0` is the usual value, for all-atom and coarse-grained systems. |
 | `output <file>` | Path of the output structure file. |
 | `filetype pdb\|xyz\|mmcif` | Format of the structure and output files (default `pdb`). Files with the extensions `.pdb`, `.xyz`, `.cif` or `.mmcif` are read and written in that format, whatever the `filetype`: `output system.cif` writes the output as mmCIF, with the periodic cell in its `_cell` fields. |
 | `seed <int>` | Random number generator seed (default `1234567`); `-1` takes a random seed at each run (see [Replicas of a system](@ref)). |

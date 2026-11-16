@@ -60,9 +60,7 @@ The regions, as distances from the center of the vesicle:
 | Water and ions inside | below 196.7 |
 | Water and ions outside | above 258.1, up to the faces of the periodic cell |
 
-## Command line
-
-### Step 1: the proteins
+## Step 1: the proteins
 
 The proteins are packed first, alone, and then fixed in the packing of the rest of the
 system. Large molecules that are not part of a continuous phase are best packed this
@@ -99,7 +97,7 @@ This takes about 8 seconds with 14 threads, and writes the proteins to `proteins
     its output in the packing of the rest of the system. An AI agent can write such a
     script for the surface of your system (see [Using your AI agent](ai_agent.md)).
 
-### Step 2: the lipids, the water and the ions
+## Step 2: the lipids, the water and the ions
 
 The output of the first step is fixed (`fixed 0. 0. 0. 0. 0. 0.` keeps the coordinates
 of the file):
@@ -147,7 +145,7 @@ memory. Writing the output, a 3.5 GB mmCIF file, takes about a minute of that.
       packing (60 s by default): writing a file of this size takes longer than a packing
       loop.
 
-## Julia
+## Julia script
 
 The same two steps in Julia:
 
@@ -156,9 +154,11 @@ using Packmol
 
 origin = [0., 0., 0.]
 
-# Step 1: the proteins. The tetraspanins are oriented by the Cα atoms 18 to 24 Å from
-# the middle of the membrane, on the extracellular and the intracellular sides
-tetraspanin(file, extracellular, intracellular) = structure_type(file; number = 40,
+# Step 1: the proteins. The tetraspanins are oriented by the Cα atoms
+# 18 to 24 Å from the middle of the membrane, on the extracellular and
+# the intracellular sides
+tetraspanin(file, extracellular, intracellular) = structure_type(file;
+    number = 40,
     atom_constraints = [
         extracellular => OutsideSphere(origin, 245.),
         intracellular => InsideSphere(origin, 211.),
@@ -166,14 +166,16 @@ tetraspanin(file, extracellular, intracellular) = structure_type(file; number = 
 lumen = [InsideSphere(origin, 191.7)]
 proteins = PackmolSystem([
         tetraspanin("cd81.cif",
-            [574, 588, 608, 629, 645, 1410, 1426, 1440, 1474, 1491, 1510, 1554, 1830, 1844, 1858,
-             1868, 1890, 1900, 1916, 1932, 1954, 1968, 1988, 2005, 2020, 2034, 2053, 2342, 2357,
-             2660, 2679, 2699, 2710, 2717],
+            [574, 588, 608, 629, 645, 1410, 1426, 1440, 1474, 1491, 1510,
+             1554, 1830, 1844, 1858, 1868, 1890, 1900, 1916, 1932, 1954,
+             1968, 1988, 2005, 2020, 2034, 2053, 2342, 2357, 2660, 2679,
+             2699, 2710, 2717],
             [30, 52, 3159, 3170, 3177]),
         tetraspanin("cd9.cif",
-            [621, 633, 661, 675, 697, 708, 727, 747, 808, 875, 886, 906, 927, 1740, 1757, 1791,
-             1806, 1863, 1878, 1926, 2175, 2231, 2246, 2301, 2311, 2347, 2368, 2378, 2853, 2869,
-             2901, 2915, 2937],
+            [621, 633, 661, 675, 697, 708, 727, 747, 808, 875, 886, 906,
+             927, 1740, 1757, 1791, 1806, 1863, 1878, 1926, 2175, 2231,
+             2246, 2301, 2311, 2347, 2368, 2378, 2853, 2869, 2901, 2915,
+             2937],
             [21, 36, 52, 74, 81, 88, 3335, 3346, 3356, 3375]),
         structure_type("ago2_mirna.cif"; number = 8, constraints = lumen),
         structure_type("nucleosome.cif"; number = 2, constraints = lumen),
@@ -184,13 +186,22 @@ proteins = PackmolSystem([
 packmol(proteins)
 
 # Step 2: the lipids, the water and the ions, around the proteins, fixed
-fixed_proteins = structure_type("proteins.cif"; number = 1, fixed = ([0., 0., 0.], [0., 0., 0.]))
+fixed_proteins = structure_type("proteins.cif";
+    number = 1,
+    fixed = ([0., 0., 0.], [0., 0., 0.]),
+)
 
 # The lipids of a leaflet: the head (atom 1) and the ends of the two chains
 inner(file, number, head, chain_ends) = structure_type(file; number,
-    atom_constraints = [[1] => InsideSphere(origin, head), chain_ends => OutsideSphere(origin, 222.)])
+    atom_constraints = [
+        [1] => InsideSphere(origin, head),
+        chain_ends => OutsideSphere(origin, 222.),
+    ])
 outer(file, number, head, chain_ends) = structure_type(file; number,
-    atom_constraints = [chain_ends => InsideSphere(origin, 234.), [1] => OutsideSphere(origin, head)])
+    atom_constraints = [
+        chain_ends => InsideSphere(origin, 234.),
+        [1] => OutsideSphere(origin, head),
+    ])
 lipids = [
     inner("pope.cif", 4055, 199.7, [79, 122]),
     inner("pops.cif", 2028, 200.1, [81, 124]),

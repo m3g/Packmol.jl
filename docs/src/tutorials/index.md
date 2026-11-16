@@ -32,17 +32,19 @@ agent from an illustration.
 
 ## How the tutorials are organized
 
-Each tutorial starts with an image of the final system and the files it needs, and, when
-the numbers of molecules are not trivial, how they follow from the densities and the
-volumes of the regions. Then the same system is built in two ways:
+Each tutorial starts with a view of the final system and the files it needs. Then come
+sections on the physics of the system: its structures, the regions of its molecules, and,
+when the numbers of molecules are not trivial, how they follow from the densities and the
+volumes of the regions. The sections that build the system (a drop, a phase, a step of a
+large system) do it with an input file, run with the `packmol` executable, as with
+Fortran Packmol (see [Installation](../installation.md)), and show how to check the
+initial placement first.
 
-- **Command line:** an input file, run with the `packmol` executable, as with Fortran
-  Packmol (see [Installation](../installation.md)).
-- **Julia:** the same system defined with Julia code, with
-  [`structure_type`](@ref), [`PackmolSystem`](@ref) and [`packmol`](@ref) (see
-  [Defining systems in Julia](../julia_api/index.md)).
+The last section, **Julia script**, builds the same system with Julia code, with
+[`structure_type`](@ref), [`PackmolSystem`](@ref) and [`packmol`](@ref) (see
+[Defining systems in Julia](../julia_api/index.md)).
 
-The two are equivalent, and either can be followed alone. The input files of the
+The input files and the Julia scripts are equivalent, and either can be followed alone. The input files of the
 [Input files](../input_files/index.md) section and the functions of the
 [Julia API](../julia_api/index.md) section are linked where they are first used.
 

@@ -6,10 +6,22 @@ core is a fixed molecule, the ligands are bound to its surface by their sulfur a
 their chains pointing outwards, and the solvent fills the cell around the particle and the
 space between the chains.
 
-![Gold nanoparticle in toluene](images/gold_nanoparticle.webp)
+```@setup gold_view
+using Packmol, PDBTools
+system = Main.pack_tutorial("gold_nanoparticle", "gold_nanoparticle.inp")
+```
 
-*A slab of 16 Å through the center of the system: the gold core (yellow), the sulfur
-atoms of the ligands (orange), their chains (gray), and toluene (green).*
+```@example gold_view
+visualize(get_atoms(system), # hide
+    "resname AU" => (style = :spheres, color = "gold"), # hide
+    "resname DDT and element S" => (style = :spheres, color = "orange"), # hide
+    "resname DDT and not element S" => (style = :sticks, color = "gray"), # hide
+    (at -> resname(at) == "TOL" && resnum(at) % 5 == 0 && at.y > 0) => (style = :sticks, color = "green"); # hide
+    rotate = [(:x, -90)], # hide
+) # hide
+```
+
+*The gold core (yellow), the sulfur atoms of the ligands (orange), their chains (gray), and, to show the solvent without hiding the nanoparticle, one in five toluene molecules (green) of the half of the cell behind it (drag to rotate, scroll to zoom).*
 
 Files: [`gold.pdb`](files/gold_nanoparticle/gold.pdb),
 [`ddt.pdb`](files/gold_nanoparticle/ddt.pdb),
@@ -51,7 +63,7 @@ Main.input_file("files/gold_nanoparticle/gold.jl")
   dodecanethiol in the liquid (0.845 g/mL). The remaining 435000 Å³ holds 2465 molecules
   of toluene (0.867 g/mL).
 
-## Command line
+## Binding the ligands
 
 ```@raw html
 <details><summary>The input file <code>gold_nanoparticle.inp</code> (click to expand)</summary>
@@ -85,7 +97,22 @@ placement, written to the output file in a fraction of a second, has the sulfur 
 the surface and the chains around the core, but the chains are still tilted and
 crowded:
 
-![The initial placement](images/gold_nanoparticle_check.webp)
+```@setup gold_check
+using Packmol, PDBTools
+system = Main.pack_tutorial("gold_nanoparticle", "gold_nanoparticle.inp"; check = true)
+```
+
+```@example gold_check
+visualize(get_atoms(system), # hide
+    "resname AU" => (style = :spheres, color = "gold"), # hide
+    "resname DDT and element S" => (style = :spheres, color = "orange"), # hide
+    "resname DDT and not element S" => (style = :sticks, color = "gray"), # hide
+    (at -> resname(at) == "TOL" && resnum(at) % 5 == 0 && at.y > 0) => (style = :sticks, color = "green"); # hide
+    rotate = [(:x, -90)], # hide
+) # hide
+```
+
+*The initial placement.*
 
 When it looks like this, comment the line again, and run the packing.
 
@@ -99,12 +126,15 @@ The packing (42900 atoms) takes about 3 seconds. All the ligands end with their 
 atoms 16 to 17.5 Å from the center, and their chains point outwards, at 15° from the
 radial direction on average, with their ends at 31 to 33 Å from the center.
 
-## Julia
+## Julia script
 
 ```julia
 using Packmol
 
-gold = structure_type("gold.pdb"; number = 1, fixed = ([0., 0., 0.], [0., 0., 0.]))
+gold = structure_type("gold.pdb";
+    number = 1,
+    fixed = ([0., 0., 0.], [0., 0., 0.]),
+)
 ligands = structure_type("ddt.pdb";
     number = 132,
     constraints = [OutsideSphere([0., 0., 0.], 16.)],

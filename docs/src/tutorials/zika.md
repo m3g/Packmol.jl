@@ -50,7 +50,7 @@ chain (bead 16, or 17 in POPS), which are 21 to 25 Å apart. The surfaces that b
 are 10 Å apart in the inner layer and 5 Å apart in the outer one, less than half the
 length of the lipids, which leaves them room to bend and tilt while being packed.
 
-## Command line
+## The virion
 
 The input file, [`zika.inp`](files/zika/zika.inp):
 
@@ -103,7 +103,7 @@ uses all the cores of the machine; `packmol -t N` limits it to `N` threads.
       [Restarting a run](../input_files/restarting_a_run.md)).
     - The memory and the time grow roughly linearly with the number of particles.
 
-## Julia
+## Julia script
 
 The same system, built in Julia, with the regions of the lipids given once for each layer:
 
@@ -114,33 +114,45 @@ capsid = structure_type("capsid.pdb";
     number = 1, fixed = ([0., 0., 0.], [0., 0., 0.]), center = :geometric,
 )
 
-# The lipids of a layer: head (bead 1) and end of the chain (bead 16, or 17 in POPS)
+# The lipids of a layer: head (bead 1) and end of the chain
+# (bead 16, or 17 in POPS)
 function layer(file, number, tail, head_region, tail_region)
-    structure_type(file; number, atom_constraints = [[1] => head_region, [tail] => tail_region])
+    structure_type(file; number,
+        atom_constraints = [[1] => head_region, [tail] => tail_region])
 end
 origin = [0., 0., 0.]
 outer = (OutsideSphere(origin, 180.), InsideSphere(origin, 175.))
 inner = (InsideSphere(origin, 160.), OutsideSphere(origin, 170.))
 lipids = [
-    layer("popc.pdb", 2185, 16, outer...), layer("pope.pdb", 1079, 16, outer...),
+    layer("popc.pdb", 2185, 16, outer...),
+    layer("pope.pdb", 1079, 16, outer...),
     layer("pops.pdb", 367, 17, outer...),
-    layer("popc.pdb", 2855, 16, inner...), layer("pope.pdb", 1441, 16, inner...),
+    layer("popc.pdb", 2855, 16, inner...),
+    layer("pope.pdb", 1441, 16, inner...),
     layer("pops.pdb", 473, 17, inner...),
 ]
 
 solvent = [
     structure_type("wt4.pdb"; number = 17903,
-        constraints = [InsideSphere(origin, 160.), OutsideSphere(origin, 120.)]),
-    structure_type("wls.pdb"; number = 23500, constraints = [InsideSphere(origin, 150.)]),
+        constraints = [
+            InsideSphere(origin, 160.), OutsideSphere(origin, 120.)]),
+    structure_type("wls.pdb"; number = 23500,
+        constraints = [InsideSphere(origin, 150.)]),
     structure_type("wt4.pdb"; number = 7551,
-        constraints = [OutsideSphere(origin, 175.), InsideSphere(origin, 195.)]),
+        constraints = [
+            OutsideSphere(origin, 175.), InsideSphere(origin, 195.)]),
     structure_type("wt4.pdb"; number = 85127,
-        constraints = [OutsideSphere(origin, 230.), InsideSphere(origin, 280.)]),
-    structure_type("wls.pdb"; number = 259500, constraints = [OutsideSphere(origin, 230.)]),
+        constraints = [
+            OutsideSphere(origin, 230.), InsideSphere(origin, 280.)]),
+    structure_type("wls.pdb"; number = 259500,
+        constraints = [OutsideSphere(origin, 230.)]),
 ]
 ions = [
     structure_type(ion; number, constraints)
-    for (ion, numbers) in (("NaW.pdb", (616, 256, 2078)), ("ClW.pdb", (531, 167, 1592)))
+    for (ion, numbers) in (
+        ("NaW.pdb", (616, 256, 2078)),
+        ("ClW.pdb", (531, 167, 1592)),
+    )
     for (number, constraints) in zip(numbers, (
         [InsideSphere(origin, 180.)],
         [OutsideSphere(origin, 180.), InsideSphere(origin, 215.)],

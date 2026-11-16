@@ -57,8 +57,8 @@ dodecahedron with at least 12 Å between the protein and the faces of the cell.
 Use PDBTools.jl to download the structure and to compute what you need. Check
 the initial placement first, then pack, and verify that the water has a
 density close to 1 g/mL. Write the system to lysozyme.pdb, in the shape of the
-dodecahedron. Read the section "For AI agents" of this page before starting:
-<paste here the address of that section>
+dodecahedron. Before starting, read the section "For AI agents" of
+https://m3g.github.io/Packmol.jl/stable/tutorials/ai_agent/#For-AI-agents
 ```
 
 ## For AI agents
@@ -87,24 +87,37 @@ the package and how to use it in practice; the rest of this documentation has th
 ```julia
 using Packmol
 water = structure_type("water.pdb";
-    number = 1000,                                     # number of molecules
-    constraints = [InsideBox([0., 0., 0.], [40., 40., 40.])],    # whole molecule
-    atom_constraints = [[1] => AbovePlane([0., 0., 1.], 10.)],  # some atoms only
-    constrain_rotation = Dict(:z => (0.0, 20.0, [1], [2])),     # orientation (atoms 1 to 2)
+    # number of molecules
+    number = 1000,
+    # whole molecule
+    constraints = [InsideBox([0., 0., 0.], [40., 40., 40.])],
+    # some atoms only
+    atom_constraints = [[1] => AbovePlane([0., 0., 1.], 10.)],
+    # orientation (atoms 1 to 2)
+    constrain_rotation = Dict(:z => (0.0, 20.0, [1], [2])),
 )
 protein = structure_type("protein.pdb"; number = 1,
-    fixed = ([0., 0., 0.], [0., 0., 0.]),  # position and Euler angles (radians)
-    center = :geometric,                   # or :mass, or :none (coordinates as given)
+    # position and Euler angles (radians)
+    fixed = ([0., 0., 0.], [0., 0., 0.]),
+    # or :mass, or :none (coordinates as given)
+    center = :geometric,
 )
 system = PackmolSystem([protein, water];
-    output = "system.pdb",          # PDB, or XYZ (by the extension, .xyz)
-    tolerance = 2.0,                # minimum distance between atoms of different molecules (Å)
-    unitcell = [50. 0. 0.; 0. 50. 0.; 0. 0. 50.],   # periodic cell (columns: cell vectors), centered at the origin
-    check_initial_placement = true, # write the initial placement only, without packing
+    # PDB, or XYZ (by the extension, .xyz)
+    output = "system.pdb",
+    # minimum distance between atoms of different molecules (Å)
+    tolerance = 2.0,
+    # periodic cell (columns: cell vectors), centered at the origin
+    unitcell = [50. 0. 0.; 0. 50. 0.; 0. 0. 50.],
+    # write the initial placement only, without packing
+    check_initial_placement = true,
 )
-packmol(system)       # packs, writes `output`, returns `system`
-system.status         # :packing_ready, :failed_packing, :failed_initial_approximation, :not_packed
-atoms = get_atoms(system)   # the packed atoms (PDBTools atoms), for analysis or visualization
+# packs, writes `output`, returns `system`
+packmol(system)
+# :packing_ready, :failed_packing, :failed_initial_approximation, :not_packed
+system.status
+# the packed atoms (PDBTools atoms), for analysis or visualization
+atoms = get_atoms(system)
 ```
 
 `packmol("input.inp")` packs an input file. `packmol(system; nloop, maxit, nthreads)`
@@ -215,7 +228,8 @@ Public functions, not exported (call them with the `Packmol.` prefix):
 
 ### Practical advice
 
-- The tolerance of 2.0 Å is the usual one for all-atom systems.
+- Use a tolerance of 2.0 Å for any system, all-atom or coarse-grained, unless the user
+  asks for another value for a specific reason.
 - `radscale` (in an input file, globally or per structure block; `radscale` keyword of
   `structure_type`) scales the radii of the atoms at the start of the packing, decaying to
   their values in the first loops (`radscale_decay_loops`, 20). The default is 5.0 for free
