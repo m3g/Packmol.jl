@@ -28,7 +28,7 @@ visualize(get_atoms(final), # hide
 ) # hide
 ```
 
-*The packed system (drag to rotate, scroll to zoom), built in the [Julia](#Julia) section
+*The packed system (drag to rotate, scroll to zoom), built in the [Julia script](#Julia-script) section
 below: the cathode (`z < 7.7`) and the anode (`z > 62.7`), the cations (blue) and the
 anions (red), and the periodic cell, closed by a vacuum gap beyond the anode.*
 
@@ -88,7 +88,7 @@ Every region has the density of the liquid, in the volume available to its ions
 (`free_volume` again: 10300 Å³ in each layer, 65400 Å³ in the bulk). The whole system,
 250 ion pairs, is neutral.
 
-## Command line
+## The ions in their regions
 
 ```@raw html
 <details><summary>The input file <code>supercapacitor.inp</code> (click to expand)</summary>
@@ -115,7 +115,7 @@ Uncomment the `check_initial_placement` line of the input file, and run it as be
 placement, written to the output file in a fraction of a second, has the ions in their
 regions, between the electrodes.
 
-When it does (see the views in the [Julia](#Julia) section), comment the line again, and
+When it does (see the views in the [Julia script](#Julia-script) section), comment the line again, and
 run the packing.
 
 ### Packing
@@ -126,7 +126,7 @@ packmol supercapacitor.inp
 
 The packing (11840 atoms) takes about a second.
 
-## Julia
+## Julia script
 
 ```@setup supercapacitor
 for file in readdir(joinpath("files", "supercapacitor"))

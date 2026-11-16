@@ -63,7 +63,7 @@ Main.input_file("files/gold_nanoparticle/gold.jl")
   dodecanethiol in the liquid (0.845 g/mL). The remaining 435000 Å³ holds 2465 molecules
   of toluene (0.867 g/mL).
 
-## Command line
+## Binding the ligands
 
 ```@raw html
 <details><summary>The input file <code>gold_nanoparticle.inp</code> (click to expand)</summary>
@@ -126,7 +126,7 @@ The packing (42900 atoms) takes about 3 seconds. All the ligands end with their 
 atoms 16 to 17.5 Å from the center, and their chains point outwards, at 15° from the
 radial direction on average, with their ends at 31 to 33 Å from the center.
 
-## Julia
+## Julia script
 
 ```julia
 using Packmol

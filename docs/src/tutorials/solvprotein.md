@@ -46,7 +46,7 @@ and thus 30% fewer water molecules to simulate.
   −10 (30 arginines and lysines, 40 aspartates and glutamates), neutralized by 10 more
   sodium ions: 96 chloride and 106 sodium ions.
 
-## Command line
+## The protein in the periodic cell
 
 ```@raw html
 <details><summary>The input file <code>solvprotein.inp</code> (click to expand)</summary>
@@ -101,7 +101,7 @@ packmol solvprotein.inp
 The packed system (about 111 thousand atoms) is written to `solvprotein.pdb`; the packing
 takes about a second.
 
-## Julia
+## Julia script
 
 ```julia
 using Packmol

@@ -25,16 +25,49 @@ visualize(get_atoms(final), # hide
 ) # hide
 ```
 
-*The packed system (drag to rotate, scroll to zoom), built in the [Julia](#Julia) section
+*The packed system (drag to rotate, scroll to zoom), built in the [Julia script](#Julia-script) section
 below.*
 
 Files: [`cnt.pdb`](files/nanotube/cnt.pdb), [`water.pdb`](files/nanotube/water.pdb), and
 the input file [`nanotube.inp`](files/nanotube/nanotube.inp).
 
+## The nanotube
+
 The nanotube is an armchair (12,12) tube, with a radius of 8.14 Å, and 49.2 Å long (20
-periods of 2.46 Å along its axis, 960 carbon atoms), built with the Julia code at the end
-of this page. Its length is the length of the box along `z`, so that the tube is continuous
-across the periodic boundary.
+periods of 2.46 Å along its axis, 960 carbon atoms). Its length is the length of the box
+along `z`, so that the tube is continuous across the periodic boundary.
+
+It is the rectangular cell of graphene (2.46 × 4.26 Å, with 4 carbon atoms) rolled into a
+cylinder: for an armchair `(n, n)` tube, `n` cells along the circumference, with the C–C
+bonds along it, and the tube periodic along its axis with a period of 2.46 Å:
+
+```@raw html
+<details><summary>The script that builds <code>cnt.pdb</code> (click to expand)</summary>
+```
+```julia
+using PDBTools
+
+function build_nanotube(; n = 12, nz = 20, a = 2.46, d = 1.42)
+    cell = [(0.0, 0.0), (a / 2, d / 2), (a / 2, 3d / 2), (0.0, 2d)]
+    circumference = n * 3d
+    radius = circumference / (2π)
+    Lz = nz * a
+    atoms = Atom{Nothing}[]
+    for i in 0:nz-1, j in 0:n-1, (z, y) in cell
+        θ = 2π * (j * 3d + y) / circumference
+        push!(atoms, Atom(; name = "C", resname = "CNT", resnum = 1, chain = "A",
+            x = radius * cos(θ), y = radius * sin(θ), z = i * a + z - Lz / 2,
+            pdb_element = "C",
+        ))
+    end
+    return atoms
+end
+
+write_pdb("cnt.pdb", build_nanotube())
+```
+```@raw html
+</details><br>
+```
 
 ## The numbers of molecules
 
@@ -45,7 +78,7 @@ in a tube this narrow is less dense, and 150 molecules are packed. Outside the t
 beyond a radius of 10.5 Å, the box of 40 × 40 × 49.2 Å has 61700 Å³, which holds 2060
 molecules at 1 g/mL (0.0334 molecules per Å³).
 
-## Command line
+## Water inside and outside the tube
 
 ```@eval
 Main.input_file("files/nanotube/nanotube.inp")
@@ -60,7 +93,7 @@ of the cylinders matters.
 Uncomment the `check_initial_placement` line of the input file, and run it as below
 (see [Checking the initial placement](@ref check_initial_placement)): the initial placement is
 written to the output file (`nanotube.pdb`) in a fraction of a second (see it at the end
-of the [Julia](#Julia) section). When the water is in the tube and around it, comment the
+of the [Julia script](#Julia-script) section). When the water is in the tube and around it, comment the
 line again, and run the packing.
 
 ### Packing
@@ -71,7 +104,7 @@ packmol nanotube.inp
 
 The packing takes a fraction of a second.
 
-## Julia
+## Julia script
 
 ```@setup nanotube
 for file in ("cnt.pdb", "water.pdb")
@@ -126,32 +159,4 @@ redirect_stdio(stdout = devnull, stderr = devnull) do # hide
 packmol(system)
 end # hide
 show_system(system)
-```
-
-### Building the nanotube
-
-The nanotube is the rectangular cell of graphene (2.46 × 4.26 Å, with 4 carbon atoms) rolled
-into a cylinder: for an armchair `(n, n)` tube, `n` cells along the circumference, with the
-C–C bonds along it, and the tube periodic along its axis with a period of 2.46 Å:
-
-```julia
-using PDBTools
-
-function build_nanotube(; n = 12, nz = 20, a = 2.46, d = 1.42)
-    cell = [(0.0, 0.0), (a / 2, d / 2), (a / 2, 3d / 2), (0.0, 2d)]
-    circumference = n * 3d
-    radius = circumference / (2π)
-    Lz = nz * a
-    atoms = Atom{Nothing}[]
-    for i in 0:nz-1, j in 0:n-1, (z, y) in cell
-        θ = 2π * (j * 3d + y) / circumference
-        push!(atoms, Atom(; name = "C", resname = "CNT", resnum = 1, chain = "A",
-            x = radius * cos(θ), y = radius * sin(θ), z = i * a + z - Lz / 2,
-            pdb_element = "C",
-        ))
-    end
-    return atoms
-end
-
-write_pdb("cnt.pdb", build_nanotube())
 ```

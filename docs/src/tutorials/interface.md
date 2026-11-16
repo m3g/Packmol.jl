@@ -24,7 +24,7 @@ Files: [`water.xyz`](files/interface/water.xyz), [`chlor.xyz`](files/interface/c
 [`t3.xyz`](files/interface/t3.xyz) and the input file
 [`interface.inp`](files/interface/interface.inp).
 
-## Command line
+## The two solvents and the hormone
 
 ```@raw html
 <details><summary>The input file <code>interface.inp</code> (click to expand)</summary>
@@ -76,7 +76,7 @@ coordinates of the file. With `centerofmass`, the molecule is rotated about its 
 of mass, which is then placed at the given position; without it, the rotation is about
 the origin of the coordinates of the file.
 
-## Julia
+## Julia script
 
 ```julia
 using Packmol

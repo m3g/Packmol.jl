@@ -106,7 +106,7 @@ the small nanoliposome, 4/3 π 22³ / 29.9 = 1492 molecules. The water outside f
 volume of the cell, 4√3/9 d³, minus that of the sphere of radius R + 58:
 (4√3/9 × 186³ − 4/3 π 83³) / 29.9 = 85567 molecules.
 
-## Command line
+## Lipids and water in spherical shells
 
 ```@raw html
 <details><summary>The input file <code>small.inp</code> (click to expand)</summary>
@@ -153,7 +153,7 @@ packmol small.inp
 The packed system is written to `small.pdb`, in about 16 seconds with 14 threads.
 The larger nanoliposome (`packmol large.inp`) takes about 30 seconds.
 
-## Julia
+## Julia script
 
 In Julia, the geometry of the table above can be written once, as a function of the
 radius of the inner heads, and of the numbers of lipids of the two leaflets:

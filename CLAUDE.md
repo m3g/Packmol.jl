@@ -112,7 +112,11 @@ and `lnp_images.jl`); the all-atom exosome,
 13.6 million atoms, whose files are the `packmol_zika` and `packmol_exosome` sets of MolSimTestFiles, the
 exosome's built by `dev/tutorials/exosome.jl` and its images by `dev/tutorials/exosome_images.jl`; and the minimal
 cell of Bentopy, built with `voxel_place` from the paper's Zenodo data, not distributed; its images by
-`dev/tutorials/cell_images.jl`, which streams the outputs and keeps only the visible beads for VMD), each with a command-line and a Julia section; keep
+`dev/tutorials/cell_images.jl`, which streams the outputs and keeps only the visible beads for VMD), each with sections on the
+physics of the system (structures, regions, numbers of molecules), then sections named after what
+they build ("Spherical drop", "Nematic phase", "Step 1: the proteins"; never "Command line"), with
+the input files and the `packmol` runs, and a last section, "Julia script", with the same system in
+Julia (scripts that build structures go in the structure sections, in `<details>` boxes); keep
 both paths equivalent when changing the input syntax or the Julia API.
 Every tutorial page shows the packed system right after its opening description. The views
 are live (`PDBTools.visualize`, with `rotate = [(:z, 30), (:x, -70)]` or a side view), made by

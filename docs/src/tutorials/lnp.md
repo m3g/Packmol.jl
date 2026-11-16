@@ -128,8 +128,6 @@ The numbers of molecules:
   without the volume of the RNA (11,970, 8884 and 6299), and outside the nanoparticle
   (689,515).
 
-## Command line
-
 The whole nanoparticle is packed at once, by `lnp.inp`: the pieces of RNA are fixed at the
 centers of the compartments, and everything else is packed around them. `monolayers.inp`
 packs the monolayers alone: it is how the geometry was checked while designing the
@@ -142,7 +140,7 @@ molecules inside a solvent are best fixed (or packed first, and then fixed, as t
 proteins of the [Exosome](exosome.md)); more complex ones, such as a real mRNA, all the
 more.
 
-### The geometry of the monolayers (optional)
+## The geometry of the monolayers (optional)
 
 ```@raw html
 <details><summary>The input file <code>monolayers.inp</code> (click to expand)</summary>
@@ -160,7 +158,7 @@ packmol monolayers.inp
 
 This takes about 30 seconds with 14 threads, and writes the monolayers to `monolayers.cif`.
 
-### The nanoparticle
+## The nanoparticle
 
 ```@raw html
 <details><summary>The input file <code>lnp.inp</code> (click to expand)</summary>
@@ -201,7 +199,7 @@ memory. The output, `lnp.cif`, has 1.5 GB.
     (ionizable lipids, cholesterol), the RNA and the ions would have to be chosen with
     care, and the system equilibrated (see [Using your AI agent](ai_agent.md)).
 
-## Julia
+## Julia script
 
 The same system in Julia:
 

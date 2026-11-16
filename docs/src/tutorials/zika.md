@@ -50,7 +50,7 @@ chain (bead 16, or 17 in POPS), which are 21 to 25 Å apart. The surfaces that b
 are 10 Å apart in the inner layer and 5 Å apart in the outer one, less than half the
 length of the lipids, which leaves them room to bend and tilt while being packed.
 
-## Command line
+## The virion
 
 The input file, [`zika.inp`](files/zika/zika.inp):
 
@@ -103,7 +103,7 @@ uses all the cores of the machine; `packmol -t N` limits it to `N` threads.
       [Restarting a run](../input_files/restarting_a_run.md)).
     - The memory and the time grow roughly linearly with the number of particles.
 
-## Julia
+## Julia script
 
 The same system, built in Julia, with the regions of the lipids given once for each layer:
 

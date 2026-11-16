@@ -71,8 +71,6 @@ phase is 50 × 50 × 15 Å (37500 Å³), with 92 molecules, 46 in each direction
 
 ## Nematic phase
 
-### Command line
-
 ```@eval
 Main.input_file("files/liquid_crystal/nematic.inp")
 ```
@@ -89,7 +87,43 @@ order parameter, ``S = \langle 3\cos^2\theta - 1 \rangle / 2`` (``\theta`` the a
 of a molecule with the director), is 0.89 in the packed system, while 5CB has about 0.6
 near room temperature: a cone of 45° gives 0.59.
 
-### Julia
+## Cholesteric phase
+
+In a cholesteric (chiral nematic) phase, the director turns along a helix: the molecules
+of each layer lie in the xy plane, aligned along a director that turns from one layer to
+the next. 5CB forms it when a chiral molecule is added to it; in a twisted nematic cell,
+the arrangement of a pixel of a liquid crystal display, the twist is instead imposed by the
+walls of the cell. Here, the cell has four layers of 15 Å, with the director at 0°, 45°,
+90° and 135° from `x`: the next layer, through the periodic boundary along `z`, would be
+at 180°, the same as 0° for an apolar director, so the twist continues through the
+boundary, along a helix of a pitch of 120 Å (a full turn of the director).
+
+The direction of a molecule in a plane takes more than one angle: at 45° from `x`, the
+vector is also at 45° from `y` (at -45° from `x`, it would be at 135° from `y`), and at
+90° from `z`. So each structure block has three rotation constraints, one for each axis:
+for a vector at an angle φ from `x` in the plane, `(cos φ, sin φ, 0)`, its angles are
+`acos(cos φ)` with `x`, `acos(sin φ)` with `y`, and 90° with `z`. The molecules pointing
+the other way are at φ + 180°.
+
+```@raw html
+<details><summary>The input file <code>cholesteric.inp</code> (click to expand)</summary>
+```
+```@eval
+Main.input_file("files/liquid_crystal/cholesteric.inp")
+```
+```@raw html
+</details><br>
+```
+
+```
+packmol cholesteric.inp
+```
+
+It packs in about a second with 14 threads.
+
+## Julia script
+
+### The nematic phase
 
 ```@setup liquid_crystal
 cp(joinpath("files", "liquid_crystal", "5cb.pdb"), "5cb.pdb"; force = true)
@@ -131,44 +165,7 @@ visualize(get_atoms(nematic),
 )
 ```
 
-## Cholesteric phase
-
-In a cholesteric (chiral nematic) phase, the director turns along a helix: the molecules
-of each layer lie in the xy plane, aligned along a director that turns from one layer to
-the next. 5CB forms it when a chiral molecule is added to it; in a twisted nematic cell,
-the arrangement of a pixel of a liquid crystal display, the twist is instead imposed by the
-walls of the cell. Here, the cell has four layers of 15 Å, with the director at 0°, 45°,
-90° and 135° from `x`: the next layer, through the periodic boundary along `z`, would be
-at 180°, the same as 0° for an apolar director, so the twist continues through the
-boundary, along a helix of a pitch of 120 Å (a full turn of the director).
-
-The direction of a molecule in a plane takes more than one angle: at 45° from `x`, the
-vector is also at 45° from `y` (at -45° from `x`, it would be at 135° from `y`), and at
-90° from `z`. So each structure block has three rotation constraints, one for each axis:
-for a vector at an angle φ from `x` in the plane, `(cos φ, sin φ, 0)`, its angles are
-`acos(cos φ)` with `x`, `acos(sin φ)` with `y`, and 90° with `z`. The molecules pointing
-the other way are at φ + 180°.
-
-### Command line
-
-```@raw html
-<details><summary>The input file <code>cholesteric.inp</code> (click to expand)</summary>
-```
-```@eval
-Main.input_file("files/liquid_crystal/cholesteric.inp")
-```
-```@raw html
-</details><br>
-```
-
-```
-packmol cholesteric.inp
-```
-
-It packs in about a second with 14 threads.
-
-### Julia
-
+### The cholesteric phase
 The same input, with the structure types of the layers built in a loop:
 
 ```@example liquid_crystal

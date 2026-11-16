@@ -38,7 +38,7 @@ The box is a cube with sides of 40 Å. DMF (73.09 g/mol) has a density of 0.944 
 is, 0.944 × 0.6022/73.09 = 0.00778 molecules per Å³. The chain occupies about 400 Å³, so
 the box holds (40³ − 400) × 0.00778 ≈ 495 molecules of DMF.
 
-## Command line
+## The polymer at the center of the box
 
 ```@eval
 Main.input_file("files/polymer_dmf/polymer_dmf.inp")
@@ -58,7 +58,7 @@ packmol polymer_dmf.inp
 
 The packing takes a fraction of a second.
 
-## Julia
+## Julia script
 
 ```@setup polymer
 for file in ("polyacrylamide.pdb", "dmf.pdb")

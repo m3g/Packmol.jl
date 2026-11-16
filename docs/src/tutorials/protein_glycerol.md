@@ -48,7 +48,7 @@ glycerol and 7630 of water.
     computes these numbers from the density of the mixture as a function of its
     concentration, given as a table, in any concentration unit.
 
-## Command line
+## The protein at the center of the box
 
 ```@eval
 Main.input_file("files/protein_glycerol/protein_glycerol.inp")
@@ -74,7 +74,7 @@ packmol protein_glycerol.inp
 
 The packing (about 48 thousand atoms) takes about half a second.
 
-## Julia
+## Julia script
 
 ```julia
 using Packmol

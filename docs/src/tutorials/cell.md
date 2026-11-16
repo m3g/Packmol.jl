@@ -84,9 +84,7 @@ end structure
 The tolerance of 4 Å, the diameter of the beads of Bentopy's model (2 Å of radius), gives
 voxels of 5 Å, those of Bentopy's model.
 
-## Command line
-
-### Step 1: the voxel placement, and the packing
+## Step 1: the voxel placement, and the packing
 
 The keyword `voxel_place` places the molecules with the algorithm of Bentopy before the
 packing. Molecules that do not fit are left out, as Bentopy does, and reported:
@@ -108,7 +106,7 @@ this step takes 2 minutes with 14 threads, and 20 GB of memory.
 *The output of the first step, cut as the image above: the molecules placed by the
 voxel placement, and packed.*
 
-### Step 2: the solvent
+## Step 2: the solvent
 
 The output of the first step is fixed, and the cytosol is filled with water and
 glycerol:
@@ -131,7 +129,7 @@ The packing of 17.3 million water beads and 3 million glycerol placeholders conv
 2 loops, 8.5 minutes with 14 threads, using 80 GB of memory: the cell, with 39.6 million
 beads, built in about 11 minutes.
 
-## Julia
+## Julia script
 
 The same steps in Julia (after `julia prepare.jl path/to/zenodo/cell`):
 

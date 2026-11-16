@@ -37,8 +37,38 @@ obabel CHA.cif -O CHA_uc.pdb --fillUC strict
 The unit cell of chabazite, in its hexagonal setting, has `a = b = 13.675` Å,
 `c = 14.767` Å, and an angle of 120° between `a` and `b`, with 36 silicon and 72 oxygen
 atoms, and 3 cages. [`cha.pdb`](files/zeolite/cha.pdb) has 2 × 2 × 2 unit cells (864
-atoms, 24 cages), centered at the origin, built with the Julia code at the end of this
-page.
+atoms, 24 cages), centered at the origin, built from the unit cell given by Open Babel:
+
+```@raw html
+<details><summary>The script that builds <code>cha.pdb</code> (click to expand)</summary>
+```
+```julia
+using PDBTools
+
+uc = read_pdb("CHA_uc.pdb")
+cell = Matrix{Float64}(UnitCell(13.675, 13.675, 14.767, 90, 90, 120))
+A = cell[:, 1] # the cell vectors
+B = cell[:, 2]
+C = cell[:, 3]
+center = A + B + C # the center of the supercell
+atoms = Atom{Nothing}[]
+for i in 0:1, j in 0:1, k in 0:1, at in uc
+    el = element(at) # Si or O
+    x = position(at) + i * A + j * B + k * C - center
+    push!(atoms, Atom(; name = el, resname = "CHA", resnum = 1, chain = "A",
+        x = x[1], y = x[2], z = x[3], pdb_element = el,
+    ))
+end
+supercell = Structure(atoms)
+supercell.unitcell = UnitCell(2 * 13.675, 2 * 13.675, 2 * 14.767, 90, 90, 120)
+write_pdb("cha.pdb", supercell)
+```
+```@raw html
+</details><br>
+```
+
+The gases are small enough to be written by hand: methane, with C–H bonds of 1.09 Å in a
+tetrahedron, and carbon dioxide, with C=O bonds of 1.16 Å (see the files).
 
 ## The numbers of molecules
 
@@ -49,7 +79,7 @@ per unit cell, 3 per cage. They adsorb carbon dioxide several times more than me
 which is why they are used to separate the two: one methane per cage is 1.4 mmol/g. The
 24 cages of `cha.pdb` hold 72 molecules of carbon dioxide and 24 of methane.
 
-## Command line
+## The gases in the cages
 
 ```@eval
 Main.input_file("files/zeolite/zeolite.inp")
@@ -89,7 +119,7 @@ packmol zeolite.inp
 The packing takes a fraction of a second. The output file has the `CRYST1` record of the
 triclinic cell, ready for a simulation.
 
-## Julia
+## Julia script
 
 ```@setup zeolite
 for file in ("cha.pdb", "methane.pdb", "co2.pdb")
@@ -134,33 +164,3 @@ visualize(get_atoms(system);
     rotate = [(:z, 30), (:x, -70)],
 )
 ```
-
-### Building the supercell
-
-The 2 × 2 × 2 cells of the zeolite, from the unit cell given by Open Babel, centered at
-the origin:
-
-```julia
-using PDBTools
-
-uc = read_pdb("CHA_uc.pdb")
-cell = Matrix{Float64}(UnitCell(13.675, 13.675, 14.767, 90, 90, 120))
-A = cell[:, 1] # the cell vectors
-B = cell[:, 2]
-C = cell[:, 3]
-center = A + B + C # the center of the supercell
-atoms = Atom{Nothing}[]
-for i in 0:1, j in 0:1, k in 0:1, at in uc
-    el = element(at) # Si or O
-    x = position(at) + i * A + j * B + k * C - center
-    push!(atoms, Atom(; name = el, resname = "CHA", resnum = 1, chain = "A",
-        x = x[1], y = x[2], z = x[3], pdb_element = el,
-    ))
-end
-supercell = Structure(atoms)
-supercell.unitcell = UnitCell(2 * 13.675, 2 * 13.675, 2 * 14.767, 90, 90, 120)
-write_pdb("cha.pdb", supercell)
-```
-
-The gases are small enough to be written by hand: methane, with C–H bonds of 1.09 Å in a
-tetrahedron, and carbon dioxide, with C=O bonds of 1.16 Å (see the files).

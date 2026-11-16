@@ -22,7 +22,7 @@ visualize(get_atoms(system), # hide
 Files: [`water.pdb`](files/mixture/water.pdb), [`urea.pdb`](files/mixture/urea.pdb) and
 the input file [`mixture.inp`](files/mixture/mixture.inp).
 
-## Command line
+## The box
 
 The input file:
 
@@ -41,7 +41,7 @@ this simple needs no check of the initial placement, but the input has the
 `check_initial_placement` line, commented, as all the tutorials (see
 [Checking the initial placement](@ref check_initial_placement)).
 
-## Julia
+## Julia script
 
 Each `structure ... end structure` block is a [`structure_type`](@ref), and the global
 keywords (`tolerance`, `output`) are keyword arguments of [`PackmolSystem`](@ref):

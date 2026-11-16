@@ -60,9 +60,7 @@ The regions, as distances from the center of the vesicle:
 | Water and ions inside | below 196.7 |
 | Water and ions outside | above 258.1, up to the faces of the periodic cell |
 
-## Command line
-
-### Step 1: the proteins
+## Step 1: the proteins
 
 The proteins are packed first, alone, and then fixed in the packing of the rest of the
 system. Large molecules that are not part of a continuous phase are best packed this
@@ -99,7 +97,7 @@ This takes about 8 seconds with 14 threads, and writes the proteins to `proteins
     its output in the packing of the rest of the system. An AI agent can write such a
     script for the surface of your system (see [Using your AI agent](ai_agent.md)).
 
-### Step 2: the lipids, the water and the ions
+## Step 2: the lipids, the water and the ions
 
 The output of the first step is fixed (`fixed 0. 0. 0. 0. 0. 0.` keeps the coordinates
 of the file):
@@ -147,7 +145,7 @@ memory. Writing the output, a 3.5 GB mmCIF file, takes about a minute of that.
       packing (60 s by default): writing a file of this size takes longer than a packing
       loop.
 
-## Julia
+## Julia script
 
 The same two steps in Julia:
 

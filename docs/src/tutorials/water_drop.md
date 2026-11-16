@@ -25,20 +25,57 @@ Files: [`graphite.pdb`](files/water_drop/graphite.pdb),
 [`drop.inp`](files/water_drop/drop.inp) and
 [`gaussian_drop.inp`](files/water_drop/gaussian_drop.inp).
 
-The graphite has three layers of graphene, 3.35 Å apart, with the surface at `z = 0`, of
-about 98 × 98 Å (11040 carbon atoms). It was built with the Julia code at the end of this
-page.
+## The graphite
 
-## Command line
+The graphite has three layers of graphene, 3.35 Å apart, with the surface at `z = 0`, of
+about 98 × 98 Å (11040 carbon atoms). It was built with
+[PDBTools.jl](https://github.com/m3g/PDBTools.jl): graphene has a rectangular cell of
+2.46 × 4.26 Å with 4 carbon atoms, and the layers are 3.35 Å apart, in AB stacking (every
+other layer shifted by one C–C bond, 1.42 Å):
+
+```@raw html
+<details><summary>The script that builds <code>graphite.pdb</code> (click to expand)</summary>
+```
+```julia
+using PDBTools
+
+function build_graphite(; nx = 40, ny = 23, nlayers = 3, a = 2.46, d = 1.42)
+    cell = [(0.0, 0.0), (a / 2, d / 2), (a / 2, 3d / 2), (0.0, 2d)]
+    Lx = nx * a
+    Ly = ny * 3d
+    atoms = Atom{Nothing}[]
+    for layer in 0:nlayers-1, i in 0:nx-1, j in 0:ny-1, (x, y) in cell
+        shift = isodd(layer) ? d : 0.0
+        push!(atoms, Atom(; name = "C", resname = "GRA", resnum = layer + 1, chain = "A",
+            x = i * a + x - Lx / 2,
+            y = mod(j * 3d + y + shift, Ly) - Ly / 2,
+            z = -3.35 * layer,
+            pdb_element = "C",
+        ))
+    end
+    return atoms
+end
+
+write_pdb("graphite.pdb", build_graphite())
+```
+```@raw html
+</details><br>
+```
+
+The graphite is a fixed molecule in both drops: `fixed 0. 0. 0. 0. 0. 0.` keeps it at
+the coordinates of its file (see [Fixed molecules](../constraints/fixed.md)).
+
+## Spherical drop
+
+The drop is the cap of a sphere of radius 30 Å centered at the surface, above the plane
+`z = 2`:
 
 ```@eval
 Main.input_file("files/water_drop/drop.inp")
 ```
 
-`fixed 0. 0. 0. 0. 0. 0.` keeps the graphite at the coordinates of its file (see [Fixed
-molecules](../constraints/fixed.md)). The number of water molecules follows from the
-volume of the cap of the sphere above `z = 2`: ``\pi h^2 (3R - h)/3`` with `R = 30` and
-`h = 28` Å, that is, about 50900 Å³, which holds 1700 water molecules at 1 g/mL (0.0334
+The number of water molecules follows from the volume of the cap of the sphere above
+`z = 2`: ``\pi h^2 (3R - h)/3`` with `R = 30` and `h = 28` Å, that is, about 50900 Å³, which holds 1700 water molecules at 1 g/mL (0.0334
 molecules per Å³).
 
 ### Check the initial placement first
@@ -73,7 +110,7 @@ packmol drop.inp
 
 The packing takes a fraction of a second.
 
-### A Gaussian drop
+## Gaussian drop
 
 The radially symmetric Gaussian surface (see [Gaussian, wave, and exponential
 surfaces](../constraints/gaussian_wave_and_exponential_surfaces.md)) gives a drop with
@@ -94,7 +131,12 @@ a water molecule. Without the cylinder, which keeps the drop within 35 Å of the
 molecules placed there cannot satisfy the constraints, and Packmol stops after the initial
 approximation with an error: an example of how badly designed constraints are detected
 early. Within the cylinder, the drop has a volume of about 33000 Å³ (1050 water
-molecules). The complete input file is [`gaussian_drop.inp`](files/water_drop/gaussian_drop.inp).
+molecules). The complete input file is [`gaussian_drop.inp`](files/water_drop/gaussian_drop.inp),
+run as the other:
+
+```
+packmol gaussian_drop.inp
+```
 
 ```@setup gaussian_view
 using Packmol, PDBTools
@@ -111,7 +153,9 @@ visualize(get_atoms(system), # hide
 
 *The Gaussian drop (drag to rotate, scroll to zoom).*
 
-## Julia
+## Julia script
+
+The spherical drop:
 
 ```julia
 using Packmol
@@ -152,33 +196,4 @@ system = PackmolSystem([graphite, water];
     # check_initial_placement = true, # uncomment to only place the molecules
 )
 packmol(system)
-```
-
-### Building the graphite
-
-The graphite was built with [PDBTools.jl](https://github.com/m3g/PDBTools.jl): graphene has
-a rectangular cell of 2.46 × 4.26 Å with 4 carbon atoms, and the layers are 3.35 Å apart,
-in AB stacking (every other layer shifted by one C–C bond, 1.42 Å):
-
-```julia
-using PDBTools
-
-function build_graphite(; nx = 40, ny = 23, nlayers = 3, a = 2.46, d = 1.42)
-    cell = [(0.0, 0.0), (a / 2, d / 2), (a / 2, 3d / 2), (0.0, 2d)]
-    Lx = nx * a
-    Ly = ny * 3d
-    atoms = Atom{Nothing}[]
-    for layer in 0:nlayers-1, i in 0:nx-1, j in 0:ny-1, (x, y) in cell
-        shift = isodd(layer) ? d : 0.0
-        push!(atoms, Atom(; name = "C", resname = "GRA", resnum = layer + 1, chain = "A",
-            x = i * a + x - Lx / 2,
-            y = mod(j * 3d + y + shift, Ly) - Ly / 2,
-            z = -3.35 * layer,
-            pdb_element = "C",
-        ))
-    end
-    return atoms
-end
-
-write_pdb("graphite.pdb", build_graphite())
 ```
