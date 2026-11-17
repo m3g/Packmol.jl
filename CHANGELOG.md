@@ -1,5 +1,5 @@
 Packmol.jl Changelog
-===========================
+====================
 
 [badge-breaking]: https://img.shields.io/badge/BREAKING-red.svg
 [badge-deprecation]: https://img.shields.io/badge/Deprecation-orange.svg
@@ -10,8 +10,8 @@ Packmol.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
-Version 100.0.0-DEV
--------------
+Version 100.0.0
+---------------
 The first release of Packmol.jl as Packmol: a new implementation, in Julia, of the Fortran
 Packmol (whose last version is 21.2.3), distributed as a Julia package, a standalone
 executable, and Python wheels (`pip install packmol`). Its version numbers continue those of
