@@ -10,6 +10,9 @@ const dash_line = repeat('-', 80)
 const hash_line = repeat('#', 80)
 const _packmol_version = string(pkgversion(@__MODULE__))
 
+# A line centered in the width of `hash_line`
+_centered(s::String) = repeat(' ', max(0, (length(hash_line) - length(s)) ÷ 2)) * s
+
 #
 # When packing fails, write (as Fortran Packmol) the "forced" solution to
 # `<name>-FORCED.<ext>` (`_forced_file`; Fortran: `<output>_FORCED`): the best solution, after an adjustment that satisfies the

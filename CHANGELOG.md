@@ -1,0 +1,68 @@
+Packmol.jl Changelog
+===========================
+
+[badge-breaking]: https://img.shields.io/badge/BREAKING-red.svg
+[badge-deprecation]: https://img.shields.io/badge/Deprecation-orange.svg
+[badge-feature]: https://img.shields.io/badge/Feature-green.svg
+[badge-experimental]: https://img.shields.io/badge/Experimental-yellow.svg
+[badge-enhancement]: https://img.shields.io/badge/Enhancement-blue.svg
+[badge-bugfix]: https://img.shields.io/badge/Bugfix-purple.svg
+[badge-fix]: https://img.shields.io/badge/Fix-purple.svg
+[badge-info]: https://img.shields.io/badge/Info-gray.svg
+
+Version 100.0.0-DEV
+-------------
+The first release of Packmol.jl as Packmol: a new implementation, in Julia, of the Fortran
+Packmol (whose last version is 21.2.3), distributed as a Julia package, a standalone
+executable, and Python wheels (`pip install packmol`). Its version numbers continue those of
+the Fortran Packmol. Changes relative to the Fortran Packmol (see the "Migrating from legacy
+Packmol" page of the documentation):
+
+- ![INFO][badge-info] The input files of the Fortran Packmol run unchanged in most cases,
+  with `packmol < input.inp`, `packmol input.inp` or `packmol -i input.inp`. The configurations
+  differ from those of the Fortran Packmol for the same input and seed (new optimizer, initial
+  placement and random number generator).
+- ![BREAKING][badge-breaking] The paths of an input file (structures, `output`,
+  `restart_from`) are relative to the directory of the input file (with `packmol < input.inp`,
+  to the current directory, as before).
+- ![BREAKING][badge-breaking] `restart_from` reads coordinate files (PDB, XYZ or mmCIF, for
+  example a previous output), not the restart files of the Fortran Packmol; `restart_to` is
+  ignored, with a warning.
+- ![BREAKING][badge-breaking] `constrain_rotation` constrains the angle between an axis and a
+  vector of the molecule (its longest axis, or the vector between two sets of atoms), not the
+  Euler angles.
+- ![BREAKING][badge-breaking] `centerofmass` uses the masses of the atoms (the Fortran
+  Packmol used the geometric center).
+- ![BREAKING][badge-breaking] Misspelled keywords in structure blocks are errors.
+- ![BREAKING][badge-breaking] The formats `tinker` and `moldy`, and the constraints
+  `over xygauss`/`below xygauss` (replaced by `above gaussian`/`below gaussian`), are not
+  supported.
+- ![BREAKING][badge-breaking] The output that satisfies only the constraints, written when the
+  packing does not converge, is `system-FORCED.pdb` for the output `system.pdb` (was
+  `system.pdb_FORCED`).
+- ![DEPRECATION][badge-deprecation] Keywords of the old algorithm are accepted with a warning
+  and ignored: `fscale`, `fbins`, `precision`, `sidemax`, `maxmove`, `nloop0`, `packall`,
+  `disable_movebad`, `movebadrandom`, `iprint1`/`2`/`3`, the `short_*` keywords,
+  `randominitialpoint`, `optimization_print_level`, `chkgrad`, `writebad`, `writecrd`,
+  `non_standard_conect`, `hexadecimal_indices`, and `nloop` in structure blocks. `check` is now
+  `check_initial_placement`.
+- ![ENHANCEMENT][badge-enhancement] Faster and multithreaded (`packmol -t N`): systems of
+  millions of atoms (membranes, vesicles, virions, cells) pack in minutes.
+- ![FEATURE][badge-feature] mmCIF files, for structures, outputs and restarts.
+- ![FEATURE][badge-feature] Periodic cells: `pbc xmin ymin zmin xmax ymax zmax`, triclinic
+  cells (`unitcell a b c α β γ`), rhombic dodecahedra and truncated octahedra
+  (`pbc dodecahedral`, `pbc octahedral`).
+- ![FEATURE][badge-feature] New constraints: curved surfaces (Gaussian, waves and exponentials,
+  and their radial forms), surfaces given by points (`within surface`, `inside surface`), and
+  rotation constraints.
+- ![FEATURE][badge-feature] `check_initial_placement`, to see where the constraints put the
+  molecules before packing; several conformations of a molecule, from files with several
+  models; `voxel_place`, the placement of Bentopy, for crowded systems.
+- ![FEATURE][badge-feature] Command line: `-o` and `-s` (output and seed, for replicas of a
+  system), `--guess-volume` and `--free-volume` (volumes of the system and of the regions of
+  its molecules), and a file dialog when run without an input.
+- ![FEATURE][badge-feature] Julia API: systems defined without input files, recipes (solvated
+  systems, membranes and membrane proteins from target densities and concentrations), custom
+  constraints, and the packed atoms in memory (`get_atoms`).
+- ![INFO][badge-info] The Fortran Packmol can be run from Julia with `run_packmol_legacy`
+  (requires `Packmol_jll`).

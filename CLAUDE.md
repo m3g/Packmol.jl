@@ -137,6 +137,12 @@ save lines (`a, b, c = f(1), f(2), f(3)`); unpacking the values returned by a fu
 (`tutorials/index.md`) explains how to follow the tutorials and how to check the initial
 placement.
 
+## Changelog
+
+`CHANGELOG.md` (in the format of PDBTools.jl: a section per version, items with badges) gets an
+entry in every pull request that changes the package; the `changelog` workflow checks it
+(the `Skip-Changelog` label skips the check, e.g. for changes of the docs only).
+
 ## Running Tests
 
 ```bash
