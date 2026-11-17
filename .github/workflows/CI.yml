@@ -2,7 +2,12 @@ name: CI
 # The tests. Changes of the documentation only (docs/, Markdown files) skip them: the
 # documentation is built by Documentation.yml.
 on:
+  # Pushes to main and tags only: pull requests are tested by the pull_request event
   push:
+    branches:
+      - main
+    tags:
+      - '*'
     paths-ignore:
       - 'docs/**'
       - '**.md'
