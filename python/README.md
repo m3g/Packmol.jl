@@ -8,8 +8,8 @@ This package installs the `packmol` command:
 
 ```bash
 pip install packmol      # or: uv tool install packmol
-packmol < input.inp      # or: packmol -i input.inp
-uvx packmol -i input.inp # without installing it
+packmol input.inp [-o output.pdb]
+uvx packmol input.inp    # without installing it
 ```
 
 Since version 100.0.0, the executable is compiled from

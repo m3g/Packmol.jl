@@ -71,11 +71,11 @@ julia -e 'import Pkg; Pkg.Apps.add("Packmol")'
 
 Add the directory of julia binaries (`$HOME/.julia/bin`) to your path, and run:
 ```
-packmol input.inp
+packmol input.inp [-o output.pdb]
 ```
-or `packmol < input.inp`, as the legacy Packmol. `-o output.pdb` overrides the output file
+`-o output.pdb` overrides the output file
 of the input, `-s N` its random seed, and `-t N` limits the number of threads; `packmol -h`
-lists the options. Without an input file (and no input redirected), a file browser is
+lists the options. Without an input file, a file browser is
 opened to choose it. The exit codes are those of the legacy Packmol: `0` for success,
 `173` if the packing did not converge (the best solution is written to the output file,
 and a solution satisfying only the constraints to `<name>-FORCED.<ext>`, e.g. `system-FORCED.pdb`), `171` for errors in
@@ -85,6 +85,10 @@ for other errors.
 The file browser uses tools that come with the operating system (`osascript` on macOS,
 PowerShell on Windows, and `zenity` or `kdialog` on Linux), and it can be disabled by
 setting the environment variable `PACKMOL_GUI="false"`.
+
+For compatibility, `packmol < input.inp`, the way the legacy Packmol was run, still works,
+but should be avoided: with the input redirected, the paths of the input file are relative
+to the current directory, not to the directory of the input file.
 
 ### Julia package
 

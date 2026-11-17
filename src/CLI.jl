@@ -10,13 +10,12 @@ import ..Packmol
 using LinearAlgebra: BLAS
 
 const usage = """
-    Usage: packmol input.inp
-           packmol -i input.inp [-o output.pdb] [-s seed]
-           packmol < input.inp
+    Usage: packmol input.inp [-o output.pdb] [-s seed]
 
-    With no input file and no input redirected to stdin, a file dialog is
-    opened to choose the input file. Paths in the input file are relative to
-    its directory (or to the current directory, if it is read from stdin).
+    Paths in the input file are relative to its directory. With no input
+    file, a file dialog is opened to choose it. For compatibility with the
+    legacy Packmol, `packmol < input.inp` also works, but then the paths are
+    relative to the current directory.
 
     Options:
       -i <file>      input file
