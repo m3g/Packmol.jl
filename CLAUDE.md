@@ -148,8 +148,8 @@ description on PyPI only changes with the upload of a new version.
 
 `CHANGELOG.md` (in the format of PDBTools.jl: a section per version, items with badges) gets an
 entry in every pull request that changes the package; the `changelog` workflow checks it
-(skipped for changes of `docs/` and Markdown files only; the `Skip-Changelog` label skips it
-for other changes that need no entry, e.g. of the workflows).
+(also for changes of the docs, with an INFO note; the `Skip-Changelog` label skips the check
+for changes that need no entry, e.g. of the workflows).
 
 ## Running Tests
 
