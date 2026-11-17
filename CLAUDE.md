@@ -148,7 +148,8 @@ description on PyPI only changes with the upload of a new version.
 
 `CHANGELOG.md` (in the format of PDBTools.jl: a section per version, items with badges) gets an
 entry in every pull request that changes the package; the `changelog` workflow checks it
-(the `Skip-Changelog` label skips the check, e.g. for changes of the docs only).
+(skipped for changes of `docs/` and Markdown files only; the `Skip-Changelog` label skips it
+for other changes that need no entry, e.g. of the workflows).
 
 ## Running Tests
 
@@ -484,7 +485,9 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 
 - [x] Resolve Project.toml merge conflict
 - [x] Documentation (Documenter.jl, hosted on GitHub Pages)
-- [x] CI/CD pipeline for tests, and the executable on five platforms (`BuildExecutable.yml`)
+- [x] CI/CD pipeline for tests (`CI.yml`), the documentation (`Documentation.yml`), and the executable on
+      five platforms (`BuildExecutable.yml`); changes of `docs/` and Markdown files only skip the tests
+      and the executable builds (`paths-ignore`; the executable still builds on main, tags and manual runs)
 - [ ] Release 100.0.0 (registration, then the archives and wheels): the maintainer's decision;
       plan in `dev/drop-in-replacement.md`
 - [x] Migration guide from Fortran Packmol (`docs/src/migrating.md`)

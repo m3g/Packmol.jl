@@ -2,10 +2,14 @@ name: changelog
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+    # Not for changes of the documentation only (docs/, Markdown files)
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
 
 jobs:
   # Enforces the update of a changelog file on every pull request
-  # Can be skipped with the `Skip-Changelog` label
+  # Can be skipped with the `Skip-Changelog` label; changes of the documentation only skip it
   changelog:
     runs-on: ubuntu-latest
     steps:
