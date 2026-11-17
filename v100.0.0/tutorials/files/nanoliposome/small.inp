@@ -1,0 +1,52 @@
+#
+# Small POPC nanoliposome with water inside and outside
+#
+tolerance 2.0
+output small.pdb
+
+# Uncomment to write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints):
+# check_initial_placement
+
+# Truncated octahedron periodic cell centered at the origin, with at least 10 Å of
+# water between the nanoliposome and the faces of the cell. The output is written in
+# the shape of the octahedron
+pbc octahedral 0. 0. 0. 186.
+periodic_boundary_style octahedral
+
+# Water inside the nanoliposome: a sphere of radius 22 Å
+structure water.pdb
+  number 1492
+  inside sphere 0. 0. 0. 22.
+end structure
+
+# Inner leaflet: the heads (atom 1, N) inside the sphere of radius 25 Å, pointing to
+# the water inside, and the ends of the chains (atoms 88 and 131) outside the sphere
+# of radius 47 Å, near the middle of the bilayer (r = 53 Å)
+structure popc.pdb
+  number 123
+  atoms 1
+    inside sphere 0. 0. 0. 25.
+  end atoms
+  atoms 88 131
+    outside sphere 0. 0. 0. 47.
+  end atoms
+end structure
+
+# Outer leaflet: the ends of the chains inside the sphere of radius 59 Å, and the
+# heads outside the sphere of radius 81 Å, pointing to the water outside
+structure popc.pdb
+  number 552
+  atoms 88 131
+    inside sphere 0. 0. 0. 59.
+  end atoms
+  atoms 1
+    outside sphere 0. 0. 0. 81.
+  end atoms
+end structure
+
+# Water outside the nanoliposome, filling the rest of the periodic cell
+structure water.pdb
+  number 85567
+  outside sphere 0. 0. 0. 83.
+end structure
