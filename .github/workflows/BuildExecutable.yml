@@ -8,6 +8,7 @@ name: Build executable
 # - Manual runs (workflow_dispatch) can upload the wheels to TestPyPI or PyPI (`publish`),
 #   which needs this repository registered as a trusted publisher of the PyPI project and
 #   the environments `testpypi`/`pypi`. PyPI only from a version tag.
+# - Pull requests, unless they change only the documentation (docs/, Markdown files).
 on:
   push:
     branches:
@@ -15,6 +16,9 @@ on:
     tags:
       - '*'
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
   workflow_dispatch:
     inputs:
       publish:

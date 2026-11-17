@@ -5,11 +5,13 @@ on:
       - main
     paths-ignore:
       - 'docs/**'
+      - '**.md'
   push:
     branches:
       - main
     paths-ignore:
       - 'docs/**'
+      - '**.md'
 jobs:
   test:
     runs-on: ubuntu-latest
