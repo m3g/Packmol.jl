@@ -135,4 +135,5 @@ dodecahedral` (the cell is centered at the origin, unless `unitcell_center` is g
 !!! tip
     The `SolutionBoxUWI` recipe solvates a protein with water and ions from a
     target ionic concentration (neutralizing its charge), in a periodic cell of any of
-    these shapes (`pbc = :dodecahedral`). See [Recipes](../recipes/index.md).
+    the shapes of [Cell shapes](@ref cell_shapes) (`pbc = :dodecahedral` here). See
+    [Recipes](../recipes/index.md).

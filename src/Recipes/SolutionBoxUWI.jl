@@ -224,7 +224,7 @@ end
         # box size
         box_sides::AbstractVector{<:Number}, # or
         margin::Number,
-        pbc::Symbol = :cubic,
+        pbc::Symbol = :cubic, # or :orthorhombic, :dodecahedral, :octahedral
     )
 
 Function that generates an input file for Packmol for a Solute + Water + Ions system.
@@ -239,7 +239,7 @@ The box sides are given in Ångströms, and can be provided as a vector of 3 ele
 Alternatively, the margin can be provided, and the box sides will be calculated as
 the maximum and minimum coordinates of the solute plus the margin in all 3 dimensions.
 
-`pbc` selects the shape of the periodic cell: `:cubic` (the default) forces all 3
+`pbc` selects the shape of the periodic cell (see [Cell shapes](@ref cell_shapes)): `:cubic` (the default) forces all 3
 sides to their maximum, `:orthorhombic` keeps `box_sides`/`margin` as given (possibly
 with unequal sides), and `:dodecahedral`/`:octahedral` build a rhombic
 dodecahedron/truncated octahedron cell (see [`dodecahedral_unitcell`](@ref)/
@@ -378,7 +378,7 @@ end
         # box size
         box_sides::AbstractVector{<:Number}, # or
         margin::Number,
-        pbc::Symbol = :cubic,
+        pbc::Symbol = :cubic, # or :orthorhombic, :dodecahedral, :octahedral
     )
 
 Function that generates an input file for Packmol for a Solute + Water + Ions system.
@@ -393,7 +393,7 @@ The box sides are given in Ångströms, and can be provided as a vector of 3 ele
 Alternatively, the margin can be provided, and the box sides will be calculated as
 the maximum and minimum coordinates of the solute plus the margin in all 3 dimensions.
 
-`pbc` selects the shape of the periodic cell: `:cubic` (the default) forces all 3
+`pbc` selects the shape of the periodic cell (see [Cell shapes](@ref cell_shapes)): `:cubic` (the default) forces all 3
 sides to their maximum, `:orthorhombic` keeps `box_sides`/`margin` as given (possibly
 with unequal sides), and `:dodecahedral`/`:octahedral` build a rhombic
 dodecahedron/truncated octahedron cell (see [`dodecahedral_unitcell`](@ref)/
@@ -517,7 +517,7 @@ end
         # box size
         box_sides::AbstractVector{<:Number}, # or
         margin::Number,
-        pbc::Symbol = :cubic,
+        pbc::Symbol = :cubic, # or :orthorhombic, :dodecahedral, :octahedral
         kwargs...,
     )
 
@@ -527,7 +527,7 @@ It is equivalent to calling
 [`write_packmol_input`](@ref write_packmol_input(::SolutionBoxUWI)) followed by `packmol` on the
 resulting file.
 
-`ionic_concentration`, `output`, `box_sides`, `margin`, and `pbc` behave as in
+`ionic_concentration`, `output`, `box_sides`, `margin`, and `pbc` (see [Cell shapes](@ref cell_shapes)) behave as in
 `write_packmol_input`. Any other keyword (`nloop`, `maxit`, `seed`, ...) is
 forwarded to the packing engine — see `packmol(::PackmolSystem)`.
 
