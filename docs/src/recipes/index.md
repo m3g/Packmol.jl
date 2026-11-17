@@ -53,20 +53,12 @@ packing engine (see `packmol(::PackmolSystem)`).
 
 ### The periodic cell
 
-In the solvation recipes, `pbc` selects the shape of the periodic cell that
-`margin`/`box_sides` size:
-
-- `:cubic` (the default): all three sides set to the largest, a cube;
-- `:orthorhombic`: the sides as computed, possibly unequal;
-- `:dodecahedral`/`:octahedral`: a rhombic dodecahedron or a truncated octahedron, the
-  smallest that holds the solute with the margin from its faces (or, with `box_sides`, of
-  their maximum; see [`dodecahedral_unitcell`](@ref)/[`octahedral_unitcell`](@ref) and
-  [Periodic boundary conditions](../periodic_boundary_conditions/index.md)). They are
-  more sphere-like than the cube, and solvate a single, roughly spherical, solute with
-  fewer solvent molecules.
-
-The numbers of molecules follow from the volume of the cell, `det(unitcell)`, whatever
-its shape. `Membrane` and `MembraneProtein` are always orthorhombic.
+In the solvation recipes, `pbc` selects the shape of the periodic cell, sized by `margin`
+or `box_sides`: `:cubic` (the default), `:orthorhombic`, `:dodecahedral` (a rhombic
+dodecahedron) or `:octahedral` (a truncated octahedron). See [Cell shapes](@ref
+cell_shapes) for how each is sized, and the pages of the shapes. The numbers of molecules
+follow from the volume of the cell, whatever its shape. `Membrane` and `MembraneProtein`
+are always orthorhombic.
 
 ## [Writing a Packmol input file](@id recipes_input)
 

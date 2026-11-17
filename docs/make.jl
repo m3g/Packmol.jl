@@ -52,6 +52,7 @@ makedocs(
         "Home" => [
             "Introduction" => "index.md",
             "Installation" => "installation.md",
+            "Running Packmol" => "running.md",
             "Migrating from legacy Packmol" => "migrating.md",
         ],
         "Tutorials" => [

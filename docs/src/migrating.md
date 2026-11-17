@@ -1,13 +1,14 @@
 # Migrating from legacy Packmol
 
 Packmol.jl reads the input files of the legacy (Fortran) Packmol, and the `packmol`
-command runs them in the same way:
+command runs them:
 
 ```bash
-packmol < input.inp
-packmol input.inp
-packmol -i input.inp -o output.pdb
+packmol input.inp [-o output.pdb]
 ```
+
+The legacy way, `packmol < input.inp`, still works, but the paths of the input file are
+then relative to the current directory (see below): prefer `packmol input.inp`.
 
 Most input files run unchanged. This page lists the differences: what changed, what is no
 longer supported, and what is new. The legacy program is still available (see

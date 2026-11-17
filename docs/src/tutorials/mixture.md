@@ -45,7 +45,7 @@ Run it with:
 packmol mixture.inp
 ```
 
-(or `packmol < mixture.inp`). The packed system is written to `mixture.pdb`. A system
+The packed system is written to `mixture.pdb`. A system
 this simple needs no check of the initial placement, but the input has the
 `check_initial_placement` line, commented, as all the tutorials (see
 [Checking the initial placement](@ref check_initial_placement)).
