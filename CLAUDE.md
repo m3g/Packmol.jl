@@ -342,7 +342,8 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
       chunk the optimizer works on a′ = Lᵀa (G/N = LLᵀ, G = JᵀIJ, the metric of the atom displacements
       at the current orientation), so a unit step moves the atoms by 1 Å RMS; not for linear molecules.
       ~10x fewer evaluations for lipids (bilayer, nanoliposomes, Zika). `packmol(sys; rotation_scaling=false)`
-      packs with the Euler angles. Solver experiments (GENCAN, L-BFGS: no gain) in `dev/solvers/`.
+      packs with the Euler angles. Solver experiments (GENCAN, L-BFGS: no gain) in `dev/solvers/` of the
+      `archive/solvers` branch.
 - [x] `<name>-FORCED.<ext>` (Fortran: `<output>_FORCED`; the extension kept for the format): constraint-only adjustment of the best solution, written when packing fails
 - [ ] Convergence criteria based on `tolerance_precision` and `constraint_precision`
 - [x] `writeout`: minimum seconds between writes of the output during the packing (default 60; 30 in Fortran)
