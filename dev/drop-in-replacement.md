@@ -225,8 +225,8 @@ Decisions of the maintainer (2026-11-05):
   libblastrampoline themselves can't be deleted: LinearAlgebra's `__init__`, pulled in by
   StaticArrays, loads them at startup. The stub has to define `isamax_64_`, `zdotc_64_`,
   `cdotc_64_` and `sdot_64_` (correct implementations), which libblastrampoline probes to
-  detect the interface. Packmol makes no BLAS calls. Stub source:
-  `dev/blas_stub.c`.
+  detect the interface. Packmol makes no BLAS calls. The stub (`dev/blas_stub.c`)
+  was removed: it was never used by the build.
 - All 21 inputs in Fortran's `testing/input_files` parse, once paths are adapted (D1).
   The examples parse too, except `examples/interface.inp`, which uses `filetype xyz` (F1).
 - Runtime against Fortran (single thread, s): water_box 0.05 vs 0.13 · mixture 0.11 vs 1.34 ·

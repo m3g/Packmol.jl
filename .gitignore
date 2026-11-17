@@ -21,5 +21,3 @@ test/run_packmol/ieee_signaling_box.pdb
 /juliac/Manifest.toml
 /dev/large_tests/Manifest.toml
 /juliac/build/
-/dev/solvers/Manifest.toml
-/dev/solvers/gencan/build/

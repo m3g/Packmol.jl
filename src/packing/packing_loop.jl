@@ -108,7 +108,7 @@ _rotation_scaling(packmol_system::PackmolSystem{3}) = RotationScaling(packmol_sy
 _rotation_scaling(::PackmolSystem) = nothing
 
 # The local solver of the packing loop: SPGBox. A separate function so that the solver
-# experiments of `dev/solvers/` can replace it by redefining this method. The bounds are
+# experiments of the `archive/lm-solver` branch can replace it by redefining this method. The bounds are
 # positional: they are `nothing` without PBC, and a keyword call with arguments of a
 # `Union` type is not resolved by `juliac --trim`.
 _local_solver(fg!, x, lower, upper; callback, vaux, nitmax, nfevalmax) =
