@@ -487,7 +487,9 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
 - [x] Documentation (Documenter.jl, hosted on GitHub Pages)
 - [x] CI/CD pipeline for tests (`CI.yml`), the documentation (`Documentation.yml`), and the executable on
       five platforms (`BuildExecutable.yml`); changes of `docs/` and Markdown files only skip the tests
-      and the executable builds (`paths-ignore`; the executable still builds on main, tags and manual runs)
+      and the executable builds (`paths-ignore`; the executable still builds on main, tags and manual runs).
+      Docs-only releases: tags `v<version>+docs<n>` (with a GitHub release) redeploy the stable docs
+      (Documenter drops the `+...`); they build nothing, and get the archives of `v<version>`
 - [ ] Release 100.0.0 (registration, then the archives and wheels): the maintainer's decision;
       plan in `dev/drop-in-replacement.md`
 - [x] Migration guide from Fortran Packmol (`docs/src/migrating.md`)
