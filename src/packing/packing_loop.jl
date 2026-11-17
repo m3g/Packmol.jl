@@ -146,10 +146,12 @@ function _packmol(
     # Print title
     _println()
     _println(hash_line)
-    _println(_centered("Packmol.jl: fast and versatile packing of molecules"))
-    _println(_centered("for simulations of materials and biological systems"))
     _println()
-    _println(_centered("Version $_packmol_version"))
+    _println("  Packmol.jl: fast and versatile packing of molecules for simulations of")
+    _println("              materials and biological systems")
+    _println()
+    _println(lpad("Version $_packmol_version", 77)) # right-aligned at column 77
+    _println()
     _println(hash_line)
     _println()
     _check_fixed_inside_cell(packmol_system)
