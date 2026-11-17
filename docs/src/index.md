@@ -79,3 +79,16 @@ If Packmol contributed to your work, please cite the following references:
 - J. M. Martínez and L. Martínez. Packing optimization for automated generation of complex
   system's initial configurations for molecular dynamics and docking. *Journal of
   Computational Chemistry*, 24(7):819-825, 2003. [doi:10.1002/jcc.10216](https://doi.org/10.1002/jcc.10216)
+
+## See also
+
+- [ComplexMixtures.jl](https://m3g.github.io/ComplexMixtures.jl/stable/): solvation and
+  interactions in complex solutions (minimum-distance distribution functions, Kirkwood-Buff
+  integrals), from simulations.
+- [CellListMap.jl](https://m3g.github.io/CellListMap.jl/stable/): fast computation of
+  pairwise interactions and distances with cell lists, on which Packmol.jl is built.
+- [PDBTools.jl](https://m3g.github.io/PDBTools.jl/stable/): reading, writing, selecting and
+  visualizing molecular structures (PDB and mmCIF).
+- [m3g.github.io](https://m3g.github.io/): the other packages and the research of our group.
+
+Contact: [lmartine@unicamp.br](mailto:lmartine@unicamp.br)

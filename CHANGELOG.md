@@ -10,6 +10,11 @@ Packmol.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
+Version 100.0.1-DEV
+-------------------
+- ![INFO][badge-info] Documentation: a "See also" section in the introduction (related packages
+  and contact).
+
 Version 100.0.0
 ---------------
 The first release of Packmol.jl as Packmol: a new implementation, in Julia, of the Fortran
