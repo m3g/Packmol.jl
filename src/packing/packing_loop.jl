@@ -150,7 +150,7 @@ function _packmol(
     _println("  Packmol.jl: fast and versatile packing of molecules for simulations of")
     _println("              materials and biological systems")
     _println()
-    _println(lpad("Version $_packmol_version", 77)) # right-aligned at column 77
+    @_printf("%77s\n", "Version $_packmol_version") # right-aligned at column 77
     _println()
     _println(hash_line)
     _println()

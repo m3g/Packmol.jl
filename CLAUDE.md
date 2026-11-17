@@ -137,6 +137,13 @@ save lines (`a, b, c = f(1), f(2), f(3)`); unpacking the values returned by a fu
 (`tutorials/index.md`) explains how to follow the tutorials and how to check the initial
 placement.
 
+## Citation (pending)
+
+When the paper of Packmol.jl is published, add it to the references to cite: `README.md`
+("please cite"), the docs, and `python/README.md`, which is the description of the PyPI
+project (https://test.pypi.org/project/packmol/ and https://pypi.org/project/packmol/). The
+description on PyPI only changes with the upload of a new version.
+
 ## Changelog
 
 `CHANGELOG.md` (in the format of PDBTools.jl: a section per version, items with badges) gets an
@@ -521,7 +528,7 @@ reachable from it to be resolved at compile time. In the engine code:
   (not `Union{Nothing,...}`: use a function barrier or a flag); don't call with
   `Val(runtime_value)`, keyword calls with `Union`-typed arguments, or a `Matrix` unit cell
   where the dimension must be static (use `SMatrix{D,D,T}`);
-- no `readlines` (use a `readline` loop); pass a caught exception (typed `Any`) only to
+- no `readlines` (use a `readline` loop), no `lpad`/`rpad`/`repeat(::Char, n)` (align with `@_printf`); pass a caught exception (typed `Any`) only to
   `@nospecialize` functions, and narrow `AbstractString` fields (`e.msg`) to `String` before printing.
 When building the executable, `juliac/build.jl` sets `PACKMOL_EXECUTABLE_BUILD=true`
 (`Packmol._executable_build`): the precompilation workload (`src/precompile.jl`) is skipped
