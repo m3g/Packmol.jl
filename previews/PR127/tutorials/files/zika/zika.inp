@@ -1,0 +1,161 @@
+#
+# A Zika virion: the capsid (fixed), surrounded by a membrane of two layers of
+# POPC, POPE and POPS, solvated by water and ions inside, between the capsid
+# and the membrane, and outside. Coarse-grained (SIRAH) models: WT4 and WLS
+# water, NaW and ClW ions.
+#
+tolerance 2.0
+output zika.pdb
+
+# The periodic cell: a rhombic dodecahedron centered at the origin, with 674 Å
+# between opposite faces (and between periodic images). The output is written in
+# the shape of the dodecahedron.
+pbc dodecahedral 0. 0. 0. 674.
+periodic_boundary_style dodecahedral
+
+# Uncomment to write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints):
+# check_initial_placement
+
+structure capsid.pdb
+  number 1
+  center
+  fixed 0. 0. 0. 0. 0. 0.
+end structure
+
+#
+# Outer layer of the membrane: heads (bead 1) outside r = 180 Å, ends of the
+# chains (bead 16, or 17 in POPS) inside r = 175 Å
+#
+structure popc.pdb
+  number 2185
+  atoms 16
+    inside sphere 0. 0. 0. 175.
+  end atoms
+  atoms 1
+    outside sphere 0. 0. 0. 180.
+  end atoms
+end structure
+
+structure pope.pdb
+  number 1079
+  atoms 16
+    inside sphere 0. 0. 0. 175.
+  end atoms
+  atoms 1
+    outside sphere 0. 0. 0. 180.
+  end atoms
+end structure
+
+structure pops.pdb
+  number 367
+  atoms 17
+    inside sphere 0. 0. 0. 175.
+  end atoms
+  atoms 1
+    outside sphere 0. 0. 0. 180.
+  end atoms
+end structure
+
+#
+# Inner layer of the membrane: heads inside r = 160 Å, ends of the chains
+# outside r = 170 Å
+#
+structure popc.pdb
+  number 2855
+  atoms 16
+    outside sphere 0. 0. 0. 170.
+  end atoms
+  atoms 1
+    inside sphere 0. 0. 0. 160.
+  end atoms
+end structure
+
+structure pope.pdb
+  number 1441
+  atoms 16
+    outside sphere 0. 0. 0. 170.
+  end atoms
+  atoms 1
+    inside sphere 0. 0. 0. 160.
+  end atoms
+end structure
+
+structure pops.pdb
+  number 473
+  atoms 17
+    outside sphere 0. 0. 0. 170.
+  end atoms
+  atoms 1
+    inside sphere 0. 0. 0. 160.
+  end atoms
+end structure
+
+#
+# Water inside the membrane: around and within the capsid
+#
+structure wt4.pdb
+  number 17903
+  inside sphere 0. 0. 0. 160.
+  outside sphere 0. 0. 0. 120.
+end structure
+
+structure wls.pdb
+  number 23500
+  inside sphere 0. 0. 0. 150.
+end structure
+
+#
+# Water between the two layers of heads and the outer water
+#
+structure wt4.pdb
+  number 7551
+  outside sphere 0. 0. 0. 175.
+  inside sphere 0. 0. 0. 195.
+end structure
+
+structure wt4.pdb
+  number 85127
+  outside sphere 0. 0. 0. 230.
+  inside sphere 0. 0. 0. 280.
+end structure
+
+structure wls.pdb
+  number 259500
+  outside sphere 0. 0. 0. 230.
+end structure
+
+#
+# Ions: inside, around the membrane, and outside
+#
+structure NaW.pdb
+  number 616
+  inside sphere 0. 0. 0. 180.
+end structure
+
+structure NaW.pdb
+  number 256
+  outside sphere 0. 0. 0. 180.
+  inside sphere 0. 0. 0. 215.
+end structure
+
+structure NaW.pdb
+  number 2078
+  outside sphere 0. 0. 0. 220.
+end structure
+
+structure ClW.pdb
+  number 531
+  inside sphere 0. 0. 0. 180.
+end structure
+
+structure ClW.pdb
+  number 167
+  outside sphere 0. 0. 0. 180.
+  inside sphere 0. 0. 0. 215.
+end structure
+
+structure ClW.pdb
+  number 1592
+  outside sphere 0. 0. 0. 220.
+end structure
