@@ -9,6 +9,9 @@ name: Build executable
 #   which needs this repository registered as a trusted publisher of the PyPI project and
 #   the environments `testpypi`/`pypi`. PyPI only from a version tag.
 # - Pull requests, unless they change only the documentation (docs/, Markdown files).
+# - Tags with build metadata (v100.0.0+docs1, releases that only update the stable docs):
+#   nothing is built; the archives of the release of the version (v100.0.0) are copied to
+#   the release of the tag, so that the links to the latest release keep working.
 on:
   push:
     branches:
@@ -37,6 +40,7 @@ env:
   JULIA_VERSION: '1.13.2'
 jobs:
   build:
+    if: ${{ !contains(github.ref, '+') }}
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -165,6 +169,28 @@ jobs:
           sha256sum packmol-* > SHA256SUMS.txt
           cat SHA256SUMS.txt
           # TagBot pushes the tag before it creates the release
+          for i in $(seq 30); do
+            gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 && break
+            sleep 60
+          done
+          gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --clobber packmol-* SHA256SUMS.txt
+
+  # Releases of the docs only (tags v<version>+<build>): the archives of v<version>
+  docs-release:
+    if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '+')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: copy the archives of the release of the version
+        run: |
+          base=${GITHUB_REF_NAME%%+*}
+          mkdir dist && cd dist
+          gh release download "$base" -R "$GITHUB_REPOSITORY" -p 'packmol-*' -p SHA256SUMS.txt
+          ls
+          # the release of the tag may be created after the tag is pushed
           for i in $(seq 30); do
             gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 && break
             sleep 60
