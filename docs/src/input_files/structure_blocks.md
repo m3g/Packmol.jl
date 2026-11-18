@@ -71,3 +71,68 @@ extended lipid. In the output, the molecules of all conformations are numbered a
 those of a single structure type. A fixed molecule has a single conformation, and
 `restart_from` is not available inside a structure block with several conformations
 (use it for the whole system).
+
+## Polymers
+
+A structure block with `repeat` blocks is a polymer (Packmol.jl only): the structure file
+holds the whole polymer (one model per conformation), and the `repeat` blocks give its
+sequence of monomers, each with its number of atoms, in the order of the atoms of the
+file. Each monomer is packed as a rigid molecule, and consecutive monomers are held
+together by **links**: harmonic restraints between an atom of a monomer and an atom of
+the next one, at their distance in the structure. The chains are thus flexible: the
+monomers turn about the junctions, while the bonds and angles of the junctions are kept
+by the links.
+
+```
+structure peptides.pdb      # the polymer: 10 models, 10 conformations
+  number 123                # polymers
+  inside sphere 0. 0. 0. 100.
+  repeat 20                 # 20 times the monomers of the block
+    monomer 18              # 18 atoms
+      link 17 1             # atom 17 of this monomer to atom 1 of the next
+      link 18 1
+      link 18 2
+  end repeat
+end structure
+```
+
+| Keyword | Meaning |
+|---|---|
+| `repeat <n> ... end repeat` | `n` repeats of the monomers of the block. A sequence can have several blocks, one after the other (block copolymers, end groups with `repeat 1`, or an irregular sequence as a single block with `repeat 1`). |
+| `monomer <natoms>` | A monomer of the sequence, of `natoms` atoms (the next `natoms` atoms of the structure file). |
+| `link <a> <b> [d0 [k [w]]]` | A link from atom `a` of the monomer (the last `monomer` line) to atom `b` of the next monomer (atom indices local to each monomer). Its penalty is `k (\|d - d0\| - w)²` outside `d0 ± w`: `d0` (Å) is by default the distance of the two atoms in each conformation, `k` 10, and `w` 0 (no flat bottom). The links of the last monomer of a polymer are ignored, unless it is `cyclic`. |
+| `cyclic` | The last monomer is linked to the first one, with the links of the last monomer. |
+
+Two links per junction fix the bond and the angles of the junction, and leave free the
+rotation about the bond: as many links as needed to keep the geometry of the junction
+(three, here, from the last two atoms of a monomer to the first two of the next one).
+
+- **The structure of the polymer.** The monomers have the geometry of each conformation
+  of the file: the number of polymers is divided among the conformations, as for other
+  molecules (see above), and each polymer is built from the monomers of its own.
+- **Packing.** The polymers are first packed as rigid molecules, in their conformations,
+  and then their monomers are released and the packing goes on with the flexible chains.
+  (Chains released overlapping each other end up threaded through each other's monomers,
+  and do not separate.) Polymers too dense to pack as rigid molecules are packed at a
+  lower density, and compressed (see [Packing by compression](@ref)).
+- **Close atoms.** The pairs of atoms of different monomers (up to three monomers apart)
+  closer than the tolerance in a conformation (the bonded atoms of a junction, and their
+  neighbors) are left out of the distances of the polymers of that conformation.
+- **The convergence criterion** includes the links: every link within `d0 ± w` to the
+  precision of the tolerance (`tolerance_precision`).
+- **Defaults.** The radii of the atoms of polymers are not inflated at the start of the
+  packing (`radscale` 1.0: inflated atoms push consecutive monomers apart, against the
+  links); movebad moves the monomers of a bad polymer by small random displacements and
+  rotations (a polymer moved as a whole to a random place, in a dense system, lands across
+  the others).
+- **Output.** Each polymer is written whole, with the atoms of the structure file, in
+  their order (with the residue numbers of the file), a chain identifier per polymer (or
+  the `chain` of the block), and the bonds of the file (`CONECT` records); with periodic
+  boundary conditions, a polymer is not wrapped across the boundaries of the cell (it is
+  whole, its first monomer in the cell).
+- **Not supported**: fixed polymers, `restart_from`, `constrain_rotation` and
+  `voxel_place`.
+
+In Julia, the polymers are given by [`polymer_structure`](@ref), with the sequence made of
+[`monomer`](@ref)s. The tutorial [Biomolecular condensate](@ref) packs a condensate of
+polypeptides, in a homogeneous mixture and as a droplet.

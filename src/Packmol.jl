@@ -49,6 +49,7 @@ export voxel_place
 export PackmolSystem
 export StructureType
 export structure_type
+export polymer_structure, monomer
 export get_atoms
 export shape_descriptors, select_conformations
 
@@ -77,6 +78,7 @@ include("./constraints/rotations.jl")
 # Data structures
 include("./data_structures/atoms_and_molecules.jl")
 include("./data_structures/StructureType.jl")
+include("./polymers/types.jl")
 include("./data_structures/PackmolSystem.jl")
 include("./data_structures/system_options.jl")
 include("./data_structures/FixedParticleSystem.jl")
@@ -125,6 +127,15 @@ include("./packing/packmol.jl")
 include("./packing/packing_loop.jl")
 include("./packing/report.jl")
 include("./packing/active_set.jl")
+include("./packing/compression.jl")
+
+# Polymers
+include("./polymers/read_polymer_block.jl")
+include("./polymers/topology.jl")
+include("./polymers/link_fg.jl")
+include("./polymers/placement.jl")
+include("./polymers/output.jl")
+include("./polymers/api.jl")
 
 # Tools for setting up systems: volumes, shapes of molecules, and tools for building
 # systems by hand (public, not exported)

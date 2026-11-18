@@ -111,6 +111,7 @@ function _set_global_options!(sys::PackmolSystem{D,T};
     continue_failed_initial_packing::Union{Nothing,Bool} = nothing,
     restart_from::Union{Nothing,AbstractString} = nothing,
     voxel_place::Union{Nothing,Bool,Integer} = nothing,
+    compress = nothing,
     pbc = nothing,
     unitcell = nothing,
 ) where {D,T}
@@ -143,6 +144,7 @@ function _set_global_options!(sys::PackmolSystem{D,T};
     if !isnothing(voxel_place)
         sys.voxel_place = voxel_place isa Bool ? (voxel_place ? 1000 : nothing) : Int(voxel_place)
     end
+    isnothing(compress) || _set_compress!(sys, _keyword_values(compress))
     if !isnothing(pbc)
         _set_pbc!(sys, _keyword_values(pbc))
     elseif !isnothing(unitcell)
@@ -158,5 +160,35 @@ function _set_global_options!(sys::PackmolSystem{D,T};
         _check_fixed_inside_cell(sys)
     end
     isnothing(restart_from) || _check_restart_files(sys)
+    return sys
+end
+
+#
+# `compress <fraction> [<initial step>]`: pack at `fraction` of the density (0 < fraction
+# < 1), then compress, with steps starting at `initial step` (default 0.05: 5% of the
+# linear dimensions); `compress false` (Julia) disables it
+#
+const _compress_default_step = 0.05
+function _set_compress!(sys::PackmolSystem{D,T}, values) where {D,T}
+    if length(values) == 1 && string(values[1]) == "false"
+        sys.compress = nothing
+        return sys
+    end
+    (1 <= length(values) <= 2) || throw(ArgumentError("""\n
+        compress takes the fraction of the density at which to pack, and optionally the initial
+        step of the compression: compress 0.5 [0.05]
+
+    """))
+    fraction = _parse_value(T, "compress", string(values[1]))
+    step = length(values) == 2 ? _parse_value(T, "compress", string(values[2])) : T(_compress_default_step)
+    (zero(T) < fraction < one(T)) || throw(ArgumentError("""\n
+        compress: the fraction of the density must be between 0 and 1, got $fraction.
+
+    """))
+    (zero(T) < step < one(T)) || throw(ArgumentError("""\n
+        compress: the initial step must be between 0 and 1, got $step.
+
+    """))
+    sys.compress = (fraction, step)
     return sys
 end

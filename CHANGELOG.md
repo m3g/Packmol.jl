@@ -12,6 +12,18 @@ Packmol.jl Changelog
 
 Version 100.0.1-DEV
 -------------------
+- ![FEATURE][badge-feature] Polymers (Packmol.jl only): a structure block with `repeat`
+  blocks (`repeat <n>`, `monomer <natoms>`, `link <a> <b> [d0 [k [w]]]`, `cyclic`), or
+  `polymer_structure` and `monomer` in Julia, packs flexible chains of rigid monomers held
+  together by links between their atoms. The polymers are packed first as rigid molecules,
+  then released.
+- ![FEATURE][badge-feature] `compress <fraction> [<step>]` (Packmol.jl only; `compress` keyword
+  argument in Julia): packs the system at a fraction of its density, with the constraints and
+  the periodic cell expanded, and compresses it in adaptive steps to the density of the
+  input, for systems too dense to pack from a random placement.
+- ![INFO][badge-info] Documentation: the tutorial "Biomolecular condensate", with chains of
+  (VPGVG)₂₀ (SIRAH) in water, as a homogeneous mixture and as a droplet at 400 mg/mL, and the
+  pages "Polymers" (Structure blocks) and "Packing by compression".
 - ![INFO][badge-info] Documentation: a "See also" section in the introduction (related packages
   and contact).
 

@@ -36,6 +36,8 @@ function fg!(g, x,
     pairwise!((pair, output) -> cartesian_fg!(pair, output, packmol_system, atom_radii), cl_system,)
     # Add constraint penalties and gradients
     constraint_fg!(cl_system.fg, atom_positions, packmol_system)
+    # Links between the monomers of the polymers
+    _link_fg!(cl_system.fg, atom_positions, packmol_system)
     # Zero molecule-level gradients (excluded from CellListMap reset/reduce)
     fill!(cl_system.fg.g, zero(MoleculePosition{D,T}))
     # Chain rule: Cartesian → molecule DOF gradients (for all molecules)

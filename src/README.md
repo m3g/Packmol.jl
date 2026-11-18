@@ -14,6 +14,7 @@ signature. Each directory has a README of its own.
 | [`rigid_body/`](rigid_body/README.md) | Rotations and translations of rigid molecules, the chain rule of the gradient, and the scaling of the rotations |
 | [`function_and_gradient/`](function_and_gradient/README.md) | The objective function of the packing and its gradient |
 | [`initial_approximation/`](initial_approximation/README.md) | The initial placement of the molecules, and the relocation of bad molecules (movebad) |
+| [`polymers/`](polymers/README.md) | Polymers: chains of rigid monomers held together by links (input, topology, function, placement, output) |
 | [`packing/`](packing/README.md) | The `packmol` functions and the packing loop, with the active subsystem |
 | [`tools/`](tools/README.md) | Tools for setting up systems: volumes, shapes of molecules, lipids and cross-sections |
 | [`Recipes/`](Recipes/README.md) | Systems set up from densities and concentrations (solvation boxes, membranes) |

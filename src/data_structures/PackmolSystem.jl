@@ -67,6 +67,10 @@
     # src/tools/voxel_place.jl), with this `max_tries_mult` (input keyword `voxel_place
     # [max_tries_mult]`); `nothing`: not used
     voxel_place::Union{Nothing,Int} = nothing
+    # Pack at a fraction of the density, then compress (input keyword `compress <fraction>
+    # [<initial step>]`, see packing/compression.jl): `(fraction, initial step)`, or
+    # `nothing`
+    compress::Union{Nothing,Tuple{T,T}} = nothing
     # Whole-system restart (Fortran's `restart_from` with no structure type,
     # i.e. index 0): `nothing` means unset. When
     # `restart_from` is set, packmol() skips the whole initial-approximation
@@ -112,6 +116,11 @@
     # (mutated in place) rather than a bare `Bool`, precisely so this field
     # is how callers check the outcome — see `packmol(::PackmolSystem)`.
     status::Symbol = :not_packed
+    # Polymers (structure blocks with `repeat` blocks, see src/polymers/): their monomers
+    # are consecutive structure types of `structure_types`
+    polymers::Vector{Polymer{D,T}} = Polymer{D,T}[]
+    # The links and excluded pairs of atoms of the polymers (set when packing)
+    polymer_topology::PolymerTopology{T} = PolymerTopology{T}()
 end
 
 #
@@ -163,6 +172,12 @@ Build a `PackmolSystem` directly from a vector of `StructureType`s (see
 [`structure_type`](@ref)), without going through an input file. `output` sets
 the output file path; any other `PackmolSystem` field (`tolerance`, `seed`,
 `unitcell`, ...) can be given as a keyword argument.
+
+The vector can also hold vectors of structure types (the conformations of a molecule,
+from `structure_type`) and polymers (from [`polymer_structure`](@ref)), as
+`PackmolSystem([chains, water]; ...)`. `compress = 0.5` (or `(0.5, 0.05)`, with the initial
+step) packs the system at half its density and then compresses it (see
+[Packing by compression](@ref)).
 """
 function PackmolSystem(
     structure_types::Vector{StructureType{D,T}};
@@ -183,15 +198,21 @@ function PackmolSystem(
     if !isnothing(unitcell_raw)
         kw = merge(kw, (; wigner_seitz_cell=_is_wigner_seitz_cell(Matrix{T}(unitcell_raw))))
     end
-    return PackmolSystem{D,T}(;
+    # `compress = 0.5` or `(0.5, 0.05)`: the fraction of the density and the initial step
+    compress = get(kw, :compress, nothing)
+    kw = Base.structdiff(kw, NamedTuple{(:compress,)})
+    sys = PackmolSystem{D,T}(;
         structure_types, atoms, molecule_positions, nmols,
         input_file, output_file=output, kw...,
     )
+    isnothing(compress) || _set_compress!(sys, _keyword_values(compress))
+    return sys
 end
 
 # A vector of structure types and of vectors of them (the conformations of a molecule,
-# from `structure_type`), as `[lipids, water]`
+# from `structure_type`), as `[lipids, water]`, and of polymers (`polymer_structure`)
 function PackmolSystem(structure_types::AbstractVector; kwargs...)
+    any(s -> s isa PolymerStructure, structure_types) && return _system_with_polymers(structure_types; kwargs...)
     sts = StructureType[]
     for s in structure_types
         if s isa StructureType
@@ -211,6 +232,33 @@ function PackmolSystem(structure_types::AbstractVector; kwargs...)
     return PackmolSystem(sts; kwargs...)
 end
 
+# A system with polymers: the structure types and the monomers of the polymers, in order
+function _system_with_polymers(entries::AbstractVector; kwargs...)
+    first_entry = first(entries)
+    st = first_entry isa PolymerStructure ? first(first_entry.rigid_types) :
+        first_entry isa StructureType ? first_entry : first(first_entry)
+    D = length(st.reference_coordinates[1])
+    T = eltype(st.reference_coordinates[1])
+    sys = PackmolSystem(StructureType{D,T}[]; kwargs...)
+    for s in entries
+        if s isa PolymerStructure
+            _add_polymer!(sys, s.rigid_types, s.spec)
+        elseif s isa StructureType
+            push!(sys.structure_types, s)
+        elseif s isa AbstractVector{<:StructureType}
+            append!(sys.structure_types, s)
+        else
+            throw(ArgumentError("""\n
+                PackmolSystem: expected structure types (see `structure_type`) or polymers (see
+                `polymer_structure`), got a $(typeof(s)).
+
+            """))
+        end
+    end
+    sys.atoms, sys.molecule_positions, sys.nmols = _atoms_and_molecule_positions(sys.structure_types)
+    return sys
+end
+
 function _indent(s::AbstractString; n=4)
     indented_str = IOBuffer()
     for line in eachline(IOBuffer(s))
@@ -225,13 +273,26 @@ function Base.show(io::IO, ::MIME"text/plain", sys::PackmolSystem{D,T}) where {D
         printstyled(io, " - read from: $(basename(sys.input_file))"; color=:blue)
     end
     println(io)
-    groups = _molecule_groups(sys.structure_types)
-    printstyled(io, _indent("Number of types of structures: $(length(groups))\n"); bold=true)
-    printstyled(io, _indent("Total number of molecules: $(sys.nmols)\n"); bold=true)
+    # The monomers of each polymer are shown as the polymer
+    polymer_of_type, _, _ = _type_monomers(sys)
+    lines = String[]
+    nmolecules = 0
+    for group in _molecule_groups(sys.structure_types)
+        ip = polymer_of_type[first(group)]
+        if ip == 0
+            push!(lines, _summary(@view(sys.structure_types[group])))
+            nmolecules += sum(st -> _ncopies(st), @view(sys.structure_types[group]))
+        elseif first(group) == sys.polymers[ip].first_type
+            push!(lines, _summary(sys.polymers[ip]))
+            nmolecules += _npolymers(sys.polymers[ip])
+        end
+    end
+    printstyled(io, _indent("Number of types of structures: $(length(lines))\n"); bold=true)
+    printstyled(io, _indent("Total number of molecules: $nmolecules\n"); bold=true)
     printstyled(io, _indent("Structure types:\n"); bold=true)
-    for (i, group) in enumerate(groups)
-        print(io, "    $i. ", _summary(@view(sys.structure_types[group])))
-        i < length(groups) && println(io)
+    for (i, line) in enumerate(lines)
+        print(io, "    $i. ", line)
+        i < length(lines) && println(io)
     end
 end
 

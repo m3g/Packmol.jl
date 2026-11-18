@@ -72,6 +72,7 @@ makedocs(
             "Ionic liquid in a supercapacitor" => "tutorials/supercapacitor.md",
             "Gold nanoparticle in toluene" => "tutorials/gold_nanoparticle.md",
             "Liquid crystals" => "tutorials/liquid_crystal.md",
+            "Biomolecular condensate (polymers)" => "tutorials/condensate.md",
             "Zika virion (a large system)" => "tutorials/zika.md",
             "Lipid nanoparticle (designed with an AI agent)" => "tutorials/lnp.md",
             "Exosome (a very large system)" => "tutorials/exosome.md",
@@ -94,6 +95,7 @@ makedocs(
             "Structure blocks" => "input_files/structure_blocks.md",
             "Residue numbering" => "input_files/residue_numbering.md",
             "Restarting a run" => "input_files/restarting_a_run.md",
+            "Packing by compression" => "input_files/packing_by_compression.md",
             "Volume estimates" => "input_files/volume_estimates.md",
         ],
         "Constraints" => [

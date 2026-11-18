@@ -44,7 +44,8 @@ function packmol_callback(cl_system, tolerance_precision, constraint_precision, 
     next!(progress_meter)
     tol_ok = cl_system.fg.max_overlap < tolerance_precision
     const_ok = cl_system.fg.max_constraint_penalty < constraint_precision
-    return tol_ok && const_ok
+    link_ok = cl_system.fg.max_link_deviation < tolerance_precision
+    return tol_ok && const_ok && link_ok
 end
 
 #

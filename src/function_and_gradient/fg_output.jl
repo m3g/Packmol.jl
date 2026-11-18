@@ -34,6 +34,8 @@
     # subsystem and for movebad! (see `_mark_unconverged!`).
     constraint_precision::T = zero(T)
     unconverged_mols::Vector{Int32} = Int32[]
+    # Largest deviation of a link of the polymers from its distance (src/polymers/)
+    max_link_deviation::T
 end
 
 function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
@@ -49,6 +51,7 @@ function InteratomicDistanceFG{D,T}(packmol_system::PackmolSystem) where {D,T}
         overlap_precision = _tolerance_precision(packmol_system),
         overlaps = zeros(Int, length(packmol_system.structure_types), length(packmol_system.structure_types)),
         constraint_precision = T(packmol_system.constraint_precision),
+        max_link_deviation = zero(T),
     )
 end
 
@@ -81,6 +84,7 @@ function CellListMap.copy_output(x::InteratomicDistanceFG{D,T}) where {D,T}
         zero(x.overlaps),
         x.constraint_precision,
         Int32[],
+        zero(T),
     )
 end
 function CellListMap.reset_output!(output::InteratomicDistanceFG{D,T}) where {D,T}

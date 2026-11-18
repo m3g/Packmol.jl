@@ -60,7 +60,10 @@ src/
                           # atom_positions.jl, constraint_fg.jl, fg.jl (fg!, _mark_unconverged!)
   initial_approximation/  # set_initial_approximation! and its steps; movebad.jl; bounds.jl,
                           # constraint_checks.jl, fixed_molecules.jl, buffers.jl
-  packing/                # packmol.jl (API), packing_loop.jl (`_packmol`), active_set.jl, report.jl
+  packing/                # packmol.jl (API), packing_loop.jl (`_packmol`), active_set.jl, report.jl,
+                          # compression.jl (`compress`: pack expanded, compress in adaptive steps)
+  polymers/               # repeat blocks / polymer_structure: chains of rigid monomers with links
+                          # (types, read_polymer_block, topology, link_fg, placement, output, api)
   tools/                  # volume.jl (guess_volume, free_volume), shape.jl (shape_descriptors,
                           # select_conformations), system_building.jl (builtin_lipid, cross_section)
   Recipes/                # SolutionBoxUS/USC/UWI, Membrane, MembraneProtein, DensityTable,
@@ -106,7 +109,9 @@ kept out by a constraint, the numbers from `free_volume`); an ionic liquid
 ([BMIM][PF6]) in a supercapacitor (graphite electrodes by `files/supercapacitor/electrodes.jl`, the double layers
 as regions with set numbers of ions); a gold nanoparticle with
 dodecanethiolates in toluene (core by `files/gold_nanoparticle/gold.jl`, ligands bound and oriented by constraints
-on two atoms); the Zika virion; the lipid nanoparticle,
+on two atoms); the biomolecular condensate (polymers: 123 chains of (VPGVG)20 in SIRAH, conformations by
+`files/condensate/build_peptides.jl`, in WT4 water: a homogeneous mixture, and a droplet at 400 mg/mL packed with
+`compress`, then the water around the fixed chains; images by `dev/tutorials/condensate_images.jl`); the Zika virion; the lipid nanoparticle,
 designed with an AI agent from an illustration (SIRAH, set `packmol_lnp`, files and images by `dev/tutorials/lnp.jl`
 and `lnp_images.jl`); the all-atom exosome,
 13.6 million atoms, whose files are the `packmol_zika` and `packmol_exosome` sets of MolSimTestFiles, the
@@ -125,8 +130,8 @@ hidden blocks that pack the input file with `Main.pack_tutorial(dir, input; chec
 (e.g. one water in ten, or a slab). Static images (`docs/src/tutorials/images/*.webp`,
 rendered with VMD by the scripts of `dev/tutorials/`: `render.jl`, `lipids.jl` for the
 nanoliposomes, `cake.jl` for the quarter cut of the LNP, Zika and exosome images) only
-for the systems too large for a live view: the nanoliposomes, Zika, the LNP, the exosome
-and the minimal cell. Tutorials of non-trivial
+for the systems too large for a live view: the nanoliposomes, the condensate, Zika, the
+LNP, the exosome and the minimal cell. Tutorials of non-trivial
 systems first show the initial placement (`check_initial_placement`), then the packing.
 The input files of the tutorials are files of `docs/src/tutorials/files/<tutorial>/`, shown in
 the pages with `@eval Main.input_file(path)` (`docs/make.jl`; in a `<details>` drop-down box
@@ -411,6 +416,28 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       of a type, a significant warning (it can fall far short of the free volume: the Zika lipids got
       a quarter to a half of what `free_volume` allows). Tutorial "Minimal cell" (`docs/src/tutorials/cell.md`,
       files/cell/prepare.jl + solvation.inp; Bentopy's data not distributed: Zenodo 17524049).
+- [x] Polymers (`src/polymers/`, Packmol.jl-only): a structure block with `repeat <n> ... end repeat`
+      blocks of `monomer <natoms>` lines with `link <a> <b> [d0 [k [w]]]` (atoms of a monomer and of the
+      next one; d0 from each conformation, k 10, w the half-width of a flat bottom, 0), and `cyclic`; Julia
+      `polymer_structure(file; number, sequence = [n => [monomer(natoms; links)]], cyclic)`. Each monomer of
+      each conformation is a structure type (a molecule per polymer of the conformation); links
+      `k (|d - d0| - w)²` added to the function (`_link_fg!`, active set too), in the convergence criterion;
+      pairs of atoms of different monomers (up to 3 apart) closer than their radii in a conformation are
+      excluded (`_excluded_pair`, in the pair functions). The polymers are placed and packed as rigid
+      molecules (`RigidPolymerSystem`) and then released: released overlapping, chains thread through each
+      other's monomers and never separate (diagnosed 2026-11-18; monomers of one conformation aligned to
+      another were strained: hence one set of monomer types per conformation). radscale 1.0 by default;
+      movebad shakes the monomers of bad polymers (random displacements ≤ tolerance/4, rotations ≤ 0.05
+      rad; moving a polymer whole was destructive). Output: polymers whole, in the order of their file,
+      chain per polymer, CONECT of the file. Not supported: fixed, restart_from, constrain_rotation,
+      voxel_place.
+- [x] Packing by compression (`compress <fraction> [<step>]`, Julia `compress = 0.5` or `(0.5, 0.05)`;
+      `src/packing/compression.jl`): constraints and cell expanded by fraction^(-1/3) about the cell center
+      (origin without PBC), packed, then scaled back in steps (molecules moved rigidly, polymers by their
+      center) packed with `restart=true`, 100 loops each; step halved on failure (back to the last
+      converged state), ×1.5 after two successes, stop below 5e-4. Constraints: boxes, cubes, spheres,
+      cylinders, ellipsoids, planes; no fixed molecules, no restart_from. The condensate droplet (123 chains,
+      400 mg/mL): rigid chains jam at ~220 mg/mL, compressed flexible chains reach 400 in 35-60 s.
 - [x] Rotation constraints (`constrain_rotation`, `src/constraints/rotations.jl`): a penalty on the
       angle between an axis and a vector of the molecule (between the centers of two atom sets, or the
       longest principal axis). Not Fortran's bounds on Euler angles (by design).

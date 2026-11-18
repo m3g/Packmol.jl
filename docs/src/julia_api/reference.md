@@ -19,6 +19,16 @@ get_atoms
 write_output
 ```
 
+## Polymers
+
+See [Polymers](@ref) for the polymers of the input files, and the tutorial
+[Biomolecular condensate](@ref).
+
+```@docs
+polymer_structure
+monomer
+```
+
 ## Placement on a grid
 
 A direct port to Julia of the placement algorithm of

@@ -24,6 +24,8 @@ function cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, packmol_sy
     if iatom.molecule_index == jatom.molecule_index
         return fg
     end
+    # Atoms of consecutive monomers of a polymer, bonded or close in its structure
+    _excluded_pair(packmol_system, i, j, iatom.molecule_index, jatom.molecule_index) && return fg
     tol = atom_radii[i] + atom_radii[j]
     d = sqrt(d2)
     fg.dmin = min(d, fg.dmin)
