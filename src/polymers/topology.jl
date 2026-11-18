@@ -69,14 +69,14 @@ function _set_polymer_topology!(sys::PackmolSystem{D,T}) where {D,T}
                 for (k, i) in enumerate(p.monomer_atoms[m])
                     p.excluded_atom[c][i] && (template_atom[iat0+k] = Int32(i))
                 end
-                next = m < nmon ? m + 1 : (p.cyclic ? 1 : 0)
-                next == 0 && continue
-                tn = _monomer_type(p, c, next)
-                natn = sys.structure_types[tn].natoms
-                jat0 = atom_offset[tn] + (j - 1) * natn
-                for l in p.links[c][m]
-                    push!(links, SystemLink{T}(iat0 + l.a, jat0 + l.b, imol, mol_offset[tn] + j, l.d0, l.k, l.w))
-                end
+            end
+            # the links between the fragments of this copy
+            for l in p.links[c]
+                ta = _monomer_type(p, c, l.fa)
+                tb = _monomer_type(p, c, l.fb)
+                ia = atom_offset[ta] + (j - 1) * sys.structure_types[ta].natoms + l.a
+                ib = atom_offset[tb] + (j - 1) * sys.structure_types[tb].natoms + l.b
+                push!(links, SystemLink{T}(ia, ib, mol_offset[ta] + j, mol_offset[tb] + j, l.d0, l.k, l.w))
             end
         end
     end

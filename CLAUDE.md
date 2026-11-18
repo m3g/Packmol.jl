@@ -431,6 +431,14 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       rad; moving a polymer whole was destructive). Output: polymers whole, in the order of their file,
       chain per polymer, CONECT of the file. Not supported: fixed, restart_from, constrain_rotation,
       voxel_place.
+- [x] Rotatable bonds (`src/polymers/rotatable.jl`): `rotatable i j [i j ...]` and `bond_distance d` in a
+      structure block (Julia `flexible_structure(file; number, rotatable, bond_distance)`), chosen by hand.
+      Bonds from CONECT or from distances (no H–H pairs: 1.7-1.9 Å finds the 133 bonds of POPC); fragments
+      = bond graph cut at the rotatable bonds (ring bonds an error); links: the bond and the bonds of each
+      end to its neighbors in its fragment (length and angles kept, torsion free); exclusions: different
+      fragments within 3 bonds. Same machinery as polymers (`Polymer` with fragments as atom lists, links
+      between any fragments, output in file order). Bilayer tutorial at 52 Å²/lipid: rigid fails in 200
+      loops, 5 rotatable bonds pack (47 loops after release).
 - [x] Packing by compression (`compress <fraction> [<step>]`, Julia `compress = 0.5` or `(0.5, 0.05)`;
       `src/packing/compression.jl`): constraints and cell expanded by fraction^(-1/3) about the cell center
       (origin without PBC), packed, then scaled back in steps (molecules moved rigidly, polymers by their

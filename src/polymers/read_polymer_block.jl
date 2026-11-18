@@ -30,6 +30,8 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
     filtered = IOBuffer()
     monomers = MonomerSpec{T}[]
     cyclic = false
+    rotatable = Tuple{Int,Int}[]
+    bond_distance = T(NaN)
     in_repeat = false
     nrepeat = 0
     block = MonomerSpec{T}[]
@@ -106,6 +108,24 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
             push!(block[end].links, PolymerLink{T}(a, b, d0, k, w))
         elseif keyword == "cyclic"
             cyclic = true
+        elseif keyword == "rotatable"
+            in_repeat && throw(ArgumentError("""\n
+                rotatable cannot be inside a repeat block: $(strip(line))
+
+            """))
+            (length(words) >= 3 && isodd(length(words))) || throw(ArgumentError("""\n
+                rotatable requires pairs of bonded atoms: $(strip(line))
+
+            """))
+            for k in 2:2:length(words)
+                push!(rotatable, (_parse_value(Int, "rotatable", words[k]), _parse_value(Int, "rotatable", words[k+1])))
+            end
+        elseif keyword == "bond_distance"
+            length(words) == 2 || throw(ArgumentError("""\n
+                bond_distance requires the largest distance of bonded atoms: $(strip(line))
+
+            """))
+            bond_distance = _parse_value(T, "bond_distance", words[2])
         else
             in_repeat && throw(ArgumentError("""\n
                 Keyword $keyword inside a repeat block (only `monomer` and `link`): $(strip(line))
@@ -122,51 +142,78 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
         cyclic requires the sequence of the polymer (repeat blocks).
 
     """))
+    !isempty(rotatable) && !isempty(monomers) && throw(ArgumentError("""\n
+        rotatable and repeat blocks cannot be combined: the monomers of a polymer are already
+        linked by their links.
+
+    """))
+    !isnan(bond_distance) && isempty(rotatable) && throw(ArgumentError("""\n
+        bond_distance requires rotatable bonds.
+
+    """))
     # Each repeat pushed copies of the same `MonomerSpec`s: independent copies
     monomers = [MonomerSpec{T}(m.natoms, copy(m.links)) for m in monomers]
-    return seekstart(filtered), PolymerSpec{T}(monomers, cyclic)
+    return seekstart(filtered), PolymerSpec{T}(monomers, cyclic, rotatable, bond_distance)
 end
 
 #
 # The structure types of a structure block of an input file, added to the system: the
-# block of a polymer adds its monomers, one structure type each, and the polymer.
+# block of a flexible molecule (a polymer, or a molecule with rotatable bonds) adds its
+# fragments, one structure type each for each conformation, and the molecule.
 #
 function _add_structure_block!(sys::PackmolSystem{D,T}, input_file_block::IOBuffer; path::String="") where {D,T}
     block, spec = _read_polymer_spec(input_file_block, T)
     types = _read_structure_types(block, sys.tolerance, Val(D), T; path, filetype=sys.filetype)
-    if isempty(spec.monomers)
-        append!(sys.structure_types, types)
-    else
+    _add_flexible!(sys, types, spec)
+    return sys
+end
+
+# Adds the structure types of a molecule: those of its fragments if it is flexible (a
+# polymer, or with rotatable bonds), otherwise its structure types
+function _add_flexible!(sys::PackmolSystem{D,T}, types::Vector{StructureType{D,T}}, spec::PolymerSpec{T}) where {D,T}
+    if !isempty(spec.monomers)
         _add_polymer!(sys, types, spec)
+    elseif !isempty(spec.rotatable)
+        _add_rotatable!(sys, types, spec.rotatable, spec.bond_distance)
+    else
+        append!(sys.structure_types, types)
     end
     return sys
+end
+
+# The options not supported for flexible molecules (polymers and molecules with rotatable bonds)
+function _check_flexible(st::StructureType{D}) where {D}
+    name = basename(st.filename)
+    D == 3 || throw(ArgumentError("""\n
+        Flexible molecules ($name: polymers, rotatable bonds) are supported in three dimensions only.
+
+    """))
+    st.fixed.fixed && throw(ArgumentError("""\n
+        A flexible molecule ($name: a polymer, or with rotatable bonds) cannot be fixed.
+
+    """))
+    isnothing(st.restart_from) || throw(ArgumentError("""\n
+        restart_from is not supported for flexible molecules ($name).
+
+    """))
+    isempty(st.rotation_constraints) || throw(ArgumentError("""\n
+        constrain_rotation is not supported for flexible molecules ($name).
+
+    """))
+    return nothing
 end
 
 #
 # Adds a polymer to the system: `rigid_types` are the structure types of the whole
 # polymer (one per conformation), and `spec` its sequence of monomers. The monomers are
-# new structure types, with the geometry of the first conformation; the distances of the
-# links not given are those of the first conformation.
+# the fragments of the molecule; the links not given distances have those of each
+# conformation; the excluded pairs are the atoms of different monomers (up to 3 apart)
+# closer than the sum of their radii in a conformation.
 #
 function _add_polymer!(sys::PackmolSystem{D,T}, rigid_types::Vector{StructureType{D,T}}, spec::PolymerSpec{T}) where {D,T}
     st = first(rigid_types)
     name = basename(st.filename)
-    D == 3 || throw(ArgumentError("""\n
-        Polymers ($name) are supported in three dimensions only.
-
-    """))
-    st.fixed.fixed && throw(ArgumentError("""\n
-        A polymer ($name) cannot be fixed.
-
-    """))
-    isnothing(st.restart_from) || throw(ArgumentError("""\n
-        restart_from is not supported for polymers ($name).
-
-    """))
-    isempty(st.rotation_constraints) || throw(ArgumentError("""\n
-        constrain_rotation is not supported for polymers ($name).
-
-    """))
+    _check_flexible(st)
     nmon = length(spec.monomers)
     natoms = sum(m.natoms for m in spec.monomers)
     natoms == st.natoms || throw(ArgumentError("""\n
@@ -178,61 +225,54 @@ function _add_polymer!(sys::PackmolSystem{D,T}, rigid_types::Vector{StructureTyp
 
     """))
     # The atoms of each monomer, and the monomer of each atom
-    monomer_atoms = UnitRange{Int}[]
+    fragments = Vector{Int}[]
     first_atom = 1
     for m in spec.monomers
-        push!(monomer_atoms, first_atom:first_atom+m.natoms-1)
+        push!(fragments, collect(first_atom:first_atom+m.natoms-1))
         first_atom += m.natoms
     end
     monomer_of_atom = zeros(Int, natoms)
-    for (m, r) in enumerate(monomer_atoms)
+    for (m, r) in enumerate(fragments)
         monomer_of_atom[r] .= m
     end
     # The links of each junction in each conformation (the distances not given are those
     # of the conformation, not yet centered)
-    links = Vector{Vector{PolymerLink{T}}}[]
+    links = Vector{FragmentLink{T}}[]
     for rst in rigid_types
         x = rst.reference_coordinates
-        conformation_links = Vector{PolymerLink{T}}[]
+        conformation_links = FragmentLink{T}[]
         for m in 1:nmon
             next = m < nmon ? m + 1 : (spec.cyclic ? 1 : 0)
-            resolved = PolymerLink{T}[]
-            if next > 0
-                for l in spec.monomers[m].links
-                    # (few interpolations: a long string is not compiled by `juliac --trim`)
-                    if !(1 <= l.b <= spec.monomers[next].natoms)
-                        where = string("link ", l.a, " ", l.b, " of monomer ", m, " of ", name)
-                        throw(ArgumentError("""\n
-                            $where: atom $(l.b) is not an atom of the next monomer, of $(spec.monomers[next].natoms) atoms.
+            next > 0 || continue
+            for l in spec.monomers[m].links
+                # (few interpolations: a long string is not compiled by `juliac --trim`)
+                if !(1 <= l.b <= spec.monomers[next].natoms)
+                    where = string("link ", l.a, " ", l.b, " of monomer ", m, " of ", name)
+                    throw(ArgumentError("""\n
+                        $where: atom $(l.b) is not an atom of the next monomer, of $(spec.monomers[next].natoms) atoms.
 
-                        """))
-                    end
-                    ia = monomer_atoms[m][l.a]
-                    ib = monomer_atoms[next][l.b]
-                    d0 = isnan(l.d0) ? norm(x[ib] - x[ia]) : l.d0
-                    k = isnan(l.k) ? T(_default_link_constant) : l.k
-                    w = isnan(l.w) ? zero(T) : l.w
-                    push!(resolved, PolymerLink{T}(l.a, l.b, d0, k, w))
+                    """))
                 end
+                ia = fragments[m][l.a]
+                ib = fragments[next][l.b]
+                d0 = isnan(l.d0) ? norm(x[ib] - x[ia]) : l.d0
+                k = isnan(l.k) ? T(_default_link_constant) : l.k
+                w = isnan(l.w) ? zero(T) : l.w
+                push!(conformation_links, FragmentLink{T}(m, l.a, next, l.b, d0, k, w))
             end
-            push!(conformation_links, resolved)
         end
         push!(links, conformation_links)
     end
-    all(isempty, first(links)) && throw(ArgumentError("""\n
+    isempty(first(links)) && throw(ArgumentError("""\n
         The polymer $name has no links between its monomers.
 
     """))
     # The pairs of atoms of different monomers (up to 3 monomers apart) closer than the
     # sum of their radii, in each conformation
     exclusions = Set{Tuple{Int32,Int32}}[]
-    excluded_atom = Vector{Bool}[]
     for rst in rigid_types
         x = rst.reference_coordinates
         conformation_exclusions = Set{Tuple{Int32,Int32}}()
-        conformation_excluded_atom = zeros(Bool, natoms)
-        push!(exclusions, conformation_exclusions)
-        push!(excluded_atom, conformation_excluded_atom)
         for i in 1:natoms, j in i+1:natoms
             mi, mj = monomer_of_atom[i], monomer_of_atom[j]
             mi == mj && continue
@@ -241,26 +281,46 @@ function _add_polymer!(sys::PackmolSystem{D,T}, rigid_types::Vector{StructureTyp
             sep <= 3 || continue
             if norm(x[i] - x[j]) < st.radii[i] + st.radii[j]
                 push!(conformation_exclusions, (Int32(i), Int32(j)))
-                conformation_excluded_atom[i] = conformation_excluded_atom[j] = true
             end
         end
+        push!(exclusions, conformation_exclusions)
     end
-    # The monomers: one structure type for each monomer of each conformation, with a
-    # molecule for each polymer of the conformation
+    return _add_flexible_molecule!(sys, rigid_types, fragments, links, exclusions, spec.cyclic)
+end
+
+#
+# Adds a flexible molecule to the system, from the structure types of its conformations
+# (`rigid_types`), its fragments (atoms of the structure), the links between them and
+# the excluded pairs (`i < j`) of each conformation: a structure type for each fragment
+# of each conformation, with a molecule for each copy of the molecule in that conformation.
+#
+function _add_flexible_molecule!(
+    sys::PackmolSystem{D,T}, rigid_types::Vector{StructureType{D,T}}, fragments::Vector{Vector{Int}},
+    links::Vector{Vector{FragmentLink{T}}}, exclusions::Vector{Set{Tuple{Int32,Int32}}}, cyclic::Bool,
+) where {D,T}
+    st = first(rigid_types)
+    excluded_atom = Vector{Bool}[]
+    for conformation_exclusions in exclusions
+        e = zeros(Bool, st.natoms)
+        for (i, j) in conformation_exclusions
+            e[i] = e[j] = true
+        end
+        push!(excluded_atom, e)
+    end
     first_type = length(sys.structure_types) + 1
     for rst in rigid_types
         x = rst.reference_coordinates
-        for r in monomer_atoms
+        for r in fragments
             atoms = [copy(rst.atoms[i]) for i in r]
             push!(sys.structure_types, StructureType{D,T}(;
                 filename=rst.filename, natoms=length(r), atoms,
                 number_of_molecules=rst.number_of_molecules,
                 reference_coordinates=x[r],
                 radii=st.radii[r],
-                # the residue numbers of the structure of the polymer
+                # the residue numbers of the structure of the molecule
                 residue_numbering=st.residue_numbering == -1 ? 1 : st.residue_numbering,
                 chain=st.chain, changechains=st.changechains, segid=st.segid,
-                # no inflated radii: they would push consecutive monomers apart, against the links
+                # no inflated radii: they would push the fragments apart, against the links
                 radscale=something(st.radscale, one(T)),
                 connectivity=nothing,
                 constraints=copy(st.constraints),
@@ -269,8 +329,6 @@ function _add_polymer!(sys::PackmolSystem{D,T}, rigid_types::Vector{StructureTyp
             ))
         end
     end
-    push!(sys.polymers, Polymer{D,T}(
-        rigid_types, first_type, monomer_atoms, links, spec.cyclic, exclusions, excluded_atom,
-    ))
+    push!(sys.polymers, Polymer{D,T}(rigid_types, first_type, fragments, links, cyclic, exclusions, excluded_atom))
     return sys
 end

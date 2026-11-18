@@ -27,31 +27,51 @@ struct MonomerSpec{T}
     links::Vector{PolymerLink{T}}
 end
 
-# The sequence of monomers of a structure block (empty: not a polymer)
+# The flexibility given in a structure block: the sequence of monomers of a polymer, or
+# the rotatable bonds of a molecule, with the largest distance of bonded atoms if the
+# bonds are computed from the distances (`NaN`: from the CONECT records); both empty:
+# a rigid molecule
 struct PolymerSpec{T}
     monomers::Vector{MonomerSpec{T}}
     cyclic::Bool
+    rotatable::Vector{Tuple{Int,Int}}
+    bond_distance::T
 end
-PolymerSpec{T}() where {T} = PolymerSpec{T}(MonomerSpec{T}[], false)
+PolymerSpec{T}() where {T} = PolymerSpec{T}(MonomerSpec{T}[], false, Tuple{Int,Int}[], T(NaN))
+
+# A link between atom `a` of fragment `fa` and atom `b` of fragment `fb` of a flexible
+# molecule (indices of the atoms in their fragments), with its distance, constant and
+# half-width of its flat bottom
+struct FragmentLink{T}
+    fa::Int
+    a::Int
+    fb::Int
+    b::Int
+    d0::T
+    k::T
+    w::T
+end
 
 #
-# A polymer of a system: the structure types of its conformations as rigid molecules
-# (`rigid_types`, for the initial placement and movebad), the index of the structure type
-# of its first monomer, the atoms of each monomer in the structure of the polymer, the
-# links of each junction in each conformation (`links[c][m]`: from monomer m to the next,
-# the first one if `cyclic`), and the pairs of atoms of the structure excluded from the
-# distances in each conformation (`exclusions[c]`, `i < j`: close in that conformation),
-# with the atoms in any of them (`excluded_atom[c]`).
+# A flexible molecule of a system (a polymer, or a molecule with rotatable bonds): the
+# structure types of its conformations as rigid molecules (`rigid_types`, for the initial
+# placement), the index of the structure type of its first fragment, the atoms of each
+# fragment in the structure of the molecule (the monomers of a polymer, in order), the
+# links between the fragments in each conformation (`links[c]`), whether the polymer is
+# cyclic (for its summary), and the pairs of atoms of the structure excluded from the
+# distances in each conformation (`exclusions[c]`, `i < j`), with the atoms in any of
+# them (`excluded_atom[c]`).
 #
-# The monomers are consecutive structure types, conformation after conformation: the
-# monomers of a polymer have the geometry of its conformation (monomers of a conformation
-# aligned to the atoms of another would not fit, and the links would be strained).
+# The fragments are consecutive structure types, conformation after conformation: the
+# fragments of a molecule have the geometry of its conformation (fragments of a
+# conformation aligned to the atoms of another would not fit, and the links would be
+# strained). The names keep the words of the polymers: a monomer is a fragment.
 #
 struct Polymer{D,T}
     rigid_types::Vector{StructureType{D,T}}
     first_type::Int
-    monomer_atoms::Vector{UnitRange{Int}}
-    links::Vector{Vector{Vector{PolymerLink{T}}}}
+    monomer_atoms::Vector{Vector{Int}}
+    links::Vector{Vector{FragmentLink{T}}}
     cyclic::Bool
     exclusions::Vector{Set{Tuple{Int32,Int32}}}
     excluded_atom::Vector{Vector{Bool}}
@@ -107,7 +127,7 @@ function _summary(p::Polymer)
     st = first(p.rigid_types)
     nconf = _nconformations(p)
     return string(
-        "\"", basename(st.filename), "\" - polymer of ", _nmonomers(p), " monomers",
+        "\"", basename(st.filename), "\" - flexible: ", _nmonomers(p), " fragments",
         p.cyclic ? " (cyclic)" : "", nconf > 1 ? " - $nconf conformations" : "",
         " - n_atoms = ", st.natoms, " - n_mols = ", _npolymers(p), " - n_constraints = ", length(st.constraints),
     )

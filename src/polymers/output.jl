@@ -1,6 +1,7 @@
 #
-# The output of the polymers: each polymer written whole, its atoms in the order of its
-# structure, with a chain identifier per polymer (or the `chain` of its structure block),
+# The output of the flexible molecules (polymers, molecules with rotatable bonds): each
+# written whole, its atoms in the order of its structure, with a chain identifier per
+# molecule (or the `chain` of its structure block),
 # and the bonds of its structure; with PBC, the monomers of a polymer are put next to
 # each other (each in the periodic image closest to the previous one), and the polymer
 # wrapped into the cell by its first monomer.
@@ -55,17 +56,21 @@ function _polymer_output_order(sys::PackmolSystem, atoms::Vector{Atom{Nothing}})
         elseif t == sys.polymers[ip].first_type
             p = sys.polymers[ip]
             chain = first(p.rigid_types).chain
+            # the atoms of each copy, from its fragments, in the order of the structure
+            slots = Vector{Atom{Nothing}}(undef, first(p.rigid_types).natoms)
             for (c, j) in _polymer_copies(p)
                 ichain += 1
                 for m in 1:_nmonomers(p)
                     tm = _monomer_type(p, c, m)
                     natm = sys.structure_types[tm].natoms
                     i0 = atom_offset[tm] + (j - 1) * natm
-                    for i in i0+1:i0+natm
-                        atom = atoms[i]
-                        atom.chain = string(isnothing(chain) ? _chainc(ichain) : chain)
-                        push!(output, atom)
+                    for (k, i) in enumerate(p.monomer_atoms[m])
+                        slots[i] = atoms[i0+k]
                     end
+                end
+                for atom in slots
+                    atom.chain = string(isnothing(chain) ? _chainc(ichain) : chain)
+                    push!(output, atom)
                 end
             end
         end

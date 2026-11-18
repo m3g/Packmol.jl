@@ -49,7 +49,7 @@ export voxel_place
 export PackmolSystem
 export StructureType
 export structure_type
-export polymer_structure, monomer
+export polymer_structure, monomer, flexible_structure
 export get_atoms
 export shape_descriptors, select_conformations
 
@@ -131,6 +131,7 @@ include("./packing/compression.jl")
 
 # Polymers
 include("./polymers/read_polymer_block.jl")
+include("./polymers/rotatable.jl")
 include("./polymers/topology.jl")
 include("./polymers/link_fg.jl")
 include("./polymers/placement.jl")

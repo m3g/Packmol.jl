@@ -24,8 +24,8 @@
     @test all(st -> st.radscale == 1.0, sys.structure_types[1:20])
     @test all(st -> length(st.constraints) == 1, sys.structure_types[1:20])
     # the links of the last monomer of a linear polymer are ignored; d0 from the structure
-    @test length.(p.links[1]) == [fill(1, 9); 0]
-    @test all(l -> isapprox(l.d0, 1.54; atol = 2e-3), p.links[1][1])
+    @test [(l.fa, l.fb) for l in p.links[1]] == [(m, m + 1) for m in 1:9]
+    @test all(l -> isapprox(l.d0, 1.54; atol = 2e-3), p.links[1])
     # the bonded beads of consecutive monomers are excluded pairs
     @test (Int32(3), Int32(4)) in p.exclusions[1]
     @test !((Int32(2), Int32(4)) in p.exclusions[1])
@@ -42,7 +42,7 @@
     bad("cyclic\n")                                             # no sequence
     # cyclic: the last monomer linked to the first
     write(input, "output x.pdb\n" * PolymerFiles.polymer_block(file; number = 1, cyclic = true))
-    @test length.(only(read_packmol_input(input).polymers).links[1]) == fill(1, 10)
+    @test [(l.fa, l.fb) for l in only(read_packmol_input(input).polymers).links[1]] == [[(m, m + 1) for m in 1:9]; (10, 1)]
 end
 
 @testitem "polymer_structure (Julia API)" setup=[PolymerFiles] begin

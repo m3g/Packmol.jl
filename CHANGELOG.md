@@ -17,6 +17,10 @@ Version 100.0.1-DEV
   `polymer_structure` and `monomer` in Julia, packs flexible chains of rigid monomers held
   together by links between their atoms. The polymers are packed first as rigid molecules,
   then released.
+- ![FEATURE][badge-feature] Rotatable bonds (Packmol.jl only): `rotatable <i> <j> ...` in a
+  structure block (`flexible_structure` in Julia) cuts the molecule into rigid fragments at
+  those bonds, linked such that they turn about the bonds only. The bonds are those of the
+  CONECT records, or computed from the distances (`bond_distance <d>`).
 - ![FEATURE][badge-feature] `compress <fraction> [<step>]` (Packmol.jl only; `compress` keyword
   argument in Julia): packs the system at a fraction of its density, with the constraints and
   the periodic cell expanded, and compresses it in adaptive steps to the density of the

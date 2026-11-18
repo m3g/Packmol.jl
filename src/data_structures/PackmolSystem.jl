@@ -242,7 +242,7 @@ function _system_with_polymers(entries::AbstractVector; kwargs...)
     sys = PackmolSystem(StructureType{D,T}[]; kwargs...)
     for s in entries
         if s isa PolymerStructure
-            _add_polymer!(sys, s.rigid_types, s.spec)
+            _add_flexible!(sys, s.rigid_types, s.spec)
         elseif s isa StructureType
             push!(sys.structure_types, s)
         elseif s isa AbstractVector{<:StructureType}

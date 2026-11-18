@@ -133,6 +133,54 @@ rotation about the bond: as many links as needed to keep the geometry of the jun
 - **Not supported**: fixed polymers, `restart_from`, `constrain_rotation` and
   `voxel_place`.
 
+Polymers are a case of flexible molecules, as molecules with [Rotatable bonds](@ref):
+the monomers are the rigid fragments, given by their numbers of atoms, and the links are
+written explicitly (the structure files of coarse-grained polymers rarely have bonds).
+
 In Julia, the polymers are given by [`polymer_structure`](@ref), with the sequence made of
 [`monomer`](@ref)s. The tutorial [Biomolecular condensate](@ref) packs a condensate of
 polypeptides, in a homogeneous mixture and as a droplet.
+
+## Rotatable bonds
+
+Any molecule can be made flexible about some of its bonds (Packmol.jl only): with
+`rotatable` lines, the molecule is cut at those bonds into rigid fragments (the
+connected parts of the bonds that are left), packed as rigid molecules held together by
+links. The links of a rotatable bond i–j keep its length and its angles: the bond i–j,
+and the bonds of i and of j to their other neighbors in their fragments. The fragments
+turn about the bond, and nothing else changes.
+
+```
+structure popc.pdb
+  number 60
+  bond_distance 1.8                                # the bonds, from the distances
+  rotatable 25 28  33 45  57 60  42 92  101 104    # pairs of bonded atoms
+  atoms 1
+    above plane 0. 0. 1. 28.
+  end atoms
+end structure
+```
+
+| Keyword | Meaning |
+|---|---|
+| `rotatable <i> <j> [<i> <j> ...]` | Rotatable bonds: pairs of bonded atoms (indices of the structure file), on one or several lines. A bond in a ring cannot rotate (an error). |
+| `bond_distance <d>` | The bonds of the molecule are the pairs of atoms closer than `d` Å in the structure (except pairs of hydrogens), instead of the `CONECT` records of the file. `1.8` finds the bonds of organic molecules with hydrogens (the hydrogens of a CH₂ are 1.75 Å apart, as close as some bonds). |
+
+The rotatable bonds are chosen by hand: each one adds a rigid fragment, with six
+variables, so a few chosen bonds (where the molecule needs to bend to fit) make the
+packing easier, while all the bonds of a molecule would make it harder. Without
+`bond_distance`, the bonds are those of the `CONECT` records of the structure file (an
+error if it has none). The pairs of atoms of different fragments up to three bonds apart
+are left out of the distances, and the rest is as for [Polymers](@ref): the molecules
+are first packed as rigid molecules, then the fragments are released; each molecule is
+written whole, in the order of the atoms of the file; the convergence criterion includes
+the links.
+
+For example, the 120 POPC lipids of the [Lipid bilayer](@ref) tutorial, with the area per
+lipid reduced from 64 to 52 Å² (a periodic cell of 55.86 Å instead of 61.96 Å): as rigid
+molecules, they do not pack in 200 loops; with the five rotatable bonds above (the
+glycerol, and two in each chain), the packing of the rigid lipids stops after its 200
+loops, and the released lipids pack in 47 more, the torsions about the rotatable bonds
+turned by up to 25°.
+
+In Julia, the molecules with rotatable bonds are given by [`flexible_structure`](@ref).
