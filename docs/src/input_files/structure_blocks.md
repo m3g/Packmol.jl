@@ -167,8 +167,8 @@ end structure
 | `bond_distance <d>` | The bonds of the molecule are the pairs of atoms closer than `d` Å in the structure (except pairs of hydrogens), instead of the `CONECT` records of the file. `1.8` finds the bonds of organic molecules with hydrogens (the hydrogens of a CH₂ are 1.75 Å apart, as close as some bonds). |
 
 The rotatable bonds are chosen by hand: each one adds a rigid fragment, with six
-variables, so a few chosen bonds (where the molecule needs to bend to fit) make the
-packing easier, while all the bonds of a molecule would make it harder. Without
+variables. Choose them where the molecule must bend to fit: a chain that has to fold
+needs to turn about many of its bonds (see the example below). Without
 `bond_distance`, the bonds are those of the `CONECT` records of the structure file (an
 error if it has none). The pairs of atoms of different fragments up to three bonds apart
 are left out of the distances, and the rest is as for [Polymers](@ref): the molecules
@@ -176,11 +176,31 @@ are first packed as rigid molecules, then the fragments are released; each molec
 written whole, in the order of the atoms of the file; the convergence criterion includes
 the links.
 
-For example, the 120 POPC lipids of the [Lipid bilayer](@ref) tutorial, with the area per
-lipid reduced from 64 to 52 Å² (a periodic cell of 55.86 Å instead of 61.96 Å): as rigid
-molecules, they do not pack in 200 loops; with the five rotatable bonds above (the
-glycerol, and two in each chain), the packing of the rigid lipids stops after its 200
-loops, and the released lipids pack in 47 more, the torsions about the rotatable bonds
-turned by up to 25°.
+For example, the 120 POPC lipids of the [Lipid bilayer](@ref) tutorial (64 Å² per lipid)
+in thinner membranes: the head (atom 1) within a band of 3 Å above `H` (and below `-H`),
+the ends of the chains between -2 and 6 Å (and 2 and -6 Å), and the water beyond the
+heads, at the density of the tutorial. The lipid of the structure is extended, 28.9 Å from
+the head to the ends of the chains:
+
+| Heads at (Å) | Rigid | 5 rotatable bonds | 28 rotatable bonds | 28, with `compress 0.5` |
+|---|---|---|---|---|
+| 24 to 27 | packs | packs | | |
+| 20 to 23 | does not pack (f = 65) | does not pack (f = 8) | packs (36 s) | packs (76 s) |
+| 17 to 20 | does not pack (f = 384) | does not pack (f = 36) | does not pack (f = 21) | 96% of the density |
+
+The 28 rotatable bonds are all the single C–C bonds of the chains (but those of the
+methyl groups) and the C1–C2 bond of the glycerol:
+
+```
+  bond_distance 1.8
+  rotatable 25 28  33 45  45 48  48 51  51 54  54 57  57 60  60 63  65 67  67 70  70 73  73 76  76 79  79 82  82 85
+  rotatable 42 92  92 95  95 98  98 101  101 104  104 107  107 110  110 113  113 116  116 119  119 122  122 125  125 128
+```
+
+In the packed membrane with the heads at 20 to 23 Å, the torsions turned by up to 81°,
+and the heads are 23 to 29 Å from the ends of the chains. With `compress 0.5` (see
+[Packing by compression](@ref)), the membrane is first packed 26% thicker, where the
+rigid lipids fit, and then thinned with the lipids flexible: the rigid lipids, compressed
+alone, stop at 82% of the density.
 
 In Julia, the molecules with rotatable bonds are given by [`flexible_structure`](@ref).

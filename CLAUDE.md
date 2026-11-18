@@ -437,8 +437,11 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       = bond graph cut at the rotatable bonds (ring bonds an error); links: the bond and the bonds of each
       end to its neighbors in its fragment (length and angles kept, torsion free); exclusions: different
       fragments within 3 bonds. Same machinery as polymers (`Polymer` with fragments as atom lists, links
-      between any fragments, output in file order). Bilayer tutorial at 52 Å²/lipid: rigid fails in 200
-      loops, 5 rotatable bonds pack (47 loops after release).
+      between any fragments, output in file order). Thin bilayers (POPC of the bilayer tutorial, heads in a
+      3 Å band, chain ends in [-2, 6]): heads at 20-23 Å (about real) rigid and 5-9 rotatable bonds fail,
+      all 28 single C–C bonds of the tails (+ glycerol C1–C2) pack (36 s; 76 s with compress 0.5);
+      heads at 17-20 Å, 28 + compress reach 96% of the density. The area per lipid is not the challenge
+      (rigid lipids tilt); the thickness is.
 - [x] Packing by compression (`compress <fraction> [<step>]`, Julia `compress = 0.5` or `(0.5, 0.05)`;
       `src/packing/compression.jl`): constraints and cell expanded by fraction^(-1/3) about the cell center
       (origin without PBC), packed, then scaled back in steps (molecules moved rigidly, polymers by their
