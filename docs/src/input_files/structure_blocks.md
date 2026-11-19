@@ -100,9 +100,9 @@ end structure
 |---|---|
 | `repeat <n> ... end repeat` | `n` repeats of the monomers of the block. A sequence can have several blocks, one after the other (block copolymers, end groups with `repeat 1`, or an irregular sequence as a single block with `repeat 1`). |
 | `monomer <natoms>` | A monomer of the sequence, of `natoms` atoms (the next `natoms` atoms of the structure file). |
-| `link <a> <b> [d0 [k [w]]]` | A link from atom `a` of the monomer (the last `monomer` line) to atom `b` of the next monomer (atom indices local to each monomer). Its penalty is `k (\|d - d0\| - w)²` outside `d0 ± w`: `d0` (Å) is by default the distance of the two atoms in each conformation, `k` 10, and `w` 0 (no flat bottom). The links of the last monomer of a polymer are ignored, unless it is `cyclic`. |
-| `rotatable <a> <b>` | A bond from atom `a` of the monomer to atom `b` of the next one, in place of links: it stands for the links that keep the length and the angles of the bond (the bond, and the bonds of `a` and `b` to their neighbors in their monomers), such that the monomers turn about it, as the [Rotatable bonds](@ref) of molecules. It requires the bonds of the polymer: the CONECT records of its file, or `bond_distance`. |
-| `bond_distance <d>` | The bonds of the polymer, for `rotatable`: the pairs of atoms closer than `d` Å (in the first conformation; not pairs of hydrogens), if the file has no CONECT records. |
+| `link <a> <b> [d0 [k [w]]]` | A link from atom `a` of the monomer (the last `monomer` line) to atom `b` of the next monomer (the indices are local to each monomer, from 1: the position of the atom among the atoms of the monomer, in the order of the structure file). Its penalty is `k (\|d - d0\| - w)²` outside `d0 ± w`: `d0` (Å) is by default the distance of the two atoms in each conformation, `k` 10, and `w` 0 (no flat bottom). The links of the last monomer of a polymer are ignored, unless it is `cyclic`. |
+| `rotatable <a> <b>` | A bond from atom `a` of the monomer to atom `b` of the next one (indices local to each monomer, from 1, as in `link`), in place of links: it stands for the links that keep the length and the angles of the bond (the bond, and the bonds of `a` and `b` to their neighbors in their monomers), such that the monomers turn about it, as the [Rotatable bonds](@ref) of molecules. It requires the bonds of the polymer: the CONECT records of its file, or `bond_distance`. |
+| `bond_distance <d>` | The bonds of the polymer, for `rotatable`: the pairs of atoms closer than `d` Å (in the first conformation; not pairs of hydrogens), if the file has no CONECT records. Without rotatable bonds, it has no effect. |
 | `cyclic` | The last monomer is linked to the first one, with the links of the last monomer. |
 
 The links of a junction keep its geometry, and leave free the rotation about the bond: as
@@ -201,7 +201,7 @@ end structure
 
 | Keyword | Meaning |
 |---|---|
-| `rotatable <i> <j> [<i> <j> ...]` | Rotatable bonds: pairs of bonded atoms (indices of the structure file), on one or several lines. A bond in a ring cannot rotate (an error). |
+| `rotatable <i> <j> [<i> <j> ...]` | Rotatable bonds: pairs of bonded atoms, on one or several lines. The indices are the positions of the atoms in the structure file, from 1 (the first atom of the file is 1, whatever its serial number). A bond in a ring cannot rotate (an error). |
 | `bond_distance <d>` | The bonds of the molecule are the pairs of atoms closer than `d` Å in the structure (except pairs of hydrogens), instead of the `CONECT` records of the file. `1.8` finds the bonds of organic molecules with hydrogens (the hydrogens of a CH₂ are 1.75 Å apart, as close as some bonds). |
 
 The rotatable bonds are chosen by hand: each one adds a rigid fragment, with six

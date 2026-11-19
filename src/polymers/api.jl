@@ -12,7 +12,8 @@ each `(a, b)` (atom `a` of this monomer to atom `b` of the next one, at their di
 the structure of the polymer), `(a, b, d0)`, `(a, b, d0, k)` or `(a, b, d0, k, w)`: the
 distance, the constant (default $(_default_link_constant)) and the half-width of a flat
 bottom (no penalty within `d0 ± w`; default 0) of the link, whose penalty is
-`k (|d - d0| - w)²`.
+`k (|d - d0| - w)²`. The atom indices are local to each monomer, from 1 (the position of
+the atom among the atoms of the monomer).
 
 `rotatable` are bonds to the next monomer, each `(a, b)` (atom `a` of this monomer bonded
 to atom `b` of the next one), in place of links: each stands for the links that keep the
@@ -117,7 +118,7 @@ end
 The molecules of the structure file `filename` (a file with several models, or a vector
 of files, for several conformations), flexible about the `rotatable` bonds, a vector of
 pairs of bonded atoms, as `[(21, 22), (36, 39)]` (the `rotatable` lines of a structure
-block). The bonds of the molecule are those of the CONECT records of the file or, with
+block), indexed by their positions in the file, from 1. The bonds of the molecule are those of the CONECT records of the file or, with
 `bond_distance = d`, the pairs of atoms closer than `d` Å (in the first conformation).
 The other keyword arguments are those of [`structure_type`](@ref). Give it to
 `PackmolSystem` with the other structure types, as `PackmolSystem([lipids, water]; ...)`.

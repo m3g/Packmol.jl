@@ -37,6 +37,10 @@ Version 100.1.0-DEV
   to the first paper of Packmol (2003).
 - ![INFO][badge-info] Documentation: a "See also" section in the introduction (related packages
   and contact).
+- ![ENHANCEMENT][badge-enhancement] The error of a `rotatable` bond whose atoms are not bonded
+  says why: not in the CONECT records, or farther than `bond_distance` (with their
+  distance). The docs state that the atom indices count from 1, by position in the file.
+  `bond_distance` without rotatable bonds is no longer an error (it has no effect).
 
 Version 100.0.0
 ---------------

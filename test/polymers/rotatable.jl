@@ -21,9 +21,10 @@
     @test !((Int32(10), Int32(14)) in only(p.exclusions))
     # errors
     @test_throws ArgumentError read_packmol_input(block("rotatable 10 11"))                     # no bonds
-    @test_throws ArgumentError read_packmol_input(block("bond_distance 1.6\nrotatable 10 12"))  # not bonded
+    @test_throws "farther than bond_distance 1.6 Å" read_packmol_input(block("bond_distance 1.6\nrotatable 10 12"))  # not bonded
     @test_throws ArgumentError read_packmol_input(block("bond_distance 1.6\nrotatable 10"))     # not a pair
-    @test_throws ArgumentError read_packmol_input(block("bond_distance 1.6"))                   # no rotatable bonds
+    # bond_distance without rotatable bonds: a rigid molecule (the bonds are not used)
+    @test isempty(read_packmol_input(block("bond_distance 1.6")).polymers)
     @test_throws ArgumentError read_packmol_input(block("bond_distance 1.6\nrotatable 10 11\nrepeat 10\n monomer 3\n link 3 1\nend repeat"))
     # A branched molecule: POPC, with the bonds from the distances (no CONECT records)
     popc = joinpath(Packmol.RecipesDirectory, "lipids", "popc.pdb")
@@ -108,7 +109,7 @@ end
     @test pairs(only(s.polymers)) == pairs(p)
     # errors
     @test_throws ArgumentError read_packmol_input(block("repeat 10\n monomer 3\n  rotatable 3 1\nend repeat"))                    # no bonds
-    @test_throws ArgumentError read_packmol_input(block("bond_distance 1.6\nrepeat 10\n monomer 3\n  rotatable 3 2\nend repeat"))  # not bonded
+    @test_throws "farther than bond_distance 1.6 Å" read_packmol_input(block("bond_distance 1.6\nrepeat 10\n monomer 3\n  rotatable 3 2\nend repeat"))  # not bonded
     @test_throws ArgumentError read_packmol_input(block("bond_distance 1.6\nrepeat 10\n monomer 3\n  rotatable 4 1\nend repeat"))  # not in the monomer
     @test_throws ArgumentError read_packmol_input(block("bond_distance 1.6\nrepeat 10\n monomer 3\n  rotatable 3 4\nend repeat"))  # not in the next
     @test_throws ArgumentError read_packmol_input(block("bond_distance 1.6\nrepeat 10\n monomer 3\n  rotatable 3\nend repeat"))    # not a pair

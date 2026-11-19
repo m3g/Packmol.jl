@@ -109,6 +109,16 @@ function _bonded_exclusions(bonded::Vector{Vector{Int}}, fragment_of::Vector{Int
 end
 
 #
+# Why two atoms are not bonded, for the error messages: the source of the bonds, and the
+# distance of the atoms (in the first conformation)
+#
+function _not_bonded_reason(st::StructureType, bond_distance, i::Int, j::Int)
+    d = string(round(norm(st.reference_coordinates[i] - st.reference_coordinates[j]); digits=2))
+    isnan(bond_distance) && return string("not bonded in the CONECT records (they are ", d, " Å apart)")
+    return string("farther than bond_distance ", bond_distance, " Å (they are ", d, " Å apart)")
+end
+
+#
 # The pairs of atoms of the links of a rotatable bond i-j between two fragments: the bond,
 # and the bonds of each end to its other neighbors in its fragment (which keep the angles
 # of the bond)
@@ -143,8 +153,9 @@ function _add_rotatable!(
         """))
         # (few interpolations: a long string is not compiled by `juliac --trim`)
         bond = string("rotatable ", i, " ", j)
-        j in bonded[i] || throw(ArgumentError("""\n
-            $bond: the atoms are not bonded, in $name.
+        reason = j in bonded[i] ? "" : _not_bonded_reason(st, bond_distance, i, j)
+        isempty(reason) || throw(ArgumentError("""\n
+            $bond: the atoms are $reason, in $name.
 
         """))
     end
