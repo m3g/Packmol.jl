@@ -104,6 +104,9 @@ _is_monomer(topo::PolymerTopology, imol::Integer) = !isempty(topo.mol_instance) 
     return (min(ti, tj), max(ti, tj)) in exclusions
 end
 
-# The periodic image of the vector `v` closest to the origin
-_min_image(v::SVector{3,T}, unitcell::AbstractMatrix) where {T} = _nearest_periodic_image(v, unitcell, zero(v))
+# The periodic image of the vector `v` closest to the origin (`v` reduced to the cell
+# first: `_nearest_periodic_image` searches the neighboring images only, and the vectors
+# between the monomers of an unwrapped chain can be several cells long)
+_min_image(v::SVector{3,T}, unitcell::AbstractMatrix) where {T} =
+    _nearest_periodic_image(wrap_to_center(v, unitcell, zero(v)), unitcell, zero(v))
 _min_image(v::SVector{D,T}, unitcell::AbstractMatrix) where {D,T} = wrap_to_center(v, unitcell, zero(v))
