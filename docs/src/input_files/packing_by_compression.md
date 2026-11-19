@@ -3,8 +3,8 @@
 Some systems do not pack from a random placement at their density: long chains,
 polymers, crowded large molecules. The molecules jam before they fill the space, each
 blocked by its neighbors, while the same molecules pack in seconds at a lower density.
-The keyword `use_compression` (Packmol.jl only) packs such systems at a lower density, and
-compresses them from there, in steps, to the density of the input:
+The keyword `use_compression` packs such systems at a lower density, and compresses
+them from there, in steps, to the density of the input:
 
 ```
 use_compression       # pack at half the density, then compress

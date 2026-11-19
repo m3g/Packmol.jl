@@ -74,7 +74,7 @@ those of a single structure type. A fixed molecule has a single conformation, an
 
 ## Polymers
 
-A structure block with `repeat` blocks is a polymer (Packmol.jl only): the structure file
+A structure block with `repeat` blocks is a polymer: the structure file
 holds the whole polymer (one model per conformation), and the `repeat` blocks give its
 sequence of monomers, each with its number of atoms, in the order of the atoms of the
 file. Each monomer is packed as a rigid molecule, and consecutive monomers are held
@@ -161,7 +161,7 @@ polypeptides, in a homogeneous mixture and as a droplet.
 
 ## Rotatable bonds
 
-Any molecule can be made flexible about some of its bonds (Packmol.jl only): with
+Any molecule can be made flexible about some of its bonds: with
 `rotatable` lines, the molecule is cut at those bonds into rigid fragments (the
 connected parts of the bonds that are left), packed as rigid molecules held together by
 links. The links of a rotatable bond i–j keep its length and its angles: the bond i–j,

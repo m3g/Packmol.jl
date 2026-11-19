@@ -94,6 +94,10 @@ In input files and on the command line:
 - new constraints: curved surfaces (Gaussian, waves and exponentials), and the new
   `constrain_rotation`;
 - several conformations of a molecule, from a structure file with several models;
+- flexible molecules: [Polymers](@ref) (chains of rigid monomers held by links) and
+  molecules with [Rotatable bonds](@ref);
+- [Packing by compression](@ref) (`use_compression`), for systems too dense to pack from
+  a random placement;
 - `--guess-volume` and `--free-volume`, to estimate the volumes of the system and of the
   regions of its molecules (see [Volume estimates](@ref)).
 
