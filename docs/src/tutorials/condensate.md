@@ -19,14 +19,16 @@ links between the monomers.
 
 ![The homogeneous mixture](images/condensate_homogeneous.webp)
 
-*The homogeneous mixture: the chains, each in a color, and one water molecule in 20.
+*The homogeneous mixture: the chains, each in a color, with one in every 20 water
+molecules shown.
 The chains are written whole, each placed in the cell by its center: a chain of up to
 100 Å crosses the faces of the cell, and its parts outside are the periodic images of
 parts inside (with PBC, an artifact of the view only).*
 
 ![The droplet](images/condensate_droplet.webp)
 
-*The droplet: the chains at 400 mg/mL, and one water molecule in 20.*
+*The droplet: the chains at 400 mg/mL, with one in every 20 water molecules
+shown.*
 
 Files: [`peptides.pdb`](files/condensate/peptides.pdb) (the conformations of the chains),
 [`wt4.pdb`](files/condensate/wt4.pdb), and the input files
