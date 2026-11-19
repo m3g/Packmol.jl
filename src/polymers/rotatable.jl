@@ -1,0 +1,179 @@
+#
+# Molecules with rotatable bonds (`rotatable i j ...` in a structure block, or
+# `flexible_structure` in Julia): the bonds of the molecule (its CONECT records, or the
+# pairs of atoms closer than `bond_distance`) are cut at the rotatable bonds, and the
+# connected parts of what is left are the rigid fragments of the molecule. Each rotatable
+# bond i–j is kept by links: i–j (the bond), and the bonds of i and of j to their other
+# neighbors in their fragments, i–m and n–j (the angles of the bond), such that the
+# fragments turn about the bond only. The pairs of atoms of different fragments up to
+# three bonds apart (1–2, 1–3 and 1–4 pairs) are excluded from the distances.
+#
+
+# Whether an atom is a hydrogen: by its element, or else by its name (H, or a digit and H)
+function _is_hydrogen(at::Atom)
+    element = strip(at.pdb_element)
+    isempty(element) || return uppercase(element) == "H"
+    name = lstrip(at.name, ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'))
+    return startswith(name, "H")
+end
+
+# The bonds of a molecule: for each atom, the atoms bonded to it
+function _molecule_bonds(st::StructureType{D,T}, bond_distance::T) where {D,T}
+    n = st.natoms
+    name = basename(st.filename)
+    bonded = [Int[] for _ in 1:n]
+    if !isnan(bond_distance)
+        # the pairs of atoms closer than `bond_distance`, in the first conformation, except
+        # pairs of hydrogens (the hydrogens of a CH2 are 1.75 Å apart, as close as the
+        # longest bonds of heavy atoms, P–O of 1.6 Å)
+        x = st.reference_coordinates
+        hydrogen = [_is_hydrogen(at) for at in st.atoms]
+        for i in 1:n, j in i+1:n
+            (hydrogen[i] && hydrogen[j]) && continue
+            if norm(x[i] - x[j]) <= bond_distance
+                push!(bonded[i], j)
+                push!(bonded[j], i)
+            end
+        end
+    else
+        connectivity = st.connectivity
+        isnothing(connectivity) && throw(ArgumentError("""\n
+            The rotatable bonds of $name require its bonds: the structure file has no CONECT
+            records (or `connect no` was set). Give `bond_distance <d>` to compute them from the
+            distances (atoms closer than d Å are bonded).
+
+        """))
+        for i in 1:n, j in connectivity[i]
+            (1 <= j <= n && j != i) || continue
+            j in bonded[i] || push!(bonded[i], j)
+            i in bonded[j] || push!(bonded[j], i)
+        end
+    end
+    return bonded
+end
+
+#
+# The fragments of a molecule with its bonds `bonded` cut at the `rotatable` bonds: the
+# fragment of each atom, and the atoms of each fragment (in the order of the atoms,
+# fragments ordered by their first atom)
+#
+function _fragments(bonded::Vector{Vector{Int}}, rotatable::Vector{Tuple{Int,Int}})
+    n = length(bonded)
+    is_cut(i, j) = (i, j) in rotatable || (j, i) in rotatable
+    fragment_of = zeros(Int, n)
+    fragments = Vector{Int}[]
+    for start in 1:n
+        fragment_of[start] == 0 || continue
+        push!(fragments, Int[])
+        f = length(fragments)
+        fragment_of[start] = f
+        stack = [start]
+        while !isempty(stack)
+            i = pop!(stack)
+            push!(fragments[f], i)
+            for j in bonded[i]
+                (fragment_of[j] == 0 && !is_cut(i, j)) || continue
+                fragment_of[j] = f
+                push!(stack, j)
+            end
+        end
+        sort!(fragments[f])
+    end
+    return fragment_of, fragments
+end
+
+#
+# The pairs of atoms (i < j) of different fragments up to three bonds apart, given the
+# bonds of the molecule and the fragment of each atom
+#
+function _bonded_exclusions(bonded::Vector{Vector{Int}}, fragment_of::Vector{Int})
+    exclusions = Set{Tuple{Int32,Int32}}()
+    for i in eachindex(bonded)
+        # the atoms within three bonds of i (breadth-first)
+        depth = Dict(i => 0)
+        queue = [i]
+        while !isempty(queue)
+            a = popfirst!(queue)
+            depth[a] == 3 && continue
+            for b in bonded[a]
+                haskey(depth, b) && continue
+                depth[b] = depth[a] + 1
+                push!(queue, b)
+            end
+        end
+        for j in keys(depth)
+            (j > i && fragment_of[j] != fragment_of[i]) && push!(exclusions, (Int32(i), Int32(j)))
+        end
+    end
+    return exclusions
+end
+
+#
+# The pairs of atoms of the links of a rotatable bond i-j between two fragments: the bond,
+# and the bonds of each end to its other neighbors in its fragment (which keep the angles
+# of the bond)
+#
+function _rotatable_link_pairs!(pairs::Vector{Tuple{Int,Int}}, i::Int, j::Int, bonded::Vector{Vector{Int}}, fragment_of::Vector{Int})
+    push!(pairs, (i, j))
+    for m in bonded[i]
+        (m != j && fragment_of[m] == fragment_of[i]) && push!(pairs, (m, j))
+    end
+    for m in bonded[j]
+        (m != i && fragment_of[m] == fragment_of[j]) && push!(pairs, (i, m))
+    end
+    return pairs
+end
+
+#
+# Adds a molecule with rotatable bonds to the system: `rigid_types` are the structure
+# types of its conformations
+#
+function _add_rotatable!(
+    sys::PackmolSystem{D,T}, rigid_types::Vector{StructureType{D,T}}, rotatable::Vector{Tuple{Int,Int}}, bond_distance::T,
+) where {D,T}
+    st = first(rigid_types)
+    name = basename(st.filename)
+    _check_flexible(st)
+    n = st.natoms
+    bonded = _molecule_bonds(st, bond_distance)
+    for (i, j) in rotatable
+        (1 <= i <= n && 1 <= j <= n) || throw(ArgumentError("""\n
+            $(string("rotatable ", i, " ", j)): the molecule $name has $n atoms.
+
+        """))
+        # (few interpolations: a long string is not compiled by `juliac --trim`)
+        bond = string("rotatable ", i, " ", j)
+        j in bonded[i] || throw(ArgumentError("""\n
+            $bond: the atoms are not bonded, in $name.
+
+        """))
+    end
+    fragment_of, fragments = _fragments(bonded, rotatable)
+    for (i, j) in rotatable
+        bond = string("rotatable ", i, " ", j)
+        fragment_of[i] == fragment_of[j] && throw(ArgumentError("""\n
+            $bond: the bond is in a ring of $name (its atoms are in the same rigid fragment
+            once the rotatable bonds are cut), and cannot rotate.
+
+        """))
+    end
+    # The index of each atom in its fragment
+    local_index = zeros(Int, n)
+    for r in fragments, (k, i) in enumerate(r)
+        local_index[i] = k
+    end
+    # The pairs of atoms of each link: the bond, and the bonds of each end to its other
+    # neighbors in its fragment
+    pairs = Tuple{Int,Int}[]
+    for (i, j) in rotatable
+        _rotatable_link_pairs!(pairs, i, j, bonded, fragment_of)
+    end
+    links = Vector{FragmentLink{T}}[]
+    for rst in rigid_types
+        x = rst.reference_coordinates
+        push!(links, [FragmentLink{T}(fragment_of[a], local_index[a], fragment_of[b], local_index[b],
+            norm(x[b] - x[a]), T(_default_link_constant), zero(T)) for (a, b) in pairs])
+    end
+    exclusions = _bonded_exclusions(bonded, fragment_of)
+    return _add_flexible_molecule!(sys, rigid_types, fragments, links, fill(exclusions, length(rigid_types)), false)
+end

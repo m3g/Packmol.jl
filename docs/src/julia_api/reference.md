@@ -19,6 +19,17 @@ get_atoms
 write_output
 ```
 
+## Polymers and rotatable bonds
+
+See [Polymers](@ref) and [Rotatable bonds](@ref) for the input files, and the tutorial
+[Biomolecular condensate](@ref).
+
+```@docs
+polymer_structure
+monomer
+flexible_structure
+```
+
 ## Placement on a grid
 
 A direct port to Julia of the placement algorithm of

@@ -19,7 +19,7 @@
 | `max_random_init <int>` | Best-of-`N` random placements tried per molecule during initialization. |
 | `adjust_constraints_on_init yes\|no` | Whether to run constraint-only pre-optimization before packing. |
 | `avoid_overlap yes\|no` | Whether the initial placement avoids overlaps with the fixed molecules (default `yes`). The molecules moved during the packing always avoid them. |
-| `screen_log yes\|no` | Whether the report of the run, with its progress bars and warnings, is printed (default `yes`). With `no` the run is silent, except for errors (Packmol.jl only; in Julia, `packmol(...; screen_log = false)`). |
+| `screen_log yes\|no` | Whether the report of the run, with its progress bars and warnings, is printed (default `yes`). With `no` the run is silent, except for errors (in Julia, `packmol(...; screen_log = false)`). |
 | `connect yes\|no` | Whether to write the connectivity of the structure files (their `CONECT` records) to the output, for every molecule (default `yes`). `ignore_conect` (no value) is the same as `connect no`. |
 | `add_amber_ter` | Flag: add a `TER` record after every molecule (AMBER convention). |
 | `amber_ter_preserve` | Flag: preserve the `TER` records of the structure files, in every copy of the molecule. |
@@ -32,6 +32,7 @@
 | `unitcell <a b c α β γ>` | Triclinic periodic box, CRYST1-style (centered at the origin). |
 | `restart_from <file>` | Skip initial placement for every free molecule and read their positions from `<file>` instead — see [Restarting a run](@ref) below. Also valid inside a `structure ... end structure` block, to restart only that structure type. |
 | `voxel_place [max_tries_mult]` | Place the free molecules first with the voxel placement of [Bentopy](https://github.com/marrink-lab/bentopy) (a direct port of its algorithm, see [Placement on a grid (Bentopy)](@ref)), then pack from that placement. The molecules that do not fit are left out of the system, with a warning (a significant warning if more than 10% of a structure type). `max_tries_mult`: the unsuccessful tries of each structure type, times its number of molecules (default 1000, as in Bentopy). For crowded systems of many large molecules. |
+| `use_compression [<fraction> [<step>]]` | Pack at `fraction` of the density (between 0 and 1, default `0.5`: half the density), then compress (see [Packing by compression](@ref)): the constraints and the periodic cell are expanded by `fraction^(-1/3)` about the center of the cell (the origin, without periodic boundary conditions), the system is packed there, and then compressed back to the geometry of the input in steps, each packed from the previous one. The step (the fraction of the linear dimensions, default `0.05`) is halved when a step does not converge, and grows back after two that do. For systems too dense to pack from a random placement: long chains, polymers, crowded large molecules. Fixed molecules stay in place, and all periodic cells are supported; not with `restart_from`, and the constraints must be boxes, cubes, spheres, cylinders, ellipsoids or planes. |
 
 See [Periodic boundary conditions](../periodic_boundary_conditions/index.md) for the
 full `pbc`/`unitcell` syntax (including the dodecahedral/octahedral shapes)

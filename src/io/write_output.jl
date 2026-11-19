@@ -135,11 +135,13 @@ function _wrap_molecules!(
 ) where {D,T,F}
     imol_offset = 0
     iat_offset = 0
-    for st in packmol_system.structure_types
+    # The monomers of polymers are wrapped with their polymers (see `_wrap_polymers!`)
+    polymer_of_type, _, _ = _type_monomers(packmol_system)
+    for (itype, st) in enumerate(packmol_system.structure_types)
         natoms_st = st.natoms
         nmols_st = st.number_of_molecules
         # Fixed molecules are written where they were placed (they are inside the cell)
-        if st.fixed.fixed
+        if st.fixed.fixed || polymer_of_type[itype] != 0
             imol_offset += nmols_st
             iat_offset += nmols_st * natoms_st
             continue
@@ -194,8 +196,10 @@ function get_atoms(packmol_system::PackmolSystem{D,T}) where {D,T}
         # `unitcell` matrix itself differs between the two box shapes.
         if packmol_system.periodic_boundary_style === :triclinic
             _wrap_molecules!(atom_positions, packmol_system, unitcell, unitcell_center, wrap_to_center)
+            _wrap_polymers!(atom_positions, packmol_system, unitcell, unitcell_center, wrap_to_center)
         else
             _wrap_molecules!(atom_positions, packmol_system, unitcell, unitcell_center, _nearest_periodic_image)
+            _wrap_polymers!(atom_positions, packmol_system, unitcell, unitcell_center, _nearest_periodic_image)
         end
     end
 
@@ -282,7 +286,8 @@ function get_atoms(packmol_system::PackmolSystem{D,T}) where {D,T}
         end
     end
 
-    return output_atoms
+    # The polymers whole, each in the order of the atoms of its structure
+    return _polymer_output_order(packmol_system, output_atoms)
 end
 
 _set_segid!(::Atom, ::Nothing) = nothing
@@ -350,10 +355,19 @@ _ncopies(st::StructureType) = st.fixed.fixed ? 1 : st.number_of_molecules
 #
 function _system_connectivity(packmol_system::PackmolSystem)
     packmol_system.connect || return nothing
-    any(st -> !isnothing(st.connectivity), packmol_system.structure_types) || return nothing
+    any(st -> !isnothing(st.connectivity), packmol_system.structure_types) ||
+        any(p -> !isnothing(first(p.rigid_types).connectivity), packmol_system.polymers) || return nothing
     connectivity = Vector{Int32}[]
     offset = Int32(0)
-    for st in packmol_system.structure_types
+    polymer_of_type, _, _ = _type_monomers(packmol_system)
+    for (itype, st) in enumerate(packmol_system.structure_types)
+        # The bonds of the polymers, whole (in the order of `_polymer_output_order`)
+        if polymer_of_type[itype] != 0
+            if itype == packmol_system.polymers[polymer_of_type[itype]].first_type
+                offset = _polymer_connectivity!(connectivity, packmol_system.polymers[polymer_of_type[itype]], offset)
+            end
+            continue
+        end
         template = st.connectivity
         for _ in 1:_ncopies(st)
             for iat in 1:st.natoms

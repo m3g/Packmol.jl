@@ -156,6 +156,7 @@ function _packmol(
     _println()
     _check_fixed_inside_cell(packmol_system)
     _check_restart_files(packmol_system)
+    _check_polymers(packmol_system)
 
     # Build index of free (non-fixed) molecules
     free_mol_indices = Int[]
@@ -214,8 +215,16 @@ function _packmol(
         restart = true
     end
 
-    # Pre-optimization: set initial approximation (random placement + constraint fitting)
-    initial_converged = set_initial_approximation!(packmol_system, free_mol_indices, RNG; restart, nloop, buffers)
+    # Pre-optimization: set initial approximation (random placement + constraint fitting).
+    # The polymers are placed as rigid molecules (in a system in which they are single
+    # molecules, also used to move them as a whole in movebad), then released.
+    _set_polymer_topology!(packmol_system)
+    rigid_polymers = isempty(packmol_system.polymers) ? nothing : RigidPolymerSystem(packmol_system)
+    initial_converged = if isnothing(rigid_polymers) || restart
+        set_initial_approximation!(packmol_system, free_mol_indices, RNG; restart, nloop, buffers)
+    else
+        _polymer_initial_approximation!(packmol_system, rigid_polymers, RNG; nloop)
+    end
 
     imol_offset = 0
     for st in packmol_system.structure_types
@@ -573,6 +582,8 @@ function _packmol(
         # tolerance/2, so that the criterion is `tolerance - dmin < tolerance_precision`).
         tol_ok = max_overlap < _tolerance_precision(packmol_system)
         const_ok = max_const < packmol_system.constraint_precision
+        max_link = cl_system.fg.max_link_deviation
+        const_ok &= max_link < _tolerance_precision(packmol_system)
 
         finish!(progress_meter)
         loop_end_reason = if tol_ok && const_ok
@@ -597,6 +608,7 @@ function _packmol(
         @_printf("  Improvement within this loop: %8.2f %%\n", fimp_within_loop)
         @_printf("  Minimum distance: %12s\n", _format_dmin(dmin, cl_system.cutoff))
         @_printf("  Maximum violation of the constraints: %10.5e\n", max_const)
+        isempty(packmol_system.polymers) || @_printf("  Maximum deviation of the links: %10.5e\n", max_link)
 
         if tol_ok && const_ok
             _println()
@@ -677,6 +689,10 @@ function _packmol(
             if !isempty(moved)
                 _println("  Moved $(length(moved)) bad molecules randomly to new positions.")
             end
+            if !isnothing(rigid_polymers)
+                nmoved = _movebad_polymers!(packmol_system, cl_system.fg.fmol, mol_unconverged, RNG; movefrac)
+                nmoved > 0 && _println("  Shook $nmoved bad polymers (random displacements of their monomers).")
+            end
         end
         # Re-pack optimizer variables from (possibly moved) molecule positions
         x_mol = reinterpret(MoleculePosition{D,T}, x)
@@ -710,7 +726,8 @@ function _packmol(
         write_output(packmol_system)
         _println()
         _println("  Solution written to file: ", packmol_system.output_file)
-        converged || _write_forced_output(packmol_system, free_mol_indices, RNG, buffers, nloop)
+        converged || !isempty(packmol_system.polymers) ||
+            _write_forced_output(packmol_system, free_mol_indices, RNG, buffers, nloop)
     end
 
     _println()

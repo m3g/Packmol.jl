@@ -32,9 +32,12 @@ const cases = [
     ("zif8", () -> joinpath(tutorials, "zif8"), "zif8.inp", "< 1 s"),
     ("supercapacitor", () -> joinpath(tutorials, "supercapacitor"), "supercapacitor.inp", "1 s"),
     ("gold_nanoparticle", () -> joinpath(tutorials, "gold_nanoparticle"), "gold_nanoparticle.inp", "10 s"),
+    ("gold_polymer", () -> joinpath(tutorials, "gold_polymer"), "gold_polymer.inp", "7 min"),
     ("polymer_dmf", () -> joinpath(tutorials, "polymer_dmf"), "polymer_dmf.inp", "< 1 s"),
     ("nanotube", () -> joinpath(tutorials, "nanotube"), "nanotube.inp", "< 1 s"),
     ("nematic", () -> joinpath(tutorials, "liquid_crystal"), "nematic.inp", "1 s"),
+    ("condensate_homogeneous", () -> joinpath(tutorials, "condensate"), "homogeneous.inp", "5 s"),
+    ("condensate_droplet", () -> joinpath(tutorials, "condensate"), ["droplet_chains.inp", "droplet_water.inp"], "1 min"),
     ("cholesteric", () -> joinpath(tutorials, "liquid_crystal"), "cholesteric.inp", "1 s"),
     ("bilayer", () -> joinpath(tutorials, "bilayer"), "bilayer.inp", "2 s"),
     ("nanoliposome_small", () -> joinpath(tutorials, "nanoliposome"), "small.inp", "20 s"),
@@ -92,10 +95,26 @@ function check_overlaps(sys)
         (; i, j, d) = pair
         ai, aj = sys.atoms[i], sys.atoms[j]
         (ai.molecule_index == aj.molecule_index || (fixed[i] && fixed[j])) && return o
+        # the excluded pairs of the polymers (atoms of consecutive monomers, close in the
+        # structure of the polymer)
+        Packmol._excluded_pair(sys, i, j, ai.molecule_index, aj.molecule_index) && return o
         dmin[] = min(dmin[], d)
         return max(o, ai.radius + aj.radius - d)
     end
     return max_overlap, dmin[]
+end
+
+# The largest deviation of a link of the polymers from its distance (beyond its flat bottom)
+function check_links(sys)
+    x = similar(sys.atoms, SVector{3,Float64})
+    Packmol.compute_atom_positions!(x, sys.molecule_positions, sys)
+    has_pbc, unitcell, _ = Packmol._typed_unitcell(sys)
+    deviation = 0.0
+    for l in sys.polymer_topology.links
+        v = Packmol._link_vector(x[l.ia], x[l.ib], has_pbc, unitcell)
+        deviation = max(deviation, abs(sqrt(sum(abs2, v)) - l.d0) - l.w)
+    end
+    return deviation
 end
 
 function run_case(name, dir, inputs, workdir, seed)
@@ -129,7 +148,8 @@ function run_case(name, dir, inputs, workdir, seed)
     loops = count("Starting packing loop", s)
     evaluations = sum(m -> parse(Int, m[1]), eachmatch(r"Function evaluations:\s+(\d+)", s); init = 0)
     max_overlap, dmin = check_overlaps(sys)
-    ok = sys.status == :packing_ready && max_overlap < Packmol._tolerance_precision(sys)
+    precision = Packmol._tolerance_precision(sys)
+    ok = sys.status == :packing_ready && max_overlap < precision && check_links(sys) < precision
     return (; ok, status = sys.status, loops, evaluations, time, dmin, max_overlap, log)
 end
 

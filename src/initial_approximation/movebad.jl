@@ -59,6 +59,8 @@ function movebad!(
     fmol_max_now = zeros(T, ntypes)
     worst_imol = 0
     for imol in free_mol_indices
+        # the monomers of polymers are moved with their polymers (see `_movebad_polymers!`)
+        _is_monomer(packmol_system.polymer_topology, imol) && continue
         (isnothing(unconverged) ? fmol[imol] > bad_threshold : unconverged[imol]) || continue
         push!(candidates, imol)
         ist = mol_structure_type[imol]

@@ -46,7 +46,7 @@ function _mark_within!(marks::Vector{Bool}, index::Vector{Int}, xpositions, ypos
     return marks
 end
 
-mutable struct ActiveSubsystem{CS,CC}
+mutable struct ActiveSubsystem{CS,CC,L}
     # Active (mobile) molecules, and their positions in the vector of free molecules
     mols::Vector{Int}
     kfree::Vector{Int}
@@ -58,6 +58,7 @@ mutable struct ActiveSubsystem{CS,CC}
     frozen_map::Vector{Int}
     cl::CS          # active atoms: pairs of active atoms, and the output of the subsystem
     cl_frozen::CC   # active atoms x frozen atoms (`nothing` if there are no frozen atoms)
+    links::Vector{L} # links of the polymers with an atom of an active molecule
 end
 
 function _active_output(packmol_system::PackmolSystem{D,T}, n::Int) where {D,T}
@@ -70,6 +71,7 @@ function _active_output(packmol_system::PackmolSystem{D,T}, n::Int) where {D,T}
         gxcar=fill(zero(SVector{D,T}), n),
         max_constraint_penalty=zero(T),
         overlap_precision=_tolerance_precision(packmol_system),
+        max_link_deviation=zero(T),
     )
 end
 
@@ -164,7 +166,8 @@ function _active_subsystem(
         nbatches=_cl_nbatches(),
         validate_coordinates=_validate_positions,
     )
-    return ActiveSubsystem(mols, kfree, atom_map, mol_first, nmobile, frozen_map, cl, cl_frozen), length(mols), nmobile
+    links = _active_links(packmol_system, atom_map, cl_positions)
+    return ActiveSubsystem(mols, kfree, atom_map, mol_first, nmobile, frozen_map, cl, cl_frozen, links), length(mols), nmobile
 end
 
 # A pair of active atoms, as `cartesian_fg!`, with the local indices of the active atoms
@@ -174,6 +177,7 @@ function _active_cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, pa
     iatom = packmol_system.atoms[gi]
     jatom = packmol_system.atoms[gj]
     iatom.molecule_index == jatom.molecule_index && return fg
+    _excluded_pair(packmol_system, gi, gj, iatom.molecule_index, jatom.molecule_index) && return fg
     tol = atom_radii[gi] + atom_radii[gj]
     d = sqrt(d2)
     fg.dmin = min(d, fg.dmin)
@@ -198,6 +202,7 @@ function _frozen_cartesian_fg!(pair::NeighborPair, fg::InteratomicDistanceFG, pa
     gi, gj = sub.atom_map[i], sub.frozen_map[j]
     iatom = packmol_system.atoms[gi]
     jatom = packmol_system.atoms[gj]
+    _excluded_pair(packmol_system, gi, gj, iatom.molecule_index, jatom.molecule_index) && return fg
     tol = atom_radii[gi] + atom_radii[gj]
     d = sqrt(d2)
     fg.dmin = min(d, fg.dmin)
@@ -252,6 +257,8 @@ function _active_fg!(g, x, sub::ActiveSubsystem, packmol_system::PackmolSystem{D
             fg.gxcar[il] += ff.gxcar[il]
         end
     end
+    # Links of the polymers
+    _active_link_fg!(fg, sub.links, positions, packmol_system)
     # Constraints of the active atoms, and the chain rule
     g_mol = reinterpret(MoleculePosition{D,T}, g)
     mol_chunks = chunks(eachindex(sub.mols); n=_nbatches())
