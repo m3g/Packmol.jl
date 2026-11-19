@@ -694,3 +694,10 @@ Document these on a docs page ("Packmol executable vs. Packmol.jl"). Initial lis
   without a wheel (Windows arm64, musl) get the Fortran 21.x wheels. Upload only by
   `workflow_dispatch` with `publish = testpypi|pypi` (PyPI only from a `v*` tag), after
   the maintainer registers the trusted publisher (environments `testpypi`, `pypi`).
+- **2026-11-19** (Claude): the wheels are uploaded to PyPI automatically for the version tags
+  (`publish` job of `BuildExecutable.yml`, on pushes of `v*` tags without `+`), after all
+  the builds pass and the version of every wheel is checked against the tag. The
+  maintainer's decision: TagBot pushes the tag after the registration of the version,
+  which is already irreversible, so PyPI follows the registry. `workflow_dispatch` with
+  `publish = testpypi|pypi` stays, to test on TestPyPI or retry a failed upload. No
+  approval gate on the `pypi` environment.

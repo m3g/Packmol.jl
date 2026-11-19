@@ -4,10 +4,13 @@ name: Build executable
 # artifacts. The Linux executables are built in manylinux_2_28 containers (glibc 2.28).
 #
 # - Pushes to main: the archives replace those of the `dev` pre-release.
-# - Version tags (v*, pushed by TagBot): the archives are attached to the release.
-# - Manual runs (workflow_dispatch) can upload the wheels to TestPyPI or PyPI (`publish`),
-#   which needs this repository registered as a trusted publisher of the PyPI project and
-#   the environments `testpypi`/`pypi`. PyPI only from a version tag.
+# - Version tags (v*, pushed by TagBot after the registration of a version): the archives
+#   are attached to the release, and the wheels uploaded to PyPI, so that the versions of
+#   PyPI follow those of the registry (the version of the wheels must be that of the tag).
+# - Manual runs (workflow_dispatch) can upload the wheels to TestPyPI or PyPI (`publish`;
+#   PyPI only from a version tag, e.g. to retry a failed upload).
+#   Uploads need this repository registered as a trusted publisher of the PyPI project,
+#   with the environments `testpypi`/`pypi`.
 # - Pull requests, unless they change only the documentation (docs/, Markdown files).
 # - Tags with build metadata (v100.0.0+docs1, releases that only update the stable docs):
 #   nothing is built; the archives of the release of the version (v100.0.0) are copied to
@@ -226,14 +229,17 @@ jobs:
           fi
           gh release upload dev -R $repo --clobber packmol-* SHA256SUMS.txt
 
-  # Upload of the wheels, on request only (workflow_dispatch with publish = testpypi or pypi)
+  # Upload of the wheels: to PyPI for the version tags (not those of the docs, v*+*), or on
+  # request (workflow_dispatch with publish = testpypi or pypi)
   publish:
     needs: build
-    if: github.event_name == 'workflow_dispatch' && (inputs.publish == 'testpypi' || (inputs.publish == 'pypi' && startsWith(github.ref, 'refs/tags/v')))
+    if: >-
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '+'))
+      || (github.event_name == 'workflow_dispatch' && (inputs.publish == 'testpypi' || (inputs.publish == 'pypi' && startsWith(github.ref, 'refs/tags/v'))))
     runs-on: ubuntu-latest
     environment:
-      name: ${{ inputs.publish }}
-      url: ${{ inputs.publish == 'pypi' && 'https://pypi.org/p/packmol' || 'https://test.pypi.org/p/packmol' }}
+      name: ${{ github.event_name == 'push' && 'pypi' || inputs.publish }}
+      url: ${{ (github.event_name == 'push' || inputs.publish == 'pypi') && 'https://pypi.org/p/packmol' || 'https://test.pypi.org/p/packmol' }}
     permissions:
       id-token: write
     steps:
@@ -252,4 +258,4 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: wheelhouse
-          repository-url: ${{ inputs.publish == 'pypi' && 'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}
+          repository-url: ${{ (github.event_name == 'push' || inputs.publish == 'pypi') && 'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}
