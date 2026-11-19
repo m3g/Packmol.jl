@@ -2,12 +2,12 @@
 # Step 1 of the droplet: the chains of the condensate, (VPGVG)20 in the SIRAH
 # coarse-grained representation, at 400 mg/mL in a sphere of 100 Å. At this density the
 # chains do not pack from a random placement: they are packed at half the density, with
-# the sphere and the cell expanded, and compressed back in steps (`compress`).
+# the sphere and the cell expanded, and compressed back in steps (`use_compression`).
 #
 tolerance 2.0
 output droplet_chains.pdb
 pbc -130. -130. -130. 130. 130. 130.
-compress 0.5
+use_compression 0.5
 
 # To write only the initial placement of the molecules to the output file,
 # without packing them (to check the constraints), uncomment the line below.
