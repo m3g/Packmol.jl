@@ -23,9 +23,8 @@ end structure
 
 # The chains: 2 per nm² of the surface of the core. The groups of atoms of the chain,
 # from the sulfur atom, are the monomers: S-CH2 and CH2, then 20 times CH(C6H5) and
-# CH2, and the sec-butyl group. Each is linked to the next one by the bond between their
-# backbone carbon atoms (atom 1 of each group; atom 2 of S-CH2) and by the bonds of these
-# atoms to their neighbors in their groups, such that the groups turn about the bond.
+# CH2, and the sec-butyl group. Each turns about the bond between its backbone carbon
+# atom (atom 1 of each group; atom 2 of S-CH2) and that of the next group.
 structure polystyrene.pdb
   number 57
   outside sphere 0. 0. 0. 16.
@@ -33,36 +32,22 @@ structure polystyrene.pdb
   atoms 1
     inside sphere 0. 0. 0. 17.5
   end atoms
+  # the bonds of the chain: the atoms closer than 1.9 Å (the file has no CONECT records)
+  bond_distance 1.9
   repeat 1
-    monomer 4
-      link 2 1
-      link 1 1
-      link 3 1
-      link 2 2
-      link 2 3
-    monomer 3
-      link 1 1
-      link 2 1
-      link 3 1
-      link 1 2
-      link 1 3
+    monomer 4       # S-CH2
+      rotatable 2 1 # the bond of atom 2 (C) to atom 1 (C) of the next group
+    monomer 3       # CH2
+      rotatable 1 1
   end repeat
   repeat 20
-    monomer 13
-      link 1 1
-      link 2 1
-      link 3 1
-      link 1 2
-      link 1 3
-    monomer 3
-      link 1 1
-      link 2 1
-      link 3 1
-      link 1 2
-      link 1 3
+    monomer 13      # CH(C6H5)
+      rotatable 1 1
+    monomer 3       # CH2
+      rotatable 1 1
   end repeat
   repeat 1
-    monomer 13
+    monomer 13      # sec-butyl
   end repeat
 end structure
 

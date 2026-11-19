@@ -2,7 +2,7 @@
 
 The tutorials build complete systems, from a box with a mixture of two molecules to an
 exosome with 13.6 million atoms. The first ones are the classic examples of
-[Packmol](https://m3g.github.io/packmol/examples.shtml) (the bilayer and the vesicle redone
+[Packmol](https://doi.org/10.1002/jcc.10216) (the bilayer and the vesicle redone
 with an all-atom lipid, at realistic densities, the vesicle as nanoliposomes); the others
 use more of the features of Packmol.jl: fixed molecules, periodic cells of different
 shapes, curved surfaces, crystals. To have an AI agent build a system for you, see

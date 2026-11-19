@@ -9,7 +9,10 @@
 #           link 18 1            # atom 18 of this monomer to atom 1 of the next
 #           link 17 2 3.8 10.0   # with the distance and the constant of the link (and,
 #                                # optionally, the half-width of a flat bottom)
+#           rotatable 18 1       # or: the bond of atom 18 to atom 1 of the next monomer,
+#                                # with the links that keep its length and angles
 #       end repeat
+#       bond_distance 1.9        # the bonds (for `rotatable`), if no CONECT records
 #       cyclic                   # the last monomer linked to the first one
 #     end structure
 #
@@ -85,7 +88,7 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
                 A monomer must have at least one atom: $(strip(line))
 
             """)))
-            push!(block, MonomerSpec{T}(n, PolymerLink{T}[]))
+            push!(block, MonomerSpec{T}(n, PolymerLink{T}[], Tuple{Int,Int}[]))
         elseif keyword == "link"
             (in_repeat && !isempty(block)) || throw(ArgumentError("""\n
                 `link` must follow a `monomer` line, inside a repeat block: $(strip(line))
@@ -108,11 +111,21 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
             push!(block[end].links, PolymerLink{T}(a, b, d0, k, w))
         elseif keyword == "cyclic"
             cyclic = true
-        elseif keyword == "rotatable"
-            in_repeat && throw(ArgumentError("""\n
-                rotatable cannot be inside a repeat block: $(strip(line))
+        elseif keyword == "rotatable" && in_repeat
+            # the bond of an atom of the monomer to an atom of the next one
+            (!isempty(block) && length(words) == 3) || throw(ArgumentError("""\n
+                In a repeat block, rotatable follows a `monomer` line, and gives an atom of the
+                monomer and an atom of the next one: $(strip(line))
 
             """))
+            a = _parse_value(Int, "rotatable", words[2])
+            b = _parse_value(Int, "rotatable", words[3])
+            (1 <= a <= block[end].natoms) || throw(ArgumentError("""\n
+                rotatable: atom $a is not an atom of the monomer, of $(block[end].natoms) atoms: $(strip(line))
+
+            """))
+            push!(block[end].rotatable, (a, b))
+        elseif keyword == "rotatable"
             (length(words) >= 3 && isodd(length(words))) || throw(ArgumentError("""\n
                 rotatable requires pairs of bonded atoms: $(strip(line))
 
@@ -128,7 +141,7 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
             bond_distance = _parse_value(T, "bond_distance", words[2])
         else
             in_repeat && throw(ArgumentError("""\n
-                Keyword $keyword inside a repeat block (only `monomer` and `link`): $(strip(line))
+                Keyword $keyword inside a repeat block (only `monomer`, `link` and `rotatable`): $(strip(line))
 
             """))
             println(filtered, line)
@@ -143,16 +156,16 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
 
     """))
     !isempty(rotatable) && !isempty(monomers) && throw(ArgumentError("""\n
-        rotatable and repeat blocks cannot be combined: the monomers of a polymer are already
-        linked by their links.
+        The rotatable bonds of a polymer are given in its monomers, inside the repeat blocks
+        (`rotatable <a> <b>`: atom a of the monomer, atom b of the next one).
 
     """))
-    !isnan(bond_distance) && isempty(rotatable) && throw(ArgumentError("""\n
+    !isnan(bond_distance) && isempty(rotatable) && !any(m -> !isempty(m.rotatable), monomers) && throw(ArgumentError("""\n
         bond_distance requires rotatable bonds.
 
     """))
     # Each repeat pushed copies of the same `MonomerSpec`s: independent copies
-    monomers = [MonomerSpec{T}(m.natoms, copy(m.links)) for m in monomers]
+    monomers = [MonomerSpec{T}(m.natoms, copy(m.links), copy(m.rotatable)) for m in monomers]
     return seekstart(filtered), PolymerSpec{T}(monomers, cyclic, rotatable, bond_distance)
 end
 
@@ -207,8 +220,11 @@ end
 # Adds a polymer to the system: `rigid_types` are the structure types of the whole
 # polymer (one per conformation), and `spec` its sequence of monomers. The monomers are
 # the fragments of the molecule; the links not given distances have those of each
-# conformation; the excluded pairs are the atoms of different monomers (up to 3 apart)
-# closer than the sum of their radii in a conformation.
+# conformation; the rotatable bonds of the monomers add the links of each bond (the bond,
+# and the bonds of its atoms to their neighbors in their monomers, from the bonds of the
+# polymer). The excluded pairs are the atoms of different monomers (up to 3 apart) closer
+# than the sum of their radii in a conformation, and, if the bonds are known (rotatable
+# bonds), those up to three bonds apart.
 #
 function _add_polymer!(sys::PackmolSystem{D,T}, rigid_types::Vector{StructureType{D,T}}, spec::PolymerSpec{T}) where {D,T}
     st = first(rigid_types)
@@ -235,12 +251,48 @@ function _add_polymer!(sys::PackmolSystem{D,T}, rigid_types::Vector{StructureTyp
     for (m, r) in enumerate(fragments)
         monomer_of_atom[r] .= m
     end
+    # The rotatable bonds of the monomers: the pairs of atoms (in the polymer) of their
+    # links, from the bonds of the polymer
+    has_rotatable = any(m -> !isempty(m.rotatable), spec.monomers)
+    bonded = has_rotatable ? _molecule_bonds(st, spec.bond_distance) : Vector{Int}[]
+    rotatable_pairs = Tuple{Int,Int}[]
+    for m in 1:nmon
+        next = m < nmon ? m + 1 : (spec.cyclic ? 1 : 0)
+        next > 0 || continue
+        for (a, b) in spec.monomers[m].rotatable
+            if !(1 <= b <= spec.monomers[next].natoms)
+                where = string("rotatable ", a, " ", b, " of monomer ", m, " of ", name)
+                throw(ArgumentError("""\n
+                    $where: atom $b is not an atom of the next monomer, of $(spec.monomers[next].natoms) atoms.
+
+                """))
+            end
+            ia = fragments[m][a]
+            ib = fragments[next][b]
+            if !(ib in bonded[ia])
+                where = string("rotatable ", a, " ", b, " of monomer ", m, " of ", name)
+                throw(ArgumentError("""\n
+                    $where: the atoms are not bonded.
+
+                """))
+            end
+            _rotatable_link_pairs!(rotatable_pairs, ia, ib, bonded, monomer_of_atom)
+        end
+    end
     # The links of each junction in each conformation (the distances not given are those
     # of the conformation, not yet centered)
+    local_index = zeros(Int, natoms)
+    for r in fragments, (k, i) in enumerate(r)
+        local_index[i] = k
+    end
     links = Vector{FragmentLink{T}}[]
     for rst in rigid_types
         x = rst.reference_coordinates
         conformation_links = FragmentLink{T}[]
+        for (ia, ib) in rotatable_pairs
+            push!(conformation_links, FragmentLink{T}(monomer_of_atom[ia], local_index[ia], monomer_of_atom[ib], local_index[ib],
+                norm(x[ib] - x[ia]), T(_default_link_constant), zero(T)))
+        end
         for m in 1:nmon
             next = m < nmon ? m + 1 : (spec.cyclic ? 1 : 0)
             next > 0 || continue
@@ -270,6 +322,7 @@ function _add_polymer!(sys::PackmolSystem{D,T}, rigid_types::Vector{StructureTyp
     # The pairs of atoms of different monomers (up to 3 monomers apart) closer than the
     # sum of their radii, in each conformation
     exclusions = Set{Tuple{Int32,Int32}}[]
+    bonded_exclusions = has_rotatable ? _bonded_exclusions(bonded, monomer_of_atom) : Set{Tuple{Int32,Int32}}()
     for rst in rigid_types
         x = rst.reference_coordinates
         conformation_exclusions = Set{Tuple{Int32,Int32}}()
@@ -283,6 +336,7 @@ function _add_polymer!(sys::PackmolSystem{D,T}, rigid_types::Vector{StructureTyp
                 push!(conformation_exclusions, (Int32(i), Int32(j)))
             end
         end
+        union!(conformation_exclusions, bonded_exclusions)
         push!(exclusions, conformation_exclusions)
     end
     return _add_flexible_molecule!(sys, rigid_types, fragments, links, exclusions, spec.cyclic)

@@ -101,11 +101,27 @@ end structure
 | `repeat <n> ... end repeat` | `n` repeats of the monomers of the block. A sequence can have several blocks, one after the other (block copolymers, end groups with `repeat 1`, or an irregular sequence as a single block with `repeat 1`). |
 | `monomer <natoms>` | A monomer of the sequence, of `natoms` atoms (the next `natoms` atoms of the structure file). |
 | `link <a> <b> [d0 [k [w]]]` | A link from atom `a` of the monomer (the last `monomer` line) to atom `b` of the next monomer (atom indices local to each monomer). Its penalty is `k (\|d - d0\| - w)²` outside `d0 ± w`: `d0` (Å) is by default the distance of the two atoms in each conformation, `k` 10, and `w` 0 (no flat bottom). The links of the last monomer of a polymer are ignored, unless it is `cyclic`. |
+| `rotatable <a> <b>` | A bond from atom `a` of the monomer to atom `b` of the next one, in place of links: it stands for the links that keep the length and the angles of the bond (the bond, and the bonds of `a` and `b` to their neighbors in their monomers), such that the monomers turn about it, as the [Rotatable bonds](@ref) of molecules. It requires the bonds of the polymer: the CONECT records of its file, or `bond_distance`. |
+| `bond_distance <d>` | The bonds of the polymer, for `rotatable`: the pairs of atoms closer than `d` Å (in the first conformation; not pairs of hydrogens), if the file has no CONECT records. |
 | `cyclic` | The last monomer is linked to the first one, with the links of the last monomer. |
 
-Two links per junction fix the bond and the angles of the junction, and leave free the
-rotation about the bond: as many links as needed to keep the geometry of the junction
-(three, here, from the last two atoms of a monomer to the first two of the next one).
+The links of a junction keep its geometry, and leave free the rotation about the bond: as
+many as needed (three, here, from the last two atoms of a monomer to the first two of
+the next one, for coarse-grained beads). When the monomers are joined by a bond, as in
+all-atom polymers, `rotatable` gives the links of the bond, from the bonds of the polymer:
+five for a bond between carbon atoms with two other neighbors each. For example, for
+polystyrene, with every bond of its backbone rotatable (see [Polymer-capped gold
+nanoparticle](@ref)):
+
+```
+  bond_distance 1.9   # the bonds: the atoms closer than 1.9 Å
+  repeat 20
+    monomer 13        # CH(C6H5)
+      rotatable 1 1   # the bond of atom 1 to atom 1 of the next monomer
+    monomer 3         # CH2
+      rotatable 1 1
+  end repeat
+```
 
 - **The structure of the polymer.** The monomers have the geometry of each conformation
   of the file: the number of polymers is divided among the conformations, as for other
@@ -134,7 +150,9 @@ rotation about the bond: as many links as needed to keep the geometry of the jun
   chains to their neighbors, and the simulation may take long to forget a conformation).
 - **Close atoms.** The pairs of atoms of different monomers (up to three monomers apart)
   closer than the tolerance in a conformation (the bonded atoms of a junction, and their
-  neighbors) are left out of the distances of the polymers of that conformation.
+  neighbors) are left out of the distances of the polymers of that conformation. With
+  `rotatable` bonds, whose bonds are known, the pairs of atoms of different monomers up to
+  three bonds apart are left out too.
 - **The convergence criterion** includes the links: every link within `d0 ± w` to the
   precision of the tolerance (`tolerance_precision`).
 - **Defaults.** The radii of the atoms of polymers are not inflated at the start of the

@@ -421,7 +421,8 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       a quarter to a half of what `free_volume` allows). Tutorial "Minimal cell" (`docs/src/tutorials/cell.md`,
       files/cell/prepare.jl + solvation.inp; Bentopy's data not distributed: Zenodo 17524049).
 - [x] Polymers (`src/polymers/`, Packmol.jl-only): a structure block with `repeat <n> ... end repeat`
-      blocks of `monomer <natoms>` lines with `link <a> <b> [d0 [k [w]]]` (atoms of a monomer and of the
+      blocks of `monomer <natoms>` lines with `link <a> <b> [d0 [k [w]]]` or `rotatable <a> <b>` (the links of the bond, from the bonds: CONECT or
+      `bond_distance`, as rotatable bonds; graph exclusions too) (atoms of a monomer and of the
       next one; d0 from each conformation, k 10, w the half-width of a flat bottom, 0), and `cyclic`; Julia
       `polymer_structure(file; number, sequence = [n => [monomer(natoms; links)]], cyclic)`. Each monomer of
       each conformation is a structure type (a molecule per polymer of the conformation); links
@@ -456,7 +457,7 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       converged state), ×1.5 after two successes, stop below 5e-4. Constraints: boxes, cubes, spheres,
       cylinders, ellipsoids, planes; all PBC cells; no restart_from. Limitation: constraints tied to fixed
       molecules (Zika membrane inside its protein shell) are scaled away from them. The condensate droplet (123 chains,
-      400 mg/mL): rigid chains jam at ~220 mg/mL, compressed flexible chains reach 400 in 35-60 s.
+      400 mg/mL): rigid chains jam at ~220 mg/mL, compressed flexible chains reach 400 in 25-40 s (`rotatable 18 1`, bonds from the CONECT records of peptides.pdb).
 - [x] Rotation constraints (`constrain_rotation`, `src/constraints/rotations.jl`): a penalty on the
       angle between an axis and a vector of the molecule (between the centers of two atom sets, or the
       longest principal axis). Not Fortran's bounds on Euler angles (by design).

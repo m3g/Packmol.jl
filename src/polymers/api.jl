@@ -4,7 +4,7 @@
 #
 
 """
-    monomer(natoms; links = [])
+    monomer(natoms; links = [], rotatable = [])
 
 A monomer of the sequence of a polymer (see [`polymer_structure`](@ref)): its number of
 atoms, in the order of the structure of the polymer, and its links to the next monomer,
@@ -13,8 +13,15 @@ the structure of the polymer), `(a, b, d0)`, `(a, b, d0, k)` or `(a, b, d0, k, w
 distance, the constant (default $(_default_link_constant)) and the half-width of a flat
 bottom (no penalty within `d0 ± w`; default 0) of the link, whose penalty is
 `k (|d - d0| - w)²`.
+
+`rotatable` are bonds to the next monomer, each `(a, b)` (atom `a` of this monomer bonded
+to atom `b` of the next one), in place of links: each stands for the links that keep the
+length and the angles of the bond (the bond, and the bonds of `a` and `b` to their
+neighbors in their monomers), such that the monomers turn about it. They require the
+bonds of the polymer: the CONECT records of its file, or `bond_distance` in
+`polymer_structure`.
 """
-function monomer(natoms::Integer; links = Tuple[])
+function monomer(natoms::Integer; links = Tuple[], rotatable = Tuple[])
     natoms >= 1 || throw(ArgumentError("""\n
         A monomer must have at least one atom.
 
@@ -33,7 +40,20 @@ function monomer(natoms::Integer; links = Tuple[])
         value(i) = length(l) >= i ? Float64(l[i]) : NaN
         push!(parsed, PolymerLink{Float64}(a, b, value(3), value(4), value(5)))
     end
-    return MonomerSpec{Float64}(Int(natoms), parsed)
+    bonds = Tuple{Int,Int}[]
+    for r in rotatable
+        length(r) == 2 || throw(ArgumentError("""\n
+            A rotatable bond is (a, b): got $r.
+
+        """))
+        a, b = Int(r[1]), Int(r[2])
+        (1 <= a <= natoms) || throw(ArgumentError("""\n
+            rotatable $r: atom $a is not an atom of the monomer, of $natoms atoms.
+
+        """))
+        push!(bonds, (a, b))
+    end
+    return MonomerSpec{Float64}(Int(natoms), parsed, bonds)
 end
 
 # A polymer of the Julia API: the structure types of its conformations, and its sequence
@@ -43,13 +63,16 @@ struct PolymerStructure{D,T}
 end
 
 """
-    polymer_structure(filename; number, sequence, cyclic = false, kwargs...)
+    polymer_structure(filename; number, sequence, cyclic = false, bond_distance = nothing, kwargs...)
 
 The polymers of the structure file `filename` (a file with several models, or a vector of
 files, for several conformations), as a structure block with `repeat` blocks: `number`
 polymers, of the `sequence` of monomers given as `repeats => monomers` pairs, for
 example `[20 => [monomer(18; links = [(17, 1), (18, 1), (18, 2)])]]` for 20 repeats of a
 monomer of 18 atoms. With `cyclic = true`, the last monomer is linked to the first one.
+The rotatable bonds of the monomers (`monomer(natoms; rotatable)`) require the bonds of the
+polymer: those of the CONECT records of the file or, with `bond_distance = d`, the pairs of
+atoms closer than `d` Å (in the first conformation).
 The other keyword arguments are those of [`structure_type`](@ref) (`constraints`,
 `atom_constraints`, `radius`, `radscale`, ...). Give it to `PackmolSystem` with the other
 structure types, as `PackmolSystem([polymers, water]; ...)`.
@@ -59,7 +82,8 @@ polymers are first packed as rigid molecules, in their conformations, and then t
 monomers are released.
 """
 function polymer_structure(filename::Union{String,AbstractVector{String}};
-    number::Int, sequence::AbstractVector{<:Pair}, cyclic::Bool = false, D::Int = 3, T::DataType = Float64, kwargs...,
+    number::Int, sequence::AbstractVector{<:Pair}, cyclic::Bool = false, bond_distance::Union{Nothing,Real} = nothing,
+    D::Int = 3, T::DataType = Float64, kwargs...,
 )
     types = structure_type(filename; number, D, T, kwargs...)
     rigid_types = types isa StructureType ? [types] : types
@@ -71,7 +95,7 @@ function polymer_structure(filename::Union{String,AbstractVector{String}};
         """))
         block isa MonomerSpec && (block = [block])
         for _ in 1:nrepeat, m in block
-            push!(monomers, MonomerSpec{T}(m.natoms, [PolymerLink{T}(l.a, l.b, l.d0, l.k, l.w) for l in m.links]))
+            push!(monomers, MonomerSpec{T}(m.natoms, [PolymerLink{T}(l.a, l.b, l.d0, l.k, l.w) for l in m.links], copy(m.rotatable)))
         end
     end
     isempty(monomers) && throw(ArgumentError("""\n
@@ -84,7 +108,7 @@ function polymer_structure(filename::Union{String,AbstractVector{String}};
         structure has $(first(rigid_types).natoms).
 
     """))
-    return PolymerStructure{D,T}(rigid_types, PolymerSpec{T}(monomers, cyclic, Tuple{Int,Int}[], T(NaN)))
+    return PolymerStructure{D,T}(rigid_types, PolymerSpec{T}(monomers, cyclic, Tuple{Int,Int}[], T(something(bond_distance, NaN))))
 end
 
 """

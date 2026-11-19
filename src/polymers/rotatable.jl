@@ -83,6 +83,48 @@ function _fragments(bonded::Vector{Vector{Int}}, rotatable::Vector{Tuple{Int,Int
 end
 
 #
+# The pairs of atoms (i < j) of different fragments up to three bonds apart, given the
+# bonds of the molecule and the fragment of each atom
+#
+function _bonded_exclusions(bonded::Vector{Vector{Int}}, fragment_of::Vector{Int})
+    exclusions = Set{Tuple{Int32,Int32}}()
+    for i in eachindex(bonded)
+        # the atoms within three bonds of i (breadth-first)
+        depth = Dict(i => 0)
+        queue = [i]
+        while !isempty(queue)
+            a = popfirst!(queue)
+            depth[a] == 3 && continue
+            for b in bonded[a]
+                haskey(depth, b) && continue
+                depth[b] = depth[a] + 1
+                push!(queue, b)
+            end
+        end
+        for j in keys(depth)
+            (j > i && fragment_of[j] != fragment_of[i]) && push!(exclusions, (Int32(i), Int32(j)))
+        end
+    end
+    return exclusions
+end
+
+#
+# The pairs of atoms of the links of a rotatable bond i-j between two fragments: the bond,
+# and the bonds of each end to its other neighbors in its fragment (which keep the angles
+# of the bond)
+#
+function _rotatable_link_pairs!(pairs::Vector{Tuple{Int,Int}}, i::Int, j::Int, bonded::Vector{Vector{Int}}, fragment_of::Vector{Int})
+    push!(pairs, (i, j))
+    for m in bonded[i]
+        (m != j && fragment_of[m] == fragment_of[i]) && push!(pairs, (m, j))
+    end
+    for m in bonded[j]
+        (m != i && fragment_of[m] == fragment_of[j]) && push!(pairs, (i, m))
+    end
+    return pairs
+end
+
+#
 # Adds a molecule with rotatable bonds to the system: `rigid_types` are the structure
 # types of its conformations
 #
@@ -124,13 +166,7 @@ function _add_rotatable!(
     # neighbors in its fragment
     pairs = Tuple{Int,Int}[]
     for (i, j) in rotatable
-        push!(pairs, (i, j))
-        for m in bonded[i]
-            (m != j && fragment_of[m] == fragment_of[i]) && push!(pairs, (m, j))
-        end
-        for m in bonded[j]
-            (m != i && fragment_of[m] == fragment_of[j]) && push!(pairs, (i, m))
-        end
+        _rotatable_link_pairs!(pairs, i, j, bonded, fragment_of)
     end
     links = Vector{FragmentLink{T}}[]
     for rst in rigid_types
@@ -138,24 +174,6 @@ function _add_rotatable!(
         push!(links, [FragmentLink{T}(fragment_of[a], local_index[a], fragment_of[b], local_index[b],
             norm(x[b] - x[a]), T(_default_link_constant), zero(T)) for (a, b) in pairs])
     end
-    # The pairs of atoms of different fragments up to three bonds apart
-    exclusions = Set{Tuple{Int32,Int32}}()
-    for i in 1:n
-        # the atoms within three bonds of i (breadth-first)
-        depth = Dict(i => 0)
-        queue = [i]
-        while !isempty(queue)
-            a = popfirst!(queue)
-            depth[a] == 3 && continue
-            for b in bonded[a]
-                haskey(depth, b) && continue
-                depth[b] = depth[a] + 1
-                push!(queue, b)
-            end
-        end
-        for j in keys(depth)
-            (j > i && fragment_of[j] != fragment_of[i]) && push!(exclusions, (Int32(i), Int32(j)))
-        end
-    end
+    exclusions = _bonded_exclusions(bonded, fragment_of)
     return _add_flexible_molecule!(sys, rigid_types, fragments, links, fill(exclusions, length(rigid_types)), false)
 end

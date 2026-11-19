@@ -81,3 +81,46 @@ end
     @test sys.status == :packing_ready
     @test_throws ArgumentError flexible_structure(file; number = 1, rotatable = Tuple{Int,Int}[])
 end
+
+@testitem "rotatable bonds in the monomers of polymers" setup=[PolymerFiles] begin
+    using Packmol
+    using Packmol: read_packmol_input
+    # A chain of 30 beads, 1.54 Å apart, in 10 monomers of 3 beads
+    file = PolymerFiles.polymer_file("rot_polymer.pdb"; nmon = 10)
+    input = joinpath(PolymerFiles.dir, "rot_polymer.inp")
+    block(lines) = (write(input, "tolerance 2.0\noutput rot_polymer_out.pdb\nstructure rot_polymer.pdb\n number 4\n$lines\nend structure\n");
+        input)
+    sys = read_packmol_input(block("bond_distance 1.6\nrepeat 10\n monomer 3\n  rotatable 3 1\nend repeat"))
+    p = only(sys.polymers)
+    # the same links and exclusions as the molecule cut at the same bonds
+    bonds = join(("$(3m) $(3m+1)" for m in 1:9), " ")
+    q = only(read_packmol_input(block("bond_distance 1.6\nrotatable $bonds")).polymers)
+    @test p.monomer_atoms == q.monomer_atoms
+    pairs(p) = Set((p.monomer_atoms[l.fa][l.a], p.monomer_atoms[l.fb][l.b], round(l.d0; digits = 6)) for l in only(p.links))
+    @test length(only(p.links)) == 9 * 3
+    @test pairs(p) == pairs(q)
+    @test only(p.exclusions) == only(q.exclusions)
+    # with links too, and in the Julia API
+    sys = read_packmol_input(block("bond_distance 1.6\nrepeat 10\n monomer 3\n  rotatable 3 1\n  link 2 2 3.0\nend repeat"))
+    @test length(only(only(sys.polymers).links)) == 9 * 4
+    chains = polymer_structure(file; number = 4, bond_distance = 1.6, sequence = [10 => [monomer(3; rotatable = [(3, 1)])]])
+    s = PackmolSystem([chains]; output = joinpath(PolymerFiles.dir, "x.pdb"))
+    @test pairs(only(s.polymers)) == pairs(p)
+    # errors
+    @test_throws ArgumentError read_packmol_input(block("repeat 10\n monomer 3\n  rotatable 3 1\nend repeat"))                    # no bonds
+    @test_throws ArgumentError read_packmol_input(block("bond_distance 1.6\nrepeat 10\n monomer 3\n  rotatable 3 2\nend repeat"))  # not bonded
+    @test_throws ArgumentError read_packmol_input(block("bond_distance 1.6\nrepeat 10\n monomer 3\n  rotatable 4 1\nend repeat"))  # not in the monomer
+    @test_throws ArgumentError read_packmol_input(block("bond_distance 1.6\nrepeat 10\n monomer 3\n  rotatable 3 4\nend repeat"))  # not in the next
+    @test_throws ArgumentError read_packmol_input(block("bond_distance 1.6\nrepeat 10\n monomer 3\n  rotatable 3\nend repeat"))    # not a pair
+    @test_throws ArgumentError monomer(3; rotatable = [(4, 1)])
+    # packing: the chains whole, the bonds kept
+    write(input, "tolerance 2.0\noutput rot_polymer_out.pdb\nstructure rot_polymer.pdb\n number 4\n inside sphere 0. 0. 0. 25.\n" *
+        " bond_distance 1.6\n repeat 10\n  monomer 3\n   rotatable 3 1\n end repeat\nend structure\n")
+    sys = redirect_stdout(devnull) do
+        packmol(input)
+    end
+    @test sys.status == :packing_ready
+    atoms = Packmol.PDBToolsBase.read_pdb(joinpath(PolymerFiles.dir, "rot_polymer_out.pdb")).atoms
+    bonds, _ = PolymerFiles.check_chains(atoms, 30)
+    @test all(isapprox.(bonds, 1.54; atol = 0.1))
+end

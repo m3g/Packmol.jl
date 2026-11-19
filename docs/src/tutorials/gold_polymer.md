@@ -47,31 +47,27 @@ The atoms of the chain are in the order of its backbone, from the sulfur atom, i
 that are the rigid monomers of the polymer: S–CH₂ (4 atoms) and CH₂ (3), then 20 times
 CH(C₆H₅) (13) and CH₂ (3), and the sec-butyl group (13). Each group starts with its
 backbone carbon atom (the S–CH₂ group, with the sulfur atom), followed by its
-substituents. Consecutive groups are linked by the bond between their backbone carbon
-atoms, and by the bonds of each of these atoms to its neighbors in its group:
+substituents. Each group is bonded to the next one by their backbone carbon atoms, and
+turns about that bond:
 
 ```
+  bond_distance 1.9   # the bonds: the atoms closer than 1.9 Å
   repeat 20
-    monomer 13      # CH(C6H5)
-      link 1 1      # the bond, from the carbon atom (1) to that of the next group (1)
-      link 2 1      # the H of the carbon atom, to the next carbon atom
-      link 3 1      # the first carbon atom of the ring, to the next carbon atom
-      link 1 2      # the carbon atom, to the substituents of the next one
-      link 1 3
-    monomer 3       # CH2
-      link 1 1
-      link 2 1
-      link 3 1
-      link 1 2
-      link 1 3
+    monomer 13        # CH(C6H5)
+      rotatable 1 1   # the bond of atom 1 to atom 1 of the next group
+    monomer 3         # CH2
+      rotatable 1 1
   end repeat
 ```
 
-The links keep the length of the bond and its angles, at their values in each
-conformation, and leave the groups free to turn about the bond: every bond of the
-backbone rotates. A chain is 43 rigid groups (see [Polymers](@ref)), and the pairs of
-atoms of nearby groups that are closer than the tolerance in their conformation (the
-bonded atoms and their neighbors) are left out of the distances.
+`rotatable 1 1` stands for the links that keep the length of the bond and its angles,
+at their values in each conformation: the bond, and the bonds of its atoms to their
+neighbors in their groups (five links: two hydrogen atoms, or a hydrogen atom and the
+phenyl ring, on each side), and leaves the groups free to turn about the bond: every bond
+of the backbone rotates (see [Polymers](@ref)). The bonds are computed from the distances
+(`bond_distance`), since the file has no CONECT records. A chain is 43 rigid groups, and
+the pairs of atoms of different groups up to three bonds apart are left out of the
+distances.
 
 ## The numbers of molecules
 
@@ -144,19 +140,19 @@ When it looks like this, comment the line again, and run the packing.
 packmol gold_polymer.inp
 ```
 
-The packing at half the density takes about 2 minutes, and the compression about 50
-steps, in 5 minutes, with 14 threads:
+The packing at half the density takes about 2 minutes, and the compression about 60
+steps, in 5 to 6 minutes, with 14 threads:
 
 ```
-  Compression step    1: density   58.32% of the target, not converged (9.3 s)
+  Compression step    1: density   58.32% of the target, not converged (9.9 s)
   ...
-  Compression step   52: density  100.00% of the target, converged (5.9 s)
-  Compressed to the density of the input in 52 steps (306.3 s).
+  Compression step   58: density  100.00% of the target, converged (7.7 s)
+  Compressed to the density of the input in 58 steps (330.4 s).
 ```
 
 All the sulfur atoms end 16 to 17.5 Å from the center, and the bonds of the chains are
-kept to 0.09 Å. The ends of the chains are 24 to 56 Å from the center (42 Å on average):
-the chains stretch out from the surface, a brush.
+kept to 0.08 Å. The ends of the chains are 18 to 56 Å from the center (42 Å on average):
+the chains stretch out from the surface, a brush (with a few folded back).
 
 ![A slab of the nanoparticle](images/gold_polymer_slab.webp)
 
@@ -176,24 +172,23 @@ gold = structure_type("gold.pdb";
     fixed = (origin, origin),
 )
 
-# The links between consecutive groups of the chain: the bond between
-# their backbone carbon atoms (atom 1, or atom 2 of the S-CH2 group),
-# and the bonds of these atoms to their neighbors
-links = [(1, 1), (2, 1), (3, 1), (1, 2), (1, 3)]
+# The groups of the chain, each turning about the bond of its
+# backbone carbon atom (atom 1, or atom 2 of S-CH2) to that of the next
 sequence = [
     1 => [
-        monomer(4; links = [(2, 1), (1, 1), (3, 1), (2, 2), (2, 3)]), # S-CH2
-        monomer(3; links),                                            # CH2
+        monomer(4; rotatable = [(2, 1)]), # S-CH2
+        monomer(3; rotatable = [(1, 1)]), # CH2
     ],
     20 => [
-        monomer(13; links), # CH(C6H5)
-        monomer(3; links),  # CH2
+        monomer(13; rotatable = [(1, 1)]), # CH(C6H5)
+        monomer(3; rotatable = [(1, 1)]),  # CH2
     ],
-    1 => [monomer(13)],     # sec-butyl
+    1 => [monomer(13)],                    # sec-butyl
 ]
 chains = polymer_structure("polystyrene.pdb";
     number = 57,
     sequence,
+    bond_distance = 1.9, # the bonds: the atoms closer than 1.9 Å
     constraints = [OutsideSphere(origin, 16.)],
     atom_constraints = [[1] => InsideSphere(origin, 17.5)], # the sulfur atom
 )

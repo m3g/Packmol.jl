@@ -21,11 +21,15 @@ struct PolymerLink{T}
     w::T
 end
 
-# A monomer of the sequence of a polymer: its number of atoms, and its links to the next
+# A monomer of the sequence of a polymer: its number of atoms, its links to the next, and
+# its rotatable bonds to the next (atom of this monomer, atom of the next), each standing
+# for the links of the bond (built from the bonds of the polymer)
 struct MonomerSpec{T}
     natoms::Int
     links::Vector{PolymerLink{T}}
+    rotatable::Vector{Tuple{Int,Int}}
 end
+MonomerSpec{T}(natoms::Int, links::Vector{PolymerLink{T}}) where {T} = MonomerSpec{T}(natoms, links, Tuple{Int,Int}[])
 
 # The flexibility given in a structure block: the sequence of monomers of a polymer, or
 # the rotatable bonds of a molecule, with the largest distance of bonded atoms if the

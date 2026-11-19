@@ -10,18 +10,19 @@ Packmol.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
-Version 100.0.1-DEV
+Version 100.1.0-DEV
 -------------------
 - ![FEATURE][badge-feature] Polymers (Packmol.jl only): a structure block with `repeat`
   blocks (`repeat <n>`, `monomer <natoms>`, `link <a> <b> [d0 [k [w]]]`, `cyclic`), or
   `polymer_structure` and `monomer` in Julia, packs flexible chains of rigid monomers held
-  together by links between their atoms. The polymers are packed first as rigid molecules,
-  then released.
+  together by links between their atoms, or by bonds about which they turn (`rotatable
+  <a> <b>` in a monomer, with the bonds from CONECT records or `bond_distance`). The
+  polymers are packed first as rigid molecules, then released.
 - ![FEATURE][badge-feature] Rotatable bonds (Packmol.jl only): `rotatable <i> <j> ...` in a
   structure block (`flexible_structure` in Julia) cuts the molecule into rigid fragments at
   those bonds, linked such that they turn about the bonds only. The bonds are those of the
   CONECT records, or computed from the distances (`bond_distance <d>`).
-- ![FEATURE][badge-feature] `use_compression [<fraction> [<step>]]` (Packmol.jl only; `use_compression` keyword
+- ![FEATURE][badge-feature] `use_compression [<fraction> [<step>]]` (Packmol.jl only; a keyword
   argument in Julia): packs the system at a fraction of its density (default 0.5), with the
   constraints and the periodic cell expanded, and compresses it in adaptive steps to the
   density of the input, for systems too dense to pack from a random placement. Fixed
@@ -32,6 +33,8 @@ Version 100.0.1-DEV
 - ![INFO][badge-info] Documentation: the tutorial "Biomolecular condensate", with chains of
   (VPGVG)₂₀ (SIRAH) in water, as a homogeneous mixture and as a droplet at 400 mg/mL, and the
   pages "Polymers" (Structure blocks) and "Packing by compression".
+- ![INFO][badge-info] Documentation: the overview of the tutorials links the classic examples
+  to the first paper of Packmol (2003).
 - ![INFO][badge-info] Documentation: a "See also" section in the introduction (related packages
   and contact).
 

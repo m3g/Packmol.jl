@@ -13,14 +13,14 @@ use_compression 0.5
 # without packing them (to check the constraints), uncomment the line below.
 # check_initial_placement
 
-# 123 chains of 8207.6 g/mol: 400 mg/mL in the sphere
+# 123 chains of 8207.6 g/mol: 400 mg/mL in the sphere. Each monomer of VPGVG (18 beads)
+# turns about the bond of its last bead (GO) to the first bead of the next one (GN); the
+# bonds are the CONECT records of peptides.pdb
 structure peptides.pdb
   number 123
   inside sphere 0. 0. 0. 100.
   repeat 20
     monomer 18
-      link 17 1
-      link 18 1
-      link 18 2
+      rotatable 18 1
   end repeat
 end structure

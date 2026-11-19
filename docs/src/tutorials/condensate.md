@@ -61,23 +61,26 @@ has no side-chain bead).
 A rigid chain does not fill the space between the others: packed as rigid molecules,
 these chains jam at about 220 mg/mL, whatever their conformations. As
 [Polymers](@ref), they are flexible: each chain is 20 monomers of VPGVG (18 beads), each
-a rigid molecule, linked to the next one by the beads of the junction:
+a rigid molecule, turning about its bond to the next one:
 
 ```
   repeat 20
     monomer 18
-      link 17 1
-      link 18 1
-      link 18 2
+      rotatable 18 1
   end repeat
 ```
 
-Beads 17 and 18 of a monomer are the GC and GO of its last residue (a glycine), and beads
-1 and 2 of the next monomer the GN and GC of its first residue (a valine): the three
-links keep the distances of the junction, at their values in the conformation of the
-chain (2.2 to 2.5 Å), and leave the monomers free to turn about it. Each chain is built
-from the monomers of its own conformation, and the beads of different monomers are at
-least 2.25 Å apart in all of them: no pair of beads is left out of the distances (see
+Bead 18 of a monomer is the GO of its last residue (a glycine), and bead 1 of the next
+monomer the GN of its first residue (a valine), bonded to it. The bonds of the beads are
+the CONECT records of `peptides.pdb` (SIRAH bonds GN–GC and GC–GO in each residue, GO to
+the GN of the next residue, and the side-chain beads to their GC): the bonds of coarse-
+grained beads cannot be guessed from their distances, as those of atoms (with
+`bond_distance`), since bonded and non-bonded beads are at similar distances.
+`rotatable 18 1` stands for the links that keep the length and the angles of the bond, at
+their values in each conformation: GO–GN, and the bonds of each to its other neighbor,
+GC–GN and GO–GC (three links, 2.2 to 2.5 Å), and leaves the monomers free to turn about
+it. Each chain is built from the monomers of its own conformation, and the pairs of beads
+of different monomers up to three bonds apart are left out of the distances (see
 [Polymers](@ref)).
 
 The chains are first packed as rigid molecules, and then released: released overlapping
@@ -85,10 +88,9 @@ each other, the chains get threaded through each other's monomers, and do not se
 
 Here the flexibility is at the level of the repeated pentapeptide: each monomer of 5
 residues is rigid. It could be set at the level of the residues instead, each residue a
-monomer linked to the next one: a `repeat 20` block of five `monomer` lines, of the
-sizes of the residues (4, 4, 3, 4 and 3 beads for V, P, G, V and G), each with the links
-of its junction to the next residue. Or with rotatable bonds along the backbone (see
-[Rotatable bonds](@ref)). More monomers make the chains more flexible, and the packing
+monomer turning about its bond to the next one: a `repeat 20` block of five `monomer`
+lines, of the sizes of the residues (4, 4, 3, 4 and 3 beads for V, P, G, V and G), each
+with `rotatable 4 1` (or `3 1` for glycine: its GO to the GN of the next residue). More monomers make the chains more flexible, and the packing
 slower.
 
 ## The numbers of molecules
@@ -160,15 +162,15 @@ any packing:
 packmol droplet_chains.inp
 ```
 
-The packing at 200 mg/mL takes a few seconds, and the compression 15 to 20 steps, in 35
-to 60 seconds with 14 threads:
+The packing at 200 mg/mL takes a few seconds, and the compression 12 to 14 steps, in 25
+to 40 seconds with 14 threads:
 
 ```
-  Compression step    1: density   58.32% of the target, not converged (4.3 s)
-  Compression step    2: density   53.95% of the target, converged (0.2 s)
-  Compression step    3: density   58.20% of the target, converged (0.4 s)
+  Compression step    1: density   58.32% of the target, converged (0.5 s)
+  Compression step    2: density   68.02% of the target, not converged (5.6 s)
+  Compression step    3: density   62.92% of the target, converged (0.7 s)
   ...
-  Compressed to the density of the input in 20 steps (41.3 s).
+  Compressed to the density of the input in 12 steps (34.9 s).
 ```
 
 ### Step 2: the water
@@ -205,9 +207,10 @@ The same systems, built in Julia:
 ```julia
 using Packmol
 
-# The chains: 20 monomers of VPGVG (18 beads), linked by the beads
-# of the junction
-sequence = [20 => [monomer(18; links = [(17, 1), (18, 1), (18, 2)])]]
+# The chains: 20 monomers of VPGVG (18 beads), each turning about
+# the bond of its last bead to the first bead of the next one (the
+# bonds are the CONECT records of peptides.pdb)
+sequence = [20 => [monomer(18; rotatable = [(18, 1)])]]
 
 # The homogeneous mixture
 chains = polymer_structure("peptides.pdb"; number = 123, sequence)
