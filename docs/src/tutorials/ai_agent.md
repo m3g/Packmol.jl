@@ -135,9 +135,9 @@ pairs of atom indices and constraints); the input-file keywords are in parenthes
   center of one cap (`inside cylinder x y z ax ay az r l`)
 - `InsideEllipsoid(center, a, b, c, scale)`, `OutsideEllipsoid` (`inside ellipsoid x y z a b c s`)
 - `AbovePlane(normal, d)`, `BelowPlane`: `normal ⋅ x ≥ d` (`above plane nx ny nz d`, also `over`)
-- Curved surfaces, Packmol.jl only: `AboveGaussian`, `AboveSin`, `AboveExponential`, their
+- Curved surfaces: `AboveGaussian`, `AboveSin`, `AboveExponential`, their
   `Below...`, and the radial ones (`AboveRadialGaussian`, ...)
-- Surfaces given by points, Packmol.jl only: `WithinSurface(surface, distance; offset)`,
+- Surfaces given by points: `WithinSurface(surface, distance; offset)`,
   `NotWithinSurface`, for `surface = PointSurface(points, normals)` or
   `read_surface(file)` (`x y z [nx ny nz]` per line, Å, or a TS2CG `.dat` point file, nm):
   `|h - offset| ≤ distance` (or `≥`), `h` the distance to the surface, signed (positive on
