@@ -11,6 +11,9 @@
 # up to 5 residues, and after 200 dead ends it starts again. The atoms are then mapped to
 # the beads of SIRAH, each placed on an atom: GN on N, GC on CA and GO on O (the
 # backbone), BCB on CB (valine) and BCG on CG (proline). Glycine has no side-chain bead.
+# The bonds of the beads are written as CONECT records (the same in all conformations):
+# GN-GC and GC-GO in each residue, GO to the GN of the next residue, and the side-chain
+# bead to the GC of its residue.
 #
 using LinearAlgebra
 using Printf
@@ -144,18 +147,31 @@ const side_bead = Dict('V' => "BCB", 'P' => "BCG")
 
 function write_peptides(file; seed = 1)
     rng = Xoshiro(seed)
+    bonds = Tuple{Int,Int}[]
     open(file, "w") do io
         println(io, "REMARK   (VPGVG)20, SIRAH coarse-grained, $nconformations conformations")
         for model in 1:nconformations
             chain, O = grow_chain(rng)
             println(io, @sprintf("MODEL     %4d", model))
             index = 0
+            previous_GO = 0
             for (i, residue) in enumerate(chain)
                 beads = [("GN", residue.N), ("GC", residue.CA)]
                 if !isnothing(residue.side)
                     push!(beads, (side_bead[sequence[i]], residue.side))
                 end
                 push!(beads, ("GO", O[i]))
+                # the bonds of the residue (from the first conformation: the same in all)
+                if model == 1
+                    GN = index + 1
+                    GC = index + 2
+                    GO = index + length(beads)
+                    previous_GO > 0 && push!(bonds, (previous_GO, GN))
+                    push!(bonds, (GN, GC))
+                    length(beads) == 4 && push!(bonds, (GC, index + 3))
+                    push!(bonds, (GC, GO))
+                    previous_GO = GO
+                end
                 for (name, x) in beads
                     index += 1
                     println(io, @sprintf("ATOM  %5d %-4s s%-2s A%4d    %8.3f%8.3f%8.3f  1.00  0.00",
@@ -164,6 +180,9 @@ function write_peptides(file; seed = 1)
             end
             println(io, "ENDMDL")
             println("conformation $model")
+        end
+        for (a, b) in bonds
+            println(io, @sprintf("CONECT%5d%5d", a, b))
         end
         println(io, "END")
     end
