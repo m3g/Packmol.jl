@@ -160,10 +160,6 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
         (`rotatable <a> <b>`: atom a of the monomer, atom b of the next one).
 
     """))
-    !isnan(bond_distance) && isempty(rotatable) && !any(m -> !isempty(m.rotatable), monomers) && throw(ArgumentError("""\n
-        bond_distance requires rotatable bonds.
-
-    """))
     # Each repeat pushed copies of the same `MonomerSpec`s: independent copies
     monomers = [MonomerSpec{T}(m.natoms, copy(m.links), copy(m.rotatable)) for m in monomers]
     return seekstart(filtered), PolymerSpec{T}(monomers, cyclic, rotatable, bond_distance)
@@ -271,8 +267,9 @@ function _add_polymer!(sys::PackmolSystem{D,T}, rigid_types::Vector{StructureTyp
             ib = fragments[next][b]
             if !(ib in bonded[ia])
                 where = string("rotatable ", a, " ", b, " of monomer ", m, " of ", name)
+                reason = _not_bonded_reason(st, spec.bond_distance, ia, ib)
                 throw(ArgumentError("""\n
-                    $where: the atoms are not bonded.
+                    $where (atoms $ia and $ib of the polymer): the atoms are $reason.
 
                 """))
             end
