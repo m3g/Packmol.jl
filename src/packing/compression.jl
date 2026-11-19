@@ -6,7 +6,7 @@
 #
 # At each step the geometry is scaled by a factor `s < 1` about the center of the cell
 # (the origin without periodic boundary conditions): the constraints, the cell, and the
-# positions of the molecules, each moved rigidly (its center of mass scaled; a polymer
+# positions of the free molecules (the fixed ones stay in place), each moved rigidly (its center of mass scaled; a polymer
 # by the center of its monomers, such that the links between them are kept). The step
 # (`1 - s`) starts at the `initial step` given, is halved when a step does not converge
 # (the packing goes back to the last converged one), and grows by 1.5 after two steps
@@ -47,11 +47,6 @@ function _check_compress(sys::PackmolSystem{D,T}) where {D,T}
         compress is supported in three dimensions only.
 
     """))
-    any(st -> st.fixed.fixed, sys.structure_types) && throw(ArgumentError("""\n
-        compress is not supported with fixed molecules: they would have to move with the
-        compression. Pack the free molecules around them in a second step.
-
-    """))
     isnothing(sys.restart_from) || throw(ArgumentError("""\n
         compress is not supported with restart_from.
 
@@ -69,7 +64,9 @@ _compress_center(sys::PackmolSystem{D,T}) where {D,T} =
 
 #
 # Scales the geometry of the system by `s` about `o`: the constraints, the cell, and (if
-# `molecules`) the positions of the free molecules, each moved rigidly
+# `molecules`) the positions of the free molecules, each moved rigidly. The fixed
+# molecules stay where they are (inside the cell, which is scaled about its center: the
+# expanded cell contains them)
 #
 function _scale_system!(sys::PackmolSystem{D,T}, s::T, o::SVector{D,T}; molecules::Bool=true) where {D,T}
     # (the polymers as rigid molecules have constraints of their own, for their placement)
@@ -84,8 +81,10 @@ function _scale_system!(sys::PackmolSystem{D,T}, s::T, o::SVector{D,T}; molecule
     end
     molecules || return sys
     topo = sys.polymer_topology
-    for imol in 1:sys.nmols
-        _is_monomer(topo, imol) && continue
+    imol = 0
+    for st in sys.structure_types, _ in 1:st.number_of_molecules
+        imol += 1
+        (st.fixed.fixed || _is_monomer(topo, imol)) && continue
         mp = sys.molecule_positions[imol]
         sys.molecule_positions[imol] = MoleculePosition(o + s * (mp.cm - o), mp.angles)
     end

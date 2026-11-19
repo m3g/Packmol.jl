@@ -21,10 +21,11 @@ Version 100.0.1-DEV
   structure block (`flexible_structure` in Julia) cuts the molecule into rigid fragments at
   those bonds, linked such that they turn about the bonds only. The bonds are those of the
   CONECT records, or computed from the distances (`bond_distance <d>`).
-- ![FEATURE][badge-feature] `compress <fraction> [<step>]` (Packmol.jl only; `compress` keyword
-  argument in Julia): packs the system at a fraction of its density, with the constraints and
-  the periodic cell expanded, and compresses it in adaptive steps to the density of the
-  input, for systems too dense to pack from a random placement.
+- ![FEATURE][badge-feature] `compress [<fraction> [<step>]]` (Packmol.jl only; `compress` keyword
+  argument in Julia): packs the system at a fraction of its density (default 0.5), with the
+  constraints and the periodic cell expanded, and compresses it in adaptive steps to the
+  density of the input, for systems too dense to pack from a random placement. Fixed
+  molecules stay in place; all periodic cells are supported.
 - ![INFO][badge-info] Documentation: the tutorial "Biomolecular condensate", with chains of
   (VPGVG)₂₀ (SIRAH) in water, as a homogeneous mixture and as a droplet at 400 mg/mL, and the
   pages "Polymers" (Structure blocks) and "Packing by compression".

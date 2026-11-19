@@ -19,15 +19,16 @@ links between the monomers.
 
 ![The homogeneous mixture](images/condensate_homogeneous.webp)
 
-*The homogeneous mixture: the chains, each in a color, and one water molecule in 20 (the
-chains are written whole, so some cross the faces of the cell).*
+*The homogeneous mixture: the chains, each in a color, and one water molecule in 20.
+The chains are written whole, each placed in the cell by its center: a chain of up to
+100 Å crosses the faces of the cell, and its parts outside are the periodic images of
+parts inside (with PBC, an artifact of the view only).*
 
 ![The droplet](images/condensate_droplet.webp)
 
 *The droplet: the chains at 400 mg/mL, and one water molecule in 20.*
 
-Files: [`build_peptides.jl`](files/condensate/build_peptides.jl) (the conformations of
-the chains), [`peptides.pdb`](files/condensate/peptides.pdb) (built by it),
+Files: [`peptides.pdb`](files/condensate/peptides.pdb) (the conformations of the chains),
 [`wt4.pdb`](files/condensate/wt4.pdb), and the input files
 [`homogeneous.inp`](files/condensate/homogeneous.inp),
 [`droplet_chains.inp`](files/condensate/droplet_chains.inp) and
@@ -35,27 +36,19 @@ the chains), [`peptides.pdb`](files/condensate/peptides.pdb) (built by it),
 
 ## The chains
 
-`peptides.pdb` holds 10 conformations of (VPGVG)₂₀ (one model each), random coils built
-by `build_peptides.jl`: each chain grows residue by residue, with the dihedral angles
-drawn from the regions of the Ramachandran plot of disordered proteins (polyproline II,
-β and α), as a self-avoiding walk, and its atoms are mapped to the beads of SIRAH, each
-on an atom: GN on N, GC on Cα and GO on O (the backbone), BCB on Cβ (valine) and BCG
-on Cγ (proline); glycine has no side-chain bead. Each chain has 360 beads, and its
-radius of gyration is between 21 and 40 Å.
+`peptides.pdb` holds 10 conformations of (VPGVG)₂₀ (one model each), random coils of
+360 beads, with radii of gyration between 21 and 40 Å, in the bead names of SIRAH (GN,
+GC and GO on the backbone, BCB and BCG on the side chains of valine and proline; glycine
+has no side-chain bead).
 
-```@raw html
-<details><summary>The script <code>build_peptides.jl</code> (click to expand)</summary>
-```
-```@eval
-Main.input_file("files/condensate/build_peptides.jl")
-```
-```@raw html
-</details><br>
-```
-
-```
-julia build_peptides.jl peptides.pdb
-```
+!!! note "Conformations of the chains"
+    Generating the conformations is not the job of Packmol, but of the user: they should
+    come from a simulation of the free chain, for example a short molecular dynamics
+    simulation at high temperature. The conformations of `peptides.pdb` were built by
+    [`build_peptides.jl`](files/condensate/build_peptides.jl), a proof of concept only:
+    self-avoiding random walks with dihedral angles from the regions of the
+    Ramachandran plot of disordered proteins, mapped to the beads of SIRAH, with no
+    force field behind them.
 
 ## The chains as polymers
 
@@ -83,6 +76,14 @@ least 2.25 Å apart in all of them: no pair of beads is left out of the distance
 
 The chains are first packed as rigid molecules, and then released: released overlapping
 each other, the chains get threaded through each other's monomers, and do not separate.
+
+Here the flexibility is at the level of the repeated pentapeptide: each monomer of 5
+residues is rigid. It could be set at the level of the residues instead, each residue a
+monomer linked to the next one: a `repeat 20` block of five `monomer` lines, of the
+sizes of the residues (4, 4, 3, 4 and 3 beads for V, P, G, V and G), each with the links
+of its junction to the next residue. Or with rotatable bonds along the backbone (see
+[Rotatable bonds](@ref)). More monomers make the chains more flexible, and the packing
+slower.
 
 ## The numbers of molecules
 
@@ -126,8 +127,10 @@ around the chains).
 Main.input_file("files/condensate/droplet_chains.inp")
 ```
 
-With `compress 0.5`, the sphere and the cell are expanded by 2^(1/3) (to a sphere of
-126 Å, in a cube of 328 Å), and the chains packed there, at 200 mg/mL: as rigid
+With `compress 0.5`, the chains are first packed at half the density (0.5 is the
+fraction of the density, and the default: `compress` alone is the same). The sphere and
+the cell are expanded by 2^(1/3), to a sphere of 126 Å, in a cube of 328 Å, twice the
+volume, and the chains are packed there, at 200 mg/mL: as rigid
 molecules, then released. Then the system is compressed in steps back to the sphere of
 100 Å: the positions of the chains, the sphere and the cell scaled together, and the
 chains packed again from there at each step.

@@ -164,19 +164,25 @@ function _set_global_options!(sys::PackmolSystem{D,T};
 end
 
 #
-# `compress <fraction> [<initial step>]`: pack at `fraction` of the density (0 < fraction
-# < 1), then compress, with steps starting at `initial step` (default 0.05: 5% of the
-# linear dimensions); `compress false` (Julia) disables it
+# `compress [<fraction> [<initial step>]]`: pack at `fraction` of the density (0 < fraction
+# < 1; default 0.5), then compress, with steps starting at `initial step` (default 0.05:
+# 5% of the linear dimensions); `compress = true` (Julia) takes the defaults, and
+# `compress = false` disables it
 #
+const _compress_default_fraction = 0.5
 const _compress_default_step = 0.05
 function _set_compress!(sys::PackmolSystem{D,T}, values) where {D,T}
     if length(values) == 1 && string(values[1]) == "false"
         sys.compress = nothing
         return sys
     end
-    (1 <= length(values) <= 2) || throw(ArgumentError("""\n
-        compress takes the fraction of the density at which to pack, and optionally the initial
-        step of the compression: compress 0.5 [0.05]
+    if isempty(values) || (length(values) == 1 && string(values[1]) == "true")
+        sys.compress = (T(_compress_default_fraction), T(_compress_default_step))
+        return sys
+    end
+    length(values) <= 2 || throw(ArgumentError("""\n
+        compress takes, optionally, the fraction of the density at which to pack (default 0.5),
+        and the initial step of the compression (default 0.05): compress [0.5 [0.05]]
 
     """))
     fraction = _parse_value(T, "compress", string(values[1]))

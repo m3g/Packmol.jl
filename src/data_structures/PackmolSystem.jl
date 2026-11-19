@@ -67,8 +67,8 @@
     # src/tools/voxel_place.jl), with this `max_tries_mult` (input keyword `voxel_place
     # [max_tries_mult]`); `nothing`: not used
     voxel_place::Union{Nothing,Int} = nothing
-    # Pack at a fraction of the density, then compress (input keyword `compress <fraction>
-    # [<initial step>]`, see packing/compression.jl): `(fraction, initial step)`, or
+    # Pack at a fraction of the density, then compress (input keyword `compress [<fraction>
+    # [<initial step>]]`, see packing/compression.jl): `(fraction, initial step)`, or
     # `nothing`
     compress::Union{Nothing,Tuple{T,T}} = nothing
     # Whole-system restart (Fortran's `restart_from` with no structure type,
@@ -175,8 +175,8 @@ the output file path; any other `PackmolSystem` field (`tolerance`, `seed`,
 
 The vector can also hold vectors of structure types (the conformations of a molecule,
 from `structure_type`) and polymers (from [`polymer_structure`](@ref)), as
-`PackmolSystem([chains, water]; ...)`. `compress = 0.5` (or `(0.5, 0.05)`, with the initial
-step) packs the system at half its density and then compresses it (see
+`PackmolSystem([chains, water]; ...)`. `compress = true` (or `0.5`, or `(0.5, 0.05)`, with the
+initial step) packs the system at half its density and then compresses it (see
 [Packing by compression](@ref)).
 """
 function PackmolSystem(
@@ -198,7 +198,7 @@ function PackmolSystem(
     if !isnothing(unitcell_raw)
         kw = merge(kw, (; wigner_seitz_cell=_is_wigner_seitz_cell(Matrix{T}(unitcell_raw))))
     end
-    # `compress = 0.5` or `(0.5, 0.05)`: the fraction of the density and the initial step
+    # `compress = true`, `0.5` or `(0.5, 0.05)`: the fraction of the density and the initial step
     compress = get(kw, :compress, nothing)
     kw = Base.structdiff(kw, NamedTuple{(:compress,)})
     sys = PackmolSystem{D,T}(;

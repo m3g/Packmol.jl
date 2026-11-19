@@ -115,6 +115,19 @@ rotation about the bond: as many links as needed to keep the geometry of the jun
   (Chains released overlapping each other end up threaded through each other's monomers,
   and do not separate.) Polymers too dense to pack as rigid molecules are packed at a
   lower density, and compressed (see [Packing by compression](@ref)).
+- **Conformations.** Any conformation of the polymer can be given (one is enough), as
+  long as it fits, as a rigid molecule, in the region of the polymers: smaller than the
+  periodic cell, and than the region of its constraints (expanded, with `compress`),
+  since the polymers are first packed as rigid molecules. The flexibility of the chains
+  does the rest. For example, a single extended conformation of the chains of the
+  [Biomolecular condensate](@ref) (304 Å from end to end) packs in their homogeneous
+  mixture, in a periodic cube of 260 Å (the chains fit along its diagonals), in a few
+  seconds; but not in the droplet, a sphere of 100 Å of radius: rigid, the chains do
+  not fit in it, and released into it from outside they fold into each other and jam.
+  Nor does a larger expansion help: packed at 5% of the density (`compress 0.05`, in a
+  sphere where the extended chains fit), they were compressed only to 41% of it. Coiled
+  conformations, of the size of the chains in solution (e.g. from a simulation of the
+  free chain), pack in both, the droplet compressed in less than a minute.
 - **Close atoms.** The pairs of atoms of different monomers (up to three monomers apart)
   closer than the tolerance in a conformation (the bonded atoms of a junction, and their
   neighbors) are left out of the distances of the polymers of that conformation.
@@ -128,8 +141,9 @@ rotation about the bond: as many links as needed to keep the geometry of the jun
 - **Output.** Each polymer is written whole, with the atoms of the structure file, in
   their order (with the residue numbers of the file), a chain identifier per polymer (or
   the `chain` of the block), and the bonds of the file (`CONECT` records); with periodic
-  boundary conditions, a polymer is not wrapped across the boundaries of the cell (it is
-  whole, its first monomer in the cell).
+  boundary conditions, a polymer is not wrapped across the boundaries of the cell: it is
+  whole, placed in the cell by its center (the mean of the centers of its monomers), so
+  large polymers cross the faces of the cell.
 - **Not supported**: fixed polymers, `restart_from`, `constrain_rotation` and
   `voxel_place`.
 

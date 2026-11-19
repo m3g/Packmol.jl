@@ -110,7 +110,7 @@ kept out by a constraint, the numbers from `free_volume`); an ionic liquid
 as regions with set numbers of ions); a gold nanoparticle with
 dodecanethiolates in toluene (core by `files/gold_nanoparticle/gold.jl`, ligands bound and oriented by constraints
 on two atoms); the biomolecular condensate (polymers: 123 chains of (VPGVG)20 in SIRAH, conformations by
-`files/condensate/build_peptides.jl`, in WT4 water: a homogeneous mixture, and a droplet at 400 mg/mL packed with
+`files/condensate/build_peptides.jl` (linked as a proof of concept only), in WT4 water: a homogeneous mixture, and a droplet at 400 mg/mL packed with
 `compress`, then the water around the fixed chains; images by `dev/tutorials/condensate_images.jl`); the Zika virion; the lipid nanoparticle,
 designed with an AI agent from an illustration (SIRAH, set `packmol_lnp`, files and images by `dev/tutorials/lnp.jl`
 and `lnp_images.jl`); the all-atom exosome,
@@ -428,8 +428,10 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       other's monomers and never separate (diagnosed 2026-11-18; monomers of one conformation aligned to
       another were strained: hence one set of monomer types per conformation). radscale 1.0 by default;
       movebad shakes the monomers of bad polymers (random displacements ≤ tolerance/4, rotations ≤ 0.05
-      rad; moving a polymer whole was destructive). Output: polymers whole, in the order of their file,
-      chain per polymer, CONECT of the file. Not supported: fixed, restart_from, constrain_rotation,
+      rad; moving a polymer whole was destructive). Output: polymers whole (PBC: placed in the cell by
+      their center), in the order of their file, chain per polymer, CONECT of the file. Conformations:
+      any, if rigid they fit the cell and the constraints (a single extended (VPGVG)20 of 304 Å packs the
+      homogeneous 260 Å cube in 4 s; not the 100 Å droplet, nor with compress 0.05: stops at 41%). Not supported: fixed, restart_from, constrain_rotation,
       voxel_place.
 - [x] Rotatable bonds (`src/polymers/rotatable.jl`): `rotatable i j [i j ...]` and `bond_distance d` in a
       structure block (Julia `flexible_structure(file; number, rotatable, bond_distance)`), chosen by hand.
@@ -442,12 +444,14 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       all 28 single C–C bonds of the tails (+ glycerol C1–C2) pack (36 s; 76 s with compress 0.5);
       heads at 17-20 Å, 28 + compress reach 96% of the density. The area per lipid is not the challenge
       (rigid lipids tilt); the thickness is.
-- [x] Packing by compression (`compress <fraction> [<step>]`, Julia `compress = 0.5` or `(0.5, 0.05)`;
+- [x] Packing by compression (`compress [<fraction> [<step>]]`, defaults 0.5 and 0.05; Julia `compress = true`,
+      `0.5` or `(0.5, 0.05)`;
       `src/packing/compression.jl`): constraints and cell expanded by fraction^(-1/3) about the cell center
-      (origin without PBC), packed, then scaled back in steps (molecules moved rigidly, polymers by their
-      center) packed with `restart=true`, 100 loops each; step halved on failure (back to the last
+      (origin without PBC), packed, then scaled back in steps (free molecules moved rigidly, polymers by their
+      center; fixed molecules stay) packed with `restart=true`, 100 loops each; step halved on failure (back to the last
       converged state), ×1.5 after two successes, stop below 5e-4. Constraints: boxes, cubes, spheres,
-      cylinders, ellipsoids, planes; no fixed molecules, no restart_from. The condensate droplet (123 chains,
+      cylinders, ellipsoids, planes; all PBC cells; no restart_from. Limitation: constraints tied to fixed
+      molecules (Zika membrane inside its protein shell) are scaled away from them. The condensate droplet (123 chains,
       400 mg/mL): rigid chains jam at ~220 mg/mL, compressed flexible chains reach 400 in 35-60 s.
 - [x] Rotation constraints (`constrain_rotation`, `src/constraints/rotations.jl`): a penalty on the
       angle between an axis and a vector of the molecule (between the centers of two atom sets, or the

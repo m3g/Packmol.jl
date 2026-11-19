@@ -4,31 +4,40 @@
 # molecule (or the `chain` of its structure block),
 # and the bonds of its structure; with PBC, the monomers of a polymer are put next to
 # each other (each in the periodic image closest to the previous one), and the polymer
-# wrapped into the cell by its first monomer.
+# wrapped into the cell by its center (the mean of the centers of its monomers), as rigid
+# molecules are by their centers of mass.
 #
 
 #
 # With PBC: shifts the atoms of the monomers of each polymer (`atom_positions`, unwrapped)
-# such that the polymer is whole, its first monomer wrapped into the cell by `wrap`
+# such that the polymer is whole, its center wrapped into the cell by `wrap`
 #
 function _wrap_polymers!(
     atom_positions::Vector{SVector{D,T}}, sys::PackmolSystem{D,T}, unitcell::AbstractMatrix, center::SVector{D,T}, wrap::F,
 ) where {D,T,F}
     mol_offset, atom_offset = _type_offsets(sys)
     for p in sys.polymers
+        nmon = _nmonomers(p)
+        targets = Vector{SVector{D,T}}(undef, nmon)
         for (c, j) in _polymer_copies(p)
+            # the centers of the monomers, the chain made whole from the first one
             previous = zero(SVector{D,T})
-            for m in 1:_nmonomers(p)
+            for m in 1:nmon
+                cm = sys.molecule_positions[_monomer_molecule(p, mol_offset, c, m, j)].cm
+                targets[m] = m == 1 ? cm : previous + _min_image(cm - previous, unitcell)
+                previous = targets[m]
+            end
+            # the whole polymer wrapped by its center
+            polymer_center = sum(targets) / nmon
+            polymer_shift = wrap(polymer_center, unitcell, center) - polymer_center
+            for m in 1:nmon
                 t = _monomer_type(p, c, m)
                 st = sys.structure_types[t]
-                cm = sys.molecule_positions[mol_offset[t]+j].cm
-                target = m == 1 ? wrap(cm, unitcell, center) : previous + _min_image(cm - previous, unitcell)
-                shift = target - cm
+                shift = targets[m] + polymer_shift - sys.molecule_positions[mol_offset[t]+j].cm
                 iat0 = atom_offset[t] + (j - 1) * st.natoms
                 for k in 1:st.natoms
                     atom_positions[iat0+k] += shift
                 end
-                previous = target
             end
         end
     end

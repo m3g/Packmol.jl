@@ -16,5 +16,5 @@ monomers): a monomer is a fragment.
 | `topology.jl` | `_set_polymer_topology!` (the links between atoms of the system, the polymer of each monomer molecule, the atoms of excluded pairs), `_excluded_pair` (used by the pair functions), and the indices of the structure types and molecules of the monomers. |
 | `link_fg.jl` | The function and gradient of the links, `k (\|d - d0\| - w)²`, for the whole system and for the active subsystem; their largest deviation is part of the convergence criterion. |
 | `placement.jl` | `RigidPolymerSystem` (the system with the polymers as rigid molecules), the initial placement (the rigid system placed and packed, then the monomers aligned to their atoms: released), and the movebad of polymers (`_movebad_polymers!`: random displacements of the monomers of bad polymers). |
-| `output.jl` | The polymers written whole: wrapped by their first monomer, in the order of the atoms of their structure, a chain identifier per polymer, and their bonds. |
+| `output.jl` | The polymers written whole: wrapped by their centers, in the order of the atoms of their structure, a chain identifier per polymer, and their bonds. |
 | `api.jl` | `polymer_structure`, `monomer` and `flexible_structure` (the Julia API). |

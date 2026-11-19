@@ -157,7 +157,7 @@ be given as a keyword argument, with the name of the keyword: `tolerance`, `outp
 `writeout`, `tolerance_precision`, `constraint_precision`, `nthreads`, `avoid_overlap`, `screen_log`,
 `connect`, `add_box_sides`, `add_amber_ter`, `amber_ter_preserve`, `periodic_boundary_style`,
 `max_random_init`, `adjust_constraints_on_init`, `check_initial_placement`,
-`continue_failed_initial_packing`, `restart_from`, `voxel_place`, `compress` (`compress = 0.5`, or
+`continue_failed_initial_packing`, `restart_from`, `voxel_place`, `compress` (`compress = true`, `0.5`, or
 `(0.5, 0.05)` with the initial step: see [Packing by compression](@ref)), `pbc` and `unitcell`. They are set in
 `packmol_system`, replacing the values of the input file (or of the constructor), before
 the packing. For example, `packmol(system; tolerance = 2.5, maxit = 50, output = "out.pdb")`.

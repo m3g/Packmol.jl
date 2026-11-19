@@ -56,8 +56,46 @@ end
     end
     @test sys.status == :packing_ready
     @test sys.unitcell ≈ [30.0 0 0; 0 30.0 0; 0 0 30.0]
+    # the defaults: `compress` alone, or `compress = true`
+    write(input, "output x.pdb\ncompress\nstructure water.pdb\n number 1\nend structure\n")
+    @test read_packmol_input(input).compress == (0.5, 0.05)
+    st = structure_type(joinpath(dir, "water.pdb"); number = 1)
+    @test PackmolSystem([st]; output = "x.pdb", compress = true).compress == (0.5, 0.05)
     # errors
     @test_throws ArgumentError packmol(input; compress = 1.5)
     write(input, "output x.pdb\ncompress 0.5 2.0\nstructure water.pdb\n number 1\nend structure\n")
     @test_throws ArgumentError read_packmol_input(input)
+end
+
+@testitem "compression with fixed molecules, dodecahedral cell" setup=[TestFiles] begin
+    using Packmol
+    using LinearAlgebra: norm
+    water = TestFiles.test_file("structure_files/water.pdb")
+    dir = mktempdir()
+    cp(water, joinpath(dir, "water.pdb"))
+    input = joinpath(dir, "compress_fixed.inp")
+    write(input, """
+        tolerance 2.0
+        output compress_fixed_out.pdb
+        pbc dodecahedral 0. 0. 0. 30.
+        compress
+        structure water.pdb
+          number 1
+          center
+          fixed 0. 0. 0. 0. 0. 0.
+        end structure
+        structure water.pdb
+          number 500
+        end structure
+        """)
+    sys = redirect_stdout(devnull) do
+        packmol(input)
+    end
+    @test sys.status == :packing_ready
+    @test sys.unitcell ≈ Packmol.dodecahedral_unitcell(Float64, 30.0)
+    atoms = get_atoms(sys)
+    # the fixed molecule where it was placed, and the others at the tolerance from it
+    fixed = [[a.x, a.y, a.z] for a in atoms[1:3]]
+    @test norm(sum(fixed) / 3) < 1.0
+    @test minimum(norm(x - [a.x, a.y, a.z]) for x in fixed for a in atoms[4:end]) > 1.9
 end
