@@ -128,6 +128,10 @@ rotation about the bond: as many links as needed to keep the geometry of the jun
   sphere where the extended chains fit), they were compressed only to 41% of it. Coiled
   conformations, of the size of the chains in solution (e.g. from a simulation of the
   free chain), pack in both, the droplet compressed in less than a minute.
+  Independently of the packing, several conformations are worth giving for the
+  simulation: the polymers start from different conformations, and the results depend
+  less on the choice of a single one (the flexibility of the packing only adapts the
+  chains to their neighbors, and the simulation may take long to forget a conformation).
 - **Close atoms.** The pairs of atoms of different monomers (up to three monomers apart)
   closer than the tolerance in a conformation (the bonded atoms of a junction, and their
   neighbors) are left out of the distances of the polymers of that conformation.

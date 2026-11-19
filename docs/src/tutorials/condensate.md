@@ -50,6 +50,10 @@ has no side-chain bead).
     Ramachandran plot of disordered proteins, mapped to the beads of SIRAH, with no
     force field behind them.
 
+    Several conformations, rather than one, also matter for the simulation itself,
+    independently of the packing: the chains start from different conformations, and
+    the results depend less on that of a single one.
+
 ## The chains as polymers
 
 A rigid chain does not fill the space between the others: packed as rigid molecules,
