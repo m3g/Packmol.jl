@@ -1,5 +1,0 @@
-HEADER    PDBTools.jl - 3 atoms                   30-Oct-26
-ATOM      1  C   CO2 A   1       0.000   0.000   0.000  0.00  0.00           C
-ATOM      2  O1  CO2 A   1       0.000   0.000   1.160  0.00  0.00           O
-ATOM      3  O2  CO2 A   1       0.000   0.000  -1.160  0.00  0.00           O
-END
