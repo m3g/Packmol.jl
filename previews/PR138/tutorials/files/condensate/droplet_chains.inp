@@ -1,0 +1,26 @@
+#
+# Step 1 of the droplet: the chains of the condensate, (VPGVG)20 in the SIRAH
+# coarse-grained representation, at 400 mg/mL in a sphere of 100 Å. At this density the
+# chains do not pack from a random placement: they are packed at half the density, with
+# the sphere and the cell expanded, and compressed back in steps (`use_compression`).
+#
+tolerance 2.0
+output droplet_chains.pdb
+pbc -130. -130. -130. 130. 130. 130.
+use_compression 0.5
+
+# To write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints), uncomment the line below.
+# check_initial_placement
+
+# 123 chains of 8207.6 g/mol: 400 mg/mL in the sphere. Each monomer of VPGVG (18 beads)
+# turns about the bond of its last bead (GO) to the first bead of the next one (GN); the
+# bonds are the CONECT records of peptides.pdb
+structure peptides.pdb
+  number 123
+  inside sphere 0. 0. 0. 100.
+  repeat 20
+    monomer 18
+      rotatable 18 1
+  end repeat
+end structure
