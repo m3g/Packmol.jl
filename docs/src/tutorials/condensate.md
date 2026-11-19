@@ -21,7 +21,7 @@ links between the monomers.
 
 *The homogeneous mixture: the chains, each in a color, with one in every 20 water
 molecules shown.
-The chains are written whole, each placed in the cell by its center: a chain of up to
+The full-length chains are shown, each placed in the cell by its center: a chain of up to
 100 Å crosses the faces of the cell, and its parts outside are the periodic images of
 parts inside (with PBC, an artifact of the view only).*
 
