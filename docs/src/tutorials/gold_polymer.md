@@ -1,0 +1,214 @@
+# Polymer-capped gold nanoparticle
+
+A gold nanoparticle capped by thiol-terminated polystyrene, in toluene, with all atoms:
+a gold core, fixed, with 57 chains of polystyrene bound to its surface by their sulfur
+atoms, and the toluene around them and between the chains. The chains are flexible
+([Polymers](@ref)), and too dense near the surface of the core to pack from a random
+placement: the system is packed at half its density, and compressed around the fixed
+core ([Packing by compression](@ref)).
+
+![The polymer-capped nanoparticle](images/gold_polymer.webp)
+
+*The gold core (yellow), the chains, each in a color, and one in every five toluene
+molecules (green) of the half of the cell behind the particle.*
+
+Files: [`gold.pdb`](files/gold_polymer/gold.pdb),
+[`polystyrene.pdb`](files/gold_polymer/polystyrene.pdb) (the conformations of the
+chains), [`toluene.pdb`](files/gold_polymer/toluene.pdb), and the input file
+[`gold_polymer.inp`](files/gold_polymer/gold_polymer.inp).
+
+## The structures
+
+- **The gold core**: the core of the tutorial [Gold nanoparticle in toluene](@ref), a
+  sphere of 3 nm of the face-centered cubic lattice of gold, with 887 atoms.
+- **The chains**: sec-butyl–[CH₂–CH(C₆H₅)]₂₀–CH₂CH₂–S⁻, polystyrene of 20 units made by
+  anionic polymerization (initiated by sec-butyllithium) and end-capped with ethylene
+  sulfide, a thiol-terminated polystyrene of 2200 g/mol, with 340 atoms. `polystyrene.pdb`
+  holds 10 conformations of the chain (one model each), atactic random coils, with radii
+  of gyration between 10.7 and 13.7 Å, and 23 to 44 Å from the sulfur atom to the end of
+  the chain.
+- **The solvent**: toluene, as in [Gold nanoparticle in toluene](@ref).
+
+!!! note "Conformations of the chains"
+    Generating the conformations is not the job of Packmol, but of the user: they should
+    come from a simulation of the free chain, for example a short molecular dynamics
+    simulation at high temperature. The conformations of `polystyrene.pdb` were built by
+    [`build_polystyrene.jl`](files/gold_polymer/build_polystyrene.jl), a proof of concept
+    only: self-avoiding random walks of the backbone in the trans and gauche states, with
+    the phenyl groups on random sides of it, with no force field behind them.
+
+    Several conformations, rather than one, also matter for the simulation itself,
+    independently of the packing: the chains start from different conformations, and
+    the results depend less on that of a single one.
+
+## The chains as polymers
+
+The atoms of the chain are in the order of its backbone, from the sulfur atom, in groups
+that are the rigid monomers of the polymer: S–CH₂ (4 atoms) and CH₂ (3), then 20 times
+CH(C₆H₅) (13) and CH₂ (3), and the sec-butyl group (13). Each group starts with its
+backbone carbon atom (the S–CH₂ group, with the sulfur atom), followed by its
+substituents. Consecutive groups are linked by the bond between their backbone carbon
+atoms, and by the bonds of each of these atoms to its neighbors in its group:
+
+```
+  repeat 20
+    monomer 13      # CH(C6H5)
+      link 1 1      # the bond, from the carbon atom (1) to that of the next group (1)
+      link 2 1      # the H of the carbon atom, to the next carbon atom
+      link 3 1      # the first carbon atom of the ring, to the next carbon atom
+      link 1 2      # the carbon atom, to the substituents of the next one
+      link 1 3
+    monomer 3       # CH2
+      link 1 1
+      link 2 1
+      link 3 1
+      link 1 2
+      link 1 3
+  end repeat
+```
+
+The links keep the length of the bond and its angles, at their values in each
+conformation, and leave the groups free to turn about the bond: every bond of the
+backbone rotates. A chain is 43 rigid groups (see [Polymers](@ref)), and the pairs of
+atoms of nearby groups that are closer than the tolerance in their conformation (the
+bonded atoms and their neighbors) are left out of the distances.
+
+## The numbers of molecules
+
+- **The chains**: short thiol-terminated polymers bind to gold at one to a few chains
+  per nm². Here, 2 chains per nm² of the 28.3 nm² of the surface of the core: 57 chains.
+- **The solvent**: the cell is a cube of 110 Å, periodic, centered at the origin. The
+  toluene fills the cell beyond the layer of sulfur atoms (18 Å from the center), whose
+  volume, given by [`free_volume`](@ref) (see [Volume estimates](@ref)), is 1.307 × 10⁶ Å³.
+  The chains take 198000 Å³ of it: 57 × 3480 Å³, the volume of a chain at the density
+  of polystyrene (1.05 g/mL). The remaining 1.109 × 10⁶ Å³ holds 6280 molecules of toluene
+  (0.867 g/mL).
+
+The system has 114,467 atoms.
+
+## Capping the nanoparticle
+
+```@raw html
+<details><summary>The input file <code>gold_polymer.inp</code> (click to expand)</summary>
+```
+```@eval
+Main.input_file("files/gold_polymer/gold_polymer.inp")
+```
+```@raw html
+</details><br>
+```
+
+The chains are bound to the core as the ligands of [Gold nanoparticle in
+toluene](@ref): the whole chain outside the sphere of 16 Å (the core and 1 Å beyond its
+atoms), and its sulfur atom (`atoms 1`) inside the sphere of 17.5 Å, in a shell from 1
+to 2.5 Å above the surface of the core. Nothing orients the chains: they are coils, which
+the crowding near the surface stretches outwards. The toluene is kept beyond the sulfur
+atoms (outside the sphere of 18 Å), and fills the rest of the cell, between the chains
+too.
+
+Packed from a random placement, the system does not converge: near the surface of the
+core, the chains jam (in 500 loops, with the chains rigid and then flexible, the
+function stalls at about 25, with the chains overlapping each other). With
+`use_compression 0.5`, the system is first packed at half its density: the constraints
+and the cell are expanded by 2^(1/3), and the system packed there (as rigid molecules,
+then with the chains released). The gold core is fixed, and stays where it is: the free
+molecules are packed around it in the expanded geometry, and then compressed toward it,
+in steps, back to the geometry of the input file.
+
+!!! note "Constraints tied to the fixed core"
+    The shell of the sulfur atoms is placed relative to the fixed core, and is scaled
+    with the rest of the geometry: expanded, it is 20.2 to 22 Å from the center, 5 Å
+    above the surface of the gold. The chains packed there are compressed toward the core
+    with it, and the shell reaches the surface of the core at the end of the compression.
+    This works because the shell moves away from the core, and the region left between
+    them is empty. A region that the expansion would move into a fixed molecule cannot
+    be packed this way (see [Packing by compression](@ref)).
+
+### Check the initial placement first
+
+Uncomment the `check_initial_placement` line of the input file, and run it (see
+[Checking the initial placement](@ref check_initial_placement)): the initial placement
+is that of the expanded geometry, with the chains as rigid molecules, before any
+packing:
+
+![Initial placement](images/gold_polymer_check.webp)
+
+*The initial placement, in the expanded cell: the gold core and the chains (the toluene
+is not shown).*
+
+When it looks like this, comment the line again, and run the packing.
+
+### Packing
+
+```
+packmol gold_polymer.inp
+```
+
+The packing at half the density takes about 2 minutes, and the compression about 50
+steps, in 5 minutes, with 14 threads:
+
+```
+  Compression step    1: density   58.32% of the target, not converged (9.3 s)
+  ...
+  Compression step   52: density  100.00% of the target, converged (5.9 s)
+  Compressed to the density of the input in 52 steps (306.3 s).
+```
+
+All the sulfur atoms end 16 to 17.5 Å from the center, and the bonds of the chains are
+kept to 0.09 Å. The ends of the chains are 24 to 56 Å from the center (42 Å on average):
+the chains stretch out from the surface, a brush.
+
+![A slab of the nanoparticle](images/gold_polymer_slab.webp)
+
+*A slab of 10 Å through the middle of the cell: the gold core, the sulfur atoms
+(orange) on its surface, the chains, and the toluene between them and around them.*
+
+## Julia script
+
+```julia
+using Packmol
+
+origin = [0., 0., 0.]
+
+gold = structure_type("gold.pdb";
+    number = 1,
+    center = :geometric,
+    fixed = (origin, origin),
+)
+
+# The links between consecutive groups of the chain: the bond between
+# their backbone carbon atoms (atom 1, or atom 2 of the S-CH2 group),
+# and the bonds of these atoms to their neighbors
+links = [(1, 1), (2, 1), (3, 1), (1, 2), (1, 3)]
+sequence = [
+    1 => [
+        monomer(4; links = [(2, 1), (1, 1), (3, 1), (2, 2), (2, 3)]), # S-CH2
+        monomer(3; links),                                            # CH2
+    ],
+    20 => [
+        monomer(13; links), # CH(C6H5)
+        monomer(3; links),  # CH2
+    ],
+    1 => [monomer(13)],     # sec-butyl
+]
+chains = polymer_structure("polystyrene.pdb";
+    number = 57,
+    sequence,
+    constraints = [OutsideSphere(origin, 16.)],
+    atom_constraints = [[1] => InsideSphere(origin, 17.5)], # the sulfur atom
+)
+
+toluene = structure_type("toluene.pdb";
+    number = 6280,
+    constraints = [OutsideSphere(origin, 18.)],
+)
+
+system = PackmolSystem([gold, chains, toluene];
+    output = "gold_polymer.pdb",
+    tolerance = 2.0,
+    unitcell = [110. 0. 0.; 0. 110. 0.; 0. 0. 110.], # centered at the origin
+    use_compression = 0.5,
+    # check_initial_placement = true,
+)
+packmol(system)
+```

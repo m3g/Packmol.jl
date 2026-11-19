@@ -157,7 +157,9 @@ written explicitly (the structure files of coarse-grained polymers rarely have b
 
 In Julia, the polymers are given by [`polymer_structure`](@ref), with the sequence made of
 [`monomer`](@ref)s. The tutorial [Biomolecular condensate](@ref) packs a condensate of
-polypeptides, in a homogeneous mixture and as a droplet.
+polypeptides, in a homogeneous mixture and as a droplet, and the tutorial
+[Polymer-capped gold nanoparticle](@ref) packs all-atom chains of polystyrene, flexible at
+every bond of their backbone, bound to a fixed gold core.
 
 ## Rotatable bonds
 

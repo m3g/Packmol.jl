@@ -24,6 +24,7 @@ agent from an illustration.
 | [ZIF-8 in water and ethanol](zif8.md) | A slab of a metal–organic framework in a liquid: ethanol in its pores, water kept out by a constraint; the numbers from `free_volume` |
 | [Ionic liquid in a supercapacitor](supercapacitor.md) | An ionic liquid between charged graphite electrodes: the electric double layers set by the numbers of ions in regions |
 | [Gold nanoparticle in toluene](gold_nanoparticle.md) | A fixed metal core with a shell of ligands, bound by one atom and oriented by another (constraints on atoms), in a solvent |
+| [Polymer-capped gold nanoparticle](gold_polymer.md) | Flexible all-atom polymer chains (polystyrene) bound to a fixed gold core, in toluene, packed by compression around the fixed core |
 | [Liquid crystals](liquid_crystal.md) | Oriented molecules (rotation constraints): a nematic phase and a cholesteric (twisted) phase |
 | [Biomolecular condensate](condensate.md) | Flexible chains (polymers) of a disordered protein in water, coarse-grained: a homogeneous mixture, and a droplet at 400 mg/mL packed by compression |
 | [Zika virion](zika.md) | A large system: 2.2 million particles in membranes and spherical shells |

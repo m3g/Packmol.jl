@@ -109,7 +109,10 @@ kept out by a constraint, the numbers from `free_volume`); an ionic liquid
 ([BMIM][PF6]) in a supercapacitor (graphite electrodes by `files/supercapacitor/electrodes.jl`, the double layers
 as regions with set numbers of ions); a gold nanoparticle with
 dodecanethiolates in toluene (core by `files/gold_nanoparticle/gold.jl`, ligands bound and oriented by constraints
-on two atoms); the biomolecular condensate (polymers: 123 chains of (VPGVG)20 in SIRAH, conformations by
+on two atoms); the polymer-capped gold nanoparticle (57 chains of thiol-terminated polystyrene, all atoms,
+flexible at every backbone bond, conformations by `files/gold_polymer/build_polystyrene.jl` (a proof of
+concept, linked), bound to the fixed core, in toluene, 114k atoms: packed with `use_compression 0.5` in 7 min,
+does not converge without it; images by `dev/tutorials/gold_polymer_images.jl`); the biomolecular condensate (polymers: 123 chains of (VPGVG)20 in SIRAH, conformations by
 `files/condensate/build_peptides.jl` (linked as a proof of concept only), in WT4 water: a homogeneous mixture, and a droplet at 400 mg/mL packed with
 `use_compression`, then the water around the fixed chains; images by `dev/tutorials/condensate_images.jl`); the Zika virion; the lipid nanoparticle,
 designed with an AI agent from an illustration (SIRAH, set `packmol_lnp`, files and images by `dev/tutorials/lnp.jl`
@@ -130,7 +133,8 @@ hidden blocks that pack the input file with `Main.pack_tutorial(dir, input; chec
 (e.g. one water in ten, or a slab). Static images (`docs/src/tutorials/images/*.webp`,
 rendered with VMD by the scripts of `dev/tutorials/`: `render.jl`, `lipids.jl` for the
 nanoliposomes, `cake.jl` for the quarter cut of the LNP, Zika and exosome images) only
-for the systems too large for a live view: the nanoliposomes, the condensate, Zika, the
+for the systems too large for a live view: the nanoliposomes, the condensate, the polymer-capped gold
+nanoparticle, Zika, the
 LNP, the exosome and the minimal cell. Tutorials of non-trivial
 systems first show the initial placement (`check_initial_placement`), then the packing.
 The input files of the tutorials are files of `docs/src/tutorials/files/<tutorial>/`, shown in
