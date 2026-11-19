@@ -123,11 +123,14 @@ once.
 
 *A slab of 20 Å through the middle of the cell, with all the water.*
 
-## Step 1: the chains of the droplet
+## The biocondensate droplet
 
-The chains are packed alone, in the sphere, and the water around them, fixed, in the
-second step (`compress` does not take fixed molecules, and the water packs in seconds
-around the chains).
+The droplet is packed in two steps: the chains alone, in the sphere, compressed to
+400 mg/mL, and then the water, around the fixed chains. The water packs in seconds around
+the chains, while packed with them it would be compressed too, at every step of the
+compression of the chains.
+
+### Step 1: the chains
 
 ```@eval
 Main.input_file("files/condensate/droplet_chains.inp")
@@ -141,7 +144,7 @@ molecules, then released. Then the system is compressed in steps back to the sph
 100 Å: the positions of the chains, the sphere and the cell scaled together, and the
 chains packed again from there at each step.
 
-### Check the initial placement first
+#### Check the initial placement first
 
 Uncomment the `check_initial_placement` line of the input file, and run it: the initial
 placement is that of the expanded sphere, with the chains as rigid molecules, before
@@ -151,7 +154,7 @@ any packing:
 
 *The initial placement, in the expanded cell: the rigid chains overlap each other.*
 
-### Packing
+#### Packing
 
 ```
 packmol droplet_chains.inp
@@ -168,7 +171,7 @@ to 60 seconds with 14 threads:
   Compressed to the density of the input in 20 steps (41.3 s).
 ```
 
-## Step 2: the water
+### Step 2: the water
 
 ```@eval
 Main.input_file("files/condensate/droplet_water.inp")
