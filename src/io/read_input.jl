@@ -171,7 +171,7 @@ const _global_keywords = (
     "adjust_constraints_on_init", "add_amber_ter", "amber_ter_preserve", "add_box_sides",
     "ignore_conect", "seed", "avoid_overlap", "screen_log",
     "check_initial_placement", "check", "continue_failed_initial_packing", "pbc", "unitcell",
-    "voxel_place", "compress",
+    "voxel_place", "use_compression",
 )
 
 # Keywords of a `structure ... end structure` block with no use in Packmol.jl
@@ -278,8 +278,8 @@ function _read_packmol_input_lines(lines::Vector{String}, input_file::String, in
             _set_unitcell!(sys, values)
             continue
         end
-        if keyword == "compress"
-            _set_compress!(sys, values)
+        if keyword == "use_compression"
+            _set_use_compression!(sys, values)
             continue
         end
         throw(ArgumentError("Keyword $keyword not recognized"))

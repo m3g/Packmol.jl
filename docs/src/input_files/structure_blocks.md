@@ -117,14 +117,14 @@ rotation about the bond: as many links as needed to keep the geometry of the jun
   lower density, and compressed (see [Packing by compression](@ref)).
 - **Conformations.** Any conformation of the polymer can be given (one is enough), as
   long as it fits, as a rigid molecule, in the region of the polymers: smaller than the
-  periodic cell, and than the region of its constraints (expanded, with `compress`),
+  periodic cell, and than the region of its constraints (expanded, with `use_compression`),
   since the polymers are first packed as rigid molecules. The flexibility of the chains
   does the rest. For example, a single extended conformation of the chains of the
   [Biomolecular condensate](@ref) (304 Å from end to end) packs in their homogeneous
   mixture, in a periodic cube of 260 Å (the chains fit along its diagonals), in a few
   seconds; but not in the droplet, a sphere of 100 Å of radius: rigid, the chains do
   not fit in it, and released into it from outside they fold into each other and jam.
-  Nor does a larger expansion help: packed at 5% of the density (`compress 0.05`, in a
+  Nor does a larger expansion help: packed at 5% of the density (`use_compression 0.05`, in a
   sphere where the extended chains fit), they were compressed only to 41% of it. Coiled
   conformations, of the size of the chains in solution (e.g. from a simulation of the
   free chain), pack in both, the droplet compressed in less than a minute.
@@ -200,7 +200,7 @@ the ends of the chains between -2 and 6 Å (and 2 and -6 Å), and the water beyo
 heads, at the density of the tutorial. The lipid of the structure is extended, 28.9 Å from
 the head to the ends of the chains:
 
-| Heads at (Å) | Rigid | 5 rotatable bonds | 28 rotatable bonds | 28, with `compress 0.5` |
+| Heads at (Å) | Rigid | 5 rotatable bonds | 28 rotatable bonds | 28, with `use_compression 0.5` |
 |---|---|---|---|---|
 | 24 to 27 | packs | packs | | |
 | 20 to 23 | does not pack (f = 65) | does not pack (f = 8) | packs (36 s) | packs (76 s) |
@@ -216,7 +216,7 @@ methyl groups) and the C1–C2 bond of the glycerol:
 ```
 
 In the packed membrane with the heads at 20 to 23 Å, the torsions turned by up to 81°,
-and the heads are 23 to 29 Å from the ends of the chains. With `compress 0.5` (see
+and the heads are 23 to 29 Å from the ends of the chains. With `use_compression 0.5` (see
 [Packing by compression](@ref)), the membrane is first packed 26% thicker, where the
 rigid lipids fit, and then thinned with the lipids flexible: the rigid lipids, compressed
 alone, stop at 82% of the density.

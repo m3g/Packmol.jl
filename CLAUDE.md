@@ -61,7 +61,7 @@ src/
   initial_approximation/  # set_initial_approximation! and its steps; movebad.jl; bounds.jl,
                           # constraint_checks.jl, fixed_molecules.jl, buffers.jl
   packing/                # packmol.jl (API), packing_loop.jl (`_packmol`), active_set.jl, report.jl,
-                          # compression.jl (`compress`: pack expanded, compress in adaptive steps)
+                          # compression.jl (`use_compression`: pack expanded, compress in adaptive steps)
   polymers/               # repeat blocks / polymer_structure: chains of rigid monomers with links
                           # (types, read_polymer_block, topology, link_fg, placement, output, api)
   tools/                  # volume.jl (guess_volume, free_volume), shape.jl (shape_descriptors,
@@ -111,7 +111,7 @@ as regions with set numbers of ions); a gold nanoparticle with
 dodecanethiolates in toluene (core by `files/gold_nanoparticle/gold.jl`, ligands bound and oriented by constraints
 on two atoms); the biomolecular condensate (polymers: 123 chains of (VPGVG)20 in SIRAH, conformations by
 `files/condensate/build_peptides.jl` (linked as a proof of concept only), in WT4 water: a homogeneous mixture, and a droplet at 400 mg/mL packed with
-`compress`, then the water around the fixed chains; images by `dev/tutorials/condensate_images.jl`); the Zika virion; the lipid nanoparticle,
+`use_compression`, then the water around the fixed chains; images by `dev/tutorials/condensate_images.jl`); the Zika virion; the lipid nanoparticle,
 designed with an AI agent from an illustration (SIRAH, set `packmol_lnp`, files and images by `dev/tutorials/lnp.jl`
 and `lnp_images.jl`); the all-atom exosome,
 13.6 million atoms, whose files are the `packmol_zika` and `packmol_exosome` sets of MolSimTestFiles, the
@@ -431,7 +431,7 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       rad; moving a polymer whole was destructive). Output: polymers whole (PBC: placed in the cell by
       their center), in the order of their file, chain per polymer, CONECT of the file. Conformations:
       any, if rigid they fit the cell and the constraints (a single extended (VPGVG)20 of 304 Å packs the
-      homogeneous 260 Å cube in 4 s; not the 100 Å droplet, nor with compress 0.05: stops at 41%). Not supported: fixed, restart_from, constrain_rotation,
+      homogeneous 260 Å cube in 4 s; not the 100 Å droplet, nor with use_compression 0.05: stops at 41%). Not supported: fixed, restart_from, constrain_rotation,
       voxel_place.
 - [x] Rotatable bonds (`src/polymers/rotatable.jl`): `rotatable i j [i j ...]` and `bond_distance d` in a
       structure block (Julia `flexible_structure(file; number, rotatable, bond_distance)`), chosen by hand.
@@ -441,10 +441,10 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       fragments within 3 bonds. Same machinery as polymers (`Polymer` with fragments as atom lists, links
       between any fragments, output in file order). Thin bilayers (POPC of the bilayer tutorial, heads in a
       3 Å band, chain ends in [-2, 6]): heads at 20-23 Å (about real) rigid and 5-9 rotatable bonds fail,
-      all 28 single C–C bonds of the tails (+ glycerol C1–C2) pack (36 s; 76 s with compress 0.5);
-      heads at 17-20 Å, 28 + compress reach 96% of the density. The area per lipid is not the challenge
+      all 28 single C–C bonds of the tails (+ glycerol C1–C2) pack (36 s; 76 s with use_compression 0.5);
+      heads at 17-20 Å, 28 + use_compression reach 96% of the density. The area per lipid is not the challenge
       (rigid lipids tilt); the thickness is.
-- [x] Packing by compression (`compress [<fraction> [<step>]]`, defaults 0.5 and 0.05; Julia `compress = true`,
+- [x] Packing by compression (`use_compression [<fraction> [<step>]]`, defaults 0.5 and 0.05; Julia `use_compression = true`,
       `0.5` or `(0.5, 0.05)`;
       `src/packing/compression.jl`): constraints and cell expanded by fraction^(-1/3) about the cell center
       (origin without PBC), packed, then scaled back in steps (free molecules moved rigidly, polymers by their

@@ -37,7 +37,7 @@ const _packmol_global_options = (
     :(continue_failed_initial_packing::Union{Nothing,Bool} = nothing),
     :(restart_from::Union{Nothing,AbstractString} = nothing),
     :(voxel_place::Union{Nothing,Bool,Integer} = nothing),
-    :(compress = nothing),
+    :(use_compression = nothing),
     :(pbc = nothing),
     :(unitcell = nothing),
 )
@@ -109,7 +109,7 @@ packmol()
         tolerance_precision, constraint_precision, maxit, nloop, movefrac, nthreads, seed,
         max_random_init, adjust_constraints_on_init, add_amber_ter, amber_ter_preserve,
         add_box_sides, periodic_boundary_style, connect, avoid_overlap, screen_log, check_initial_placement,
-        continue_failed_initial_packing, restart_from, voxel_place, compress, pbc, unitcell,
+        continue_failed_initial_packing, restart_from, voxel_place, use_compression, pbc, unitcell,
     )
     # The voxel placement of Bentopy first: the system becomes that of the molecules that
     # fit, starting from their positions
@@ -126,7 +126,7 @@ packmol()
             active_radius = something(active_radius, 2 * packmol_system.tolerance),
             movebad_tolerance,
         )
-        isnothing(packmol_system.compress) || return _packmol_compressed(packmol_system; run_options...)
+        isnothing(packmol_system.use_compression) || return _packmol_compressed(packmol_system; run_options...)
         return _packmol(packmol_system; run_options...)
     finally
         _ntasks[] = ntasks
@@ -157,7 +157,7 @@ be given as a keyword argument, with the name of the keyword: `tolerance`, `outp
 `writeout`, `tolerance_precision`, `constraint_precision`, `nthreads`, `avoid_overlap`, `screen_log`,
 `connect`, `add_box_sides`, `add_amber_ter`, `amber_ter_preserve`, `periodic_boundary_style`,
 `max_random_init`, `adjust_constraints_on_init`, `check_initial_placement`,
-`continue_failed_initial_packing`, `restart_from`, `voxel_place`, `compress` (`compress = true`, `0.5`, or
+`continue_failed_initial_packing`, `restart_from`, `voxel_place`, `use_compression` (`use_compression = true`, `0.5`, or
 `(0.5, 0.05)` with the initial step: see [Packing by compression](@ref)), `pbc` and `unitcell`. They are set in
 `packmol_system`, replacing the values of the input file (or of the constructor), before
 the packing. For example, `packmol(system; tolerance = 2.5, maxit = 50, output = "out.pdb")`.

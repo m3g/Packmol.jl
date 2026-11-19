@@ -21,7 +21,7 @@ Version 100.0.1-DEV
   structure block (`flexible_structure` in Julia) cuts the molecule into rigid fragments at
   those bonds, linked such that they turn about the bonds only. The bonds are those of the
   CONECT records, or computed from the distances (`bond_distance <d>`).
-- ![FEATURE][badge-feature] `compress [<fraction> [<step>]]` (Packmol.jl only; `compress` keyword
+- ![FEATURE][badge-feature] `use_compression [<fraction> [<step>]]` (Packmol.jl only; `use_compression` keyword
   argument in Julia): packs the system at a fraction of its density (default 0.5), with the
   constraints and the periodic cell expanded, and compresses it in adaptive steps to the
   density of the input, for systems too dense to pack from a random placement. Fixed

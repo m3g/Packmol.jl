@@ -3,15 +3,16 @@
 Some systems do not pack from a random placement at their density: long chains,
 polymers, crowded large molecules. The molecules jam before they fill the space, each
 blocked by its neighbors, while the same molecules pack in seconds at a lower density.
-The keyword `compress` (Packmol.jl only) packs such systems at a lower density and then
-compresses them, in steps, to the density of the input:
+The keyword `use_compression` (Packmol.jl only) packs such systems at a lower density, and
+compresses them from there, in steps, to the density of the input:
 
 ```
-compress              # pack at half the density, then compress
+use_compression       # pack at half the density, then compress
 ```
 
 The input describes the system at its density (the constraints, the periodic cell, the
-numbers of molecules), and `compress [<fraction> [<step>]]` takes two optional values:
+numbers of molecules), and `use_compression [<fraction> [<step>]]` takes two optional
+values:
 
 - `fraction` (default `0.5`): the fraction of that density at which the system is first
   packed. With `0.5`, the system is packed in twice its volume, at half the density; with
@@ -19,7 +20,7 @@ numbers of molecules), and `compress [<fraction> [<step>]]` takes two optional v
 - `step` (default `0.05`): the initial step of the compression, the fraction by which
   the linear dimensions shrink at each step (5%).
 
-`compress` alone is `compress 0.5 0.05`:
+`use_compression` alone is `use_compression 0.5 0.05`:
 
 1. The constraints and the periodic cell are expanded by `fraction^(-1/3)` (by 1.26 for
    `0.5`), about the center of the cell (the origin, without periodic boundary
@@ -50,9 +51,9 @@ Small steps matter: compressed in steps of 3%, without the adaptive step, they s
 263 mg/mL (the chains pushed into each other by a large step get threaded through each
 other's monomers), and in steps of 0.5% they reached 400 mg/mL in 70 steps.
 
-In Julia, `compress` is a keyword argument of [`packmol`](@ref) and of
-[`PackmolSystem`](@ref): `compress = true` (the defaults), `compress = 0.3` (the
-fraction), or `compress = (0.3, 0.02)` (the fraction and the initial step).
+In Julia, `use_compression` is a keyword argument of [`packmol`](@ref) and of
+[`PackmolSystem`](@ref): `use_compression = true` (the defaults), `use_compression = 0.3` (the
+fraction), or `use_compression = (0.3, 0.02)` (the fraction and the initial step).
 
 ## Periodic cells and fixed molecules
 
@@ -74,5 +75,5 @@ nanoparticle or a protein), since the expanded cell and constraints contain them
       to fit inside the fixed shell of proteins, crossed by their transmembrane segments:
       expanded, the shells of the membrane would be beyond the proteins, and the lipids
       packed there would be compressed through them. In such systems, pack
-      the free molecules whose regions are tied to the fixed ones without `compress`.
+      the free molecules whose regions are tied to the fixed ones without `use_compression`.
     - Not with `restart_from`.

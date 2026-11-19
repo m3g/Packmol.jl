@@ -31,18 +31,18 @@ end
     water = TestFiles.test_file("structure_files/water.pdb")
     dir = mktempdir()
     cp(water, joinpath(dir, "water.pdb"))
-    input = joinpath(dir, "compress.inp")
+    input = joinpath(dir, "use_compression.inp")
     write(input, """
         tolerance 2.0
         output compress_out.pdb
-        compress 0.5
+        use_compression 0.5
         structure water.pdb
           number 300
           inside sphere 0. 0. 0. 14.
         end structure
         """)
     sys = read_packmol_input(input)
-    @test sys.compress == (0.5, 0.05)
+    @test sys.use_compression == (0.5, 0.05)
     sys = redirect_stdout(devnull) do
         packmol(sys)
     end
@@ -52,18 +52,18 @@ end
     @test isfile(joinpath(dir, "compress_out.pdb"))
     # periodic cell, and from the Julia API
     sys = redirect_stdout(devnull) do
-        packmol(input; compress = (0.7, 0.1), pbc = [-15, -15, -15, 15, 15, 15])
+        packmol(input; use_compression = (0.7, 0.1), pbc = [-15, -15, -15, 15, 15, 15])
     end
     @test sys.status == :packing_ready
     @test sys.unitcell ≈ [30.0 0 0; 0 30.0 0; 0 0 30.0]
-    # the defaults: `compress` alone, or `compress = true`
-    write(input, "output x.pdb\ncompress\nstructure water.pdb\n number 1\nend structure\n")
-    @test read_packmol_input(input).compress == (0.5, 0.05)
+    # the defaults: `use_compression` alone, or `use_compression = true`
+    write(input, "output x.pdb\nuse_compression\nstructure water.pdb\n number 1\nend structure\n")
+    @test read_packmol_input(input).use_compression == (0.5, 0.05)
     st = structure_type(joinpath(dir, "water.pdb"); number = 1)
-    @test PackmolSystem([st]; output = "x.pdb", compress = true).compress == (0.5, 0.05)
+    @test PackmolSystem([st]; output = "x.pdb", use_compression = true).use_compression == (0.5, 0.05)
     # errors
-    @test_throws ArgumentError packmol(input; compress = 1.5)
-    write(input, "output x.pdb\ncompress 0.5 2.0\nstructure water.pdb\n number 1\nend structure\n")
+    @test_throws ArgumentError packmol(input; use_compression = 1.5)
+    write(input, "output x.pdb\nuse_compression 0.5 2.0\nstructure water.pdb\n number 1\nend structure\n")
     @test_throws ArgumentError read_packmol_input(input)
 end
 
@@ -78,7 +78,7 @@ end
         tolerance 2.0
         output compress_fixed_out.pdb
         pbc dodecahedral 0. 0. 0. 30.
-        compress
+        use_compression
         structure water.pdb
           number 1
           center

@@ -67,10 +67,10 @@
     # src/tools/voxel_place.jl), with this `max_tries_mult` (input keyword `voxel_place
     # [max_tries_mult]`); `nothing`: not used
     voxel_place::Union{Nothing,Int} = nothing
-    # Pack at a fraction of the density, then compress (input keyword `compress [<fraction>
+    # Pack at a fraction of the density, then compress (input keyword `use_compression [<fraction>
     # [<initial step>]]`, see packing/compression.jl): `(fraction, initial step)`, or
     # `nothing`
-    compress::Union{Nothing,Tuple{T,T}} = nothing
+    use_compression::Union{Nothing,Tuple{T,T}} = nothing
     # Whole-system restart (Fortran's `restart_from` with no structure type,
     # i.e. index 0): `nothing` means unset. When
     # `restart_from` is set, packmol() skips the whole initial-approximation
@@ -175,7 +175,7 @@ the output file path; any other `PackmolSystem` field (`tolerance`, `seed`,
 
 The vector can also hold vectors of structure types (the conformations of a molecule,
 from `structure_type`) and polymers (from [`polymer_structure`](@ref)), as
-`PackmolSystem([chains, water]; ...)`. `compress = true` (or `0.5`, or `(0.5, 0.05)`, with the
+`PackmolSystem([chains, water]; ...)`. `use_compression = true` (or `0.5`, or `(0.5, 0.05)`, with the
 initial step) packs the system at half its density and then compresses it (see
 [Packing by compression](@ref)).
 """
@@ -198,14 +198,14 @@ function PackmolSystem(
     if !isnothing(unitcell_raw)
         kw = merge(kw, (; wigner_seitz_cell=_is_wigner_seitz_cell(Matrix{T}(unitcell_raw))))
     end
-    # `compress = true`, `0.5` or `(0.5, 0.05)`: the fraction of the density and the initial step
-    compress = get(kw, :compress, nothing)
-    kw = Base.structdiff(kw, NamedTuple{(:compress,)})
+    # `use_compression = true`, `0.5` or `(0.5, 0.05)`: the fraction of the density and the initial step
+    use_compression = get(kw, :use_compression, nothing)
+    kw = Base.structdiff(kw, NamedTuple{(:use_compression,)})
     sys = PackmolSystem{D,T}(;
         structure_types, atoms, molecule_positions, nmols,
         input_file, output_file=output, kw...,
     )
-    isnothing(compress) || _set_compress!(sys, _keyword_values(compress))
+    isnothing(use_compression) || _set_use_compression!(sys, _keyword_values(use_compression))
     return sys
 end
 

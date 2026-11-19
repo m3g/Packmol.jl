@@ -111,7 +111,7 @@ function _set_global_options!(sys::PackmolSystem{D,T};
     continue_failed_initial_packing::Union{Nothing,Bool} = nothing,
     restart_from::Union{Nothing,AbstractString} = nothing,
     voxel_place::Union{Nothing,Bool,Integer} = nothing,
-    compress = nothing,
+    use_compression = nothing,
     pbc = nothing,
     unitcell = nothing,
 ) where {D,T}
@@ -144,7 +144,7 @@ function _set_global_options!(sys::PackmolSystem{D,T};
     if !isnothing(voxel_place)
         sys.voxel_place = voxel_place isa Bool ? (voxel_place ? 1000 : nothing) : Int(voxel_place)
     end
-    isnothing(compress) || _set_compress!(sys, _keyword_values(compress))
+    isnothing(use_compression) || _set_use_compression!(sys, _keyword_values(use_compression))
     if !isnothing(pbc)
         _set_pbc!(sys, _keyword_values(pbc))
     elseif !isnothing(unitcell)
@@ -164,37 +164,37 @@ function _set_global_options!(sys::PackmolSystem{D,T};
 end
 
 #
-# `compress [<fraction> [<initial step>]]`: pack at `fraction` of the density (0 < fraction
+# `use_compression [<fraction> [<initial step>]]`: pack at `fraction` of the density (0 < fraction
 # < 1; default 0.5), then compress, with steps starting at `initial step` (default 0.05:
-# 5% of the linear dimensions); `compress = true` (Julia) takes the defaults, and
-# `compress = false` disables it
+# 5% of the linear dimensions); `use_compression = true` (Julia) takes the defaults, and
+# `use_compression = false` disables it
 #
 const _compress_default_fraction = 0.5
 const _compress_default_step = 0.05
-function _set_compress!(sys::PackmolSystem{D,T}, values) where {D,T}
+function _set_use_compression!(sys::PackmolSystem{D,T}, values) where {D,T}
     if length(values) == 1 && string(values[1]) == "false"
-        sys.compress = nothing
+        sys.use_compression = nothing
         return sys
     end
     if isempty(values) || (length(values) == 1 && string(values[1]) == "true")
-        sys.compress = (T(_compress_default_fraction), T(_compress_default_step))
+        sys.use_compression = (T(_compress_default_fraction), T(_compress_default_step))
         return sys
     end
     length(values) <= 2 || throw(ArgumentError("""\n
-        compress takes, optionally, the fraction of the density at which to pack (default 0.5),
-        and the initial step of the compression (default 0.05): compress [0.5 [0.05]]
+        use_compression takes, optionally, the fraction of the density at which to pack (default 0.5),
+        and the initial step of the compression (default 0.05): use_compression [0.5 [0.05]]
 
     """))
-    fraction = _parse_value(T, "compress", string(values[1]))
-    step = length(values) == 2 ? _parse_value(T, "compress", string(values[2])) : T(_compress_default_step)
+    fraction = _parse_value(T, "use_compression", string(values[1]))
+    step = length(values) == 2 ? _parse_value(T, "use_compression", string(values[2])) : T(_compress_default_step)
     (zero(T) < fraction < one(T)) || throw(ArgumentError("""\n
-        compress: the fraction of the density must be between 0 and 1, got $fraction.
+        use_compression: the fraction of the density must be between 0 and 1, got $fraction.
 
     """))
     (zero(T) < step < one(T)) || throw(ArgumentError("""\n
-        compress: the initial step must be between 0 and 1, got $step.
+        use_compression: the initial step must be between 0 and 1, got $step.
 
     """))
-    sys.compress = (fraction, step)
+    sys.use_compression = (fraction, step)
     return sys
 end

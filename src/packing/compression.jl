@@ -1,5 +1,5 @@
 #
-# Packing by compression (`compress` keyword): the system is packed at a lower density,
+# Packing by compression (`use_compression` keyword): the system is packed at a lower density,
 # with its constraints and periodic cell expanded, and then compressed back in steps,
 # each packed from the previous one. Packings too dense to converge from a random
 # placement (long rigid molecules, or polymers, that jam) converge this way.
@@ -36,7 +36,7 @@ _scaled_constraint(c::Ellipsoid{P,T}, s::T, o::SVector{3,T}) where {P,T} =
 _scaled_constraint(c::Plane{P,T}, s::T, o::SVector{3,T}) where {P,T} =
     Plane{P,T}(c.normal, s * c.d + (1 - s) * dot(c.normal, o), c.weight)
 _scaled_constraint(c, ::Any, ::Any) = throw(ArgumentError("""\n
-    compress: the constraints of type $(nameof(typeof(c))) cannot be scaled (supported: boxes,
+    use_compression: the constraints of type $(nameof(typeof(c))) cannot be scaled (supported: boxes,
     cubes, spheres, cylinders, ellipsoids and planes).
 
 """))
@@ -44,11 +44,11 @@ _scaled_constraint(c, ::Any, ::Any) = throw(ArgumentError("""\n
 # Whether the geometry of the system can be scaled (an error otherwise)
 function _check_compress(sys::PackmolSystem{D,T}) where {D,T}
     D == 3 || throw(ArgumentError("""\n
-        compress is supported in three dimensions only.
+        use_compression is supported in three dimensions only.
 
     """))
     isnothing(sys.restart_from) || throw(ArgumentError("""\n
-        compress is not supported with restart_from.
+        use_compression is not supported with restart_from.
 
     """))
     o = zero(SVector{D,T})
@@ -120,7 +120,7 @@ end
 # `run_options` are the keyword arguments of `_packmol`.
 #
 function _packmol_compressed(sys::PackmolSystem{D,T}; run_options...) where {D,T}
-    fraction, initial_step = something(sys.compress)
+    fraction, initial_step = something(sys.use_compression)
     _check_compress(sys)
     o = _compress_center(sys)
     expansion = T(fraction)^(-one(T) / 3)

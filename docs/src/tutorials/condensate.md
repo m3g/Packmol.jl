@@ -136,8 +136,8 @@ compression of the chains.
 Main.input_file("files/condensate/droplet_chains.inp")
 ```
 
-With `compress 0.5`, the chains are first packed at half the density (0.5 is the
-fraction of the density, and the default: `compress` alone is the same). The sphere and
+With `use_compression 0.5`, the chains are first packed at half the density (0.5 is the
+fraction of the density, and the default: `use_compression` alone is the same). The sphere and
 the cell are expanded by 2^(1/3), to a sphere of 126 Å, in a cube of 328 Å, twice the
 volume, and the chains are packed there, at 200 mg/mL: as rigid
 molecules, then released. Then the system is compressed in steps back to the sphere of
@@ -229,7 +229,7 @@ droplet_chains = PackmolSystem(
     output = "droplet_chains.pdb",
     tolerance = 2.0,
     unitcell = [260. 0. 0.; 0. 260. 0.; 0. 0. 260.],
-    compress = 0.5,
+    use_compression = 0.5,
 )
 packmol(droplet_chains)
 
