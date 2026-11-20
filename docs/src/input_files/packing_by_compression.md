@@ -30,8 +30,9 @@ values:
    up to three times.
 2. At each step, the geometry is scaled by `1 - step` about the same center: the
    constraints, the cell, and the positions of the free molecules, each moved as a whole
-   (the center of mass of a molecule is scaled; a polymer moves with the center of its
-   monomers). Fixed molecules stay where they are. The system is packed again, from there, for up to 100 loops.
+   (the center of mass of a molecule is scaled; a flexible molecule, a polymer or a
+   molecule with rotatable bonds, moves with the center of its fragments). Fixed
+   molecules stay where they are. The system is packed again, from there, for up to 100 loops.
 3. When a step does not converge, the system breathes: the packing of the failed step is
    expanded to one step below the last density that converged, and packed there (a
    relaxation), keeping the rearrangements the failed step made. The compression
@@ -56,18 +57,22 @@ The report shows each step:
   Compressed to the density of the input in 15 steps (28.0 s).
 ```
 
-Undoing a failed step, rather than relaxing it, stopped the compression of the particle of
-the [Lignin particle in acetone and water](@ref) tutorial at about 90% of the density in
-two of three runs: the next steps failed at the same configuration. With the
-relaxations, it reached the density in all of 11 runs.
+Undoing a failed step and halving it, without relaxing it, stopped the compression of the
+particle of the [Lignin particle in acetone and water](@ref) tutorial short of the
+density in most runs: the next steps failed at the same configuration. Relaxing at
+every failed step, it reached the density in all runs (5 of 5 seeds), while relaxing
+only as a last resort, once the step had shrunk below its minimum, failed in one of five
+and took 1.6 times longer.
 
-The compression works with rigid molecules and with [Polymers](@ref). With polymers
-it goes much further: the chains of the condensate of the tutorial
+The compression works with rigid molecules and with flexible ones: [Polymers](@ref) and
+molecules with [Rotatable bonds](@ref). With flexible molecules it goes much further, as
+they change their shape to fill the space: the chains of the condensate of the tutorial
 [Biomolecular condensate](@ref), packed as rigid molecules, jam at about 220 mg/mL,
-while released as flexible chains they are compressed to 400 mg/mL in about 40 seconds.
-Small steps matter: compressed in steps of 3%, without the adaptive step, they stopped at
-263 mg/mL (the chains pushed into each other by a large step get threaded through each
-other's monomers), and in steps of 0.5% they reached 400 mg/mL in 70 steps.
+while as flexible chains they are compressed to 400 mg/mL in about a minute; the lignin
+oligomers of the [Lignin particle in acetone and water](@ref), flexible at every
+rotatable bond (`rotatable all`), reach the density of lignin, 1.30 g/cm³. Large steps
+push the flexible molecules into each other, and leave them entangled (chains threaded
+through the fragments of others), hence the adaptive step and the relaxations.
 
 In Julia, `use_compression` is a keyword argument of [`packmol`](@ref) and of
 [`PackmolSystem`](@ref): `use_compression = true` (the defaults), `use_compression = 0.3` (the
