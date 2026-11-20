@@ -35,6 +35,15 @@ Relative to the legacy (Fortran) Packmol:
 - **mmCIF** files, for structures, outputs and restarts, and restarts from the output of a
   previous run.
 - **Several conformations** of a molecule, from a structure file with several models.
+- **Flexible molecules**: [Rotatable bonds](@ref) about which the molecules turn while
+  they are packed (chosen by hand, or all of them with `rotatable all`), and
+  [Polymers](@ref), chains of rigid monomers joined by links or by rotatable bonds (see
+  the [lignin particle](tutorials/lignin.md), the
+  [polymer-capped gold nanoparticle](tutorials/gold_polymer.md) and the
+  [biomolecular condensate](tutorials/condensate.md)).
+- **[Packing by compression](@ref)** (`use_compression`): dense systems, which do not pack
+  from a random placement, are packed at a lower density and compressed, in steps, to the
+  density of the input.
 - **Volume estimates**, to compute the numbers of molecules (`--guess-volume`,
   `--free-volume`), and `check_initial_placement`, to check the constraints before packing.
 - **A Julia API**: systems defined without input files, **recipes** for solvated systems

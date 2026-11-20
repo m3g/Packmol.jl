@@ -35,6 +35,8 @@ Version 100.1.0-DEV
 - ![INFO][badge-info] Documentation: the tutorial "Lignin particle in acetone and water": 70
   flexible oligomers of spruce lignin (built with LigninBuilder), with `rotatable all`,
   packed by compression at 1.19 g/cm³, then solvated; and dispersed in the solvent.
+- ![INFO][badge-info] Documentation: the flexible molecules (rotatable bonds, polymers) and the
+  packing by compression in "New in Packmol.jl" of the home page.
 - ![INFO][badge-info] Documentation: the tutorial "Polymer-capped gold nanoparticle": 57
   flexible chains of thiol-terminated polystyrene (all atoms) bound to a fixed gold core, in
   toluene, packed by compression around the core.
