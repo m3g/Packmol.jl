@@ -12,6 +12,8 @@
 #           rotatable 18 1       # or: the bond of atom 18 to atom 1 of the next monomer,
 #                                # with the links that keep its length and angles
 #       end repeat
+#     (`rotatable i j ...` or `rotatable all`, outside repeat blocks: the rotatable bonds
+#     of a molecule, see rotatable.jl)
 #       bond_distance 1.9        # the bonds (for `rotatable`), if no CONECT records
 #       cyclic                   # the last monomer linked to the first one
 #     end structure
@@ -125,6 +127,9 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
 
             """))
             push!(block[end].rotatable, (a, b))
+        elseif keyword == "rotatable" && length(words) == 2 && words[2] == "all"
+            # every rotatable bond, found from the bonds (`_all_rotatable_bonds`)
+            push!(rotatable, (0, 0))
         elseif keyword == "rotatable"
             (length(words) >= 3 && isodd(length(words))) || throw(ArgumentError("""\n
                 rotatable requires pairs of bonded atoms: $(strip(line))

@@ -33,6 +33,13 @@
     @test sum(length, bonds) ÷ 2 == 133 # a tree of 134 atoms (no pairs of hydrogens)
     _, fragments = _fragments(bonds, [(25, 28), (33, 45), (57, 60), (42, 92), (101, 104)])
     @test length.(fragments) == [27, 17, 15, 32, 12, 31]
+    # all the rotatable bonds: the bonds of heavy atoms out of rings, with another heavy atom
+    # at each end, but the double bond of the oleoyl chain
+    all_bonds = Packmol._all_rotatable_bonds(st, bonds)
+    @test length(all_bonds) == 41
+    names = [(st.atoms[i].name, st.atoms[j].name) for (i, j) in all_bonds]
+    @test ("C28", "C29") in names && ("C210", "C211") in names
+    @test !(("C29", "C210") in names) && !(("C210", "C29") in names)
     # a bond in a ring cannot rotate: a ring of the beads of the chain
     ring = joinpath(PolymerFiles.dir, "ring.pdb")
     open(ring, "w") do io
@@ -44,6 +51,50 @@
     end
     @test_throws ArgumentError PackmolSystem([flexible_structure(ring; number = 1, rotatable = [(1, 2)], bond_distance = 1.6)];
         output = joinpath(PolymerFiles.dir, "ring_out.pdb"))
+end
+
+@testitem "rotatable all" setup=[PolymerFiles] begin
+    using Packmol
+    using Packmol: read_packmol_input
+    # POPC: 41 rotatable bonds, from the input file and from Julia
+    popc = joinpath(Packmol.RecipesDirectory, "lipids", "popc.pdb")
+    cp(popc, joinpath(PolymerFiles.dir, "popc.pdb"); force = true)
+    input = joinpath(PolymerFiles.dir, "rot_all.inp")
+    block(lines) = (write(input, "tolerance 2.0\noutput rot_all_out.pdb\nstructure popc.pdb\n number 2\n$lines\nend structure\n");
+        input)
+    sys = redirect_stdout(devnull) do
+        read_packmol_input(block("bond_distance 1.8\nrotatable all"))
+    end
+    p = only(sys.polymers)
+    @test Packmol._nmonomers(p) == 42
+    # with a bond given too (already among those found: not repeated)
+    sys = redirect_stdout(devnull) do
+        read_packmol_input(block("bond_distance 1.8\nrotatable all\nrotatable 25 28"))
+    end
+    @test Packmol._nmonomers(only(sys.polymers)) == 42
+    sys = redirect_stdout(devnull) do
+        PackmolSystem([flexible_structure(popc; number = 2, rotatable = :all, bond_distance = 1.8)];
+            output = joinpath(PolymerFiles.dir, "rot_all_out.pdb"))
+    end
+    @test Packmol._nmonomers(only(sys.polymers)) == 42
+    @test_throws ArgumentError flexible_structure(popc; number = 2, rotatable = :some, bond_distance = 1.8)
+    # a molecule with no rotatable bonds (toluene: only the methyl group turns, hydrogens)
+    toluene = joinpath(PolymerFiles.dir, "toluene.pdb")
+    write(toluene, """
+        HETATM    1  C1  TOL    1       2.490  -0.009  -0.012  1.00  0.00           C
+        HETATM    2  C2  TOL    1       0.990   0.003  -0.002  1.00  0.00           C
+        HETATM    3  C3  TOL    1       0.280   1.209   0.001  1.00  0.00           C
+        HETATM    4  C4  TOL    1      -1.115   1.211   0.009  1.00  0.00           C
+        HETATM    5  C5  TOL    1      -1.818   0.003   0.013  1.00  0.00           C
+        HETATM    6  C6  TOL    1      -1.116  -1.205   0.009  1.00  0.00           C
+        HETATM    7  C7  TOL    1       0.281  -1.204   0.001  1.00  0.00           C
+        HETATM    8  H1  TOL    1       2.866   0.931  -0.427  1.00  0.00           H
+        HETATM    9  H2  TOL    1       2.876  -0.135   1.003  1.00  0.00           H
+        HETATM   10  H3  TOL    1       2.856  -0.833  -0.629  1.00  0.00           H
+        END
+        """)
+    write(input, "tolerance 2.0\noutput rot_all_out.pdb\nstructure toluene.pdb\n number 2\n bond_distance 1.6\n rotatable all\nend structure\n")
+    @test_throws "no rotatable bonds found" read_packmol_input(input)
 end
 
 @testitem "packing of molecules with rotatable bonds" setup=[PolymerFiles] begin

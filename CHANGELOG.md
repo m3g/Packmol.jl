@@ -27,6 +27,16 @@ Version 100.1.0-DEV
   constraints and the periodic cell expanded, and compresses it in adaptive steps to the
   density of the input, for systems too dense to pack from a random placement. Fixed
   molecules stay in place; all periodic cells are supported.
+- ![FEATURE][badge-feature] `rotatable all` (Julia: `flexible_structure(...; rotatable = :all)`):
+  every rotatable bond of a molecule, found from its bonds: not in rings, between heavy
+  atoms with other heavy neighbors, and single for sure from the numbers of bonds of the
+  atoms (bonds between two carbon or nitrogen atoms with fewer than four bonds do not
+  turn, but those between aromatic rings). For all-atom structures with all their hydrogens.
+- ![INFO][badge-info] Documentation: the tutorial "Lignin particle in acetone and water": 70
+  flexible oligomers of spruce lignin (built with LigninBuilder), with `rotatable all`,
+  packed by compression at 1.19 g/cm³, then solvated; and dispersed in the solvent.
+- ![INFO][badge-info] Documentation: the flexible molecules (rotatable bonds, polymers) and the
+  packing by compression in "New in Packmol.jl" of the home page.
 - ![INFO][badge-info] Documentation: the tutorial "Polymer-capped gold nanoparticle": 57
   flexible chains of thiol-terminated polystyrene (all atoms) bound to a fixed gold core, in
   toluene, packed by compression around the core.

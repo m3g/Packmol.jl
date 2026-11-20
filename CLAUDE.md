@@ -112,7 +112,10 @@ dodecanethiolates in toluene (core by `files/gold_nanoparticle/gold.jl`, ligands
 on two atoms); the polymer-capped gold nanoparticle (57 chains of thiol-terminated polystyrene, all atoms,
 flexible at every backbone bond, conformations by `files/gold_polymer/build_polystyrene.jl` (a proof of
 concept, linked), bound to the fixed core, in toluene, 114k atoms: packed with `use_compression 0.5` in 7 min,
-does not converge without it; images by `dev/tutorials/gold_polymer_images.jl`); the biomolecular condensate (polymers: 123 chains of (VPGVG)20 in SIRAH, conformations by
+does not converge without it; images by `dev/tutorials/gold_polymer_images.jl`); the lignin particle in acetone/water
+(70 oligomers of spruce lignin, 10 types, built and minimized by `files/lignin/build_lignin.tcl` with LigninBuilder
+and NAMD (bondedCUDA 0), linked; `rotatable all`; particle in a sphere of 34 Å at 1.19 g/cm³ with `use_compression 0.5`
+in 80 s (33 Å stopped at 90%), then the solvent around it fixed; images by `dev/tutorials/lignin_images.jl`); the biomolecular condensate (polymers: 123 chains of (VPGVG)20 in SIRAH, conformations by
 `files/condensate/build_peptides.jl` (linked as a proof of concept only), in WT4 water: a homogeneous mixture, and a droplet at 400 mg/mL packed with
 `use_compression`, then the water around the fixed chains; images by `dev/tutorials/condensate_images.jl`); the Zika virion; the lipid nanoparticle,
 designed with an AI agent from an illustration (SIRAH, set `packmol_lnp`, files and images by `dev/tutorials/lnp.jl`
@@ -134,7 +137,7 @@ hidden blocks that pack the input file with `Main.pack_tutorial(dir, input; chec
 rendered with VMD by the scripts of `dev/tutorials/`: `render.jl`, `lipids.jl` for the
 nanoliposomes, `cake.jl` for the quarter cut of the LNP, Zika and exosome images) only
 for the systems too large for a live view: the nanoliposomes, the condensate, the polymer-capped gold
-nanoparticle, Zika, the
+nanoparticle, the lignin particle, Zika, the
 LNP, the exosome and the minimal cell. Tutorials of non-trivial
 systems first show the initial placement (`check_initial_placement`), then the packing.
 The input files of the tutorials are files of `docs/src/tutorials/files/<tutorial>/`, shown in
@@ -439,7 +442,10 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       homogeneous 260 Å cube in 4 s; not the 100 Å droplet, nor with use_compression 0.05: stops at 41%). Not supported: fixed, restart_from, constrain_rotation,
       voxel_place.
 - [x] Rotatable bonds (`src/polymers/rotatable.jl`): `rotatable i j [i j ...]` and `bond_distance d` in a
-      structure block (Julia `flexible_structure(file; number, rotatable, bond_distance)`), chosen by hand.
+      structure block (Julia `flexible_structure(file; number, rotatable, bond_distance)`), chosen by hand,
+      or `rotatable all` (`rotatable = :all`, the sentinel pair (0, 0)): bonds not in rings, heavy atoms with
+      other heavy neighbors, not between two C/N with < 4 bonds unless both aromatic (biaryls); requires all
+      hydrogens (error if none); matches the CHARMM types of the lignin oligomers but the aryl-vinyl bonds.
       Bonds from CONECT or from distances (no H–H pairs: 1.7-1.9 Å finds the 133 bonds of POPC); fragments
       = bond graph cut at the rotatable bonds (ring bonds an error); links: the bond and the bonds of each
       end to its neighbors in its fragment (length and angles kept, torsion free); exclusions: different

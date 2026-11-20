@@ -202,6 +202,7 @@ end structure
 | Keyword | Meaning |
 |---|---|
 | `rotatable <i> <j> [<i> <j> ...]` | Rotatable bonds: pairs of bonded atoms, on one or several lines. The indices are the positions of the atoms in the structure file, from 1 (the first atom of the file is 1, whatever its serial number). A bond in a ring cannot rotate (an error). |
+| `rotatable all` | Every rotatable bond of the molecule, found from its bonds (see below; for all-atom models with all their hydrogens). Other `rotatable` lines can add bonds to them. |
 | `bond_distance <d>` | The bonds of the molecule are the pairs of atoms closer than `d` Å in the structure (except pairs of hydrogens), instead of the `CONECT` records of the file. `1.8` finds the bonds of organic molecules with hydrogens (the hydrogens of a CH₂ are 1.75 Å apart, as close as some bonds). |
 
 The rotatable bonds are chosen by hand: each one adds a rigid fragment, with six
@@ -241,4 +242,40 @@ and the heads are 23 to 29 Å from the ends of the chains. With `use_compression
 rigid lipids fit, and then thinned with the lipids flexible: the rigid lipids, compressed
 alone, stop at 82% of the density.
 
-In Julia, the molecules with rotatable bonds are given by [`flexible_structure`](@ref).
+### All the rotatable bonds
+
+With `rotatable all`, the rotatable bonds are found from the bonds of the molecule: the
+bonds not in rings, between atoms that are not hydrogens and have each another bond to
+an atom that is not a hydrogen (the bonds that turn more than hydrogen atoms), and that
+are single for sure. The order of a bond is not in the structure file: it is deduced
+from the numbers of bonds of its atoms. A carbon or nitrogen atom with fewer than four
+bonds is, or may be, unsaturated (an amine nitrogen has three bonds, as an amide
+nitrogen), and a bond between two such atoms does not turn: double and triple bonds,
+amide bonds, and the bonds that are single but conjugated or might be double (aryl–vinyl,
+aryl–carbonyl). The exception is the bonds between aromatic rings (rings of such atoms,
+as in biphenyl), which turn. The bonds to saturated atoms turn: to carbon atoms with four
+bonds, and to oxygen, sulfur or phosphorus atoms (ethers, esters, phosphates).
+
+```
+structure lignin.pdb
+  number 7
+  rotatable all
+  inside sphere 0. 0. 0. 34.
+end structure
+```
+
+!!! warning "All the hydrogen atoms are required"
+    The rotatable bonds are found from the numbers of bonds of the atoms, which tell
+    whether they are saturated only if the structure has all its hydrogen atoms. In a
+    united-atom or coarse-grained model, or in a structure with some hydrogens missing,
+    a CH₂ carbon has two bonds, and would be taken as unsaturated (an error if the
+    molecule has no hydrogens; otherwise, check the bonds found). The number of bonds
+    found is printed for each molecule. For other models, give the bonds by hand.
+
+The bonds are those of the `CONECT` records of the file, or from `bond_distance`. For
+POPC (with `bond_distance 1.8`), `rotatable all` finds 41 bonds: those of the chains,
+the glycerol, the phosphate and the choline, but the double bond of the oleoyl chain. In
+the oligomers of the [Lignin particle in acetone and water](@ref) tutorial, 24 to 72 bonds each.
+
+In Julia, the molecules with rotatable bonds are given by [`flexible_structure`](@ref)
+(`rotatable = :all` for `rotatable all`).

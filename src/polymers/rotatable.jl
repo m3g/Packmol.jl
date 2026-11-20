@@ -52,6 +52,87 @@ function _molecule_bonds(st::StructureType{D,T}, bond_distance::T) where {D,T}
     return bonded
 end
 
+# The element of an atom (upper case; a String, for `juliac --trim`): by its element, or
+# else by the first letter of its name after the digits ("" if none)
+function _element(at::Atom)
+    element = strip(at.pdb_element)
+    isempty(element) || return String(uppercase(element))
+    name = lstrip(at.name, ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'))
+    return isempty(name) ? "" : string(uppercase(first(name)))
+end
+
+#
+# The rotatable bonds of `rotatable all`: the bonds not in rings with another heavy atom
+# bonded to each end (the bonds that turn more than hydrogens), and certainly single,
+# from the numbers of bonds of their atoms: carbon atoms with fewer than four bonds and
+# nitrogen atoms with fewer than four bonds are unsaturated (or may be: an amine nitrogen
+# has three bonds, as an amide nitrogen), and a bond between two unsaturated atoms does
+# not turn (double and triple bonds, amides, and the single bonds that may be double, or
+# are conjugated: aryl-vinyl, aryl-carbonyl), unless both are in aromatic rings (rings of
+# unsaturated atoms: biaryls). This requires all the hydrogens: without them, a CH2 carbon
+# has two bonds (an error if the molecule has no hydrogens).
+#
+function _all_rotatable_bonds(st::StructureType, bonded::Vector{Vector{Int}})
+    n = length(bonded)
+    heavy = [!_is_hydrogen(at) for at in st.atoms]
+    name = basename(st.filename)
+    all(heavy) && throw(ArgumentError("""\n
+        rotatable all: $name has no hydrogen atoms. The rotatable bonds are found from the
+        numbers of bonds of the atoms, which requires all the hydrogens of the molecule.
+
+    """))
+    element = String[_element(at) for at in st.atoms]
+    # the bonds in rings (j reachable from i without the bond i-j), and the atoms in rings
+    seen = falses(n)
+    stack = Int[]
+    ring_bond = Set{Tuple{Int,Int}}()
+    for i in 1:n, j in bonded[i]
+        j > i || continue
+        fill!(seen, false)
+        seen[i] = true
+        empty!(stack)
+        push!(stack, i)
+        found = false
+        while !isempty(stack) && !found
+            a = pop!(stack)
+            for c in bonded[a]
+                (a == i && c == j) && continue
+                if c == j
+                    found = true
+                    break
+                end
+                seen[c] || (seen[c] = true; push!(stack, c))
+            end
+        end
+        found && push!(ring_bond, (i, j))
+    end
+    in_ring = falses(n)
+    for (i, j) in ring_bond
+        in_ring[i] = true
+        in_ring[j] = true
+    end
+    unsaturated(i) = (element[i] == "C" || element[i] == "N") && length(bonded[i]) < 4
+    # in an aromatic ring: unsaturated, and bonded in a ring to unsaturated atoms only
+    function aromatic(i)
+        (unsaturated(i) && in_ring[i]) || return false
+        for k in bonded[i]
+            ((min(i, k), max(i, k)) in ring_bond && !unsaturated(k)) && return false
+        end
+        return true
+    end
+    pairs = Tuple{Int,Int}[]
+    for i in 1:n, j in bonded[i]
+        j > i || continue
+        (heavy[i] && heavy[j]) || continue
+        (i, j) in ring_bond && continue
+        any(k -> k != j && heavy[k], bonded[i]) || continue
+        any(k -> k != i && heavy[k], bonded[j]) || continue
+        (unsaturated(i) && unsaturated(j) && !(aromatic(i) && aromatic(j))) && continue
+        push!(pairs, (i, j))
+    end
+    return pairs
+end
+
 #
 # The fragments of a molecule with its bonds `bonded` cut at the `rotatable` bonds: the
 # fragment of each atom, and the atoms of each fragment (in the order of the atoms,
@@ -146,6 +227,17 @@ function _add_rotatable!(
     _check_flexible(st)
     n = st.natoms
     bonded = _molecule_bonds(st, bond_distance)
+    if (0, 0) in rotatable
+        # `rotatable all`: the bonds found, and the others given
+        found = _all_rotatable_bonds(st, bonded)
+        isempty(found) && throw(ArgumentError("""\n
+            rotatable all: no rotatable bonds found in $name.
+
+        """))
+        given = filter(b -> b != (0, 0) && !((b[1], b[2]) in found || (b[2], b[1]) in found), rotatable)
+        rotatable = vcat(found, given)
+        _println("  Rotatable bonds of ", name, ": ", length(found), " found")
+    end
     for (i, j) in rotatable
         (1 <= i <= n && 1 <= j <= n) || throw(ArgumentError("""\n
             $(string("rotatable ", i, " ", j)): the molecule $name has $n atoms.

@@ -1,0 +1,70 @@
+#
+# The lignin dispersed in the mixture of acetone and water (30:70 by volume): the 70
+# oligomers of the particle (particle.inp), flexible, and the solvent of solvation.inp,
+# all mixed in the periodic cube of 100 Å.
+#
+tolerance 2.0
+output dispersed.pdb
+pbc -50. -50. -50. 50. 50. 50.
+
+# To write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints), uncomment the line below.
+# check_initial_placement
+
+structure lignin_L3.pdb
+  number 7
+  rotatable all
+end structure
+
+structure lignin_L5.pdb
+  number 7
+  rotatable all
+end structure
+
+structure lignin_L22.pdb
+  number 7
+  rotatable all
+end structure
+
+structure lignin_L28.pdb
+  number 7
+  rotatable all
+end structure
+
+structure lignin_L40.pdb
+  number 7
+  rotatable all
+end structure
+
+structure lignin_L41.pdb
+  number 7
+  rotatable all
+end structure
+
+structure lignin_L63.pdb
+  number 7
+  rotatable all
+end structure
+
+structure lignin_L67.pdb
+  number 7
+  rotatable all
+end structure
+
+structure lignin_L86.pdb
+  number 7
+  rotatable all
+end structure
+
+structure lignin_L90.pdb
+  number 7
+  rotatable all
+end structure
+
+structure water.pdb
+  number 19548
+end structure
+
+structure acetone.pdb
+  number 2039
+end structure

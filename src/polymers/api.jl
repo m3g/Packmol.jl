@@ -118,8 +118,12 @@ end
 The molecules of the structure file `filename` (a file with several models, or a vector
 of files, for several conformations), flexible about the `rotatable` bonds, a vector of
 pairs of bonded atoms, as `[(21, 22), (36, 39)]` (the `rotatable` lines of a structure
-block), indexed by their positions in the file, from 1. The bonds of the molecule are those of the CONECT records of the file or, with
-`bond_distance = d`, the pairs of atoms closer than `d` Å (in the first conformation).
+block), indexed by their positions in the file, from 1, or `:all` (`rotatable all`): the
+bonds not in rings with another heavy atom bonded to each end, except those between two
+carbon or nitrogen atoms with three bonds each (double, conjugated and amide bonds; for
+all-atom models). The bonds of the molecule are those of the CONECT records of the file
+or, with `bond_distance = d`, the pairs of atoms closer than `d` Å (in the first
+conformation).
 The other keyword arguments are those of [`structure_type`](@ref). Give it to
 `PackmolSystem` with the other structure types, as `PackmolSystem([lipids, water]; ...)`.
 
@@ -129,15 +133,23 @@ bonds only. The molecules are first packed as rigid molecules, in their conforma
 and then their fragments are released.
 """
 function flexible_structure(filename::Union{String,AbstractVector{String}};
-    number::Int, rotatable::AbstractVector, bond_distance::Union{Nothing,Real} = nothing,
+    number::Int, rotatable::Union{Symbol,AbstractVector}, bond_distance::Union{Nothing,Real} = nothing,
     D::Int = 3, T::DataType = Float64, kwargs...,
 )
     types = structure_type(filename; number, D, T, kwargs...)
     rigid_types = types isa StructureType ? [types] : types
-    isempty(rotatable) && throw(ArgumentError("""\n
-        flexible_structure: no rotatable bonds given.
+    if rotatable isa Symbol
+        rotatable == :all || throw(ArgumentError("""\n
+            flexible_structure: rotatable is a vector of pairs of atoms, or :all.
 
-    """))
-    pairs = Tuple{Int,Int}[(Int(b[1]), Int(b[2])) for b in rotatable]
+        """))
+        pairs = [(0, 0)]
+    else
+        isempty(rotatable) && throw(ArgumentError("""\n
+            flexible_structure: no rotatable bonds given.
+
+        """))
+        pairs = Tuple{Int,Int}[(Int(b[1]), Int(b[2])) for b in rotatable]
+    end
     return PolymerStructure{D,T}(rigid_types, PolymerSpec{T}(MonomerSpec{T}[], false, pairs, T(something(bond_distance, NaN))))
 end
