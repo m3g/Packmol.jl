@@ -459,15 +459,19 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       `0.5` or `(0.5, 0.05)`;
       `src/packing/compression.jl`): constraints and cell expanded by fraction^(-1/3) about the cell center
       (origin without PBC), packed, then scaled back in steps (free molecules moved rigidly, polymers by their
-      center; fixed molecules stay) packed with `restart=true`, 100 loops each; on failure the system breathes: the
+      center; fixed molecules scaled with their radii, from their original coordinates, restored at
+      the end: `_FixedScaling`) packed with `restart=true`, 100 loops each; on failure the system breathes: the
       failed packing expanded to one step below the last converged density (keeping its rearrangements) and packed
       (a "relaxation", up to 20), then the step halved (back to the last converged state if the relaxation fails);
       ×1.5 after two successes, stop below 5e-4. A low-density packing that fails is expanded again (half the
       density, up to 3 times: the gold-polymer one failed in some runs). Breathing took the lignin particle at
       1.3 g/cm³ from 1/3 to 11/11 runs (2026-11-20); tested alternatives: no rigid stage (all fail), movebad off or
       whole-molecule random moves in the compressions (fail), a 20-loop or stall-based rigid stage (gold-polymer fails). Constraints: boxes, cubes, spheres,
-      cylinders, ellipsoids, planes; all PBC cells; no restart_from. Limitation: constraints tied to fixed
-      molecules (Zika membrane inside its protein shell) are scaled away from them. The condensate droplet (123 chains,
+      cylinders, ellipsoids, planes; all PBC cells; no restart_from. Fixed molecules scaled (2026-11-20): the Zika virion
+      with use_compression 0.5 reaches its density in 5 steps (2 min); with the proteins unscaled it stalled at ~32%
+      (25 min); gold-polymer unchanged (2/2). Not known to work in general (free molecules in cavities of a fixed one
+      see it enlarged): a note in the docs, not a guarantee. Breathing variant B (relax only once the step is below
+      the minimum) 4/5 and 1.6x slower than A (5/5) on the lignin particle. The condensate droplet (123 chains,
       400 mg/mL): rigid chains jam at ~220 mg/mL, compressed flexible chains reach 400 in 25-40 s (`rotatable 18 1`, bonds from the CONECT records of peptides.pdb).
 - [x] Rotation constraints (`constrain_rotation`, `src/constraints/rotations.jl`): a penalty on the
       angle between an axis and a vector of the molecule (between the centers of two atom sets, or the

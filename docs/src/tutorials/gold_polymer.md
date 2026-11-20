@@ -107,18 +107,10 @@ core, the chains jam (in 500 loops, with the chains rigid and then flexible, the
 function stalls at about 25, with the chains overlapping each other). With
 `use_compression 0.5`, the system is first packed at half its density: the constraints
 and the cell are expanded by 2^(1/3), and the system packed there (as rigid molecules,
-then with the chains released). The gold core is fixed, and stays where it is: the free
-molecules are packed around it in the expanded geometry, and then compressed toward it,
-in steps, back to the geometry of the input file.
-
-!!! note "Constraints tied to the fixed core"
-    The shell of the sulfur atoms is placed relative to the fixed core, and is scaled
-    with the rest of the geometry: expanded, it is 20.2 to 22 Å from the center, 5 Å
-    above the surface of the gold. The chains packed there are compressed toward the core
-    with it, and the shell reaches the surface of the core at the end of the compression.
-    This works because the shell moves away from the core, and the region left between
-    them is empty. A region that the expansion would move into a fixed molecule cannot
-    be packed this way (see [Packing by compression](@ref)).
+then with the chains released). The gold core is fixed, and is scaled with the geometry
+(the coordinates of its atoms and their radii): the shell of the sulfur atoms, placed
+relative to the core, stays on its surface, expanded and compressed with it, in steps,
+back to the geometry of the input file.
 
 ### Check the initial placement first
 

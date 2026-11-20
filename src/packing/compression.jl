@@ -6,8 +6,9 @@
 #
 # At each step the geometry is scaled by a factor `s < 1` about the center of the cell
 # (the origin without periodic boundary conditions): the constraints, the cell, and the
-# positions of the free molecules (the fixed ones stay in place), each moved rigidly (its center of mass scaled; a polymer
-# by the center of its monomers, such that the links between them are kept). The step
+# positions of the free molecules, each moved rigidly (its center of mass scaled; a flexible
+# molecule by the center of its fragments, such that the links between them are kept), and
+# the fixed molecules, scaled with their radii (see `_FixedScaling`). The step
 # (`1 - s`) starts at the `initial step` given, and grows by 1.5 after two steps that
 # converge, up to the initial step. When a step does not converge, the system "breathes":
 # the packing of the failed step (with the rearrangements it made) is expanded to one step
@@ -75,8 +76,7 @@ _compress_center(sys::PackmolSystem{D,T}) where {D,T} =
 #
 # Scales the geometry of the system by `s` about `o`: the constraints, the cell, and (if
 # `molecules`) the positions of the free molecules, each moved rigidly. The fixed
-# molecules stay where they are (inside the cell, which is scaled about its center: the
-# expanded cell contains them)
+# molecules are scaled apart (`_scale_fixed!`), from their original coordinates
 #
 function _scale_system!(sys::PackmolSystem{D,T}, s::T, o::SVector{D,T}; molecules::Bool=true) where {D,T}
     # (the polymers as rigid molecules have constraints of their own, for their placement)
@@ -125,6 +125,64 @@ function _scale_system!(sys::PackmolSystem{D,T}, s::T, o::SVector{D,T}; molecule
 end
 
 #
+# The fixed molecules are scaled with the geometry: the coordinates of their atoms about
+# the center of the scaling, and the radii of their atoms, such that the constraints placed
+# relative to them keep their relation to them (the membrane of the Zika virion, packed
+# by compression, crossed by the transmembrane segments of its fixed proteins, could not
+# be compressed with the proteins at their place: it stopped at a third of the density).
+# The original coordinates of each fixed type and radii of the fixed atoms, from which
+# the fixed molecules are set at each scale (restored exactly at the scale of the input).
+#
+struct _FixedScaling{D,T}
+    types::Vector{Int}
+    coordinates::Vector{Vector{SVector{D,T}}}
+    radii::Vector{Vector{T}}
+    atoms::Vector{Int}
+    atom_radii::Vector{T}
+end
+
+function _FixedScaling(sys::PackmolSystem{D,T}) where {D,T}
+    types = Int[]
+    coordinates = Vector{SVector{D,T}}[]
+    radii = Vector{T}[]
+    for (t, st) in enumerate(sys.structure_types)
+        st.fixed.fixed || continue
+        push!(types, t)
+        push!(coordinates, copy(st.reference_coordinates))
+        push!(radii, copy(st.radii))
+    end
+    atoms = Int[]
+    atom_radii = T[]
+    for (i, a) in enumerate(sys.atoms)
+        sys.structure_types[a.structure_type_index].fixed.fixed || continue
+        push!(atoms, i)
+        push!(atom_radii, a.radius)
+    end
+    return _FixedScaling{D,T}(types, coordinates, radii, atoms, atom_radii)
+end
+
+# The fixed molecules at the scale `k` of the geometry, about `o`
+function _scale_fixed!(sys::PackmolSystem{D,T}, state::_FixedScaling{D,T}, k::T, o::SVector{D,T}) where {D,T}
+    exact = abs(k - one(T)) <= sqrt(eps(T))
+    for (n, t) in enumerate(state.types)
+        st = sys.structure_types[t]
+        for i in eachindex(st.reference_coordinates)
+            x0 = state.coordinates[n][i]
+            st.reference_coordinates[i] = exact ? x0 : o + k * (x0 - o)
+        end
+        for i in eachindex(st.radii)
+            st.radii[i] = exact ? state.radii[n][i] : k * state.radii[n][i]
+        end
+    end
+    for (n, i) in enumerate(state.atoms)
+        a = sys.atoms[i]
+        r0 = state.atom_radii[n]
+        sys.atoms[i] = AtomData(a.molecule_index, a.structure_type_index, exact ? r0 : k * r0, a.constraints)
+    end
+    return sys
+end
+
+#
 # The packing by compression: the system packed with its geometry expanded by
 # `fraction^(-1/3)` (`fraction` of the density), then compressed in steps (see above).
 # `run_options` are the keyword arguments of `_packmol`.
@@ -139,6 +197,8 @@ function _packmol_compressed(sys::PackmolSystem{D,T}; run_options...) where {D,T
         100 * fraction, expansion)
     # The constraints and the cell expanded (the molecules are placed by the packing)
     _scale_system!(sys, expansion, o; molecules=false)
+    fixed_state = _FixedScaling(sys)
+    _scale_fixed!(sys, fixed_state, expansion, o)
     # The initial placement, at the low density
     sys.check_initial_placement && return _packmol(sys; run_options...)
     output_file = sys.output_file
@@ -157,6 +217,7 @@ function _packmol_compressed(sys::PackmolSystem{D,T}; run_options...) where {D,T
             factor = T(2)^(one(T) / 3)
             _scale_system!(sys, factor, o)
             scale *= factor
+            _scale_fixed!(sys, fixed_state, scale, o)
             _println()
             @_printf("  Not converged: packing again at %.1f%% of the density (the geometry expanded by %.4f)\n",
                 100 / scale^3, scale)
@@ -182,6 +243,7 @@ function _packmol_compressed(sys::PackmolSystem{D,T}; run_options...) where {D,T
                 saved_constraints = [copy(st.constraints) for st in sys.structure_types]
                 saved_unitcell = sys.unitcell
                 _scale_system!(sys, s, o)
+                _scale_fixed!(sys, fixed_state, scale * s, o)
                 nsteps += 1
                 seed += 1
                 t0 = time()
@@ -208,6 +270,7 @@ function _packmol_compressed(sys::PackmolSystem{D,T}; run_options...) where {D,T
                     nbreaths += 1
                     relaxed_scale = scale / (one(T) - step)
                     _scale_system!(sys, relaxed_scale / (scale * s), o)
+                    _scale_fixed!(sys, fixed_state, relaxed_scale, o)
                     t0 = time()
                     _packmol(sys; restart=true, nloop=_compress_step_loops, seed, run_options...)
                     relaxed = sys.status == :packing_ready
@@ -225,6 +288,7 @@ function _packmol_compressed(sys::PackmolSystem{D,T}; run_options...) where {D,T
                             copyto!(st.constraints, cs)
                         end
                         sys.unitcell = saved_unitcell
+                        _scale_fixed!(sys, fixed_state, scale, o)
                     end
                     step /= 2
                     nconverged = 0
@@ -236,6 +300,7 @@ function _packmol_compressed(sys::PackmolSystem{D,T}; run_options...) where {D,T
                         copyto!(st.constraints, cs)
                     end
                     sys.unitcell = saved_unitcell
+                    _scale_fixed!(sys, fixed_state, scale, o)
                     step /= 2
                     nconverged = 0
                     step < _compress_min_step && break
@@ -243,6 +308,7 @@ function _packmol_compressed(sys::PackmolSystem{D,T}; run_options...) where {D,T
             end
         finally
             _screen_log[] = screen_log
+            _scale_fixed!(sys, fixed_state, scale, o)
         end
         reached = scale <= one(T) + sqrt(eps(T))
         sys.status = reached ? :packing_ready : :failed_packing

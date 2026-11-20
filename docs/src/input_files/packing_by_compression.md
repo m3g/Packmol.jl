@@ -31,8 +31,8 @@ values:
 2. At each step, the geometry is scaled by `1 - step` about the same center: the
    constraints, the cell, and the positions of the free molecules, each moved as a whole
    (the center of mass of a molecule is scaled; a flexible molecule, a polymer or a
-   molecule with rotatable bonds, moves with the center of its fragments). Fixed
-   molecules stay where they are. The system is packed again, from there, for up to 100 loops.
+   molecule with rotatable bonds, moves with the center of its fragments), and the fixed
+   molecules, scaled with the radii of their atoms (see below). The system is packed again, from there, for up to 100 loops.
 3. When a step does not converge, the system breathes: the packing of the failed step is
    expanded to one step below the last density that converged, and packed there (a
    relaxation), keeping the rearrangements the failed step made. The compression
@@ -83,20 +83,30 @@ fraction), or `use_compression = (0.3, 0.02)` (the fraction and the initial step
 All periodic cells are supported (orthorhombic, triclinic, dodecahedral, octahedral):
 they are scaled uniformly about their center, which keeps their shape.
 
-Fixed molecules are supported, and are not moved: the free molecules are packed around
-them in the expanded geometry and compressed toward them. This is right when the free
-molecules are placed freely around the fixed ones (polymers or a solvent around a
-nanoparticle or a protein), since the expanded cell and constraints contain them.
+Fixed molecules are supported, and are scaled with the geometry: the coordinates of their
+atoms about the center of the scaling, and the radii of their atoms, such that the
+constraints placed relative to them keep their relation to them. At the end of the
+compression, they are back at the coordinates and with the radii of the input. For
+example, the [Zika virion (a large system)](@ref), packed with `use_compression 0.5`: its
+membrane, in spherical shells chosen to fit inside the fixed shell of proteins, crossed by
+their transmembrane segments, swells and shrinks with the proteins, and the virion is
+compressed to its density in 5 steps (in about 2 minutes, while it packs without
+compression in about one). With the proteins kept at their place, the shells of the
+membrane, expanded, were beyond them, and the compression had not gone beyond a third of
+the density after 25 minutes.
+
+!!! note "Fixed molecules, scaled"
+    A fixed molecule is scaled as a whole: its atoms move apart, and grow, by the same
+    factor (by 1.26 for `use_compression 0.5`). The free molecules around it are not, so in
+    the expanded geometry they meet a larger version of it: free molecules placed in its
+    cavities or grooves (water inside a protein, ligands in a pocket, the lipids crossed by
+    a transmembrane helix) see them as they are only at the end of the compression, and may
+    need the last steps to settle. This works when the free molecules are around the fixed
+    ones, or in regions whose shapes follow them; it is not known to work in every case. If
+    the compression stops short of the density, the output is written at the density
+    reached, the fixed molecules scaled with it.
 
 !!! note "Limitations"
     - The constraints must be boxes, cubes, spheres, cylinders, ellipsoids or planes (the
       others cannot be scaled).
-    - The constraints are scaled and the fixed molecules are not: a constraint that is
-      placed relative to a fixed molecule loses its relation to it in the expanded
-      geometry, and recovers it only at the end of the compression. For example, the
-      membrane of the [Zika virion (a large system)](@ref), in spherical shells chosen
-      to fit inside the fixed shell of proteins, crossed by their transmembrane segments:
-      expanded, the shells of the membrane would be beyond the proteins, and the lipids
-      packed there would be compressed through them. In such systems, pack
-      the free molecules whose regions are tied to the fixed ones without `use_compression`.
     - Not with `restart_from`.

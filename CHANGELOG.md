@@ -38,6 +38,11 @@ Version 100.1.0-DEV
   and a packing at the low density that does not converge is tried again at half that
   density, up to three times. Dense systems that stopped at ~90% of the density (a lignin
   particle at 1.3 g/cm³) now reach it.
+- ![ENHANCEMENT][badge-enhancement] Packing by compression: the fixed molecules are scaled
+  with the geometry (the coordinates of their atoms and their radii), and restored at the
+  end, such that the constraints placed relative to them keep their relation to them. The
+  Zika virion (its membrane crossed by its fixed proteins) is compressed to its density in
+  5 steps; with the proteins kept at their place, it stalled at a third of the density.
 - ![ENHANCEMENT][badge-enhancement] The packing of polymers and flexible molecules as rigid
   molecules, before they are released, no longer warns that it did not converge (it need
   not converge).
