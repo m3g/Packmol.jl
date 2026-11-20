@@ -52,13 +52,13 @@ function _molecule_bonds(st::StructureType{D,T}, bond_distance::T) where {D,T}
     return bonded
 end
 
-# The element of an atom (upper case): by its element, or else by the first letter of its
-# name after the digits
+# The element of an atom (upper case; a String, for `juliac --trim`): by its element, or
+# else by the first letter of its name after the digits ("" if none)
 function _element(at::Atom)
     element = strip(at.pdb_element)
-    isempty(element) || return uppercase(element)
+    isempty(element) || return String(uppercase(element))
     name = lstrip(at.name, ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'))
-    return isempty(name) ? "" : uppercase(name[1:1])
+    return isempty(name) ? "" : string(uppercase(first(name)))
 end
 
 #
@@ -81,7 +81,7 @@ function _all_rotatable_bonds(st::StructureType, bonded::Vector{Vector{Int}})
         numbers of bonds of the atoms, which requires all the hydrogens of the molecule.
 
     """))
-    element = [_element(at) for at in st.atoms]
+    element = String[_element(at) for at in st.atoms]
     # the bonds in rings (j reachable from i without the bond i-j), and the atoms in rings
     seen = falses(n)
     stack = Int[]
