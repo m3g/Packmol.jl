@@ -72,6 +72,7 @@ makedocs(
             "Ionic liquid in a supercapacitor" => "tutorials/supercapacitor.md",
             "Gold nanoparticle in toluene" => "tutorials/gold_nanoparticle.md",
             "Polymer-capped gold nanoparticle" => "tutorials/gold_polymer.md",
+            "Lignin particle in acetone and water" => "tutorials/lignin.md",
             "Liquid crystals" => "tutorials/liquid_crystal.md",
             "Biomolecular condensate (polymers)" => "tutorials/condensate.md",
             "Zika virion (a large system)" => "tutorials/zika.md",

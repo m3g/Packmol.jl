@@ -33,6 +33,8 @@ const cases = [
     ("supercapacitor", () -> joinpath(tutorials, "supercapacitor"), "supercapacitor.inp", "1 s"),
     ("gold_nanoparticle", () -> joinpath(tutorials, "gold_nanoparticle"), "gold_nanoparticle.inp", "10 s"),
     ("gold_polymer", () -> joinpath(tutorials, "gold_polymer"), "gold_polymer.inp", "7 min"),
+    ("lignin", () -> joinpath(tutorials, "lignin"), ["particle.inp", "solvation.inp"], "1.5 min"),
+    ("lignin_dispersed", () -> joinpath(tutorials, "lignin"), "dispersed.inp", "1 min"),
     ("polymer_dmf", () -> joinpath(tutorials, "polymer_dmf"), "polymer_dmf.inp", "< 1 s"),
     ("nanotube", () -> joinpath(tutorials, "nanotube"), "nanotube.inp", "< 1 s"),
     ("nematic", () -> joinpath(tutorials, "liquid_crystal"), "nematic.inp", "1 s"),
