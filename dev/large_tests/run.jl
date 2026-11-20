@@ -8,6 +8,10 @@
 #
 #     --list          list the cases and their approximate times, and exit
 #     --seed N        add `seed N` to the inputs (default: the seed of the input, if any)
+#     --seeds A:B     run each case with the seeds A to B (to compare versions: see compare.jl)
+#     --skip CASES    cases not run (comma-separated), e.g. --skip exosome,lnp
+#     --label NAME    a label of the runs in the results (default: the commit)
+#     --results FILE  the file of the results (default: results.tsv, next to this script)
 #     --workdir DIR   where the inputs are copied and packed (default: a temporary directory)
 #
 using Packmol
@@ -25,6 +29,9 @@ const tutorials = joinpath(root, "docs", "src", "tutorials", "files")
 # one checked and reported, the time being that of all of them), approximate time
 # (14 threads)
 const cases = [
+    ("mixture", () -> joinpath(tutorials, "mixture"), "mixture.inp", "< 1 s"),
+    ("interface", () -> joinpath(tutorials, "interface"), "interface.inp", "< 1 s"),
+    ("solvprotein", () -> joinpath(tutorials, "solvprotein"), "solvprotein.inp", "1 s"),
     ("protein_glycerol", () -> joinpath(tutorials, "protein_glycerol"), "protein_glycerol.inp", "< 1 s"),
     ("water_drop", () -> joinpath(tutorials, "water_drop"), "drop.inp", "< 1 s"),
     ("gaussian_drop", () -> joinpath(tutorials, "water_drop"), "gaussian_drop.inp", "< 1 s"),
@@ -51,7 +58,10 @@ const cases = [
 
 function parse_args(args)
     selected = String[]
-    seed = nothing
+    seeds = Any[nothing]
+    skip = String[]
+    label = nothing
+    results = joinpath(@__DIR__, "results.tsv")
     workdir = nothing
     list = false
     i = 1
@@ -60,7 +70,16 @@ function parse_args(args)
         if a == "--list"
             list = true
         elseif a == "--seed"
-            seed = parse(Int, args[i+1]); i += 1
+            seeds = Any[parse(Int, args[i+1])]; i += 1
+        elseif a == "--seeds"
+            first_seed, last_seed = parse.(Int, split(args[i+1], ':'))
+            seeds = Any[collect(first_seed:last_seed)...]; i += 1
+        elseif a == "--skip"
+            append!(skip, split(args[i+1], ',')); i += 1
+        elseif a == "--label"
+            label = args[i+1]; i += 1
+        elseif a == "--results"
+            results = abspath(args[i+1]); i += 1
         elseif a == "--workdir"
             workdir = args[i+1]; i += 1
         elseif startswith(a, "--")
@@ -72,8 +91,9 @@ function parse_args(args)
         i += 1
     end
     isempty(selected) && (selected = [c[1] for c in cases])
+    filter!(c -> !(c in skip), selected)
     workdir = isnothing(workdir) ? mktempdir() : mkpath(workdir)
-    return (; selected, seed, workdir, list)
+    return (; selected, seeds, label, results, workdir, list)
 end
 
 # The criterion of the packing, checked independently: no pair of atoms of different
@@ -185,17 +205,18 @@ function main(args)
         "unknown"
     end
     date = format(now(), "yyyy-mm-dd HH:MM")
-    results_file = joinpath(@__DIR__, "results.tsv")
+    label = something(opts.label, commit)
+    results_file = opts.results
     if !isfile(results_file)
-        write(results_file, "date\tcommit\tjulia\tthreads\tcase\tseed\tstatus\tloops\tevaluations\ttime_s\tdmin\n")
+        write(results_file, "date\tcommit\tjulia\tthreads\tcase\tseed\tstatus\tloops\tevaluations\ttime_s\tdmin\tlabel\n")
     end
     println("Packmol.jl large tests: commit $commit, $(Threads.nthreads()) threads, in $(opts.workdir)")
     warm_up()
     all_ok = true
-    for (name, dir, input, t) in cases
+    for (name, dir, input, t) in cases, seed in opts.seeds
         name in opts.selected || continue
-        println("  ", rpad(name, 22), "(about $t) ..."); flush(stdout)
-        r = run_case(name, dir, input, opts.workdir, opts.seed)
+        println("  ", rpad(name, 22), "(about $t)", isnothing(seed) ? "" : ", seed $seed", " ..."); flush(stdout)
+        r = run_case(name, dir, input, opts.workdir, seed)
         if isnothing(r)
             println("    skipped: input not found")
             continue
@@ -205,8 +226,8 @@ function main(args)
             r.ok ? "ok" : "FAILED", r.status, r.loops, r.evaluations, r.time, r.dmin, r.max_overlap))
         r.ok || println("    log: ", r.log)
         open(results_file, "a") do io
-            println(io, join((date, commit, VERSION, Threads.nthreads(), name, something(opts.seed, ""),
-                r.status, r.loops, r.evaluations, round(r.time; digits = 1), round(r.dmin; digits = 3)), '\t'))
+            println(io, join((date, commit, VERSION, Threads.nthreads(), name, something(seed, ""),
+                r.status, r.loops, r.evaluations, round(r.time; digits = 1), round(r.dmin; digits = 3), label), '\t'))
         end
     end
     println(all_ok ? "All passed." : "Some cases FAILED.")

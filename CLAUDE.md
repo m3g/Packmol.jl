@@ -187,6 +187,12 @@ separate suite, `dev/large_tests/` (plain scripts, not `@testitem`s, so that the
 does not pick them up; see its README). Run it only when the maintainer asks (e.g. before a
 release) or when studying one of those systems, one case at a time, never alongside other
 heavy jobs. New tutorials with non-trivial packings get a case there.
+Changes of the heuristics (movebad, initial placement, compression), which can help some systems and
+hurt others, are validated against main with several seeds: `run.jl --seeds 1:3 --skip exosome --label
+<name> --results <file>` on each version, then `compare.jl <file> main <name>` (see its README).
+Validated and rejected (2026-11-20): local moves in movebad (a Gaussian displacement of the size of the
+molecule, instead of a random placement): no case gained, and the polymer-capped gold nanoparticle went
+from 2/3 to 0/3 (its chains, bound to a shell, need to be moved to free spots of it).
 
 ---
 
