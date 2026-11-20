@@ -114,8 +114,8 @@ flexible at every backbone bond, conformations by `files/gold_polymer/build_poly
 concept, linked), bound to the fixed core, in toluene, 114k atoms: packed with `use_compression 0.5` in 7 min,
 does not converge without it; images by `dev/tutorials/gold_polymer_images.jl`); the lignin particle in acetone/water
 (70 oligomers of spruce lignin, 10 types, built and minimized by `files/lignin/build_lignin.tcl` with LigninBuilder
-and NAMD (bondedCUDA 0), linked; `rotatable all`; particle in a sphere of 34 Å at 1.19 g/cm³ with `use_compression 0.5`
-in 80 s (33 Å stopped at 90%), then the solvent around it fixed; images by `dev/tutorials/lignin_images.jl`); the biomolecular condensate (polymers: 123 chains of (VPGVG)20 in SIRAH, conformations by
+and NAMD (bondedCUDA 0), linked; `rotatable all`; particle in a sphere of 33 Å at 1.30 g/cm³ with `use_compression 0.5`
+in ~1 min (needs the relaxations of the compression: without them it stopped at 90%), then the solvent around it fixed; and dispersed; images by `dev/tutorials/lignin_images.jl`); the biomolecular condensate (polymers: 123 chains of (VPGVG)20 in SIRAH, conformations by
 `files/condensate/build_peptides.jl` (linked as a proof of concept only), in WT4 water: a homogeneous mixture, and a droplet at 400 mg/mL packed with
 `use_compression`, then the water around the fixed chains; images by `dev/tutorials/condensate_images.jl`); the Zika virion; the lipid nanoparticle,
 designed with an AI agent from an illustration (SIRAH, set `packmol_lnp`, files and images by `dev/tutorials/lnp.jl`
@@ -459,8 +459,13 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       `0.5` or `(0.5, 0.05)`;
       `src/packing/compression.jl`): constraints and cell expanded by fraction^(-1/3) about the cell center
       (origin without PBC), packed, then scaled back in steps (free molecules moved rigidly, polymers by their
-      center; fixed molecules stay) packed with `restart=true`, 100 loops each; step halved on failure (back to the last
-      converged state), ×1.5 after two successes, stop below 5e-4. Constraints: boxes, cubes, spheres,
+      center; fixed molecules stay) packed with `restart=true`, 100 loops each; on failure the system breathes: the
+      failed packing expanded to one step below the last converged density (keeping its rearrangements) and packed
+      (a "relaxation", up to 20), then the step halved (back to the last converged state if the relaxation fails);
+      ×1.5 after two successes, stop below 5e-4. A low-density packing that fails is expanded again (half the
+      density, up to 3 times: the gold-polymer one failed in some runs). Breathing took the lignin particle at
+      1.3 g/cm³ from 1/3 to 11/11 runs (2026-11-20); tested alternatives: no rigid stage (all fail), movebad off or
+      whole-molecule random moves in the compressions (fail), a 20-loop or stall-based rigid stage (gold-polymer fails). Constraints: boxes, cubes, spheres,
       cylinders, ellipsoids, planes; all PBC cells; no restart_from. Limitation: constraints tied to fixed
       molecules (Zika membrane inside its protein shell) are scaled away from them. The condensate droplet (123 chains,
       400 mg/mL): rigid chains jam at ~220 mg/mL, compressed flexible chains reach 400 in 25-40 s (`rotatable 18 1`, bonds from the CONECT records of peptides.pdb).

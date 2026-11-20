@@ -8,15 +8,25 @@
 # (the origin without periodic boundary conditions): the constraints, the cell, and the
 # positions of the free molecules (the fixed ones stay in place), each moved rigidly (its center of mass scaled; a polymer
 # by the center of its monomers, such that the links between them are kept). The step
-# (`1 - s`) starts at the `initial step` given, is halved when a step does not converge
-# (the packing goes back to the last converged one), and grows by 1.5 after two steps
-# that converge, up to the initial step.
+# (`1 - s`) starts at the `initial step` given, and grows by 1.5 after two steps that
+# converge, up to the initial step. When a step does not converge, the system "breathes":
+# the packing of the failed step (with the rearrangements it made) is expanded to one step
+# below the density of the last converged one, and packed there; the compression resumes
+# from it, with half the step. If the relaxed packing does not converge either, or after
+# `_compress_max_breaths` breaths, the compression goes back to the last converged packing
+# with half the step. Going back alone stopped at ~90% of the density in dense systems
+# (lignin particle at 1.3 g/cm³, 2 of 3 runs): the failed step was discarded, and the
+# next steps failed at the same configuration.
 #
 
 # The loops of each step of the compression
 const _compress_step_loops = 100
 # The smallest step: below it, the compression stops
 const _compress_min_step = 5e-4
+# The largest number of breaths (relaxations of a failed step) of a compression
+const _compress_max_breaths = 20
+# The largest number of further expansions when the packing at low density does not converge
+const _compress_max_expansions = 3
 
 #
 # The constraints scaled by `s` about the point `o`: the region of `c` mapped by
@@ -136,6 +146,22 @@ function _packmol_compressed(sys::PackmolSystem{D,T}; run_options...) where {D,T
     scale = expansion  # the current scale of the geometry, relative to that of the input
     try
         _packmol(sys; run_options...)
+        # If the packing at low density does not converge, the geometry is expanded
+        # further (half the density each time, the molecules moved with it) and the
+        # system packed again from there, up to `_compress_max_expansions` times: the
+        # low-density packing of the polymer-capped gold nanoparticle converged in some
+        # runs and not in others
+        nexpansions = 0
+        while sys.status != :packing_ready && nexpansions < _compress_max_expansions
+            nexpansions += 1
+            factor = T(2)^(one(T) / 3)
+            _scale_system!(sys, factor, o)
+            scale *= factor
+            _println()
+            @_printf("  Not converged: packing again at %.1f%% of the density (the geometry expanded by %.4f)\n",
+                100 / scale^3, scale)
+            _packmol(sys; restart=true, run_options...)
+        end
         if sys.status != :packing_ready
             _println("  The packing at low density did not converge: the compression was not done.")
             return sys
@@ -148,6 +174,7 @@ function _packmol_compressed(sys::PackmolSystem{D,T}; run_options...) where {D,T
         nsteps = 0
         seed = sys.seed
         tstart = time()
+        nbreaths = 0
         try
             while scale > one(T) + sqrt(eps(T))
                 s = max(one(T) - step, one(T) / scale)
@@ -173,6 +200,35 @@ function _packmol_compressed(sys::PackmolSystem{D,T}; run_options...) where {D,T
                         step = min(T(initial_step), T(1.5) * step)
                         nconverged = 0
                     end
+                elseif nbreaths < _compress_max_breaths
+                    # the failed packing relaxed: expanded to one step below the density
+                    # of the last converged one (keeping the rearrangements of the failed
+                    # step), and packed; the compression resumes from it with half the
+                    # step (or from the last converged packing, if it does not converge)
+                    nbreaths += 1
+                    relaxed_scale = scale / (one(T) - step)
+                    _scale_system!(sys, relaxed_scale / (scale * s), o)
+                    t0 = time()
+                    _packmol(sys; restart=true, nloop=_compress_step_loops, seed, run_options...)
+                    relaxed = sys.status == :packing_ready
+                    if screen_log
+                        _screen_log[] = true
+                        @_printf("  Relaxation %4d:        density %7.2f%% of the target, %s (%.1f s)\n",
+                            nbreaths, 100 / relaxed_scale^3, relaxed ? "converged" : "not converged", time() - t0)
+                        _screen_log[] = false
+                    end
+                    if relaxed
+                        scale = relaxed_scale
+                    else
+                        copyto!(sys.molecule_positions, saved_positions)
+                        for (st, cs) in zip(sys.structure_types, saved_constraints)
+                            copyto!(st.constraints, cs)
+                        end
+                        sys.unitcell = saved_unitcell
+                    end
+                    step /= 2
+                    nconverged = 0
+                    step < _compress_min_step && break
                 else
                     # back to the last converged packing, with half the step
                     copyto!(sys.molecule_positions, saved_positions)

@@ -64,7 +64,7 @@ heavy atoms (with their hydrogens):
 structure lignin_L5.pdb
   number 7
   rotatable all
-  inside sphere 0. 0. 0. 34.
+  inside sphere 0. 0. 0. 33.
 end structure
 ```
 
@@ -81,15 +81,13 @@ When packing, the number of bonds found is printed for each oligomer:
 ## The numbers of molecules
 
 - **The particle**: 7 copies of each of the 10 oligomers, 70 molecules of 116,600 g/mol
-  together, 15,463 atoms, in a sphere of 34 Å: 1.19 g/cm³. The density of solid lignin is
-  about 1.3 g/cm³; the particle packs up to about 1.17 g/cm³ (in a sphere of 33 Å, the
-  compression stopped at 90% of the density).
+  together, 15,463 atoms, in a sphere of 33 Å: 1.30 g/cm³, the density of solid lignin.
 - **The solvent**: acetone and water, 30:70 by volume, in a periodic cube of 100 Å. The
-  volume left by the particle, 835,400 Å³, holds 2039 molecules of acetone (0.785 g/mL)
-  and 19,548 of water (1.0 g/mL), at their densities as pure liquids (the excess volume
+  volume left by the particle, 849,500 Å³, holds 2073 molecules of acetone (0.785 g/mL)
+  and 19,877 of water (1.0 g/mL), at their densities as pure liquids (the excess volume
   of the mixture is neglected).
 
-The system has 94,497 atoms.
+The system has 95,824 atoms.
 
 ## The lignin particle
 
@@ -104,8 +102,10 @@ Main.input_file("files/lignin/particle.inp")
 ```
 
 The particle is too dense to pack from a random placement. With `use_compression 0.5`,
-it is first packed at half its density, in a sphere of 42.8 Å (34 × 2^(1/3)), as rigid
-molecules and then flexible, and then compressed to the sphere of 34 Å, in steps.
+it is first packed at half its density, in a sphere of 41.6 Å (33 × 2^(1/3)), as rigid
+molecules and then flexible, and then compressed to the sphere of 33 Å, in steps. At
+this density, some steps do not converge: the packing is then relaxed at a lower density
+and compressed again from there (see [Packing by compression](@ref)).
 
 ### Check the initial placement first
 
@@ -125,13 +125,13 @@ When it looks like this, comment the line again, and run the packing.
 packmol particle.inp
 ```
 
-The packing at half the density, and then the compression, in 13 to 50 steps, take
+The packing at half the density, and then the compression, in 15 to 60 steps, take
 about one minute with 14 threads:
 
 ```
   Compression step    1: density   58.32% of the target, converged (0.3 s)
   ...
-  Compressed to the density of the input in 48 steps (78.6 s).
+  Compressed to the density of the input in 36 steps (67.3 s).
 ```
 
 ![The lignin particle](images/lignin_particle.webp)
@@ -187,9 +187,10 @@ Main.input_file("files/lignin/dispersed.inp")
 packmol dispersed.inp
 ```
 
-The oligomers are first packed as rigid molecules with the solvent (500 loops, ending
-with a few overlaps), and then released, and the packing converges in a few loops: about
-one minute in all.
+In this single run, the oligomers are first packed as rigid molecules, with the solvent,
+and then released and packed flexible. It takes from a few seconds to about a minute
+(when the packing of the rigid oligomers does not converge, it runs for its 500 loops
+before they are released).
 
 ![The dispersed lignin](images/lignin_dispersed.webp)
 
@@ -214,7 +215,7 @@ oligomers = [
     flexible_structure("lignin_$name.pdb";
         number = 7,
         rotatable = :all,
-        constraints = [InsideSphere(origin, 34.)],
+        constraints = [InsideSphere(origin, 33.)],
     )
     for name in names
 ]
@@ -231,8 +232,8 @@ lignin = structure_type("particle.pdb";
     number = 1,
     fixed = (origin, origin),
 )
-water = structure_type("water.pdb"; number = 19548)
-acetone = structure_type("acetone.pdb"; number = 2039)
+water = structure_type("water.pdb"; number = 19877)
+acetone = structure_type("acetone.pdb"; number = 2073)
 system = PackmolSystem([lignin, water, acetone];
     output = "lignin.pdb",
     tolerance = 2.0,

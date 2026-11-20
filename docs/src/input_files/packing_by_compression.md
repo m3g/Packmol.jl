@@ -25,23 +25,41 @@ values:
 1. The constraints and the periodic cell are expanded by `fraction^(-1/3)` (by 1.26 for
    `0.5`), about the center of the cell (the origin, without periodic boundary
    conditions), and the system is packed there.
+   If the packing at that density does not converge, the geometry is expanded further
+   (to half the density, the molecules with it) and the system packed again from there,
+   up to three times.
 2. At each step, the geometry is scaled by `1 - step` about the same center: the
    constraints, the cell, and the positions of the free molecules, each moved as a whole
    (the center of mass of a molecule is scaled; a polymer moves with the center of its
    monomers). Fixed molecules stay where they are. The system is packed again, from there, for up to 100 loops.
-3. A step that does not converge is undone, and tried again with half the step; after
-   two steps that converge, the step grows by 1.5, up to the initial step. The
+3. When a step does not converge, the system breathes: the packing of the failed step is
+   expanded to one step below the last density that converged, and packed there (a
+   relaxation), keeping the rearrangements the failed step made. The compression
+   resumes from the relaxed packing, with half the step (if the relaxation does not
+   converge either, or after 20 relaxations, it resumes from the last converged packing).
+   After two steps that converge, the step grows by 1.5, up to the initial step. The
    compression ends at the geometry of the input, or stops (with a warning, the output
    at the density reached) if a step smaller than 0.0005 does not converge.
 
 The report shows each step:
 
 ```
-  Compression step    1: density   58.32% of the target, not converged (4.3 s)
-  Compression step    2: density   53.95% of the target, converged (0.2 s)
+  Compression step    1: density   58.32% of the target, converged (0.8 s)
+  Compression step    2: density   68.02% of the target, converged (1.5 s)
+  Compression step    3: density   79.33% of the target, converged (3.0 s)
+  Compression step    4: density   92.53% of the target, not converged (7.6 s)
+  Relaxation    1:        density   68.02% of the target, converged (0.1 s)
+  Compression step    5: density   73.39% of the target, converged (0.1 s)
   ...
-  Compressed to the density of the input in 20 steps (41.3 s).
+  Compression step   15: density  100.00% of the target, converged (1.9 s)
+
+  Compressed to the density of the input in 15 steps (28.0 s).
 ```
+
+Undoing a failed step, rather than relaxing it, stopped the compression of the particle of
+the [Lignin particle in acetone and water](@ref) tutorial at about 90% of the density in
+two of three runs: the next steps failed at the same configuration. With the
+relaxations, it reached the density in all of 11 runs.
 
 The compression works with rigid molecules and with [Polymers](@ref). With polymers
 it goes much further: the chains of the condensate of the tutorial

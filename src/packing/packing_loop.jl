@@ -129,6 +129,7 @@ function _packmol(
     active_set::Bool=true,
     active_radius::Real=2 * packmol_system.tolerance,
     active_max_fraction::Real=0.7,
+    warn_unconverged::Bool=true,
 ) where {D,T}
     # Keyword arguments take precedence over the input file's `nloop`/`maxit`
     nloop = something(nloop, packmol_system.nloop, 500)
@@ -635,7 +636,6 @@ function _packmol(
             copyto!(best_positions, packmol_system.molecule_positions)
             break
         end
-
         _println()
         _println(dash_line)
 
@@ -701,7 +701,7 @@ function _packmol(
         end
     end
 
-    if !converged
+    if !converged && warn_unconverged
         _println()
         _println(hash_line)
         @_printf("  WARNING: packing did not converge after %d loops (best f = %.4e)\n", nloop, bestf)
