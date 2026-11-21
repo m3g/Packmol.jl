@@ -91,10 +91,12 @@ function _polymer_initial_approximation!(sys::PackmolSystem{D,T}, rp::RigidPolym
     # The rigid polymers packed before their monomers are released: polymers released
     # overlapping each other end up threaded through each other's monomers, and the
     # packing does not converge (a packing of the rigid polymers, converged or not, has
-    # few overlaps)
+    # few overlaps). The packing need not converge: its warning is not shown
     if !sys.check_initial_placement
         _println("  Packing the polymers as rigid molecules")
-        _packmol(rsys; restart=true, nloop, seed=sys.seed)
+        _packmol(rsys; restart=true, nloop, seed=sys.seed, warn_unconverged=false)
+        rsys.status == :packing_ready ||
+            _println("  The packing of the rigid polymers ended (not converged, as it may be)")
         _println("  Releasing the monomers of the polymers")
     end
     _center_reference_coordinates!(sys)

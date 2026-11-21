@@ -1,9 +1,9 @@
 #
 # A particle of lignin: 70 oligomers of spruce lignin (7 copies of 10 of them, built with
-# LigninBuilder), in a sphere of 34 Å, at 1.19 g/cm³. The oligomers are flexible (every
-# rotatable bond found from their bonds turns, `rotatable all`), and the particle is too
-# dense to pack from a random placement: it is packed at half the density, and
-# compressed (`use_compression`).
+# LigninBuilder), in a sphere of 33 Å, at 1.30 g/cm³ (the density of lignin). The
+# oligomers are flexible (every rotatable bond found from their bonds turns, `rotatable
+# all`), and the particle is too dense to pack from a random placement: it is packed at
+# half the density, and compressed (`use_compression`).
 #
 tolerance 2.0
 output particle.pdb
@@ -16,59 +16,59 @@ use_compression 0.5
 structure lignin_L3.pdb
   number 7
   rotatable all
-  inside sphere 0. 0. 0. 34.
+  inside sphere 0. 0. 0. 33.
 end structure
 
 structure lignin_L5.pdb
   number 7
   rotatable all
-  inside sphere 0. 0. 0. 34.
+  inside sphere 0. 0. 0. 33.
 end structure
 
 structure lignin_L22.pdb
   number 7
   rotatable all
-  inside sphere 0. 0. 0. 34.
+  inside sphere 0. 0. 0. 33.
 end structure
 
 structure lignin_L28.pdb
   number 7
   rotatable all
-  inside sphere 0. 0. 0. 34.
+  inside sphere 0. 0. 0. 33.
 end structure
 
 structure lignin_L40.pdb
   number 7
   rotatable all
-  inside sphere 0. 0. 0. 34.
+  inside sphere 0. 0. 0. 33.
 end structure
 
 structure lignin_L41.pdb
   number 7
   rotatable all
-  inside sphere 0. 0. 0. 34.
+  inside sphere 0. 0. 0. 33.
 end structure
 
 structure lignin_L63.pdb
   number 7
   rotatable all
-  inside sphere 0. 0. 0. 34.
+  inside sphere 0. 0. 0. 33.
 end structure
 
 structure lignin_L67.pdb
   number 7
   rotatable all
-  inside sphere 0. 0. 0. 34.
+  inside sphere 0. 0. 0. 33.
 end structure
 
 structure lignin_L86.pdb
   number 7
   rotatable all
-  inside sphere 0. 0. 0. 34.
+  inside sphere 0. 0. 0. 33.
 end structure
 
 structure lignin_L90.pdb
   number 7
   rotatable all
-  inside sphere 0. 0. 0. 34.
+  inside sphere 0. 0. 0. 33.
 end structure

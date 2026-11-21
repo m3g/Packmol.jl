@@ -65,6 +65,11 @@ end
     @test_throws ArgumentError packmol(input; use_compression = 1.5)
     write(input, "output x.pdb\nuse_compression 0.5 2.0\nstructure water.pdb\n number 1\nend structure\n")
     @test_throws ArgumentError read_packmol_input(input)
+    # not with voxel_place (an error before the voxel placement)
+    write(input, "output x.pdb\nuse_compression\nvoxel_place\nstructure water.pdb\n number 1\nend structure\n")
+    @test_throws "not supported with voxel_place" redirect_stdout(devnull) do
+        packmol(input)
+    end
 end
 
 @testitem "compression with fixed molecules, dodecahedral cell" setup=[TestFiles] begin
@@ -94,8 +99,13 @@ end
     @test sys.status == :packing_ready
     @test sys.unitcell ≈ Packmol.dodecahedral_unitcell(Float64, 30.0)
     atoms = get_atoms(sys)
-    # the fixed molecule where it was placed, and the others at the tolerance from it
+    # the fixed molecule where it was placed (scaled with the geometry during the
+    # compression, and restored exactly), and the others at the tolerance from it
     fixed = [[a.x, a.y, a.z] for a in atoms[1:3]]
     @test norm(sum(fixed) / 3) < 1.0
+    reference = read_packmol_input(input).structure_types[1].reference_coordinates
+    @test sys.structure_types[1].reference_coordinates == reference
+    @test all(fixed[i] ≈ reference[i] for i in 1:3)
+    @test all(sys.atoms[i].radius == 1.0 for i in 1:3)
     @test minimum(norm(x - [a.x, a.y, a.z]) for x in fixed for a in atoms[4:end]) > 1.9
 end

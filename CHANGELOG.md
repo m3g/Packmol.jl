@@ -25,8 +25,13 @@ Version 100.1.0-DEV
 - ![FEATURE][badge-feature] `use_compression [<fraction> [<step>]]` (Packmol.jl only; a keyword
   argument in Julia): packs the system at a fraction of its density (default 0.5), with the
   constraints and the periodic cell expanded, and compresses it in adaptive steps to the
-  density of the input, for systems too dense to pack from a random placement. Fixed
-  molecules stay in place; all periodic cells are supported.
+  density of the input, for systems too dense to pack from a random placement. A step that
+  does not converge is relaxed (expanded below the last converged density, keeping its
+  rearrangements, and packed) before the compression resumes with half the step; a packing
+  at the low density that does not converge is tried again at half that density, up to
+  three times. Fixed molecules are scaled with the geometry (the coordinates of their atoms
+  and their radii), and restored at the end. All periodic cells are supported; not with
+  `restart_from` or `voxel_place`.
 - ![FEATURE][badge-feature] `rotatable all` (Julia: `flexible_structure(...; rotatable = :all)`):
   every rotatable bond of a molecule, found from its bonds: not in rings, between heavy
   atoms with other heavy neighbors, and single for sure from the numbers of bonds of the
@@ -34,7 +39,7 @@ Version 100.1.0-DEV
   turn, but those between aromatic rings). For all-atom structures with all their hydrogens.
 - ![INFO][badge-info] Documentation: the tutorial "Lignin particle in acetone and water": 70
   flexible oligomers of spruce lignin (built with LigninBuilder), with `rotatable all`,
-  packed by compression at 1.19 g/cm³, then solvated; and dispersed in the solvent.
+  packed by compression at 1.30 g/cm³, then solvated; and dispersed in the solvent.
 - ![INFO][badge-info] Documentation: the flexible molecules (rotatable bonds, polymers) and the
   packing by compression in "New in Packmol.jl" of the home page.
 - ![INFO][badge-info] Documentation: the tutorial "Polymer-capped gold nanoparticle": 57
