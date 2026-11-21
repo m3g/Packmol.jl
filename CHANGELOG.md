@@ -25,27 +25,18 @@ Version 100.1.0-DEV
 - ![FEATURE][badge-feature] `use_compression [<fraction> [<step>]]` (Packmol.jl only; a keyword
   argument in Julia): packs the system at a fraction of its density (default 0.5), with the
   constraints and the periodic cell expanded, and compresses it in adaptive steps to the
-  density of the input, for systems too dense to pack from a random placement. Fixed
-  molecules stay in place; all periodic cells are supported.
+  density of the input, for systems too dense to pack from a random placement. A step that
+  does not converge is relaxed (expanded below the last converged density, keeping its
+  rearrangements, and packed) before the compression resumes with half the step; a packing
+  at the low density that does not converge is tried again at half that density, up to
+  three times. Fixed molecules are scaled with the geometry (the coordinates of their atoms
+  and their radii), and restored at the end. All periodic cells are supported; not with
+  `restart_from` or `voxel_place`.
 - ![FEATURE][badge-feature] `rotatable all` (Julia: `flexible_structure(...; rotatable = :all)`):
   every rotatable bond of a molecule, found from its bonds: not in rings, between heavy
   atoms with other heavy neighbors, and single for sure from the numbers of bonds of the
   atoms (bonds between two carbon or nitrogen atoms with fewer than four bonds do not
   turn, but those between aromatic rings). For all-atom structures with all their hydrogens.
-- ![ENHANCEMENT][badge-enhancement] Packing by compression: a step that does not converge
-  is relaxed (expanded below the last converged density, keeping its rearrangements, and
-  packed) before the compression resumes with half the step, instead of being discarded;
-  and a packing at the low density that does not converge is tried again at half that
-  density, up to three times. Dense systems that stopped at ~90% of the density (a lignin
-  particle at 1.3 g/cm³) now reach it.
-- ![ENHANCEMENT][badge-enhancement] Packing by compression: the fixed molecules are scaled
-  with the geometry (the coordinates of their atoms and their radii), and restored at the
-  end, such that the constraints placed relative to them keep their relation to them. The
-  Zika virion (its membrane crossed by its fixed proteins) is compressed to its density in
-  5 steps; with the proteins kept at their place, it stalled at a third of the density.
-- ![ENHANCEMENT][badge-enhancement] The packing of polymers and flexible molecules as rigid
-  molecules, before they are released, no longer warns that it did not converge (it need
-  not converge).
 - ![INFO][badge-info] Documentation: the tutorial "Lignin particle in acetone and water": 70
   flexible oligomers of spruce lignin (built with LigninBuilder), with `rotatable all`,
   packed by compression at 1.30 g/cm³, then solvated; and dispersed in the solvent.

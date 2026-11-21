@@ -467,12 +467,12 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       density, up to 3 times: the gold-polymer one failed in some runs). Breathing took the lignin particle at
       1.3 g/cm³ from 1/3 to 11/11 runs (2026-11-20); tested alternatives: no rigid stage (all fail), movebad off or
       whole-molecule random moves in the compressions (fail), a 20-loop or stall-based rigid stage (gold-polymer fails). Constraints: boxes, cubes, spheres,
-      cylinders, ellipsoids, planes; all PBC cells; no restart_from. Fixed molecules scaled (2026-11-20): the Zika virion
+      cylinders, ellipsoids, planes; all PBC cells; no restart_from, no voxel_place (an error before the placement; the voxel placement sets restart_from). Fixed molecules scaled (2026-11-20): the Zika virion
       with use_compression 0.5 reaches its density in 5 steps (2 min); with the proteins unscaled it stalled at ~32%
       (25 min); gold-polymer unchanged (2/2). Not known to work in general (free molecules in cavities of a fixed one
       see it enlarged): a note in the docs, not a guarantee. Breathing variant B (relax only once the step is below
       the minimum) 4/5 and 1.6x slower than A (5/5) on the lignin particle. The condensate droplet (123 chains,
-      400 mg/mL): rigid chains jam at ~220 mg/mL, compressed flexible chains reach 400 in 25-40 s (`rotatable 18 1`, bonds from the CONECT records of peptides.pdb).
+      400 mg/mL): rigid chains jam at ~220 mg/mL, compressed flexible chains reach 400 in 25-40 s (`rotatable 18 1`, bonds from the CONECT records of peptides.pdb). The minimal cell of Bentopy from scratch (2026-11-21; experimental code, voxel placement in the expanded geometry and voxel re-placement of bad molecules, on the local branch compression-voxel, not merged): proteins and RNAs placed at 50% jam at ~61% (the large RNAs, rigid); placed at 95% they drop 126 large RNAs (Bentopy drops 132) and compress in 3 min: no gain over the voxel_place of the tutorial. Flexible RNAs not tried (the user: not now).
 - [x] Rotation constraints (`constrain_rotation`, `src/constraints/rotations.jl`): a penalty on the
       angle between an axis and a vector of the molecule (between the centers of two atom sets, or the
       longest principal axis). Not Fortran's bounds on Euler angles (by design).

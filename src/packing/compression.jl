@@ -58,6 +58,10 @@ function _check_compress(sys::PackmolSystem{D,T}) where {D,T}
         use_compression is supported in three dimensions only.
 
     """))
+    isnothing(sys.voxel_place) || throw(ArgumentError("""\n
+        use_compression is not supported with voxel_place.
+
+    """))
     isnothing(sys.restart_from) || throw(ArgumentError("""\n
         use_compression is not supported with restart_from.
 

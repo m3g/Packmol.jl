@@ -65,6 +65,11 @@ end
     @test_throws ArgumentError packmol(input; use_compression = 1.5)
     write(input, "output x.pdb\nuse_compression 0.5 2.0\nstructure water.pdb\n number 1\nend structure\n")
     @test_throws ArgumentError read_packmol_input(input)
+    # not with voxel_place (an error before the voxel placement)
+    write(input, "output x.pdb\nuse_compression\nvoxel_place\nstructure water.pdb\n number 1\nend structure\n")
+    @test_throws "not supported with voxel_place" redirect_stdout(devnull) do
+        packmol(input)
+    end
 end
 
 @testitem "compression with fixed molecules, dodecahedral cell" setup=[TestFiles] begin

@@ -109,4 +109,4 @@ the density after 25 minutes.
 !!! note "Limitations"
     - The constraints must be boxes, cubes, spheres, cylinders, ellipsoids or planes (the
       others cannot be scaled).
-    - Not with `restart_from`.
+    - Not with `restart_from`, nor with `voxel_place`.

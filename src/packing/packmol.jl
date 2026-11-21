@@ -112,7 +112,8 @@ packmol()
         continue_failed_initial_packing, restart_from, voxel_place, use_compression, pbc, unitcell,
     )
     # The voxel placement of Bentopy first: the system becomes that of the molecules that
-    # fit, starting from their positions
+    # fit, starting from their positions (not with use_compression: checked before)
+    isnothing(packmol_system.use_compression) || _check_compress(packmol_system)
     voxel_tries = packmol_system.voxel_place
     if voxel_tries isa Int && isnothing(packmol_system.restart_from)
         _voxel_place!(packmol_system; max_tries_mult = voxel_tries)
