@@ -20,7 +20,7 @@ standalone binaries, or the Julia package), [running
 Packmol](https://m3g.github.io/Packmol.jl/stable/running/), the tutorials, and
 [migrating from the legacy
 Packmol](https://m3g.github.io/Packmol.jl/stable/migrating/). The changes of each version
-are in the [CHANGELOG](CHANGELOG.md).
+are in the [CHANGELOG](CHANGELOG.md). To contribute, see [CONTRIBUTING](CONTRIBUTING.md).
 
 ## Quick start
 

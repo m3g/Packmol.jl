@@ -37,6 +37,9 @@ Version 100.1.0-DEV
   atoms with other heavy neighbors, and single for sure from the numbers of bonds of the
   atoms (bonds between two carbon or nitrogen atoms with fewer than four bonds do not
   turn, but those between aromatic rings). For all-atom structures with all their hydrogens.
+- ![INFO][badge-info] `CONTRIBUTING.md`: the guidelines for contributions, and the checks a
+  pull request must pass (the test suite, the executable, the documentation, and the
+  validation on the large tests of changes of the packing heuristics).
 - ![INFO][badge-info] Documentation: the tutorial "Lignin particle in acetone and water": 70
   flexible oligomers of spruce lignin (built with LigninBuilder), with `rotatable all`,
   packed by compression at 1.30 g/cm³, then solvated; and dispersed in the solvent.

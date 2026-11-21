@@ -13,8 +13,31 @@ julia --project=dev/large_tests -t 14 dev/large_tests/run.jl                 # a
 julia --project=dev/large_tests -t 14 dev/large_tests/run.jl zika bilayer    # some of them
 ```
 
-Options: `--seed N` (adds `seed N` to the inputs), `--workdir DIR` (where the inputs are
-copied and packed; a temporary directory by default).
+Options: `--seed N` (adds `seed N` to the inputs), `--seeds A:B` (runs each case with
+the seeds A to B), `--skip CASES` (comma-separated), `--label NAME` (a label of the runs
+in the results, by default the commit), `--results FILE` (by default `results.tsv`),
+`--workdir DIR` (where the inputs are copied and packed; a temporary directory by
+default).
+
+## Validating changes with widespread consequences
+
+A change of the heuristics of the packing (movebad, the initial placement, the
+compression) can help some systems and hurt others, and packings with several threads
+are not deterministic: compare the versions on all the cases, with several seeds each.
+From the root of the repository:
+
+```bash
+git checkout main
+julia --project=dev/large_tests -t 14 dev/large_tests/run.jl --seeds 1:3 --skip exosome --label main --results validation.tsv
+git checkout <branch>
+julia --project=dev/large_tests -t 14 dev/large_tests/run.jl --seeds 1:3 --skip exosome --label new --results validation.tsv
+julia dev/large_tests/compare.jl validation.tsv main new
+```
+
+`compare.jl` prints, for each case and version, the runs that converged and the medians
+of the loops, function evaluations and times, and flags the cases that converged less
+often with the new version, or got slower by more than 30%. The two sets of runs take
+about two hours each (the exosome, 35 minutes per run, is left out).
 
 The cases are run one after the other (never run two of them, or other heavy jobs, at the
 same time: the timings would be meaningless). Each packs a copy of its input directory, and
