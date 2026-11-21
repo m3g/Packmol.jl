@@ -62,9 +62,9 @@ structure lignin_L90.pdb
 end structure
 
 structure water.pdb
-  number 19548
+  number 19877
 end structure
 
 structure acetone.pdb
-  number 2039
+  number 2073
 end structure
