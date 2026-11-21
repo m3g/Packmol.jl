@@ -165,6 +165,10 @@ for changes that need no entry, e.g. of the workflows).
 
 ## Running Tests
 
+The checks a pull request must pass (test suite, executable, docs, and the large tests for
+changes of the heuristics) and the guidelines for contributors are in `CONTRIBUTING.md`:
+keep it current when they change.
+
 ```bash
 julia --project -e 'using TestItemRunner; @run_package_tests'
 ```
