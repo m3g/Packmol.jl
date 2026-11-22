@@ -159,7 +159,10 @@ nanoparticle](@ref)):
   packing (`radscale` 1.0: inflated atoms push consecutive monomers apart, against the
   links); movebad moves the monomers of a bad polymer by small random displacements and
   rotations (a polymer moved as a whole to a random place, in a dense system, lands across
-  the others).
+  the others). When the number of bad molecules has not decreased for 20 loops, the worst
+  bad polymers are placed again whole, in the conformation of the structure file, at the
+  position of least overlap with the other molecules among 500 trials that satisfy the
+  constraints.
 - **Output.** Each polymer is written whole, with the atoms of the structure file, in
   their order (with the residue numbers of the file), a chain identifier per polymer (or
   the `chain` of the block), and the bonds of the file (`CONECT` records); with periodic
