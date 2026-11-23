@@ -17,7 +17,7 @@ pbc -130. -130. -130. 130. 130. 130.
 structure peptides.pdb
   number 123
   repeat 20
-    monomer 18
+    fragment 18
       rotatable 18 1
   end repeat
 end structure
