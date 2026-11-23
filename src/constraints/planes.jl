@@ -84,7 +84,7 @@ function parse_constraint(::Val{Symbol("above plane")}, data::AbstractVector{<:A
     end
     return Plane{Over,T}(; normal, d)
 end
-# "over" is the original Fortran Packmol keyword; "above" is a Packmol.jl-only synonym.
+# "over" is the original Fortran Packmol keyword; "above" is a synonym added by Packmol.jl.
 parse_constraint(::Val{Symbol("over plane")}, args...) = parse_constraint(Val(Symbol("above plane")), args...)
 
 function parse_constraint(::Val{Symbol("below plane")}, data::AbstractVector{<:AbstractString}, ::Type{T}, filename::String) where {T}
