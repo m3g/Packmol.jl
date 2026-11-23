@@ -62,7 +62,8 @@ src/
                           # constraint_checks.jl, fixed_molecules.jl, buffers.jl
   packing/                # packmol.jl (API), packing_loop.jl (`_packmol`), active_set.jl, report.jl,
                           # compression.jl (`use_compression`: pack expanded, compress in adaptive steps)
-  polymers/               # repeat blocks / polymer_structure: chains of rigid monomers with links
+  polymers/               # flexible molecules (fragment lines, repeat blocks, rotatable bonds;
+                          # Julia flexible_structure_type / FlexibleStructureType, fragment)
                           # (types, read_polymer_block, topology, link_fg, placement, output, api)
   tools/                  # volume.jl (guess_volume, free_volume), shape.jl (shape_descriptors,
                           # select_conformations), system_building.jl (builtin_lipid, cross_section)
@@ -439,11 +440,14 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       of a type, a significant warning (it can fall far short of the free volume: the Zika lipids got
       a quarter to a half of what `free_volume` allows). Tutorial "Minimal cell" (`docs/src/tutorials/cell.md`,
       files/cell/prepare.jl + solvation.inp; Bentopy's data not distributed: Zenodo 17524049).
-- [x] Polymers (`src/polymers/`, Packmol.jl-only): a structure block with `repeat <n> ... end repeat`
-      blocks of `monomer <natoms>` lines with `link <a> <b> [d0 [k [w]]]` or `rotatable <a> <b>` (the links of the bond, from the bonds: CONECT or
+- [x] Polymers (`src/polymers/`, Packmol.jl-only): a structure block with `fragment <natoms>` lines
+      (alone or in `repeat <n> ... end repeat` blocks; `monomer` before 2026-11-23) with `link <a> <b> [d0 [k [w]]]` or `rotatable <a> <b>` (the links of the bond, from the bonds: CONECT or
       `bond_distance`, as rotatable bonds; graph exclusions too) (atoms of a monomer and of the
       next one; d0 from each conformation, k 10, w the half-width of a flat bottom, 0), and `cyclic`; Julia
-      `polymer_structure(file; number, sequence = [n => [monomer(natoms; links)]], cyclic)`. Each monomer of
+      `flexible_structure_type(file; number, fragments = [fragment(natoms; rotatable, links), n => [fragment(...)]], cyclic)`
+      (returns a `FlexibleStructureType`; one constructor for fragments and rotatable bonds, separate from
+      `structure_type`, decided 2026-11-23: replaced `polymer_structure`/`monomer`/`flexible_structure`,
+      never released). `link` kept (ball joints, non-bonded or loose links), `rotatable` documented first. Each monomer of
       each conformation is a structure type (a molecule per polymer of the conformation); links
       `k (|d - d0| - w)²` added to the function (`_link_fg!`, active set too), in the convergence criterion;
       pairs of atoms of different monomers (up to 3 apart) closer than their radii in a conformation are
@@ -458,7 +462,7 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       homogeneous 260 Å cube in 4 s; not the 100 Å droplet, nor with use_compression 0.05: stops at 41%). Not supported: fixed, restart_from, constrain_rotation,
       voxel_place.
 - [x] Rotatable bonds (`src/polymers/rotatable.jl`): `rotatable i j [i j ...]` and `bond_distance d` in a
-      structure block (Julia `flexible_structure(file; number, rotatable, bond_distance)`), chosen by hand,
+      structure block (Julia `flexible_structure_type(file; number, rotatable, bond_distance)`), chosen by hand,
       or `rotatable all` (`rotatable = :all`, the sentinel pair (0, 0)): bonds not in rings, heavy atoms with
       other heavy neighbors, not between two C/N with < 4 bonds unless both aromatic (biaryls); requires all
       hydrogens (error if none); matches the CHARMM types of the lignin oligomers but the aryl-vinyl bonds.

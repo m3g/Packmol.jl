@@ -1,45 +1,51 @@
 #
-# The polymers of the input files: the `repeat` blocks of a structure block, and the
-# expansion of the polymer into its monomers (one structure type each).
+# The flexible molecules of the input files: the `fragment` lines of a structure block
+# (alone or in `repeat` blocks), and the expansion of the molecule into its fragments
+# (one structure type each). The fragments of a polymer are its monomers.
 #
 #     structure polymer.pdb      # the polymer (one model per conformation)
 #       number 10                # polymers
-#       repeat 20                # the sequence: repeat blocks of monomers
-#         monomer 18             # atoms of the monomer, in the order of the structure
-#           link 18 1            # atom 18 of this monomer to atom 1 of the next
+#       repeat 20                # the sequence: fragments, alone or in repeat blocks
+#         fragment 18            # atoms of the fragment, in the order of the structure
+#           link 18 1            # atom 18 of this fragment to atom 1 of the next
 #           link 17 2 3.8 10.0   # with the distance and the constant of the link (and,
 #                                # optionally, the half-width of a flat bottom)
-#           rotatable 18 1       # or: the bond of atom 18 to atom 1 of the next monomer,
+#           rotatable 18 1       # or: the bond of atom 18 to atom 1 of the next fragment,
 #                                # with the links that keep its length and angles
 #       end repeat
-#     (`rotatable i j ...` or `rotatable all`, outside repeat blocks: the rotatable bonds
-#     of a molecule, see rotatable.jl)
+#     (`rotatable i j ...` or `rotatable all`, not after a `fragment` line: the rotatable
+#     bonds of a molecule, see rotatable.jl)
 #       bond_distance 1.9        # the bonds (for `rotatable`), if no CONECT records
-#       cyclic                   # the last monomer linked to the first one
+#       cyclic                   # the last fragment linked to the first one
 #     end structure
 #
-# The links of a monomer join it to the next monomer of the sequence (of the same repeat
-# block or of the next one); those of the last monomer of a linear polymer are ignored.
+# The links of a fragment join it to the next fragment of the sequence (of the same repeat
+# block or not); those of the last fragment of a linear molecule are ignored.
 #
 
 const _default_link_constant = 10.0
 
 #
-# Removes the lines of the sequence of a polymer (`repeat`, `monomer`, `link`,
-# `end repeat`, `cyclic`) from a structure block, returning the other lines and the
-# sequence (empty if the block has no `repeat` blocks).
+# Removes the lines of the fragments of a flexible molecule (`fragment`, `link`,
+# `rotatable`, `repeat`, `end repeat`, `cyclic`, `bond_distance`) from a structure block,
+# returning the other lines and the specification (empty if the molecule is rigid).
+# `fragment` lines, with their `link` and `rotatable` lines, may be inside or outside
+# repeat blocks; `rotatable` lines not following a `fragment` line are the rotatable
+# bonds of the molecule.
 #
 function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
     seekstart(input_file_block)
     lines = _read_lines(input_file_block)
     filtered = IOBuffer()
-    monomers = MonomerSpec{T}[]
+    fragments = FragmentSpec{T}[]
     cyclic = false
     rotatable = Tuple{Int,Int}[]
     bond_distance = T(NaN)
     in_repeat = false
     nrepeat = 0
-    block = MonomerSpec{T}[]
+    block = FragmentSpec{T}[]
+    # the fragment of the last `fragment` line (its `link` and `rotatable` lines follow)
+    current = nothing
     for line in lines
         words = split(_strip_comment(line))
         if isempty(words)
@@ -61,6 +67,7 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
 
             """)))
             in_repeat = true
+            current = nothing
             empty!(block)
         elseif keyword == "end" && length(words) >= 2 && words[2] == "repeat"
             in_repeat || throw(ArgumentError("""\n
@@ -68,32 +75,30 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
 
             """))
             isempty(block) && throw(ArgumentError("""\n
-                A repeat block without monomers.
+                A repeat block without fragments.
 
             """))
             for _ in 1:nrepeat
                 for m in block
-                    push!(monomers, m)
+                    push!(fragments, m)
                 end
             end
             in_repeat = false
-        elseif keyword == "monomer"
-            in_repeat || throw(ArgumentError("""\n
-                `monomer` must be inside a repeat block: $(strip(line))
+            current = nothing
+        elseif keyword == "fragment"
+            length(words) == 2 || throw(ArgumentError("""\n
+                fragment requires its number of atoms: $(strip(line))
 
             """))
-            length(words) >= 2 || throw(ArgumentError("""\n
-                monomer requires its number of atoms: $(strip(line))
-
-            """))
-            n = _parse_value(Int, "monomer", words[2]; _val_check=x -> x >= 1 || throw(ArgumentError("""\n
-                A monomer must have at least one atom: $(strip(line))
+            n = _parse_value(Int, "fragment", words[2]; _val_check=x -> x >= 1 || throw(ArgumentError("""\n
+                A fragment must have at least one atom: $(strip(line))
 
             """)))
-            push!(block, MonomerSpec{T}(n, PolymerLink{T}[], Tuple{Int,Int}[]))
+            current = FragmentSpec{T}(n, PolymerLink{T}[], Tuple{Int,Int}[])
+            push!(in_repeat ? block : fragments, current)
         elseif keyword == "link"
-            (in_repeat && !isempty(block)) || throw(ArgumentError("""\n
-                `link` must follow a `monomer` line, inside a repeat block: $(strip(line))
+            isnothing(current) && throw(ArgumentError("""\n
+                `link` must follow a `fragment` line: $(strip(line))
 
             """))
             (3 <= length(words) <= 6) || throw(ArgumentError("""\n
@@ -106,27 +111,32 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
             d0 = length(words) >= 4 ? _parse_value(T, "link", words[4]) : T(NaN)
             k = length(words) >= 5 ? _parse_value(T, "link", words[5]) : T(NaN)
             w = length(words) >= 6 ? _parse_value(T, "link", words[6]) : T(NaN)
-            (1 <= a <= block[end].natoms) || throw(ArgumentError("""\n
-                link: atom $a is not an atom of the monomer, of $(block[end].natoms) atoms: $(strip(line))
+            (1 <= a <= current.natoms) || throw(ArgumentError("""\n
+                link: atom $a is not an atom of the fragment, of $(current.natoms) atoms: $(strip(line))
 
             """))
-            push!(block[end].links, PolymerLink{T}(a, b, d0, k, w))
+            push!(current.links, PolymerLink{T}(a, b, d0, k, w))
         elseif keyword == "cyclic"
             cyclic = true
-        elseif keyword == "rotatable" && in_repeat
-            # the bond of an atom of the monomer to an atom of the next one
-            (!isempty(block) && length(words) == 3) || throw(ArgumentError("""\n
-                In a repeat block, rotatable follows a `monomer` line, and gives an atom of the
-                monomer and an atom of the next one: $(strip(line))
+        elseif keyword == "rotatable" && !isnothing(current)
+            # the bond of an atom of the fragment to an atom of the next one
+            length(words) == 3 || throw(ArgumentError("""\n
+                After a `fragment` line, rotatable gives an atom of the fragment and an atom of
+                the next one: $(strip(line))
 
             """))
             a = _parse_value(Int, "rotatable", words[2])
             b = _parse_value(Int, "rotatable", words[3])
-            (1 <= a <= block[end].natoms) || throw(ArgumentError("""\n
-                rotatable: atom $a is not an atom of the monomer, of $(block[end].natoms) atoms: $(strip(line))
+            (1 <= a <= current.natoms) || throw(ArgumentError("""\n
+                rotatable: atom $a is not an atom of the fragment, of $(current.natoms) atoms: $(strip(line))
 
             """))
-            push!(block[end].rotatable, (a, b))
+            push!(current.rotatable, (a, b))
+        elseif keyword == "rotatable" && in_repeat
+            throw(ArgumentError("""\n
+                In a repeat block, rotatable follows a `fragment` line: $(strip(line))
+
+            """))
         elseif keyword == "rotatable" && length(words) == 2 && words[2] == "all"
             # every rotatable bond, found from the bonds (`_all_rotatable_bonds`)
             push!(rotatable, (0, 0))
@@ -146,9 +156,10 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
             bond_distance = _parse_value(T, "bond_distance", words[2])
         else
             in_repeat && throw(ArgumentError("""\n
-                Keyword $keyword inside a repeat block (only `monomer`, `link` and `rotatable`): $(strip(line))
+                Keyword $keyword inside a repeat block (only `fragment`, `link` and `rotatable`): $(strip(line))
 
             """))
+            current = nothing
             println(filtered, line)
         end
     end
@@ -156,18 +167,19 @@ function _read_polymer_spec(input_file_block::IOBuffer, ::Type{T}) where {T}
         repeat block not closed with `end repeat`.
 
     """))
-    cyclic && isempty(monomers) && throw(ArgumentError("""\n
-        cyclic requires the sequence of the polymer (repeat blocks).
+    cyclic && isempty(fragments) && throw(ArgumentError("""\n
+        cyclic requires the fragments of the molecule (`fragment` lines).
 
     """))
-    !isempty(rotatable) && !isempty(monomers) && throw(ArgumentError("""\n
-        The rotatable bonds of a polymer are given in its monomers, inside the repeat blocks
-        (`rotatable <a> <b>`: atom a of the monomer, atom b of the next one).
+    !isempty(rotatable) && !isempty(fragments) && throw(ArgumentError("""\n
+        The rotatable bonds of a molecule given by its fragments are given in the fragments
+        (`rotatable <a> <b>` after a `fragment` line: atom a of the fragment, atom b of the
+        next one).
 
     """))
-    # Each repeat pushed copies of the same `MonomerSpec`s: independent copies
-    monomers = [MonomerSpec{T}(m.natoms, copy(m.links), copy(m.rotatable)) for m in monomers]
-    return seekstart(filtered), PolymerSpec{T}(monomers, cyclic, rotatable, bond_distance)
+    # Each repeat pushed copies of the same `FragmentSpec`s: independent copies
+    fragments = [FragmentSpec{T}(m.natoms, copy(m.links), copy(m.rotatable)) for m in fragments]
+    return seekstart(filtered), PolymerSpec{T}(fragments, cyclic, rotatable, bond_distance)
 end
 
 #
@@ -185,7 +197,7 @@ end
 # Adds the structure types of a molecule: those of its fragments if it is flexible (a
 # polymer, or with rotatable bonds), otherwise its structure types
 function _add_flexible!(sys::PackmolSystem{D,T}, types::Vector{StructureType{D,T}}, spec::PolymerSpec{T}) where {D,T}
-    if !isempty(spec.monomers)
+    if !isempty(spec.fragments)
         _add_polymer!(sys, types, spec)
     elseif !isempty(spec.rotatable)
         _add_rotatable!(sys, types, spec.rotatable, spec.bond_distance)
@@ -231,20 +243,20 @@ function _add_polymer!(sys::PackmolSystem{D,T}, rigid_types::Vector{StructureTyp
     st = first(rigid_types)
     name = basename(st.filename)
     _check_flexible(st)
-    nmon = length(spec.monomers)
-    natoms = sum(m.natoms for m in spec.monomers)
+    nmon = length(spec.fragments)
+    natoms = sum(m.natoms for m in spec.fragments)
     natoms == st.natoms || throw(ArgumentError("""\n
-        The monomers of the polymer $name have $natoms atoms, and its structure has $(st.natoms).
+        The fragments of $name have $natoms atoms, and its structure has $(st.natoms).
 
     """))
     nmon >= 2 || throw(ArgumentError("""\n
-        The polymer $name must have at least two monomers.
+        The flexible molecule $name must have at least two fragments.
 
     """))
     # The atoms of each monomer, and the monomer of each atom
     fragments = Vector{Int}[]
     first_atom = 1
-    for m in spec.monomers
+    for m in spec.fragments
         push!(fragments, collect(first_atom:first_atom+m.natoms-1))
         first_atom += m.natoms
     end
@@ -254,24 +266,24 @@ function _add_polymer!(sys::PackmolSystem{D,T}, rigid_types::Vector{StructureTyp
     end
     # The rotatable bonds of the monomers: the pairs of atoms (in the polymer) of their
     # links, from the bonds of the polymer
-    has_rotatable = any(m -> !isempty(m.rotatable), spec.monomers)
+    has_rotatable = any(m -> !isempty(m.rotatable), spec.fragments)
     bonded = has_rotatable ? _molecule_bonds(st, spec.bond_distance) : Vector{Int}[]
     rotatable_pairs = Tuple{Int,Int}[]
     for m in 1:nmon
         next = m < nmon ? m + 1 : (spec.cyclic ? 1 : 0)
         next > 0 || continue
-        for (a, b) in spec.monomers[m].rotatable
-            if !(1 <= b <= spec.monomers[next].natoms)
-                where = string("rotatable ", a, " ", b, " of monomer ", m, " of ", name)
+        for (a, b) in spec.fragments[m].rotatable
+            if !(1 <= b <= spec.fragments[next].natoms)
+                where = string("rotatable ", a, " ", b, " of fragment ", m, " of ", name)
                 throw(ArgumentError("""\n
-                    $where: atom $b is not an atom of the next monomer, of $(spec.monomers[next].natoms) atoms.
+                    $where: atom $b is not an atom of the next fragment, of $(spec.fragments[next].natoms) atoms.
 
                 """))
             end
             ia = fragments[m][a]
             ib = fragments[next][b]
             if !(ib in bonded[ia])
-                where = string("rotatable ", a, " ", b, " of monomer ", m, " of ", name)
+                where = string("rotatable ", a, " ", b, " of fragment ", m, " of ", name)
                 reason = _not_bonded_reason(st, spec.bond_distance, ia, ib)
                 throw(ArgumentError("""\n
                     $where (atoms $ia and $ib of the polymer): the atoms are $reason.
@@ -298,12 +310,12 @@ function _add_polymer!(sys::PackmolSystem{D,T}, rigid_types::Vector{StructureTyp
         for m in 1:nmon
             next = m < nmon ? m + 1 : (spec.cyclic ? 1 : 0)
             next > 0 || continue
-            for l in spec.monomers[m].links
+            for l in spec.fragments[m].links
                 # (few interpolations: a long string is not compiled by `juliac --trim`)
-                if !(1 <= l.b <= spec.monomers[next].natoms)
-                    where = string("link ", l.a, " ", l.b, " of monomer ", m, " of ", name)
+                if !(1 <= l.b <= spec.fragments[next].natoms)
+                    where = string("link ", l.a, " ", l.b, " of fragment ", m, " of ", name)
                     throw(ArgumentError("""\n
-                        $where: atom $(l.b) is not an atom of the next monomer, of $(spec.monomers[next].natoms) atoms.
+                        $where: atom $(l.b) is not an atom of the next fragment, of $(spec.fragments[next].natoms) atoms.
 
                     """))
                 end
@@ -318,7 +330,7 @@ function _add_polymer!(sys::PackmolSystem{D,T}, rigid_types::Vector{StructureTyp
         push!(links, conformation_links)
     end
     isempty(first(links)) && throw(ArgumentError("""\n
-        The polymer $name has no links between its monomers.
+        The flexible molecule $name has no links between its fragments.
 
     """))
     # The pairs of atoms of different monomers (up to 3 monomers apart) closer than the

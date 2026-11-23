@@ -44,7 +44,7 @@ chains), [`toluene.pdb`](files/gold_polymer/toluene.pdb), and the input file
 ## The chains as polymers
 
 The atoms of the chain are in the order of its backbone, from the sulfur atom, in groups
-that are the rigid monomers of the polymer: S–CH₂ (4 atoms) and CH₂ (3), then 20 times
+that are the rigid fragments of the polymer (its monomers): S–CH₂ (4 atoms) and CH₂ (3), then 20 times
 CH(C₆H₅) (13) and CH₂ (3), and the sec-butyl group (13). Each group starts with its
 backbone carbon atom (the S–CH₂ group, with the sulfur atom), followed by its
 substituents. Each group is bonded to the next one by their backbone carbon atoms, and
@@ -53,9 +53,9 @@ turns about that bond:
 ```
   bond_distance 1.9   # the bonds: the atoms closer than 1.9 Å
   repeat 20
-    monomer 13        # CH(C6H5)
+    fragment 13       # CH(C6H5)
       rotatable 1 1   # the bond of atom 1 to atom 1 of the next group
-    monomer 3         # CH2
+    fragment 3        # CH2
       rotatable 1 1
   end repeat
 ```
@@ -166,20 +166,18 @@ gold = structure_type("gold.pdb";
 
 # The groups of the chain, each turning about the bond of its
 # backbone carbon atom (atom 1, or atom 2 of S-CH2) to that of the next
-sequence = [
-    1 => [
-        monomer(4; rotatable = [(2, 1)]), # S-CH2
-        monomer(3; rotatable = [(1, 1)]), # CH2
-    ],
+fragments = [
+    fragment(4; rotatable = [(2, 1)]), # S-CH2
+    fragment(3; rotatable = [(1, 1)]), # CH2
     20 => [
-        monomer(13; rotatable = [(1, 1)]), # CH(C6H5)
-        monomer(3; rotatable = [(1, 1)]),  # CH2
+        fragment(13; rotatable = [(1, 1)]), # CH(C6H5)
+        fragment(3; rotatable = [(1, 1)]),  # CH2
     ],
-    1 => [monomer(13)],                    # sec-butyl
+    fragment(13),                      # sec-butyl
 ]
-chains = polymer_structure("polystyrene.pdb";
+chains = flexible_structure_type("polystyrene.pdb";
     number = 57,
-    sequence,
+    fragments,
     bond_distance = 1.9, # the bonds: the atoms closer than 1.9 Å
     constraints = [OutsideSphere(origin, 16.)],
     atom_constraints = [[1] => InsideSphere(origin, 17.5)], # the sulfur atom

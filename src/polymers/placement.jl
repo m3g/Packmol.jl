@@ -97,7 +97,7 @@ function _polymer_initial_approximation!(sys::PackmolSystem{D,T}, rp::RigidPolym
         _packmol(rsys; restart=true, nloop, seed=sys.seed, warn_unconverged=false)
         rsys.status == :packing_ready ||
             _println("  The packing of the rigid polymers ended (not converged, as it may be)")
-        _println("  Releasing the monomers of the polymers")
+        _println("  Releasing the fragments of the flexible molecules")
     end
     _center_reference_coordinates!(sys)
     for (rmol, smol) in enumerate(rp.sys_molecule)

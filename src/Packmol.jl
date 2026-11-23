@@ -49,7 +49,7 @@ export voxel_place
 export PackmolSystem
 export StructureType
 export structure_type
-export polymer_structure, monomer, flexible_structure
+export flexible_structure_type, fragment
 export get_atoms
 export shape_descriptors, select_conformations
 

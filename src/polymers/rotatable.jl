@@ -1,6 +1,6 @@
 #
 # Molecules with rotatable bonds (`rotatable i j ...` in a structure block, or
-# `flexible_structure` in Julia): the bonds of the molecule (its CONECT records, or the
+# `flexible_structure_type(file; rotatable)` in Julia): the bonds of the molecule (its CONECT records, or the
 # pairs of atoms closer than `bond_distance`) are cut at the rotatable bonds, and the
 # connected parts of what is left are the rigid fragments of the molecule. Each rotatable
 # bond i–j is kept by links: i–j (the bond), and the bonds of i and of j to their other
