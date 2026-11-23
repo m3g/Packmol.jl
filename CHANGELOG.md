@@ -37,6 +37,13 @@ Version 100.1.0-DEV
   atoms with other heavy neighbors, and single for sure from the numbers of bonds of the
   atoms (bonds between two carbon or nitrogen atoms with fewer than four bonds do not
   turn, but those between aromatic rings). For all-atom structures with all their hydrogens.
+- ![ENHANCEMENT][badge-enhancement] The bad molecules moved during the packing (movebad) are placed
+  at the best of 20 random positions that satisfy their constraints, the one of least overlap
+  with the other molecules, instead of at the first one. Polymers and molecules with rotatable
+  bonds whose packing stalls (20 loops without fewer bad molecules) are placed again whole, in
+  the conformation of their structure file, at the best of 500 positions. A budding vesicle of
+  5765 flexible POPC lipids, which did not converge, packs; the lignin particle converged in all
+  runs of the validation (2 of 3 before).
 - ![INFO][badge-info] `CONTRIBUTING.md`: the guidelines for contributions, and the checks a
   pull request must pass (the test suite, the executable, the documentation, and the
   validation on the large tests of changes of the packing heuristics).

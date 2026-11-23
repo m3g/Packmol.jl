@@ -361,6 +361,10 @@ function _packmol(
     # over the whole run (see movebad.jl for why this must persist rather
     # than being recomputed fresh each call).
     fmol_max_type = zeros(T, length(packmol_system.structure_types))
+    # The stall of the packing of polymers: loops without a new minimum of the number of
+    # bad molecules
+    nstalled = 0
+    stall_nbad = typemax(Int)
     # The molecules that do not satisfy the convergence criterion (the bad molecules of
     # the active subsystem and of movebad!), at the start and at the end of each loop
     mol_unconverged = zeros(Bool, packmol_system.nmols)
@@ -678,6 +682,9 @@ function _packmol(
         do_movebad = loop > 0 && fimp_within_loop < T(100 * movebad_tolerance)
         if do_movebad
             cm_min, cm_max = compute_cm_bounds(packmol_system)
+            # the bad molecules are placed where they overlap the least the atoms of the
+            # others, at their current positions (the best of `_movebad_trials` positions)
+            current = _current_atoms(packmol_system, buffers.atom_positions, packmol_system.structure_types)
             moved = movebad!(
                 packmol_system, cl_system.fg.fmol, free_mol_indices, mol_structure_type, RNG;
                 movefrac, precision, fmol_max_type, unconverged=mol_unconverged,
@@ -685,6 +692,7 @@ function _packmol(
                 fixed_sys=movebad_fixed_sys, fixed_lo=movebad_fixed_lo, fixed_hi=movebad_fixed_hi,
                 overlap_tol=movebad_overlap_tol,
                 fg_output=movebad_fg_output, atom_positions=buffers.atom_positions, mol_iat_first,
+                current, ntrials=_movebad_trials,
             )
             if !isempty(moved)
                 _println("  Moved $(length(moved)) bad molecules randomly to new positions.")
@@ -692,6 +700,32 @@ function _packmol(
             if !isnothing(rigid_polymers)
                 nmoved = _movebad_polymers!(packmol_system, cl_system.fg.fmol, mol_unconverged, RNG; movefrac)
                 nmoved > 0 && _println("  Shook $nmoved bad polymers (random displacements of their monomers).")
+            end
+        end
+        # A stall of the packing of polymers (no new minimum of the number of bad
+        # molecules in `_polymer_stall_loops` loops): the worst bad polymers are placed
+        # again, whole, where they overlap the least (see `_replace_stalled_polymers!`).
+        # Not detected by the loops with movebad (the loop
+        # after a shake recovers from it, improving the function by more than
+        # movebad_tolerance), nor by the function (in a dense bilayer of flexible lipids
+        # it is that of the small strains of all the links, flat while the overlaps
+        # still decrease). Not in restarted packings (the steps of use_compression): in
+        # a compressed system there is no free spot to place a polymer in, and its removal
+        # leaves a void (the lignin particle failed in 3/3 runs, from 2/3)
+        if !isnothing(rigid_polymers) && !restart && loop > 0
+            nbad = count(mol_unconverged)
+            if nbad < stall_nbad
+                stall_nbad = nbad
+                nstalled = 0
+            else
+                nstalled += 1
+            end
+            if nstalled >= _polymer_stall_loops
+                nstalled = 0
+                stall_nbad = typemax(Int)
+                nplaced = _replace_stalled_polymers!(packmol_system, rigid_polymers, cl_system.fg.fmol, mol_unconverged, RNG;
+                    movefrac, precision)
+                nplaced > 0 && _println("  Stalled: placed $nplaced bad polymers again, whole, at the best of $_polymer_stall_trials positions.")
             end
         end
         # Re-pack optimizer variables from (possibly moved) molecule positions

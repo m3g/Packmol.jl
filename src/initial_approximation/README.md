@@ -25,7 +25,7 @@ stops.
 | `reinitialize_with_bounds.jl` | Step 3. |
 | `randomize_molecule.jl` | A random position and orientation of a molecule, within bounds or in the periodic cell. |
 | `molecule_badness.jl` | The badness of each molecule (constraint penalty and overlap with the fixed molecules), to select the best trials. |
-| `movebad.jl` | `movebad!`: a fraction of the molecules that fail the convergence criterion moved to random positions, in the packing loops (after the first) that improve the function little. |
+| `movebad.jl` | `movebad!`: a fraction of the molecules that fail the convergence criterion moved to new positions, in the packing loops (after the first) that improve the function little: of 20 random positions fitted to the constraints, the one of least overlap with the other molecules (`_current_atoms`, `_current_overlap`; the first with no overlap). |
 | `bounds.jl` | Bounds of the atom positions and of the centers of mass of each structure type, and the clamping of molecules to them. |
 | `constraint_checks.jl` | The constraints of single molecules: whether they are satisfied, their penalty, and the function and gradient of the constraints alone. |
 | `fixed_molecules.jl` | The atoms of the fixed molecules, and the overlaps of the free molecules with them. |

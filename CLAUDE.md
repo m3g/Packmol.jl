@@ -197,6 +197,12 @@ hurt others, are validated against main with several seeds: `run.jl --seeds 1:3 
 Validated and rejected (2026-11-20): local moves in movebad (a Gaussian displacement of the size of the
 molecule, instead of a random placement): no case gained, and the polymer-capped gold nanoparticle went
 from 2/3 to 0/3 (its chains, bound to a shell, need to be moved to free spots of it).
+Validated (2026-11-21): movebad places each bad molecule at the best of 20 constraint-fitted
+random positions, scored by the overlap with all current atoms (first zero-overlap wins): no loss on 24
+cases, lignin 3/3 (vs 2/3), gold_nanoparticle 5x faster. Polymers stalled for 20 loops (no new minimum of
+bad molecules) are re-placed whole in the conformation of their file at the best of 500 positions (not in
+compression steps: there it broke the lignin particle, 0/3; a whole move without the overlap score cost
+gold_polymer 1/3; inflating the radii of stalled polymers did not free them).
 
 ---
 

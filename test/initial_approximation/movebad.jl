@@ -19,3 +19,39 @@
         @test allunique(moved)
     end
 end
+
+@testitem "movebad!: overlap of the trial positions with the current atoms" setup=[TestFiles] begin
+    # The score of the trial positions of movebad: the overlap of a molecule, at a given
+    # position, with the atoms of the others at their current positions
+    using Packmol
+    using Random
+    using StaticArrays
+
+    water = TestFiles.test_file("structure_files/water.pdb")
+    st = structure_type(water; number=20, constraints=[InsideBox([0.0, 0.0, 0.0], [20.0, 20.0, 20.0])])
+    sys = PackmolSystem([st]; output="", check_initial_placement=true, seed=1)
+    Packmol.packmol(sys)
+    atom_positions = Vector{SVector{3,Float64}}(undef, length(sys.atoms))
+    current = Packmol._current_atoms(sys, atom_positions, sys.structure_types)
+    ref = sys.structure_types[1].reference_coordinates
+    mp1 = sys.molecule_positions[1]
+    mp2 = sys.molecule_positions[2]
+    # molecule 1 on top of molecule 2: overlaps it
+    @test Packmol._current_overlap(current, mp2, ref, 1, 0) > 0
+    # skipping molecule 2 itself: only the overlaps with the others
+    @test Packmol._current_overlap(current, mp2, ref, 2, 0) < Packmol._current_overlap(current, mp2, ref, 1, 0)
+    # far from all the molecules: no overlap
+    far = Packmol.MoleculePosition(mp1.cm .+ 1000.0, mp1.angles)
+    @test Packmol._current_overlap(current, far, ref, 1, 0) == 0
+    # movebad with the score: the moved molecules satisfy their constraints
+    fmol = ones(sys.nmols)
+    mol_structure_type = Packmol._build_mol_structure_type(sys)
+    cm_min, cm_max = Packmol.compute_cm_bounds(sys)
+    current = Packmol._current_atoms(sys, atom_positions, sys.structure_types)
+    moved = Packmol.movebad!(sys, fmol, collect(1:sys.nmols), mol_structure_type, Random.Xoshiro(1);
+        movefrac=0.1, cm_lo_type=cm_min, cm_hi_type=cm_max, current, ntrials=Packmol._movebad_trials)
+    @test !isempty(moved)
+    for imol in moved
+        @test all(0.0 .<= sys.molecule_positions[imol].cm .<= 20.0)
+    end
+end

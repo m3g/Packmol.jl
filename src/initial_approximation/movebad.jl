@@ -1,3 +1,7 @@
+# The trial positions of each molecule moved by movebad (that satisfy its constraints)
+# among which the one of least overlap with the other molecules is chosen
+const _movebad_trials = 20
+
 #
 # Move the worst molecules to new random positions.
 # The bad molecules are the free molecules that fail the convergence criterion (from
@@ -46,6 +50,8 @@ function movebad!(
     max_guess_try::Int = 100,
     max_shift::Union{Nothing,T} = nothing,
     unconverged::Union{Nothing,Vector{Bool}} = nothing,
+    current = nothing,
+    ntrials::Int = 1,
 ) where {D,T}
     ntypes = length(packmol_system.structure_types)
     # The bad molecules: those that do not satisfy the convergence criterion
@@ -109,6 +115,7 @@ function movebad!(
             fixed_sys, fixed_lo, fixed_hi, overlap_tol,
             fg_output, atom_positions, mol_structure_type, mol_iat_first,
             precision, opt_nit, max_guess_try, max_shift=something(max_shift, packmol_system.tolerance),
+            current, skip_mol=imol, ntrials,
         )
     end
 
@@ -160,6 +167,12 @@ end
 # (matching `randomize_molecule!`'s own fallback) rather than leaving the
 # molecule at its original, already-bad position.
 #
+# With `current` (`_CurrentAtoms`: the atoms of the system at their current positions),
+# the trials that satisfy the constraints are scored by their overlap with those atoms
+# (the atoms of molecule `skip_mol`, the one placed, or of polymer `skip_instance`,
+# skipped), and the one of least overlap among the first `ntrials` of them is kept (the
+# first without overlap, if any).
+#
 function _movebad_place_molecule!(
     packmol_system::PackmolSystem{D,T},
     imol::Int,
@@ -179,6 +192,10 @@ function _movebad_place_molecule!(
     opt_nit::Int,
     max_guess_try::Int,
     max_shift::T,
+    current = nothing,
+    skip_mol::Int = 0,
+    skip_instance::Int = 0,
+    ntrials::Int = 1,
 ) where {D,T}
     do_fit = !isnothing(fg_output) && !isnothing(atom_positions) && !isnothing(mol_iat_first)
     mol_list = [imol]
@@ -192,6 +209,10 @@ function _movebad_place_molecule!(
     # for those overlapping the fixed structure
     best_key = (2, typemax(T))
     last_mp = best_mp
+    # the trials scored by their overlap with the current atoms
+    naccepted = 0
+    best_overlap = typemax(T)
+    best_overlap_mp = best_mp
     for _ in 1:max_guess_try
         mp = _random_molecule_position(packmol_system, RNG; cm_lo, cm_hi)
         mp_drawn = mp
@@ -225,12 +246,92 @@ function _movebad_place_molecule!(
         # to most random points
         shift = norm(mp.cm - mp_drawn.cm)
         key = overlaps ? (2, typemax(T)) : score < precision ? (0, shift) : (1, score)
+        if !isnothing(current) && key[1] == 0 && shift <= max_shift
+            overlap = _current_overlap(current, mp, st.reference_coordinates, skip_mol, skip_instance)
+            naccepted += 1
+            if overlap < best_overlap
+                best_overlap = overlap
+                best_overlap_mp = mp
+            end
+            (iszero(overlap) || naccepted >= ntrials) && break
+            continue
+        end
         if key < best_key
             best_key = key
             best_mp = mp
         end
         key[1] == 0 && shift <= max_shift && break
     end
-    packmol_system.molecule_positions[imol] = best_key[1] < 2 ? best_mp : last_mp
+    packmol_system.molecule_positions[imol] = naccepted > 0 ? best_overlap_mp : best_key[1] < 2 ? best_mp : last_mp
     return nothing
+end
+
+#
+# The atoms of a system at their current positions, in a cell list (`ypositions`), for the
+# overlaps of the trial positions of a molecule (`xpositions`, in `trial`) with them: the
+# cell of the system, or, without PBC, a box larger than the atoms and the molecules of
+# `structure_types` about them, with no image within the cutoff (as
+# `_build_overlap_check_system`). `atom_positions` is overwritten with the positions.
+#
+struct _CurrentAtoms{D,T,S,A}
+    cl::S
+    atoms::A
+    mol_instance::Vector{Int32}
+    trial::Vector{SVector{D,T}}
+    tol::T
+end
+
+function _current_atoms(
+    sys::PackmolSystem{D,T}, atom_positions::Vector{SVector{D,T}}, structure_types::Vector{StructureType{D,T}},
+) where {D,T}
+    compute_atom_positions!(atom_positions, sys.molecule_positions, sys)
+    tol = sys.tolerance
+    extent = zero(T)
+    natoms = 0
+    for st in structure_types
+        natoms = max(natoms, st.natoms)
+        for r in st.reference_coordinates
+            extent = max(extent, norm(r))
+        end
+    end
+    unitcell = if !isnothing(sys.unitcell)
+        SMatrix{D,D,T}(sys.unitcell)
+    else
+        lo, hi = compute_bounding_box(atom_positions)
+        margin = 2 * extent + tol
+        SMatrix{D,D,T}(Diagonal(T(1.2) * ((hi .+ margin) - (lo .- margin))))
+    end
+    cutoff = _capped_cutoff(abs(det(unitcell)), tol, length(atom_positions), D)
+    trial = fill(zero(SVector{D,T}), natoms)
+    cl = ParticleSystem(;
+        xpositions=trial, ypositions=atom_positions,
+        cutoff, unitcell, output=zero(T), output_name=Val(:overlap), parallel=false,
+        validate_coordinates=_validate_positions,
+    )
+    return _CurrentAtoms(cl, sys.atoms, sys.polymer_topology.mol_instance, trial, tol)
+end
+
+# The overlap of a molecule of reference coordinates `ref` at `mp` with the current atoms:
+# the sum of the squares of the overlaps of the pairs closer than the tolerance (the atoms
+# of the molecule `skip_mol` and of the polymer `skip_instance` skipped)
+function _current_overlap(
+    current::_CurrentAtoms{D,T}, mp::MoleculePosition{D,T}, ref::Vector{SVector{D,T}}, skip_mol::Int, skip_instance::Int,
+) where {D,T}
+    R = eulermat(mp.angles)
+    n = length(ref)
+    for i in 1:n
+        current.trial[i] = R * ref[i] + mp.cm
+    end
+    CellListMap.update!(current.cl; xpositions=@view(current.trial[1:n]))
+    atoms = current.atoms
+    mol_instance = current.mol_instance
+    tol = current.tol
+    return pairwise!(current.cl) do pair, out
+        (; j, d) = pair
+        d < tol || return out
+        jmol = atoms[j].molecule_index
+        jmol == skip_mol && return out
+        skip_instance != 0 && mol_instance[jmol] == skip_instance && return out
+        return out + (tol - d)^2
+    end
 end

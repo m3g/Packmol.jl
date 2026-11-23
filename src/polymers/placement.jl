@@ -171,6 +171,84 @@ function _movebad_polymers!(
     return moved
 end
 
+# The loops without a new minimum of the number of bad molecules after which the packing
+# of polymers is stalled, and the number of trial placements of each stalled polymer
+# (`_packmol`)
+const _polymer_stall_loops = 20
+const _polymer_stall_trials = 500
+
+#
+# The re-placement of stalled bad polymers (see `_packmol`): the worst bad polymers (a
+# fraction `movefrac` of them, at least one) are placed again, whole, in the conformation
+# of their structure file (no distortion of their past packing is carried), at the best
+# of `ntrials` random positions fitted to their constraints: the one of least overlap with
+# the atoms of all the other molecules, at their current positions. Their monomers are
+# released from there.
+#
+# Why: the shake moves the monomers by a fraction of the tolerance, and a polymer trapped
+# by its neighbors is not freed by it (in a vesicle of 5765 flexible POPC, a lipid whose
+# chain end was held by its constraint, beyond its neighbors, kept a bond stretched by
+# 0.66 Å for 300 loops). Tried: moving it whole to a random position fitted to its
+# constraints, checking only the fixed molecules (that of movebad, in the system of the
+# rigid polymers, whose positions are those of before the release), freed the lipid; its
+# effect on the polymer-capped gold nanoparticle was unclear (1/3 runs, against 2/3 on
+# main). Inflating the radii of the atoms of the stalled polymers (x2, decaying in 20
+# loops), to push their neighbors away, did not free the lipid (16 stalls in 500 loops,
+# the bond stretched by 0.68 Å throughout).
+#
+function _replace_stalled_polymers!(
+    sys::PackmolSystem{D,T}, rp::RigidPolymerSystem{D,T}, fmol::Vector{T}, unconverged::Vector{Bool}, RNG;
+    movefrac::T, precision::T, ntrials::Int=_polymer_stall_trials,
+) where {D,T}
+    isempty(sys.polymers) && return 0
+    mol_offset, _ = _type_offsets(sys)
+    # The bad polymers, the worst first: (function, polymer, copy, conformation, index)
+    bad = Tuple{T,Int,Int,Int,Int}[]
+    for (ip, p) in enumerate(sys.polymers)
+        for (q, (c, j)) in enumerate(_polymer_copies(p))
+            fp = zero(T)
+            isbad = false
+            for m in 1:_nmonomers(p)
+                imol = _monomer_molecule(p, mol_offset, c, m, j)
+                fp += fmol[imol]
+                isbad |= unconverged[imol]
+            end
+            isbad && push!(bad, (fp, ip, q, c, j))
+        end
+    end
+    isempty(bad) && return 0
+    sort!(bad; rev=true)
+    nmove = min(length(bad), max(1, round(Int, movefrac * length(bad))))
+    # The fits to the constraints, in the system of the rigid polymers
+    rsys = rp.system
+    cm_lo, cm_hi = compute_cm_bounds(rsys)
+    fg_output = InteratomicDistanceFG{D,T}(rsys)
+    rsys_positions = Vector{SVector{D,T}}(undef, length(rsys.atoms))
+    mol_iat_first = _build_mol_iat_first(rsys)
+    # The atoms of the system, at their current positions
+    atom_positions = Vector{SVector{D,T}}(undef, length(sys.atoms))
+    topo = sys.polymer_topology
+    for k in 1:nmove
+        _, ip, q, c, j = bad[k]
+        rmol = rp.polymer_offset[ip] + q
+        ist = rp.mol_structure_type[rmol]
+        st = rsys.structure_types[ist]
+        instance = Int(topo.mol_instance[_monomer_molecule(sys.polymers[ip], mol_offset, c, 1, j)])
+        current = _current_atoms(sys, atom_positions, rsys.structure_types)
+        l, h = cm_lo[ist], cm_hi[ist]
+        lo, hi = all(l .< h) ? _extended_cm_bounds(rsys, st, l, h) : (nothing, nothing)
+        _movebad_place_molecule!(
+            rsys, rmol, st, RNG;
+            cm_lo=lo, cm_hi=hi, fixed_sys=nothing, fixed_lo=zero(SVector{D,T}), fixed_hi=zero(SVector{D,T}),
+            overlap_tol=sys.tolerance, fg_output, atom_positions=rsys_positions, mol_structure_type=rp.mol_structure_type,
+            mol_iat_first, precision, opt_nit=20, max_guess_try=ntrials, max_shift=T(Inf),
+            current, skip_instance=instance, ntrials,
+        )
+        _place_monomers!(sys, rp, ip, q, c, j, mol_offset)
+    end
+    return nmove
+end
+
 # The options not supported with polymers
 function _check_polymers(sys::PackmolSystem)
     isempty(sys.polymers) && return nothing
