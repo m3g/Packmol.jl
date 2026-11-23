@@ -174,7 +174,7 @@ the output file path; any other `PackmolSystem` field (`tolerance`, `seed`,
 `unitcell`, ...) can be given as a keyword argument.
 
 The vector can also hold vectors of structure types (the conformations of a molecule,
-from `structure_type`) and polymers (from [`polymer_structure`](@ref)), as
+from `structure_type`) and flexible molecules (from [`flexible_structure_type`](@ref)), as
 `PackmolSystem([chains, water]; ...)`. `use_compression = true` (or `0.5`, or `(0.5, 0.05)`, with the
 initial step) packs the system at half its density and then compresses it (see
 [Packing by compression](@ref)).
@@ -210,9 +210,9 @@ function PackmolSystem(
 end
 
 # A vector of structure types and of vectors of them (the conformations of a molecule,
-# from `structure_type`), as `[lipids, water]`, and of polymers (`polymer_structure`)
+# from `structure_type`), as `[lipids, water]`, and of flexible molecules (`flexible_structure_type`)
 function PackmolSystem(structure_types::AbstractVector; kwargs...)
-    any(s -> s isa PolymerStructure, structure_types) && return _system_with_polymers(structure_types; kwargs...)
+    any(s -> s isa FlexibleStructureType, structure_types) && return _system_with_polymers(structure_types; kwargs...)
     sts = StructureType[]
     for s in structure_types
         if s isa StructureType
@@ -232,16 +232,17 @@ function PackmolSystem(structure_types::AbstractVector; kwargs...)
     return PackmolSystem(sts; kwargs...)
 end
 
-# A system with polymers: the structure types and the monomers of the polymers, in order
+# A system with flexible molecules: the structure types and the fragments of the flexible
+# molecules, in order
 function _system_with_polymers(entries::AbstractVector; kwargs...)
     first_entry = first(entries)
-    st = first_entry isa PolymerStructure ? first(first_entry.rigid_types) :
+    st = first_entry isa FlexibleStructureType ? first(first_entry.rigid_types) :
         first_entry isa StructureType ? first_entry : first(first_entry)
     D = length(st.reference_coordinates[1])
     T = eltype(st.reference_coordinates[1])
     sys = PackmolSystem(StructureType{D,T}[]; kwargs...)
     for s in entries
-        if s isa PolymerStructure
+        if s isa FlexibleStructureType
             _add_flexible!(sys, s.rigid_types, s.spec)
         elseif s isa StructureType
             push!(sys.structure_types, s)
@@ -249,8 +250,8 @@ function _system_with_polymers(entries::AbstractVector; kwargs...)
             append!(sys.structure_types, s)
         else
             throw(ArgumentError("""\n
-                PackmolSystem: expected structure types (see `structure_type`) or polymers (see
-                `polymer_structure`), got a $(typeof(s)).
+                PackmolSystem: expected structure types (see `structure_type`) or flexible molecules
+                (see `flexible_structure_type`), got a $(typeof(s)).
 
             """))
         end

@@ -699,7 +699,7 @@ function _packmol(
             end
             if !isnothing(rigid_polymers)
                 nmoved = _movebad_polymers!(packmol_system, cl_system.fg.fmol, mol_unconverged, RNG; movefrac)
-                nmoved > 0 && _println("  Shook $nmoved bad polymers (random displacements of their monomers).")
+                nmoved > 0 && _println("  Shook $nmoved bad flexible molecules (random displacements of their fragments).")
             end
         end
         # A stall of the packing of polymers (no new minimum of the number of bad

@@ -22,7 +22,7 @@ structure gold.pdb
 end structure
 
 # The chains: 2 per nm² of the surface of the core. The groups of atoms of the chain,
-# from the sulfur atom, are the monomers: S-CH2 and CH2, then 20 times CH(C6H5) and
+# from the sulfur atom, are its rigid fragments: S-CH2 and CH2, then 20 times CH(C6H5) and
 # CH2, and the sec-butyl group. Each turns about the bond between its backbone carbon
 # atom (atom 1 of each group; atom 2 of S-CH2) and that of the next group.
 structure polystyrene.pdb
@@ -34,21 +34,17 @@ structure polystyrene.pdb
   end atoms
   # the bonds of the chain: the atoms closer than 1.9 Å (the file has no CONECT records)
   bond_distance 1.9
-  repeat 1
-    monomer 4       # S-CH2
-      rotatable 2 1 # the bond of atom 2 (C) to atom 1 (C) of the next group
-    monomer 3       # CH2
-      rotatable 1 1
-  end repeat
+  fragment 4         # S-CH2
+    rotatable 2 1    # the bond of atom 2 (C) to atom 1 (C) of the next fragment
+  fragment 3         # CH2
+    rotatable 1 1
   repeat 20
-    monomer 13      # CH(C6H5)
+    fragment 13      # CH(C6H5)
       rotatable 1 1
-    monomer 3       # CH2
+    fragment 3       # CH2
       rotatable 1 1
   end repeat
-  repeat 1
-    monomer 13      # sec-butyl
-  end repeat
+  fragment 13        # sec-butyl
 end structure
 
 # The toluene: beyond the sulfur atoms, between the chains and around them

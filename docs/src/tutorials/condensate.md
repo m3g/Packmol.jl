@@ -61,11 +61,11 @@ has no side-chain bead).
 A rigid chain does not fill the space between the others: packed as rigid molecules,
 these chains jam at about 220 mg/mL, whatever their conformations. As
 [Polymers](@ref), they are flexible: each chain is 20 monomers of VPGVG (18 beads), each
-a rigid molecule, turning about its bond to the next one:
+a rigid fragment, turning about its bond to the next one:
 
 ```
   repeat 20
-    monomer 18
+    fragment 18
       rotatable 18 1
   end repeat
 ```
@@ -88,7 +88,7 @@ each other, the chains get threaded through each other's monomers, and do not se
 
 Here the flexibility is at the level of the repeated pentapeptide: each monomer of 5
 residues is rigid. It could be set at the level of the residues instead, each residue a
-monomer turning about its bond to the next one: a `repeat 20` block of five `monomer`
+fragment turning about its bond to the next one: a `repeat 20` block of five `fragment`
 lines, of the sizes of the residues (4, 4, 3, 4 and 3 beads for V, P, G, V and G), each
 with `rotatable 4 1` (or `3 1` for glycine: its GO to the GN of the next residue). More monomers make the chains more flexible, and the packing
 slower.
@@ -210,10 +210,10 @@ using Packmol
 # The chains: 20 monomers of VPGVG (18 beads), each turning about
 # the bond of its last bead to the first bead of the next one (the
 # bonds are the CONECT records of peptides.pdb)
-sequence = [20 => [monomer(18; rotatable = [(18, 1)])]]
+fragments = [20 => fragment(18; rotatable = [(18, 1)])]
 
 # The homogeneous mixture
-chains = polymer_structure("peptides.pdb"; number = 123, sequence)
+chains = flexible_structure_type("peptides.pdb"; number = 123, fragments)
 water = structure_type("wt4.pdb"; number = 49552)
 homogeneous = PackmolSystem([chains, water];
     output = "homogeneous.pdb",
@@ -227,7 +227,7 @@ packmol(homogeneous)
 # the density and compressed
 origin = [0., 0., 0.]
 droplet_chains = PackmolSystem(
-    [polymer_structure("peptides.pdb"; number = 123, sequence,
+    [flexible_structure_type("peptides.pdb"; number = 123, fragments,
         constraints = [InsideSphere(origin, 100.)])];
     output = "droplet_chains.pdb",
     tolerance = 2.0,

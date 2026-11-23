@@ -74,61 +74,80 @@ those of a single structure type. A fixed molecule has a single conformation, an
 
 ## Polymers
 
-A structure block with `repeat` blocks is a polymer: the structure file
-holds the whole polymer (one model per conformation), and the `repeat` blocks give its
-sequence of monomers, each with its number of atoms, in the order of the atoms of the
-file. Each monomer is packed as a rigid molecule, and consecutive monomers are held
-together by **links**: harmonic restraints between an atom of a monomer and an atom of
-the next one, at their distance in the structure. The chains are thus flexible: the
-monomers turn about the junctions, while the bonds and angles of the junctions are kept
-by the links.
+A molecule can be given as a sequence of rigid **fragments**, with `fragment` lines: the
+structure file holds the whole molecule (one model per conformation), and each `fragment`
+line gives the number of atoms of a fragment, in the order of the atoms of the file. A
+polymer is the typical case: its fragments are its monomers, repeated with `repeat`
+blocks. Each fragment is packed as a rigid molecule, and consecutive fragments are held
+together by **links**: harmonic restraints between an atom of a fragment and an atom of
+the next one, at their distance in the structure. Most often the fragments are bonded,
+and turn about the bond between them (`rotatable`): the chains are flexible, while the
+lengths and angles of the bonds between the fragments are kept.
 
 ```
 structure peptides.pdb      # the polymer: 10 models, 10 conformations
   number 123                # polymers
   inside sphere 0. 0. 0. 100.
-  repeat 20                 # 20 times the monomers of the block
-    monomer 18              # 18 atoms
-      link 17 1             # atom 17 of this monomer to atom 1 of the next
-      link 18 1
-      link 18 2
+  repeat 20                 # 20 times the fragments of the block
+    fragment 18             # 18 atoms
+      rotatable 18 1        # atom 18 of this fragment bonded to atom 1 of the next
   end repeat
 end structure
 ```
 
 | Keyword | Meaning |
 |---|---|
-| `repeat <n> ... end repeat` | `n` repeats of the monomers of the block. A sequence can have several blocks, one after the other (block copolymers, end groups with `repeat 1`, or an irregular sequence as a single block with `repeat 1`). |
-| `monomer <natoms>` | A monomer of the sequence, of `natoms` atoms (the next `natoms` atoms of the structure file). |
-| `link <a> <b> [d0 [k [w]]]` | A link from atom `a` of the monomer (the last `monomer` line) to atom `b` of the next monomer (the indices are local to each monomer, from 1: the position of the atom among the atoms of the monomer, in the order of the structure file). Its penalty is `k (\|d - d0\| - w)²` outside `d0 ± w`: `d0` (Å) is by default the distance of the two atoms in each conformation, `k` 10, and `w` 0 (no flat bottom). The links of the last monomer of a polymer are ignored, unless it is `cyclic`. |
-| `rotatable <a> <b>` | A bond from atom `a` of the monomer to atom `b` of the next one (indices local to each monomer, from 1, as in `link`), in place of links: it stands for the links that keep the length and the angles of the bond (the bond, and the bonds of `a` and `b` to their neighbors in their monomers), such that the monomers turn about it, as the [Rotatable bonds](@ref) of molecules. It requires the bonds of the polymer: the CONECT records of its file, or `bond_distance`. |
-| `bond_distance <d>` | The bonds of the polymer, for `rotatable`: the pairs of atoms closer than `d` Å (in the first conformation; not pairs of hydrogens), if the file has no CONECT records. Without rotatable bonds, it has no effect. |
-| `cyclic` | The last monomer is linked to the first one, with the links of the last monomer. |
+| `fragment <natoms>` | A fragment of the sequence, of `natoms` atoms (the next `natoms` atoms of the structure file). |
+| `repeat <n> ... end repeat` | `n` repeats of the fragments of the block. `fragment` lines and `repeat` blocks can follow each other in any order: block copolymers, end groups, or an irregular sequence of `fragment` lines without repeats. |
+| `rotatable <a> <b>` | After a `fragment` line: a bond from atom `a` of the fragment to atom `b` of the next one (the indices are local to each fragment, from 1: the position of the atom among the atoms of the fragment, in the order of the structure file). It stands for the links that keep the length and the angles of the bond (the bond, and the bonds of `a` and `b` to their neighbors in their fragments), such that the fragments turn about it, as the [Rotatable bonds](@ref) of molecules. It requires the bonds of the molecule: the CONECT records of its file, or `bond_distance`. |
+| `link <a> <b> [d0 [k [w]]]` | After a `fragment` line: a general link from atom `a` of the fragment to atom `b` of the next one (indices local to each fragment, as in `rotatable`). Its penalty is `k (\|d - d0\| - w)²` outside `d0 ± w`: `d0` (Å) is by default the distance of the two atoms in each conformation, `k` 10, and `w` 0 (no flat bottom). |
+| `bond_distance <d>` | The bonds of the molecule, for `rotatable`: the pairs of atoms closer than `d` Å (in the first conformation; not pairs of hydrogens), if the file has no CONECT records. Without rotatable bonds, it has no effect. |
+| `cyclic` | The last fragment is linked to the first one, with its links and rotatable bonds. Otherwise, those of the last fragment are ignored. |
 
-The links of a junction keep its geometry, and leave free the rotation about the bond: as
-many as needed (three, here, from the last two atoms of a monomer to the first two of
-the next one, for coarse-grained beads). When the monomers are joined by a bond, as in
-all-atom polymers, `rotatable` gives the links of the bond, from the bonds of the polymer:
-five for a bond between carbon atoms with two other neighbors each. For example, for
-polystyrene, with every bond of its backbone rotatable (see [Polymer-capped gold
-nanoparticle](@ref)):
+When the fragments are bonded, `rotatable` gives the links of the bond, from the bonds of
+the molecule: three for the bond of two coarse-grained beads with one other neighbor
+each, as above, five for a bond between carbon atoms with two other neighbors each. For
+example, for polystyrene, with every bond of its backbone rotatable, and its end groups
+(see [Polymer-capped gold nanoparticle](@ref)):
 
 ```
   bond_distance 1.9   # the bonds: the atoms closer than 1.9 Å
+  fragment 4          # S-CH2
+    rotatable 2 1     # the bond of atom 2 to atom 1 of the next fragment
+  fragment 3          # CH2
+    rotatable 1 1
   repeat 20
-    monomer 13        # CH(C6H5)
-      rotatable 1 1   # the bond of atom 1 to atom 1 of the next monomer
-    monomer 3         # CH2
+    fragment 13       # CH(C6H5)
       rotatable 1 1
+    fragment 3        # CH2
+      rotatable 1 1
+  end repeat
+  fragment 13         # sec-butyl
+```
+
+The general links (`link`) say what `rotatable` cannot: a single link is a joint free to
+turn in any direction (the angles of the junction are not kept, as in a bead-spring
+chain); links can join atoms that are not bonded; and their distance, constant and flat
+bottom can be chosen (loose links, or a `cyclic` chain whose conformation is not quite
+closed). Links and rotatable bonds can be combined in a fragment. For example, three
+links keep the geometry of the junction of two coarse-grained monomers, without the bonds
+of the molecule:
+
+```
+  repeat 20
+    fragment 18
+      link 17 1             # atom 17 of this fragment to atom 1 of the next
+      link 18 1
+      link 18 2
   end repeat
 ```
 
-- **The structure of the polymer.** The monomers have the geometry of each conformation
+- **The structure of the polymer.** The fragments have the geometry of each conformation
   of the file: the number of polymers is divided among the conformations, as for other
-  molecules (see above), and each polymer is built from the monomers of its own.
+  molecules (see above), and each polymer is built from the fragments of its own.
 - **Packing.** The polymers are first packed as rigid molecules, in their conformations,
-  and then their monomers are released and the packing goes on with the flexible chains.
-  (Chains released overlapping each other end up threaded through each other's monomers,
+  and then their fragments are released and the packing goes on with the flexible chains.
+  (Chains released overlapping each other end up threaded through each other's fragments,
   and do not separate.) Polymers too dense to pack as rigid molecules are packed at a
   lower density, and compressed (see [Packing by compression](@ref)).
 - **Conformations.** Any conformation of the polymer can be given (one is enough), as
@@ -148,16 +167,16 @@ nanoparticle](@ref)):
   simulation: the polymers start from different conformations, and the results depend
   less on the choice of a single one (the flexibility of the packing only adapts the
   chains to their neighbors, and the simulation may take long to forget a conformation).
-- **Close atoms.** The pairs of atoms of different monomers (up to three monomers apart)
+- **Close atoms.** The pairs of atoms of different fragments (up to three fragments apart)
   closer than the tolerance in a conformation (the bonded atoms of a junction, and their
   neighbors) are left out of the distances of the polymers of that conformation. With
-  `rotatable` bonds, whose bonds are known, the pairs of atoms of different monomers up to
+  `rotatable` bonds, whose bonds are known, the pairs of atoms of different fragments up to
   three bonds apart are left out too.
 - **The convergence criterion** includes the links: every link within `d0 ± w` to the
   precision of the tolerance (`tolerance_precision`).
 - **Defaults.** The radii of the atoms of polymers are not inflated at the start of the
-  packing (`radscale` 1.0: inflated atoms push consecutive monomers apart, against the
-  links); movebad moves the monomers of a bad polymer by small random displacements and
+  packing (`radscale` 1.0: inflated atoms push consecutive fragments apart, against the
+  links); movebad moves the fragments of a bad polymer by small random displacements and
   rotations (a polymer moved as a whole to a random place, in a dense system, lands across
   the others). When the number of bad molecules has not decreased for 20 loops, the worst
   bad polymers are placed again whole, in the conformation of the structure file, at the
@@ -167,17 +186,19 @@ nanoparticle](@ref)):
   their order (with the residue numbers of the file), a chain identifier per polymer (or
   the `chain` of the block), and the bonds of the file (`CONECT` records); with periodic
   boundary conditions, a polymer is not wrapped across the boundaries of the cell: it is
-  whole, placed in the cell by its center (the mean of the centers of its monomers), so
+  whole, placed in the cell by its center (the mean of the centers of its fragments), so
   large polymers cross the faces of the cell.
 - **Not supported**: fixed polymers, `restart_from`, `constrain_rotation` and
   `voxel_place`.
 
 Polymers are a case of flexible molecules, as molecules with [Rotatable bonds](@ref):
-the monomers are the rigid fragments, given by their numbers of atoms, and the links are
-written explicitly (the structure files of coarse-grained polymers rarely have bonds).
+there the fragments are found by cutting the molecule at the bonds given, here they are
+given by their numbers of atoms, in a chain. A branched molecule is given by its
+rotatable bonds.
 
-In Julia, the polymers are given by [`polymer_structure`](@ref), with the sequence made of
-[`monomer`](@ref)s. The tutorial [Biomolecular condensate](@ref) packs a condensate of
+In Julia, the polymers are given by [`flexible_structure_type`](@ref), with the sequence
+of [`fragment`](@ref)s (`fragments = [20 => fragment(18; rotatable = [(18, 1)])]` for the
+example above). The tutorial [Biomolecular condensate](@ref) packs a condensate of
 polypeptides, in a homogeneous mixture and as a droplet, and the tutorial
 [Polymer-capped gold nanoparticle](@ref) packs all-atom chains of polystyrene, flexible at
 every bond of their backbone, bound to a fixed gold core.
@@ -280,5 +301,5 @@ POPC (with `bond_distance 1.8`), `rotatable all` finds 41 bonds: those of the ch
 the glycerol, the phosphate and the choline, but the double bond of the oleoyl chain. In
 the oligomers of the [Lignin particle in acetone and water](@ref) tutorial, 24 to 72 bonds each.
 
-In Julia, the molecules with rotatable bonds are given by [`flexible_structure`](@ref)
-(`rotatable = :all` for `rotatable all`).
+In Julia, the molecules with rotatable bonds are given by
+[`flexible_structure_type`](@ref), with `rotatable` (`rotatable = :all` for `rotatable all`).

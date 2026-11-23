@@ -49,7 +49,7 @@
           number $number
           $extra
           repeat $(count(l -> startswith(l, "ATOM"), eachline(file)) ÷ 3 ÷ max(1, count(l -> startswith(l, "MODEL"), eachline(file))))
-            monomer 3
+            fragment 3
               link 3 1
           end repeat
           $(cyclic ? "cyclic" : "")

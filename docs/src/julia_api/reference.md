@@ -19,15 +19,14 @@ get_atoms
 write_output
 ```
 
-## Polymers and rotatable bonds
+## Flexible molecules
 
 See [Polymers](@ref) and [Rotatable bonds](@ref) for the input files, and the tutorial
 [Biomolecular condensate](@ref).
 
 ```@docs
-polymer_structure
-monomer
-flexible_structure
+flexible_structure_type
+fragment
 ```
 
 ## Placement on a grid

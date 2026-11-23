@@ -24,24 +24,24 @@ end
 # A monomer of the sequence of a polymer: its number of atoms, its links to the next, and
 # its rotatable bonds to the next (atom of this monomer, atom of the next), each standing
 # for the links of the bond (built from the bonds of the polymer)
-struct MonomerSpec{T}
+struct FragmentSpec{T}
     natoms::Int
     links::Vector{PolymerLink{T}}
     rotatable::Vector{Tuple{Int,Int}}
 end
-MonomerSpec{T}(natoms::Int, links::Vector{PolymerLink{T}}) where {T} = MonomerSpec{T}(natoms, links, Tuple{Int,Int}[])
+FragmentSpec{T}(natoms::Int, links::Vector{PolymerLink{T}}) where {T} = FragmentSpec{T}(natoms, links, Tuple{Int,Int}[])
 
 # The flexibility given in a structure block: the sequence of monomers of a polymer, or
 # the rotatable bonds of a molecule, with the largest distance of bonded atoms if the
 # bonds are computed from the distances (`NaN`: from the CONECT records); both empty:
 # a rigid molecule
 struct PolymerSpec{T}
-    monomers::Vector{MonomerSpec{T}}
+    fragments::Vector{FragmentSpec{T}}
     cyclic::Bool
     rotatable::Vector{Tuple{Int,Int}}
     bond_distance::T
 end
-PolymerSpec{T}() where {T} = PolymerSpec{T}(MonomerSpec{T}[], false, Tuple{Int,Int}[], T(NaN))
+PolymerSpec{T}() where {T} = PolymerSpec{T}(FragmentSpec{T}[], false, Tuple{Int,Int}[], T(NaN))
 
 # A link between atom `a` of fragment `fa` and atom `b` of fragment `fb` of a flexible
 # molecule (indices of the atoms in their fragments), with its distance, constant and

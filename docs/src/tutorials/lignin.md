@@ -212,7 +212,7 @@ origin = [0., 0., 0.]
 # The particle: 7 copies of each oligomer, all their rotatable bonds turning
 names = ["L3", "L5", "L22", "L28", "L40", "L41", "L63", "L67", "L86", "L90"]
 oligomers = [
-    flexible_structure("lignin_$name.pdb";
+    flexible_structure_type("lignin_$name.pdb";
         number = 7,
         rotatable = :all,
         constraints = [InsideSphere(origin, 33.)],
@@ -243,7 +243,7 @@ packmol(system)
 
 # The lignin dispersed in the solvent
 dispersed_oligomers = [
-    flexible_structure("lignin_$name.pdb";
+    flexible_structure_type("lignin_$name.pdb";
         number = 7,
         rotatable = :all,
     )

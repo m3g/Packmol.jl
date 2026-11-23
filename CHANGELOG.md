@@ -12,14 +12,16 @@ Packmol.jl Changelog
 
 Version 100.1.0-DEV
 -------------------
-- ![FEATURE][badge-feature] Polymers (Packmol.jl only): a structure block with `repeat`
-  blocks (`repeat <n>`, `monomer <natoms>`, `link <a> <b> [d0 [k [w]]]`, `cyclic`), or
-  `polymer_structure` and `monomer` in Julia, packs flexible chains of rigid monomers held
-  together by links between their atoms, or by bonds about which they turn (`rotatable
-  <a> <b>` in a monomer, with the bonds from CONECT records or `bond_distance`). The
-  polymers are packed first as rigid molecules, then released.
+- ![FEATURE][badge-feature] Polymers (Packmol.jl only): a structure block with a sequence of
+  rigid fragments (`fragment <natoms>` lines, alone or in `repeat <n> ... end repeat`
+  blocks, and `cyclic`), or `flexible_structure_type(file; fragments)` and `fragment` in
+  Julia, packs flexible chains of rigid fragments (the monomers of a polymer) held together
+  by bonds about which they turn (`rotatable <a> <b>` after a `fragment` line, with the
+  bonds from CONECT records or `bond_distance`), or by general links between their atoms
+  (`link <a> <b> [d0 [k [w]]]`). The polymers are packed first as rigid molecules, then
+  released.
 - ![FEATURE][badge-feature] Rotatable bonds (Packmol.jl only): `rotatable <i> <j> ...` in a
-  structure block (`flexible_structure` in Julia) cuts the molecule into rigid fragments at
+  structure block (`flexible_structure_type(file; rotatable)` in Julia) cuts the molecule into rigid fragments at
   those bonds, linked such that they turn about the bonds only. The bonds are those of the
   CONECT records, or computed from the distances (`bond_distance <d>`).
 - ![FEATURE][badge-feature] `use_compression [<fraction> [<step>]]` (Packmol.jl only; a keyword
@@ -32,7 +34,7 @@ Version 100.1.0-DEV
   three times. Fixed molecules are scaled with the geometry (the coordinates of their atoms
   and their radii), and restored at the end. All periodic cells are supported; not with
   `restart_from` or `voxel_place`.
-- ![FEATURE][badge-feature] `rotatable all` (Julia: `flexible_structure(...; rotatable = :all)`):
+- ![FEATURE][badge-feature] `rotatable all` (Julia: `flexible_structure_type(...; rotatable = :all)`):
   every rotatable bond of a molecule, found from its bonds: not in rings, between heavy
   atoms with other heavy neighbors, and single for sure from the numbers of bonds of the
   atoms (bonds between two carbon or nitrogen atoms with fewer than four bonds do not
