@@ -259,7 +259,7 @@ These are the building blocks everything else depends on.
       are always moved randomly), `segid` (written to PDB columns 73-76)
 - [x] CONECT options: `connect yes|no` (global and per structure), `ignore_conect`; `non_standard_conect`,
       `hexadecimal_indices` deprecated
-- [x] Several conformations of a molecule (Packmol.jl-only): a structure file with several models, or a
+- [x] Several conformations of a molecule: a structure file with several models, or a
       vector of files in `structure_type`, expands into consecutive structure types (one per conformation,
       `number` split evenly, marked by `StructureType.conformation = (i, n)`); `show` and the output
       numbering treat each set as a single structure type
@@ -283,16 +283,16 @@ Each constraint type needs: data structure, penalty function, gradient, parsing,
 - [x] `Ellipsoid` (InsideEllipsoid / OutsideEllipsoid) - axis-aligned, center + 3 semi-axes + uniform scale factor; the
       violation is `min(a,b,c) (ρ - |scale|)` (≈ distance in Å), not Fortran's dimensionless `ρ² - scale²`, whose
       gradient for large ellipsoids fell below SPGBox's eps and stalled the initial fits (2026-11-10)
-- [x] `Gaussian`/`Wave`/`Exponential` (Above.../Below..., Packmol.jl-only, no Fortran equivalent) - curved
+- [x] `Gaussian`/`Wave`/`Exponential` (Above.../Below..., no Fortran equivalent) - curved
       half-spaces `up·x = h(along·x)` generalizing `Plane` (degenerate to it at `amplitude=0`): a Gaussian
       bump, sine/cosine wave (`cos` = `sin` with `phase+π/2`), or exponential ramp extruded along `along`;
       see `src/constraints/gaussians.jl`, `waves.jl`, `exponentials.jl`
-- [x] `RadialGaussian`/`RadialWave`/`RadialExponential` (Above.../Below..., Packmol.jl-only) - radially
+- [x] `RadialGaussian`/`RadialWave`/`RadialExponential` (Above.../Below...) - radially
       symmetric counterparts (`up·x = h(r)`, `r` = radial distance from the `up`-axis line through `center`,
       as in `Cylinder`): a smooth dome, concentric ripples, or a cone-like spike (the latter two have a
       genuine kink at `r=0`, handled by zeroing the gradient's radial component there)
 
-- [x] `within surface`/`not within surface` (`WithinSurface`/`NotWithinSurface`, Packmol.jl-only,
+- [x] `within surface`/`not within surface` (`WithinSurface`/`NotWithinSurface`,
       `src/constraints/surfaces.jl`): the distance to a surface or curve given by points (`PointSurface`,
       `read_surface`: `x y z [nx ny nz]` files or TS2CG `PLM` point files), `|h - offset| ≤ distance`
       (or `≥`); with normals `h` is signed and smooth (implicit moving least squares within the
@@ -440,7 +440,7 @@ We have full control over the SPGBox.jl package, if some tuning is required. But
       of a type, a significant warning (it can fall far short of the free volume: the Zika lipids got
       a quarter to a half of what `free_volume` allows). Tutorial "Minimal cell" (`docs/src/tutorials/cell.md`,
       files/cell/prepare.jl + solvation.inp; Bentopy's data not distributed: Zenodo 17524049).
-- [x] Polymers (`src/polymers/`, Packmol.jl-only): a structure block with `fragment <natoms>` lines
+- [x] Polymers (`src/polymers/`): a structure block with `fragment <natoms>` lines
       (alone or in `repeat <n> ... end repeat` blocks; `monomer` before 2026-11-23) with `link <a> <b> [d0 [k [w]]]` or `rotatable <a> <b>` (the links of the bond, from the bonds: CONECT or
       `bond_distance`, as rotatable bonds; graph exclusions too) (atoms of a monomer and of the
       next one; d0 from each conformation, k 10, w the half-width of a flat bottom, 0), and `cyclic`; Julia

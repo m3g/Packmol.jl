@@ -136,7 +136,7 @@ Decisions of the maintainer (2026-11-05):
   Fortran (`pbc 0 0 0 a b c`). Packmol.jl used to center it at the origin, which shifted
   every position-dependent constraint of Fortran inputs by half a box. That's why
   `bilayer_pbc.inp` and `water_box_pbc2.inp` didn't converge. `unitcell a b c α β γ`
-  (Packmol.jl only, used by the recipes) stays centered at the origin.
+  (used by the recipes) stays centered at the origin.
 - **D12 (2026-10-29): the minimum-distance criterion is Packmol.jl's own**
   (`tolerance - dmin < tolerance_precision`, default 0.1 Å). It is deliberately looser
   than the 0.99 × tolerance that Fortran's `runtests.jl` checks.

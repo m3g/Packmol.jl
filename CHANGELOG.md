@@ -10,21 +10,21 @@ Packmol.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
-Version 100.1.0-DEV
--------------------
-- ![FEATURE][badge-feature] Polymers (Packmol.jl only): a structure block with a sequence of
-  rigid fragments (`fragment <natoms>` lines, alone or in `repeat <n> ... end repeat`
-  blocks, and `cyclic`), or `flexible_structure_type(file; fragments)` and `fragment` in
-  Julia, packs flexible chains of rigid fragments (the monomers of a polymer) held together
-  by bonds about which they turn (`rotatable <a> <b>` after a `fragment` line, with the
-  bonds from CONECT records or `bond_distance`), or by general links between their atoms
-  (`link <a> <b> [d0 [k [w]]]`). The polymers are packed first as rigid molecules, then
-  released.
-- ![FEATURE][badge-feature] Rotatable bonds (Packmol.jl only): `rotatable <i> <j> ...` in a
-  structure block (`flexible_structure_type(file; rotatable)` in Julia) cuts the molecule into rigid fragments at
-  those bonds, linked such that they turn about the bonds only. The bonds are those of the
-  CONECT records, or computed from the distances (`bond_distance <d>`).
-- ![FEATURE][badge-feature] `use_compression [<fraction> [<step>]]` (Packmol.jl only; a keyword
+Version 100.1.0
+---------------
+- ![FEATURE][badge-feature] Polymers: chains of rigid fragments (the monomers of a polymer)
+  that turn about the bonds between them. In input files, the structure block lists the
+  fragments with `fragment <natoms>` lines, alone or in `repeat <n> ... end repeat`
+  blocks. Each `fragment` line is followed by its bonds to the next fragment (`rotatable
+  <a> <b>`, with the bonds from CONECT records or `bond_distance`), or by general links
+  between atoms (`link <a> <b> [d0 [k [w]]]`). `cyclic` closes the chain. In Julia, the
+  same with `flexible_structure_type(file; fragments)` and `fragment`. The polymers are
+  packed first as rigid molecules, then released.
+- ![FEATURE][badge-feature] Rotatable bonds: `rotatable <i> <j> ...` in a structure block
+  cuts the molecule into rigid fragments at those bonds, linked such that they turn about
+  the bonds only. The bonds are those of the CONECT records, or computed from the
+  distances (`bond_distance <d>`). In Julia, `flexible_structure_type(file; rotatable)`.
+- ![FEATURE][badge-feature] `use_compression [<fraction> [<step>]]` (a keyword
   argument in Julia): packs the system at a fraction of its density (default 0.5), with the
   constraints and the periodic cell expanded, and compresses it in adaptive steps to the
   density of the input, for systems too dense to pack from a random placement. A step that
