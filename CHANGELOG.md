@@ -10,6 +10,9 @@ Packmol.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
+Version 100.1.1-DEV
+---------------
+
 Version 100.1.0
 ---------------
 - ![FEATURE][badge-feature] Polymers: chains of rigid fragments (the monomers of a polymer)
