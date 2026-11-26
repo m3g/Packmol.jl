@@ -171,7 +171,10 @@ end
 Build a `PackmolSystem` directly from a vector of `StructureType`s (see
 [`structure_type`](@ref)), without going through an input file. `output` sets
 the output file path; any other `PackmolSystem` field (`tolerance`, `seed`,
-`unitcell`, ...) can be given as a keyword argument.
+`unitcell`, ...) can be given as a keyword argument. The periodic cell is given by
+`unitcell` (a matrix, or `[a, b, c, α, β, γ]`, centered at `unitcell_center`, the origin
+by default) or by `pbc` (the values of the `pbc` input keyword, as `[a, b, c]` or
+`(:dodecahedral, cx, cy, cz, d)`).
 
 The vector can also hold vectors of structure types (the conformations of a molecule,
 from `structure_type`) and flexible molecules (from [`flexible_structure_type`](@ref)), as
@@ -185,27 +188,38 @@ function PackmolSystem(
     input_file::String = "",
     kwargs...,
 ) where {D,T}
-    unitcell_raw = get(kwargs, :unitcell, nothing)
     atoms, molecule_positions, nmols = _atoms_and_molecule_positions(structure_types)
     kw = values(kwargs)
     if haskey(kw, :restart_from)
         kw = merge(kw, (; restart_from=_restart_source(kw.restart_from)))
     end
-    # A unit cell without a center is centered at the origin (as `unitcell` in input files)
-    if !isnothing(unitcell_raw) && !haskey(kw, :unitcell_center)
-        kw = merge(kw, (; unitcell_center=zero(SVector{D,T})))
-    end
-    if !isnothing(unitcell_raw)
-        kw = merge(kw, (; wigner_seitz_cell=_is_wigner_seitz_cell(Matrix{T}(unitcell_raw))))
-    end
     # `use_compression = true`, `0.5` or `(0.5, 0.05)`: the fraction of the density and the initial step
     use_compression = get(kw, :use_compression, nothing)
-    kw = Base.structdiff(kw, NamedTuple{(:use_compression,)})
+    # The periodic cell: `pbc` (as the input keyword: 3 or 6 values, or the cell shape and
+    # its values) or `unitcell` (a matrix, or a b c α β γ as the input keyword)
+    pbc = get(kw, :pbc, nothing)
+    unitcell = get(kw, :unitcell, nothing)
+    kw = Base.structdiff(kw, NamedTuple{(:use_compression, :pbc, :unitcell)})
     sys = PackmolSystem{D,T}(;
         structure_types, atoms, molecule_positions, nmols,
         input_file, output_file=output, kw...,
     )
     isnothing(use_compression) || _set_use_compression!(sys, _keyword_values(use_compression))
+    # (whether fixed molecules are inside the cell is checked when packing)
+    if !isnothing(pbc)
+        _set_pbc!(sys, _keyword_values(pbc))
+    elseif !isnothing(unitcell)
+        if unitcell isa AbstractMatrix
+            sys.unitcell = Matrix{T}(unitcell)
+        else
+            _set_unitcell!(sys, _keyword_values(unitcell))
+        end
+        # A unit cell without a center is centered at the origin (as `unitcell` in input files)
+        sys.unitcell_center = haskey(kw, :unitcell_center) ? SVector{D,T}(kw.unitcell_center) : zero(SVector{D,T})
+    end
+    if !isnothing(pbc) || !isnothing(unitcell)
+        sys.wigner_seitz_cell = _is_wigner_seitz_cell(something(sys.unitcell))
+    end
     return sys
 end
 

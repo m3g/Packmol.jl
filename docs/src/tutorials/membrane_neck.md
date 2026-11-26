@@ -92,7 +92,7 @@ and its faces, far from the neck.
 ## Julia script
 
 ```julia
-using Packmol, LinearAlgebra
+using Packmol
 
 # Geometry (Å)
 R = 80.0     # radius of the midplane of the tube, far from the neck
@@ -133,7 +133,7 @@ molecules = [
 ]
 system = PackmolSystem(molecules;
     output = "membrane_neck.pdb", tolerance = 2.0,
-    unitcell = Matrix(Diagonal([a, a, L])), # orthorhombic, centered at the origin
+    unitcell = [a, a, L, 90, 90, 90], # orthorhombic, centered at the origin
     # uncomment to only place the molecules
     # check_initial_placement = true,
 )

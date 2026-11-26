@@ -12,6 +12,9 @@ Packmol.jl Changelog
 
 Version 100.1.1-DEV
 ---------------
+- ![BUGFIX][badge-bugfix] `PackmolSystem(...; unitcell)` accepts the cell as `a b c α β γ`
+  (a vector or a tuple, as the input keyword), not only as a matrix, and `PackmolSystem(...; pbc)`
+  is accepted, as in `packmol(sys; ...)`. Both raised a `MethodError`.
 - ![INFO][badge-info] Documentation: the tutorial "Membrane tube with a neck" (#145): a POPC
   tube with a constriction, with water inside and outside, periodic along its axis; the
   shape is given by a function, and every layer is a `CustomConstraint` on the distance to
