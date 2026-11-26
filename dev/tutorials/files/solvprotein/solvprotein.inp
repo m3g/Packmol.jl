@@ -31,7 +31,7 @@ periodic_boundary_style dodecahedral
 # center of mass and the last three are the rotation angles, in radians,
 # relative to the orientation in the input file).
 
-structure protein.pdb
+structure thyroid_receptor.pdb
   number 1
   fixed 0. 0. 0. 0. 0. 0.
   centerofmass
