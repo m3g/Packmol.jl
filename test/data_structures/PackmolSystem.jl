@@ -145,6 +145,15 @@ end
     @test sys.unitcell_center == SVector(10.0, 10.0, 10.0)
     sys = PackmolSystem([st]; output=tempname() * ".pdb", pbc=(:dodecahedral, 0, 0, 0, 30))
     @test sys.wigner_seitz_cell
+    # a fixed molecule in a cell centered away from the origin
+    fixed = structure_type(water; number=1, fixed=(SVector(50.0, 50.0, 50.0), SVector(0.0, 0.0, 0.0)), center=:geometric)
+    for cell in (uc, [20.0, 20.0, 20.0, 90.0, 90.0, 90.0])
+        sys = PackmolSystem([fixed, st]; output=tempname() * ".pdb", unitcell=cell, unitcell_center=[50.0, 50.0, 50.0])
+        @test sys.unitcell_center == SVector(50.0, 50.0, 50.0)
+        @test redirect_stdout(devnull) do
+            packmol(sys)
+        end.status == :packing_ready
+    end
     sys = PackmolSystem([st]; output=tempname() * ".pdb", unitcell=[20, 20, 20, 90, 90, 90])
     @test redirect_stdout(devnull) do
         packmol(sys)

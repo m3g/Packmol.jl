@@ -205,12 +205,20 @@ function PackmolSystem(
         input_file, output_file=output, kw...,
     )
     isnothing(use_compression) || _set_use_compression!(sys, _keyword_values(use_compression))
-    if !isnothing(pbc) || !isnothing(unitcell)
-        _set_global_options!(sys; pbc, unitcell)
-        # A unit cell without a center is centered at the origin (as `unitcell` in input files)
-        if isnothing(pbc) && haskey(kw, :unitcell_center)
-            sys.unitcell_center = SVector{D,T}(kw.unitcell_center)
+    # (whether fixed molecules are inside the cell is checked when packing)
+    if !isnothing(pbc)
+        _set_pbc!(sys, _keyword_values(pbc))
+    elseif !isnothing(unitcell)
+        if unitcell isa AbstractMatrix
+            sys.unitcell = Matrix{T}(unitcell)
+        else
+            _set_unitcell!(sys, _keyword_values(unitcell))
         end
+        # A unit cell without a center is centered at the origin (as `unitcell` in input files)
+        sys.unitcell_center = haskey(kw, :unitcell_center) ? SVector{D,T}(kw.unitcell_center) : zero(SVector{D,T})
+    end
+    if !isnothing(pbc) || !isnothing(unitcell)
+        sys.wigner_seitz_cell = _is_wigner_seitz_cell(something(sys.unitcell))
     end
     return sys
 end
