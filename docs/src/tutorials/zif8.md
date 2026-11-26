@@ -36,8 +36,8 @@ visualize(get_atoms(final), # hide
 below: the framework (dark blue), ethanol (spheres, carbon pale green) and water (sticks), with
 hydrogen white and oxygen red.*
 
-Files: [`zif8.pdb`](files/zif8/zif8.pdb), [`ethanol.pdb`](files/zif8/ethanol.pdb),
-[`water.pdb`](files/zif8/water.pdb), and the input file [`zif8.inp`](files/zif8/zif8.inp).
+Files: [`zif8.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/zif8.pdb), [`ethanol.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/ethanol.pdb),
+[`water.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/water.pdb), and the input file [`zif8.inp`](files/zif8/zif8.inp).
 
 ## The crystal
 
@@ -52,7 +52,7 @@ of the [Crystallography Open Database](https://www.crystallography.net) (O. Shek
 obabel 7111973.cif -O zif8_uc.pdb --fillUC strict
 ```
 
-The slab, [`zif8.pdb`](files/zif8/zif8.pdb), has 3 × 3 unit cells in `x` and `y` (51.1 Å)
+The slab, [`zif8.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/zif8.pdb), has 3 × 3 unit cells in `x` and `y` (51.1 Å)
 and is 2 unit cells thick in `z`, from `z = 0.5` to `37.7` Å (5364 atoms). It is cut at
 whole linkers: the zinc atoms of two unit cells, and every linker bound to them. At each
 face, 36 linkers are bound to a single zinc atom, as at the surfaces of real crystals. It was built by the script

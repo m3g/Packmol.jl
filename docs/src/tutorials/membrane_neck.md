@@ -13,10 +13,7 @@ has 1.6 million atoms.
 bend at the neck, and the water outside. The tube crosses the periodic boundaries at the
 left and right.*
 
-Files: [`popc.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/main/packmol_lipids/popc.pdb),
-from the `packmol_lipids` set of [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles)
-(the POPC of the [Lipid bilayer](bilayer.md) and [Nanoliposomes](nanoliposome.md)
-tutorials), [`water.pdb`](files/nanoliposome/water.pdb), and the Julia script
+Files: [`popc.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/popc.pdb), [`water.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/water.pdb), and the Julia script
 [`membrane_neck.jl`](files/membrane_neck/membrane_neck.jl). Custom constraints exist
 only in Julia code, so this tutorial has no input file.
 

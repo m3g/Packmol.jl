@@ -20,8 +20,8 @@ visualize(get_atoms(system), # hide
 
 *The drop on the graphite (drag to rotate, scroll to zoom).*
 
-Files: [`graphite.pdb`](files/water_drop/graphite.pdb),
-[`water.pdb`](files/water_drop/water.pdb), and the input files
+Files: [`graphite.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/graphite.pdb),
+[`water.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/water.pdb), and the input files
 [`drop.inp`](files/water_drop/drop.inp) and
 [`gaussian_drop.inp`](files/water_drop/gaussian_drop.inp).
 

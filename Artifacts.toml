@@ -6,3 +6,13 @@ lazy = true
     [[packmol_test_files.download]]
     url = "https://github.com/m3g/MolSimTestFiles/releases/download/packmol-v3/packmol.tar.gz"
     sha256 = "9a0c89dbf65337ad329e831a961a85abe95925f5ab23ac89a0642e563d1f68be"
+
+# Structure files of the tutorials (docs/src/tutorials): the `packmol_tutorials` set of
+# MolSimTestFiles, one file per molecule
+[packmol_tutorial_files]
+git-tree-sha1 = "61f033c2ef218cce60dfa17b1cc6851eea629fc6"
+lazy = true
+
+    [[packmol_tutorial_files.download]]
+    url = "https://github.com/m3g/MolSimTestFiles/releases/download/packmol_tutorials-v1/packmol_tutorials.tar.gz"
+    sha256 = "3475bc493feada562c4365fe37e6662291df889108f9ba94487463c9276b3539"

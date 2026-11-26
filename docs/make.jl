@@ -1,6 +1,7 @@
 using Documenter, DocumenterCodeBlocks
 using Markdown
 using Packmol
+using LazyArtifacts: LazyArtifacts # Packmol.tutorial_file
 push!(LOAD_PATH, "../src/")
 
 # The input files of the tutorials are shown in the pages from the files themselves
@@ -15,7 +16,9 @@ input_file(file) = Markdown.MD(Markdown.Code("", read(file, String)))
 
 # The views of the packed systems of the tutorials, at the top of their pages, are made in
 # hidden blocks that pack the input files of the tutorials (docs/src/tutorials/files/<dir>)
-# in a temporary copy of their directories, without output to the page:
+# in a temporary copy of their directories, with the structure files of the tutorials (the
+# `packmol_tutorials` set of MolSimTestFiles, `Packmol.tutorial_file`), without output to
+# the page:
 #
 #     ```@setup mixture_view
 #     using Packmol, PDBTools
@@ -26,6 +29,9 @@ input_file(file) = Markdown.MD(Markdown.Code("", read(file, String)))
 function pack_tutorial(dir, input; check = false)
     tmp = mktempdir()
     cp(joinpath(@__DIR__, "src", "tutorials", "files", dir), joinpath(tmp, dir))
+    for f in readdir(Packmol.tutorial_file(""))
+        cp(Packmol.tutorial_file(f), joinpath(tmp, dir, f); force = true)
+    end
     return redirect_stdio(stdout = devnull, stderr = devnull) do
         system = read_packmol_input(joinpath(tmp, dir, input))
         system.check_initial_placement = check

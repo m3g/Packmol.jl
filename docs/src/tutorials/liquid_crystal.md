@@ -45,7 +45,7 @@ visualize(get_atoms(system), # hide
 
 *The cholesteric phase: the layers, from the bottom to the top, in red, orange, green and blue; the director turns by 45° from one layer to the next.*
 
-Files: [`5cb.pdb`](files/liquid_crystal/5cb.pdb), and the input files
+Files: [`5cb.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/5cb.pdb), and the input files
 [`nematic.inp`](files/liquid_crystal/nematic.inp) and
 [`cholesteric.inp`](files/liquid_crystal/cholesteric.inp).
 

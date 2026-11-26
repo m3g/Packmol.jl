@@ -27,9 +27,22 @@ by the density of the system, as the volume guesser of the
 and the side of a cube of that volume. For the [water and urea](@ref "Water and urea")
 tutorial (1000 water and 400 urea molecules), at 1.09 g/mL:
 
+```@setup volumes
+# The input files of the tutorials used below, each in a directory with the structure
+# files of the tutorials (the packmol_tutorials set of MolSimTestFiles)
+using Packmol, LazyArtifacts
+for t in ("mixture", "solvprotein", "bilayer")
+    mkpath(t)
+    cp(joinpath("..", "tutorials", "files", t, "$t.inp"), joinpath(t, "$t.inp"); force = true)
+    for f in readdir(Packmol.tutorial_file(""))
+        cp(Packmol.tutorial_file(f), joinpath(t, f); force = true)
+    end
+end
+```
+
 ```@example volumes
 using Packmol
-guess_volume("../tutorials/files/mixture/mixture.inp"; density = 1.09)
+guess_volume("mixture/mixture.inp"; density = 1.09)
 nothing # hide
 ```
 
@@ -37,7 +50,7 @@ which is the cube of 40 Å of the input. The molecules can also be given as stru
 or molar masses (g/mol), with their numbers:
 
 ```@example volumes
-water = "../tutorials/files/mixture/water.pdb"
+water = "mixture/water.pdb"
 guess_volume([water => 1000, 60.06 => 400]; density = 1.09)
 nothing # hide
 ```
@@ -55,7 +68,7 @@ For the [solvated protein](@ref "Solvated protein"), the water, sodium and chlor
 the rhombic dodecahedron, without the volume of the protein:
 
 ```@example volumes
-input = "../tutorials/files/solvprotein/solvprotein.inp"
+input = "solvprotein/solvprotein.inp"
 free_volume(input; npoints = 500_000)
 nothing # hide
 ```
@@ -72,7 +85,7 @@ and below planes, which do not bound a region of the molecules. The water around
 its own region:
 
 ```@example volumes
-free_volume("../tutorials/files/bilayer/bilayer.inp"; npoints = 500_000)
+free_volume("bilayer/bilayer.inp"; npoints = 500_000)
 nothing # hide
 ```
 

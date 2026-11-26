@@ -28,7 +28,7 @@ visualize(get_atoms(final), # hide
 *The packed system (drag to rotate, scroll to zoom), built in the [Julia script](#Julia-script) section
 below.*
 
-Files: [`cnt.pdb`](files/nanotube/cnt.pdb), [`water.pdb`](files/nanotube/water.pdb), and
+Files: [`cnt.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/cnt.pdb), [`water.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/water.pdb), and
 the input file [`nanotube.inp`](files/nanotube/nanotube.inp).
 
 ## The nanotube

@@ -20,8 +20,8 @@ visualize(get_atoms(system), # hide
 
 *Water (left), chloroform (right, green) and the hormone at the interface, with the solvents below the plane of the hormone (drag to rotate, scroll to zoom).*
 
-Files: [`water.xyz`](files/interface/water.xyz), [`chlor.xyz`](files/interface/chlor.xyz),
-[`t3.xyz`](files/interface/t3.xyz) and the input file
+Files: [`water.xyz`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/water.xyz), [`chlor.xyz`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/chlor.xyz),
+[`t3.xyz`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/t3.xyz) and the input file
 [`interface.inp`](files/interface/interface.inp).
 
 ## The two solvents and the hormone

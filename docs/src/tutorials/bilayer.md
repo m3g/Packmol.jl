@@ -33,7 +33,7 @@ show_system(final) # hide
 
 *The packed bilayer (drag to rotate, scroll to zoom), with the edges of the periodic cell.*
 
-Files: [`popc.pdb`](files/bilayer/popc.pdb), [`water.pdb`](files/bilayer/water.pdb) and
+Files: [`popc.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/popc.pdb), [`water.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/water.pdb) and
 the input file [`bilayer.inp`](files/bilayer/bilayer.inp).
 
 ## The lipid

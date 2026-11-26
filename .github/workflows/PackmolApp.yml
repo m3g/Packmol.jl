@@ -32,8 +32,8 @@ jobs:
           # Pkg.Apps requires Julia 1.12+.
           version: '1'
       - uses: julia-actions/cache@v3
-      # The input of the water and urea tutorial (its structure files are in the
-      # repository); the output goes to the runner's temporary directory.
+      # The input of the water and urea tutorial, with the structure files of the tutorials
+      # (the packmol_tutorials set of MolSimTestFiles), in the runner's temporary directory.
       - name: install and run packmol app (unix)
         if: runner.os != 'Windows'
         shell: bash
@@ -41,7 +41,10 @@ jobs:
           julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
           juliabin=`julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'`
           $juliabin/packmol --version
-          $juliabin/packmol -i docs/src/tutorials/files/mixture/mixture.inp -o "$RUNNER_TEMP/mixture.pdb" -s 1
+          mkdir -p "$RUNNER_TEMP/mixture"
+          curl -sSL https://github.com/m3g/MolSimTestFiles/releases/download/packmol_tutorials-v1/packmol_tutorials.tar.gz | tar xz -C "$RUNNER_TEMP/mixture"
+          cp docs/src/tutorials/files/mixture/mixture.inp "$RUNNER_TEMP/mixture/"
+          $juliabin/packmol -i "$RUNNER_TEMP/mixture/mixture.inp" -o "$RUNNER_TEMP/mixture.pdb" -s 1
           test -s "$RUNNER_TEMP/mixture.pdb"
       - name: install and run packmol app (windows)
         if: runner.os == 'Windows'
@@ -50,6 +53,11 @@ jobs:
           julia -e 'import Pkg; Pkg.Apps.develop(path=".")'
           $juliabin = julia -e 'print(joinpath(Base.DEPOT_PATH[1],"bin"))'
           & "$juliabin\packmol" --version
-          & "$juliabin\packmol" -i docs\src\tutorials\files\mixture\mixture.inp -o "$env:RUNNER_TEMP\mixture.pdb" -s 1
+          $dir = Join-Path $env:RUNNER_TEMP "mixture"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Invoke-WebRequest -Uri "https://github.com/m3g/MolSimTestFiles/releases/download/packmol_tutorials-v1/packmol_tutorials.tar.gz" -OutFile (Join-Path $env:RUNNER_TEMP "packmol_tutorials.tar.gz")
+          tar -xzf (Join-Path $env:RUNNER_TEMP "packmol_tutorials.tar.gz") -C $dir
+          Copy-Item docs\src\tutorials\files\mixture\mixture.inp $dir
+          & "$juliabin\packmol" -i (Join-Path $dir "mixture.inp") -o "$env:RUNNER_TEMP\mixture.pdb" -s 1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (-not (Test-Path "$env:RUNNER_TEMP\mixture.pdb")) { exit 1 }

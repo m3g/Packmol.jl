@@ -16,6 +16,15 @@ Version 100.1.1-DEV
   tube with a constriction, with water inside and outside, periodic along its axis; the
   shape is given by a function, and every layer is a `CustomConstraint` on the distance to
   the midplane of the bilayer (1.6 million atoms).
+- ![INFO][badge-info] Documentation: the structure files of the tutorials moved to the
+  `packmol_tutorials` set of [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles)
+  (#145), one file per molecule: a single TIP3P `water.pdb` in all the all-atom tutorials
+  (the mixture, solvated protein and protein in glycerol tutorials had other water files),
+  and single `popc.pdb`, `gold.pdb` and `toluene.pdb`; the proteins of the solvated protein
+  and protein in glycerol tutorials are now `thyroid_receptor.pdb` and `subtilisin.pdb`.
+  `docs/src/tutorials/files` keeps the input files and scripts. The set is a lazy artifact
+  (`packmol_tutorial_files`), read by `Packmol.tutorial_file(name)` (with `LazyArtifacts`
+  loaded), in the documentation, the tests and `dev/`.
 
 Version 100.1.0
 ---------------

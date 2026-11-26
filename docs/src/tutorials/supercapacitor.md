@@ -32,8 +32,8 @@ visualize(get_atoms(final), # hide
 below: the cathode (`z < 7.7`) and the anode (`z > 62.7`), the cations (blue) and the
 anions (red), and the periodic cell, closed by a vacuum gap beyond the anode.*
 
-Files: [`electrodes.pdb`](files/supercapacitor/electrodes.pdb),
-[`bmim.pdb`](files/supercapacitor/bmim.pdb), [`pf6.pdb`](files/supercapacitor/pf6.pdb),
+Files: [`electrodes.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/electrodes.pdb),
+[`bmim.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/bmim.pdb), [`pf6.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/pf6.pdb),
 and the input file [`supercapacitor.inp`](files/supercapacitor/supercapacitor.inp).
 
 ## The structures

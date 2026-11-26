@@ -146,6 +146,12 @@ function run_case(name, dir, inputs, workdir, seed)
     work = joinpath(workdir, name)
     rm(work; recursive = true, force = true)
     cp(dir, work)
+    # the tutorials: with the structure files of the tutorials (packmol_tutorials set)
+    if startswith(dir, tutorials)
+        for f in readdir(Packmol.tutorial_file(""))
+            isfile(joinpath(work, f)) || cp(Packmol.tutorial_file(f), joinpath(work, f))
+        end
+    end
     chmod(work, 0o755; recursive = true)
     sys, time, log = nothing, 0.0, ""
     for input in inputs

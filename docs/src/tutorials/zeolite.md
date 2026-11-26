@@ -20,8 +20,8 @@ visualize(get_atoms(system), # hide
 
 *The framework of the zeolite, methane and carbon dioxide, with the edges of the triclinic cell (drag to rotate, scroll to zoom).*
 
-Files: [`cha.pdb`](files/zeolite/cha.pdb), [`methane.pdb`](files/zeolite/methane.pdb),
-[`co2.pdb`](files/zeolite/co2.pdb), and the input file [`zeolite.inp`](files/zeolite/zeolite.inp).
+Files: [`cha.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/cha.pdb), [`methane.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/methane.pdb),
+[`co2.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/co2.pdb), and the input file [`zeolite.inp`](files/zeolite/zeolite.inp).
 
 ## The structure of the zeolite
 
@@ -36,7 +36,7 @@ obabel CHA.cif -O CHA_uc.pdb --fillUC strict
 
 The unit cell of chabazite, in its hexagonal setting, has `a = b = 13.675` Å,
 `c = 14.767` Å, and an angle of 120° between `a` and `b`, with 36 silicon and 72 oxygen
-atoms, and 3 cages. [`cha.pdb`](files/zeolite/cha.pdb) has 2 × 2 × 2 unit cells (864
+atoms, and 3 cages. [`cha.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/cha.pdb) has 2 × 2 × 2 unit cells (864
 atoms, 24 cages), centered at the origin, built from the unit cell given by Open Babel:
 
 ```@raw html
@@ -88,7 +88,7 @@ Main.input_file("files/zeolite/zeolite.inp")
 The periodic cell, given by `unitcell a b c alpha beta gamma` (see [Triclinic
 box](../periodic_boundary_conditions/triclinic_box.md)), is the cell of the zeolite, so the
 framework is continuous across the periodic boundaries. The cell of `unitcell` is centered
-at the origin, as the coordinates of [`cha.pdb`](files/zeolite/cha.pdb), so that all the
+at the origin, as the coordinates of [`cha.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/cha.pdb), so that all the
 atoms of the fixed zeolite are inside it. No constraint is needed for the gases: the cell
 confines them, and the distances to the atoms of the fixed framework keep them in the
 cages.

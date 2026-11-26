@@ -11,11 +11,11 @@ const files = joinpath(@__DIR__, "..", "..", "docs", "src", "tutorials", "files"
 const images = joinpath(@__DIR__, "..", "..", "docs", "src", "tutorials", "images")
 const work = mktempdir()
 
-using Downloads
+using Packmol, LazyArtifacts # Packmol.tutorial_file
 cp(joinpath(files, "membrane_neck.jl"), joinpath(work, "membrane_neck.jl"); force = true)
-cp(joinpath(files, "..", "nanoliposome", "water.pdb"), joinpath(work, "water.pdb"); force = true)
-Downloads.download("https://raw.githubusercontent.com/m3g/MolSimTestFiles/main/packmol_lipids/popc.pdb",
-    joinpath(work, "popc.pdb"))
+for f in ("popc.pdb", "water.pdb")
+    cp(Packmol.tutorial_file(f), joinpath(work, f); force = true)
+end
 cd(() -> include(joinpath(work, "membrane_neck.jl")), work)
 
 render(joinpath(work, "membrane_neck.pdb"), joinpath(images, "membrane_neck.webp");

@@ -13,17 +13,17 @@ The same molecules are also packed dispersed in the solvent.
 *The lignin particle, each oligomer in a color, and the acetone (green) and the water
 (cyan) of the half of the cell beyond a cut through the middle of the particle.*
 
-Files: the oligomers, [`lignin_L3.pdb`](files/lignin/lignin_L3.pdb),
-[`lignin_L5.pdb`](files/lignin/lignin_L5.pdb),
-[`lignin_L22.pdb`](files/lignin/lignin_L22.pdb),
-[`lignin_L28.pdb`](files/lignin/lignin_L28.pdb),
-[`lignin_L40.pdb`](files/lignin/lignin_L40.pdb),
-[`lignin_L41.pdb`](files/lignin/lignin_L41.pdb),
-[`lignin_L63.pdb`](files/lignin/lignin_L63.pdb),
-[`lignin_L67.pdb`](files/lignin/lignin_L67.pdb),
-[`lignin_L86.pdb`](files/lignin/lignin_L86.pdb) and
-[`lignin_L90.pdb`](files/lignin/lignin_L90.pdb);
-[`acetone.pdb`](files/lignin/acetone.pdb), [`water.pdb`](files/lignin/water.pdb), and the
+Files: the oligomers, [`lignin_L3.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/lignin_L3.pdb),
+[`lignin_L5.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/lignin_L5.pdb),
+[`lignin_L22.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/lignin_L22.pdb),
+[`lignin_L28.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/lignin_L28.pdb),
+[`lignin_L40.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/lignin_L40.pdb),
+[`lignin_L41.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/lignin_L41.pdb),
+[`lignin_L63.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/lignin_L63.pdb),
+[`lignin_L67.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/lignin_L67.pdb),
+[`lignin_L86.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/lignin_L86.pdb) and
+[`lignin_L90.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/lignin_L90.pdb);
+[`acetone.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/acetone.pdb), [`water.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/water.pdb), and the
 input files [`particle.inp`](files/lignin/particle.inp),
 [`solvation.inp`](files/lignin/solvation.inp) and
 [`dispersed.inp`](files/lignin/dispersed.inp).

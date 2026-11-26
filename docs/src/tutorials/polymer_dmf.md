@@ -22,8 +22,8 @@ visualize(get_atoms(system), # hide
 
 *The polymer, and DMF as lines, with the edges of the periodic box (drag to rotate, scroll to zoom).*
 
-Files: [`polyacrylamide.pdb`](files/polymer_dmf/polyacrylamide.pdb),
-[`dmf.pdb`](files/polymer_dmf/dmf.pdb), and the input file
+Files: [`polyacrylamide.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/polyacrylamide.pdb),
+[`dmf.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/dmf.pdb), and the input file
 [`polymer_dmf.inp`](files/polymer_dmf/polymer_dmf.inp).
 
 The chain has five monomers (55 atoms). In Packmol, molecules are rigid: the chain keeps
