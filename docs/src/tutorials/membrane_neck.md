@@ -67,9 +67,11 @@ within(d) = CustomConstraint(x -> h(x) - d) # h ≤ d
 | outer leaflet: heads | `h ≥ 28` |
 | water outside | `h ≥ 30` |
 
-The gradients of the constraints are computed by finite differences, which is enough
-here; they could be computed by automatic differentiation (see
-[Custom constraints](../constraints/custom.md)).
+No `gradient` is given to the constraints, so their gradients are computed by central
+finite differences, the default of `CustomConstraint` (six evaluations of the function for
+each atom outside its region), which is accurate and cheap enough here. Exact gradients can
+be given with the `gradient` keyword, for example computed by automatic differentiation
+with ForwardDiff.jl (see [Custom constraints](../constraints/custom.md)).
 
 ## The numbers of molecules
 
@@ -108,7 +110,8 @@ dρ(z) = (R - Rn) * z / σ^2 * exp(-z^2 / (2σ^2))
 # Distance of a point to the midplane, positive outside the tube
 h(x) = (hypot(x[1], x[2]) - ρ(x[3])) / sqrt(1 + dρ(x[3])^2)
 
-# Regions beyond (h ≥ d) and within (h ≤ d) a distance d of the midplane
+# Regions beyond (h ≥ d) and within (h ≤ d) a distance d of the midplane. Without a
+# `gradient` keyword, the gradients of the functions are computed by finite differences
 beyond(d) = CustomConstraint(x -> d - h(x))
 within(d) = CustomConstraint(x -> h(x) - d)
 

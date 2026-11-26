@@ -25,7 +25,8 @@ dρ(z) = (R - Rn) * z / σ^2 * exp(-z^2 / (2σ^2))
 # radial distance, corrected by the slope of the surface)
 h(x) = (hypot(x[1], x[2]) - ρ(x[3])) / sqrt(1 + dρ(x[3])^2)
 
-# Regions beyond (h ≥ d) and within (h ≤ d) a distance d of the midplane
+# Regions beyond (h ≥ d) and within (h ≤ d) a distance d of the midplane. Without a
+# `gradient` keyword, the gradients of the functions are computed by finite differences
 beyond(d) = CustomConstraint(x -> d - h(x))
 within(d) = CustomConstraint(x -> h(x) - d)
 
