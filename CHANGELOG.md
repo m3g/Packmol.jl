@@ -12,6 +12,10 @@ Packmol.jl Changelog
 
 Version 100.1.1-DEV
 ---------------
+- ![INFO][badge-info] Documentation: the tutorial "Membrane tube with a neck" (#145): a POPC
+  tube with a constriction, with water inside and outside, periodic along its axis; the
+  shape is given by a function, and every layer is a `CustomConstraint` on the distance to
+  the midplane of the bilayer (1.6 million atoms).
 
 Version 100.1.0
 ---------------

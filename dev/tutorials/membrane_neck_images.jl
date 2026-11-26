@@ -11,9 +11,11 @@ const files = joinpath(@__DIR__, "..", "..", "docs", "src", "tutorials", "files"
 const images = joinpath(@__DIR__, "..", "..", "docs", "src", "tutorials", "images")
 const work = mktempdir()
 
-for f in readdir(files)
-    cp(joinpath(files, f), joinpath(work, f); force = true)
-end
+using Downloads
+cp(joinpath(files, "membrane_neck.jl"), joinpath(work, "membrane_neck.jl"); force = true)
+cp(joinpath(files, "..", "nanoliposome", "water.pdb"), joinpath(work, "water.pdb"); force = true)
+Downloads.download("https://raw.githubusercontent.com/m3g/MolSimTestFiles/main/packmol_lipids/popc.pdb",
+    joinpath(work, "popc.pdb"))
 cd(() -> include(joinpath(work, "membrane_neck.jl")), work)
 
 render(joinpath(work, "membrane_neck.pdb"), joinpath(images, "membrane_neck.webp");
