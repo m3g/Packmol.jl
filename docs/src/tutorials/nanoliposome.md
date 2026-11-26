@@ -12,8 +12,8 @@ the main subject of this tutorial.
 *The larger nanoliposome, cut through its center: the water inside, the two
 leaflets, and the water outside, which fills the truncated octahedron.*
 
-Files: [`popc.pdb`](files/nanoliposome/popc.pdb),
-[`water.pdb`](files/nanoliposome/water.pdb), and the input files
+Files: [`popc.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/popc.pdb),
+[`water.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/water.pdb), and the input files
 [`small.inp`](files/nanoliposome/small.inp) and
 [`large.inp`](files/nanoliposome/large.inp).
 

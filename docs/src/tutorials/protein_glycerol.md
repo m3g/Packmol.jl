@@ -24,9 +24,9 @@ visualize(get_atoms(system), # hide
 
 *The protein, glycerol (green) and water, in the half of the box behind the protein, with the edges of the periodic box (drag to rotate, scroll to zoom).*
 
-Files: [`protein.pdb`](files/protein_glycerol/protein.pdb),
-[`glycerol.pdb`](files/protein_glycerol/glycerol.pdb),
-[`water.pdb`](files/protein_glycerol/water.pdb), and the input file
+Files: [`subtilisin.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/subtilisin.pdb),
+[`glycerol.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/glycerol.pdb),
+[`water.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/water.pdb), and the input file
 [`protein_glycerol.inp`](files/protein_glycerol/protein_glycerol.inp).
 
 ## The numbers of molecules
@@ -79,7 +79,7 @@ The packing (about 48 thousand atoms) takes about half a second.
 ```julia
 using Packmol
 
-protein = structure_type("protein.pdb";
+protein = structure_type("subtilisin.pdb";
     number = 1,
     fixed = ([0., 0., 0.], [0., 0., 0.]),
     center = :geometric,

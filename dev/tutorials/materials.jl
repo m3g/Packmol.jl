@@ -1,11 +1,14 @@
 #
-# Structure files of the materials tutorials (docs/src/tutorials/files): graphite for
+# Structure files of the materials tutorials (the `packmol_tutorials` set of
+# MolSimTestFiles, written to the directory given as argument, default
+# `packmol_tutorials`): graphite for
 # the water drop, and the chabazite zeolite (from the IZA database, expanded to the full
 # unit cell with Open Babel: `obabel CHA.cif -O CHA_uc.pdb --fillUC strict`) with methane
 # and carbon dioxide.
 #
 using PDBTools
-const files = joinpath(@__DIR__, "..", "..", "docs", "src", "tutorials", "files")
+const files = get(ARGS, 1, "packmol_tutorials")
+mkpath(files)
 
 atom(name, resname, resnum, x, y, z; element=name[1:1]) =
     Atom(; name, resname, resnum, chain="A", x, y, z, pdb_element=element)
@@ -44,20 +47,15 @@ function build_nanotube(; n=12, nz=20, a=2.46, d=1.42)
     return atoms
 end
 
-mkpath(joinpath(files, "nanotube"))
-write_pdb(joinpath(files, "nanotube", "cnt.pdb"), build_nanotube())
-cp(joinpath(files, "membrane", "water.pdb"), joinpath(files, "nanotube", "water.pdb"); force=true)
+write_pdb(joinpath(files, "cnt.pdb"), build_nanotube())
 
-mkpath(joinpath(files, "water_drop"))
-write_pdb(joinpath(files, "water_drop", "graphite.pdb"), build_graphite())
-cp(joinpath(files, "membrane", "water.pdb"), joinpath(files, "water_drop", "water.pdb"); force=true)
+write_pdb(joinpath(files, "graphite.pdb"), build_graphite())
 
 #
 # Chabazite (CHA), in its hexagonal cell (a = b = 13.675, c = 14.767 Å, γ = 120°):
 # 2 x 2 x 2 unit cells, centered at the origin (as the `unitcell` of input files), with
 # the CRYST1 record of the supercell. The unit cell has 36 Si and 72 O atoms.
 #
-mkpath(joinpath(files, "zeolite"))
 uc = read_pdb(joinpath(@__DIR__, "CHA_uc.pdb"))
 cell = Matrix{Float64}(UnitCell(13.675, 13.675, 14.767, 90, 90, 120))
 A, B, C = cell[:, 1], cell[:, 2], cell[:, 3]
@@ -70,16 +68,16 @@ for i in 0:1, j in 0:1, k in 0:1, at in uc
 end
 s = Structure(cha)
 s.unitcell = UnitCell(2 * 13.675, 2 * 13.675, 2 * 14.767, 90, 90, 120)
-write_pdb(joinpath(files, "zeolite", "cha.pdb"), s)
+write_pdb(joinpath(files, "cha.pdb"), s)
 
 # Methane (C-H 1.09 Å, tetrahedral) and carbon dioxide (C=O 1.16 Å)
 h = 1.09 / sqrt(3)
-write_pdb(joinpath(files, "zeolite", "methane.pdb"), [
+write_pdb(joinpath(files, "methane.pdb"), [
     atom("C", "CH4", 1, 0.0, 0.0, 0.0),
     atom("H1", "CH4", 1, h, h, h), atom("H2", "CH4", 1, -h, -h, h),
     atom("H3", "CH4", 1, -h, h, -h), atom("H4", "CH4", 1, h, -h, -h),
 ])
-write_pdb(joinpath(files, "zeolite", "co2.pdb"), [
+write_pdb(joinpath(files, "co2.pdb"), [
     atom("C", "CO2", 1, 0.0, 0.0, 0.0),
     atom("O1", "CO2", 1, 0.0, 0.0, 1.16), atom("O2", "CO2", 1, 0.0, 0.0, -1.16),
 ])

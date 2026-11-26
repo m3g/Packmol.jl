@@ -1,6 +1,7 @@
 #
 # Images of the condensate tutorial (docs/src/tutorials/condensate.md), from the outputs
-# of its input files (docs/src/tutorials/files/condensate), packed in that directory:
+# of its input files (docs/src/tutorials/files/condensate), packed in that directory, with the
+# structure files of the tutorials (the packmol_tutorials set of MolSimTestFiles) copied to it:
 #
 #     packmol homogeneous.inp
 #     packmol droplet_chains.inp

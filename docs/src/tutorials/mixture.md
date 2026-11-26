@@ -20,7 +20,7 @@ visualize(get_atoms(system), # hide
 
 *Water (sticks) and urea (balls and sticks), with the edges of the periodic box (drag to rotate, scroll to zoom).*
 
-Files: [`water.pdb`](files/mixture/water.pdb), [`urea.pdb`](files/mixture/urea.pdb) and
+Files: [`water.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/water.pdb), [`urea.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/urea.pdb) and
 the input file [`mixture.inp`](files/mixture/mixture.inp).
 
 ## The periodic box

@@ -40,6 +40,11 @@ const _executable_build = get(ENV, "PACKMOL_EXECUTABLE_BUILD", "false") == "true
 # method is defined in the TestFilesExt extension, available after `using LazyArtifacts`.
 function test_file end
 
+# tutorial_file(name): path of the structure file `name` of the tutorials (the
+# `packmol_tutorials` set of MolSimTestFiles: water.pdb, popc.pdb, ...; "" for its
+# directory). A lazy artifact, as the test files, defined in the TestFilesExt extension.
+function tutorial_file end
+
 # API: exported functions
 export read_packmol_input
 export write_output

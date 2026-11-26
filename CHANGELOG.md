@@ -15,6 +15,19 @@ Version 100.1.1-DEV
 - ![BUGFIX][badge-bugfix] `PackmolSystem(...; unitcell)` accepts the cell as `a b c α β γ`
   (a vector or a tuple, as the input keyword), not only as a matrix, and `PackmolSystem(...; pbc)`
   is accepted, as in `packmol(sys; ...)`. Both raised a `MethodError`.
+- ![INFO][badge-info] Documentation: the tutorial "Membrane tube with a neck" (#145): a POPC
+  tube with a constriction, with water inside and outside, periodic along its axis; the
+  shape is given by a function, and every layer is a `CustomConstraint` on the distance to
+  the midplane of the bilayer (1.6 million atoms).
+- ![INFO][badge-info] Documentation: the structure files of the tutorials moved to the
+  `packmol_tutorials` set of [MolSimTestFiles](https://github.com/m3g/MolSimTestFiles)
+  (#145), one file per molecule: a single TIP3P `water.pdb` in all the all-atom tutorials
+  (the mixture, solvated protein and protein in glycerol tutorials had other water files),
+  and single `popc.pdb`, `gold.pdb` and `toluene.pdb`; the proteins of the solvated protein
+  and protein in glycerol tutorials are now `thyroid_receptor.pdb` and `subtilisin.pdb`.
+  `docs/src/tutorials/files` keeps the input files and scripts. The set is a lazy artifact
+  (`packmol_tutorial_files`), read by `Packmol.tutorial_file(name)` (with `LazyArtifacts`
+  loaded), in the documentation, the tests and `dev/`.
 
 Version 100.1.0
 ---------------

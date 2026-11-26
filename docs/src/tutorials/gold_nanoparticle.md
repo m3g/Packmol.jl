@@ -23,9 +23,9 @@ visualize(get_atoms(system), # hide
 
 *The gold core (yellow), the sulfur atoms of the ligands (orange), their chains (gray), and, to show the solvent without hiding the nanoparticle, one in five toluene molecules (green) of the half of the cell behind it (drag to rotate, scroll to zoom).*
 
-Files: [`gold.pdb`](files/gold_nanoparticle/gold.pdb),
-[`ddt.pdb`](files/gold_nanoparticle/ddt.pdb),
-[`toluene.pdb`](files/gold_nanoparticle/toluene.pdb), and the input file
+Files: [`gold.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/gold.pdb),
+[`ddt.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/ddt.pdb),
+[`toluene.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/toluene.pdb), and the input file
 [`gold_nanoparticle.inp`](files/gold_nanoparticle/gold_nanoparticle.inp).
 
 ## The structures

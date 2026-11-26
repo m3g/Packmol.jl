@@ -1,7 +1,8 @@
 #
 # Images of the tutorial of the polymer-capped gold nanoparticle
 # (docs/src/tutorials/gold_polymer.md), from the outputs of its input file
-# (docs/src/tutorials/files/gold_polymer), packed in that directory:
+# (docs/src/tutorials/files/gold_polymer), packed in that directory, with the
+# structure files of the tutorials (the packmol_tutorials set of MolSimTestFiles) copied to it:
 #
 #     packmol gold_polymer.inp
 #

@@ -12,9 +12,9 @@ core ([Packing by compression](@ref)).
 *The gold core (yellow), the chains, each in a color, and one in every five toluene
 molecules (green) of the half of the cell behind the particle.*
 
-Files: [`gold.pdb`](files/gold_polymer/gold.pdb),
-[`polystyrene.pdb`](files/gold_polymer/polystyrene.pdb) (the conformations of the
-chains), [`toluene.pdb`](files/gold_polymer/toluene.pdb), and the input file
+Files: [`gold.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/gold.pdb),
+[`polystyrene.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/polystyrene.pdb) (the conformations of the
+chains), [`toluene.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/toluene.pdb), and the input file
 [`gold_polymer.inp`](files/gold_polymer/gold_polymer.inp).
 
 ## The structures

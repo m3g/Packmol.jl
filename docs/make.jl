@@ -1,6 +1,7 @@
 using Documenter, DocumenterCodeBlocks
 using Markdown
 using Packmol
+using LazyArtifacts: LazyArtifacts # Packmol.tutorial_file
 push!(LOAD_PATH, "../src/")
 
 # The input files of the tutorials are shown in the pages from the files themselves
@@ -15,7 +16,9 @@ input_file(file) = Markdown.MD(Markdown.Code("", read(file, String)))
 
 # The views of the packed systems of the tutorials, at the top of their pages, are made in
 # hidden blocks that pack the input files of the tutorials (docs/src/tutorials/files/<dir>)
-# in a temporary copy of their directories, without output to the page:
+# in a temporary copy of their directories, with the structure files of the tutorials (the
+# `packmol_tutorials` set of MolSimTestFiles, `Packmol.tutorial_file`), without output to
+# the page:
 #
 #     ```@setup mixture_view
 #     using Packmol, PDBTools
@@ -23,9 +26,27 @@ input_file(file) = Markdown.MD(Markdown.Code("", read(file, String)))
 #     ```
 #
 # `check = true` only places the molecules (the input's `check_initial_placement`).
+# The structure files of the tutorials are the `packmol_tutorials` set of MolSimTestFiles
+# (a lazy artifact): `tutorial_file(name)` is the path of one of them, and
+# `copy_tutorial(dir, dest)` copies the files of a tutorial (docs/src/tutorials/files/<dir>)
+# and the structure files to the directory `dest`. The pages use them as `Main.tutorial_file`
+# and `Main.copy_tutorial`.
+tutorial_file(name) = Packmol.tutorial_file(name)
+function copy_tutorial(dir, dest)
+    src = joinpath(@__DIR__, "src", "tutorials", "files", dir)
+    mkpath(dest)
+    for f in readdir(src)
+        cp(joinpath(src, f), joinpath(dest, f); force = true)
+    end
+    for f in readdir(Packmol.tutorial_file(""))
+        cp(Packmol.tutorial_file(f), joinpath(dest, f); force = true)
+    end
+    return dest
+end
+
 function pack_tutorial(dir, input; check = false)
     tmp = mktempdir()
-    cp(joinpath(@__DIR__, "src", "tutorials", "files", dir), joinpath(tmp, dir))
+    copy_tutorial(dir, joinpath(tmp, dir))
     return redirect_stdio(stdout = devnull, stderr = devnull) do
         system = read_packmol_input(joinpath(tmp, dir, input))
         system.check_initial_placement = check
@@ -62,6 +83,7 @@ makedocs(
             "Water–chloroform interface" => "tutorials/interface.md",
             "Lipid bilayer" => "tutorials/bilayer.md",
             "Nanoliposomes" => "tutorials/nanoliposome.md",
+            "Membrane tube with a neck" => "tutorials/membrane_neck.md",
             "Solvated protein" => "tutorials/solvprotein.md",
             "Protein in glycerol and water" => "tutorials/protein_glycerol.md",
             "Water drop on graphite" => "tutorials/water_drop.md",

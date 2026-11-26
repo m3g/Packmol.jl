@@ -30,8 +30,8 @@ parts inside (with PBC, an artifact of the view only).*
 *The droplet: the chains at 400 mg/mL, with one in every 20 water molecules
 shown.*
 
-Files: [`peptides.pdb`](files/condensate/peptides.pdb) (the conformations of the chains),
-[`wt4.pdb`](files/condensate/wt4.pdb), and the input files
+Files: [`peptides.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/peptides.pdb) (the conformations of the chains),
+[`wt4.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/wt4.pdb), and the input files
 [`homogeneous.inp`](files/condensate/homogeneous.inp),
 [`droplet_chains.inp`](files/condensate/droplet_chains.inp) and
 [`droplet_water.inp`](files/condensate/droplet_water.inp).

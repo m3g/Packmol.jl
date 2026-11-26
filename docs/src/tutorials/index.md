@@ -15,6 +15,7 @@ agent from an illustration.
 | [Water–chloroform interface](interface.md) | Two solvents in adjacent boxes and a fixed molecule at the interface |
 | [Lipid bilayer](bilayer.md) | A POPC bilayer in water, with periodic boundary conditions: lipids oriented by constraints on two of their atoms |
 | [Nanoliposomes](nanoliposome.md) | Two POPC nanoliposomes in water, in a truncated octahedron periodic cell: lipid layers in spherical shells, and how curvature limits how many lipids fit in each leaflet |
+| [Membrane tube with a neck](membrane_neck.md) | A POPC tube with a constriction, periodic along its axis: a shape given by a function, with every layer a custom constraint on the distance to the midplane of the bilayer |
 | [Solvated protein](solvprotein.md) | A fixed protein in water and ions, in a rhombic dodecahedron periodic cell |
 | [Protein in glycerol and water](protein_glycerol.md) | A fixed protein in a mixture, in a periodic box |
 | [Water drop on graphite](water_drop.md) | A fixed surface, and a drop shaped by constraints |
@@ -53,10 +54,17 @@ The input files and the Julia scripts are equivalent, and either can be followed
 
 ## Getting the files
 
-Each tutorial links to the files it needs: the input file and the structures of the
-molecules (the Zika virion and the exosome, which are larger, are separate downloads). Put them in a
-directory, and run the examples from it: the paths in an input file are relative to the
-directory of the input file, and those in a Julia script to the current directory.
+Each tutorial links to the files it needs: the input file (or Julia script) and the
+structures of the molecules. The structure files of all tutorials are in a single
+directory, one file per molecule (the same `water.pdb` in every all-atom tutorial, for
+example), in the `packmol_tutorials` set of
+[MolSimTestFiles](https://github.com/m3g/MolSimTestFiles): download and extract
+[packmol_tutorials.tar.gz](https://github.com/m3g/MolSimTestFiles/releases/download/packmol_tutorials-v1/packmol_tutorials.tar.gz)
+(0.4 MB) to have all of them. The larger systems (the Zika virion, the lipid nanoparticle,
+the exosome and the minimal cell) are separate downloads, linked in their tutorials. Put
+the input file in the directory of the structure files, and run the examples from it: the
+paths in an input file are relative to the directory of the input file, and those in a
+Julia script to the current directory.
 
 ## [Checking the initial placement](@id check_initial_placement)
 

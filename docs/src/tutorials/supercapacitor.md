@@ -10,9 +10,7 @@ the charge of the electrode.
 ```@setup supercapacitor_final
 using Packmol, PDBTools
 dir = mktempdir()
-for file in readdir(joinpath("files", "supercapacitor"))
-    cp(joinpath("files", "supercapacitor", file), joinpath(dir, file))
-end
+Main.copy_tutorial("supercapacitor", dir)
 final = redirect_stdio(stdout = devnull, stderr = devnull) do
     packmol(joinpath(dir, "supercapacitor.inp"))
 end
@@ -32,8 +30,8 @@ visualize(get_atoms(final), # hide
 below: the cathode (`z < 7.7`) and the anode (`z > 62.7`), the cations (blue) and the
 anions (red), and the periodic cell, closed by a vacuum gap beyond the anode.*
 
-Files: [`electrodes.pdb`](files/supercapacitor/electrodes.pdb),
-[`bmim.pdb`](files/supercapacitor/bmim.pdb), [`pf6.pdb`](files/supercapacitor/pf6.pdb),
+Files: [`electrodes.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/electrodes.pdb),
+[`bmim.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/bmim.pdb), [`pf6.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/pf6.pdb),
 and the input file [`supercapacitor.inp`](files/supercapacitor/supercapacitor.inp).
 
 ## The structures
@@ -129,9 +127,7 @@ The packing (11840 atoms) takes about a second.
 ## Julia script
 
 ```@setup supercapacitor
-for file in readdir(joinpath("files", "supercapacitor"))
-    cp(joinpath("files", "supercapacitor", file), file; force = true)
-end
+Main.copy_tutorial("supercapacitor", ".")
 ```
 
 The electrodes, fixed, and the regions between them, in `z`:

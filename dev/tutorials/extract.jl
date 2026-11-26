@@ -1,11 +1,16 @@
 #
 # Single-molecule structure files for the tutorials, extracted from the systems of
 # ComplexMixturesExamples (https://github.com/m3g/ComplexMixturesExamples), whose
-# equilibrated structures are in ~/Documents/ComplexMixturesExamples/scripts.
+# equilibrated structures are in ~/Documents/ComplexMixturesExamples/scripts. The files
+# are written to a directory (the argument, default `packmol_tutorials`), to update the
+# `packmol_tutorials` set of MolSimTestFiles, where the structure files of the tutorials
+# are, one file per molecule:
+#
+#     julia dev/tutorials/extract.jl <directory>
 #
 using PDBTools
 const cme = expanduser("~/Documents/ComplexMixturesExamples/scripts")
-const files = joinpath(@__DIR__, "..", "..", "docs", "src", "tutorials", "files")
+const files = get(ARGS, 1, "packmol_tutorials")
 
 # The first molecule of `resname` (a residue), or the atoms selected by `sel`
 function extract(src, dir, name, sel)
@@ -22,14 +27,13 @@ function extract(src, dir, name, sel)
         at.chain = "A"
         at.segname = ""
     end
-    mkpath(joinpath(files, dir))
-    write_pdb(joinpath(files, dir, name), atoms)
-    println(rpad(joinpath(dir, name), 40), length(atoms), " atoms")
+    mkpath(files)
+    write_pdb(joinpath(files, name), atoms)
+    println(rpad(name, 40), length(atoms), " atoms (", dir, ")")
 end
 
-extract("example1/system.pdb", "protein_glycerol", "protein.pdb", "protein")
+extract("example1/system.pdb", "protein_glycerol", "subtilisin.pdb", "protein")
 extract("example1/system.pdb", "protein_glycerol", "glycerol.pdb", "resname GLYC")
-extract("example1/system.pdb", "protein_glycerol", "water.pdb", "resname TIP3")
 extract("example2/equilibrated.pdb", "polymer_dmf", "polyacrylamide.pdb", "resname ACR FACR LACR")
 extract("example2/equilibrated.pdb", "polymer_dmf", "dmf.pdb", "resname DMF")
 extract("example3/equilibrated.pdb", "membrane", "popc.pdb", "resname POPC")

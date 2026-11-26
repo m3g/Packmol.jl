@@ -7,9 +7,7 @@ fills the inside of the tube, and the box around it.
 ```@setup nanotube_final
 using Packmol, PDBTools
 dir = mktempdir()
-for file in readdir(joinpath("files", "nanotube"))
-    cp(joinpath("files", "nanotube", file), joinpath(dir, file))
-end
+Main.copy_tutorial("nanotube", dir)
 final = redirect_stdio(stdout = devnull, stderr = devnull) do
     packmol(joinpath(dir, "nanotube.inp"))
 end
@@ -28,7 +26,7 @@ visualize(get_atoms(final), # hide
 *The packed system (drag to rotate, scroll to zoom), built in the [Julia script](#Julia-script) section
 below.*
 
-Files: [`cnt.pdb`](files/nanotube/cnt.pdb), [`water.pdb`](files/nanotube/water.pdb), and
+Files: [`cnt.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/cnt.pdb), [`water.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/water.pdb), and
 the input file [`nanotube.inp`](files/nanotube/nanotube.inp).
 
 ## The nanotube
@@ -109,7 +107,7 @@ The packing takes a fraction of a second.
 
 ```@setup nanotube
 for file in ("cnt.pdb", "water.pdb")
-    cp(joinpath("files", "nanotube", file), file; force = true)
+    cp(Main.tutorial_file(file), file; force = true)
 end
 ```
 

@@ -16,16 +16,16 @@ visualize(get_atoms(system), # hide
     "protein" => (style = :cartoon,), # hide
     "resname SOD" => (style = :spheres, color = "orange"), # hide
     "resname CLA" => (style = :spheres, color = "green"), # hide
-    (at -> iswater(at) && name(at) == "O" && resnum(at) % 10 == 0 && at.y > 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
+    (at -> iswater(at) && element(at) == "O" && resnum(at) % 10 == 0 && at.y > 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
     rotate = [(:x, -90)], # hide
 ) # hide
 ```
 
 *The protein, sodium (orange) and chloride (green) ions, and, to show the shape of the rhombic dodecahedron without hiding the protein, the oxygen atoms of one in ten water molecules, those of the half of the cell behind the protein (light blue) (drag to rotate, scroll to zoom).*
 
-Files: [`protein.pdb`](files/solvprotein/protein.pdb),
-[`water.pdb`](files/solvprotein/water.pdb), [`CLA.pdb`](files/solvprotein/CLA.pdb),
-[`SOD.pdb`](files/solvprotein/SOD.pdb) and the input file
+Files: [`thyroid_receptor.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/thyroid_receptor.pdb),
+[`water.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/water.pdb), [`CLA.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/CLA.pdb),
+[`SOD.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/SOD.pdb) and the input file
 [`solvprotein.inp`](files/solvprotein/solvprotein.inp).
 
 ## The periodic cell and the numbers of molecules
@@ -81,7 +81,7 @@ visualize(get_atoms(system), # hide
     "protein" => (style = :cartoon,), # hide
     "resname SOD" => (style = :spheres, color = "orange"), # hide
     "resname CLA" => (style = :spheres, color = "green"), # hide
-    (at -> iswater(at) && name(at) == "O" && resnum(at) % 10 == 0 && at.y > 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
+    (at -> iswater(at) && element(at) == "O" && resnum(at) % 10 == 0 && at.y > 0) => (style = :spheres, color = "lightblue", opacity = 0.6, water = true); # hide
     rotate = [(:x, -90)], # hide
 ) # hide
 ```
@@ -106,7 +106,7 @@ takes about a second.
 ```julia
 using Packmol
 
-protein = structure_type("protein.pdb";
+protein = structure_type("thyroid_receptor.pdb";
     number = 1,
     fixed = ([0., 0., 0.], [0., 0., 0.]),
     center = :mass,

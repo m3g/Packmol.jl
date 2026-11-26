@@ -7,6 +7,7 @@
 #     julia --project=docs -t 14 dev/tutorials/lipids.jl
 #
 using Packmol
+using LazyArtifacts: LazyArtifacts # Packmol.tutorial_file
 include("render.jl")
 
 const files = joinpath(@__DIR__, "..", "..", "docs", "src", "tutorials", "files")
@@ -18,6 +19,9 @@ const work = mktempdir()
 function pack(name, output; input = name, check = true)
     for f in readdir(joinpath(files, name))
         cp(joinpath(files, name, f), joinpath(work, f); force=true)
+    end
+    for f in readdir(Packmol.tutorial_file(""))
+        cp(Packmol.tutorial_file(f), joinpath(work, f); force=true)
     end
     if check
         text = read(joinpath(work, "$input.inp"), String)

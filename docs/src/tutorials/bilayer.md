@@ -9,9 +9,7 @@ using Packmol, PDBTools
 # The input of the tutorial, packed, and with `check_initial_placement` (for the view of
 # the initial placement below), in a copy of its files
 dir = mktempdir()
-for file in readdir(joinpath("files", "bilayer"))
-    cp(joinpath("files", "bilayer", file), joinpath(dir, file))
-end
+Main.copy_tutorial("bilayer", dir)
 input = read(joinpath(dir, "bilayer.inp"), String)
 write(joinpath(dir, "check.inp"), replace(input,
     "# check_initial_placement" => "check_initial_placement", "output bilayer.pdb" => "output check.pdb"))
@@ -33,7 +31,7 @@ show_system(final) # hide
 
 *The packed bilayer (drag to rotate, scroll to zoom), with the edges of the periodic cell.*
 
-Files: [`popc.pdb`](files/bilayer/popc.pdb), [`water.pdb`](files/bilayer/water.pdb) and
+Files: [`popc.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/popc.pdb), [`water.pdb`](https://raw.githubusercontent.com/m3g/MolSimTestFiles/packmol_tutorials-v1/packmol_tutorials/water.pdb) and
 the input file [`bilayer.inp`](files/bilayer/bilayer.inp).
 
 ## The lipid

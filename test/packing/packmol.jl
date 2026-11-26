@@ -108,11 +108,14 @@ end
     # had fewer but larger overlaps): the converged configuration must be returned, not
     # the one of lowest function value. Gases in a zeolite (hexagonal cell, fixed
     # crystal, radii 1.5): seeds 4, 15, 16 and 20 returned overlaps of up to 0.14 Å.
+    using LazyArtifacts: LazyArtifacts # Packmol.tutorial_file
     dir = mktempdir()
-    src = joinpath(pkgdir(Packmol), "docs", "src", "tutorials", "files", "zeolite")
-    for f in readdir(src)
-        cp(joinpath(src, f), joinpath(dir, f))
+    cp(joinpath(pkgdir(Packmol), "docs", "src", "tutorials", "files", "zeolite", "zeolite.inp"),
+        joinpath(dir, "zeolite.inp"))
+    for f in ("cha.pdb", "methane.pdb", "co2.pdb")
+        cp(Packmol.tutorial_file(f), joinpath(dir, f))
     end
+    chmod(dir, 0o755; recursive = true)
     inp = joinpath(dir, "zeolite.inp")
     input = read(inp, String)
     for seed in (4, 15, 16, 20)

@@ -1,6 +1,7 @@
 #
 # Images of the tutorial of the lignin particle (docs/src/tutorials/lignin.md), from the
-# outputs of its input files (docs/src/tutorials/files/lignin), packed in that directory:
+# outputs of its input files (docs/src/tutorials/files/lignin), packed in that directory, with the
+# structure files of the tutorials (the packmol_tutorials set of MolSimTestFiles) copied to it:
 #
 #     packmol particle.inp
 #     packmol solvation.inp
