@@ -1,0 +1,29 @@
+#
+# The chains of the condensate, (VPGVG)20 in the SIRAH coarse-grained representation,
+# and the WT4 water of SIRAH, mixed in a periodic cube (the composition of the droplet of
+# droplet_chains.inp and droplet_water.inp: the condensate forms in the simulation).
+#
+tolerance 2.0
+output homogeneous.pdb
+pbc -130. -130. -130. 130. 130. 130.
+
+# To write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints), uncomment the line below.
+# check_initial_placement
+
+# The chains: 20 monomers of VPGVG (18 beads each), each turning about the bond of its
+# last bead (the GO of its last residue) to the first bead of the next one (the GN of
+# its first residue). The bonds are the CONECT records of peptides.pdb
+structure peptides.pdb
+  number 123
+  repeat 20
+    fragment 18
+      rotatable 18 1
+  end repeat
+end structure
+
+# The water: the volume of the cell minus that of the chains (9949 Å³ each),
+# 330 Å³ per WT4 molecule (11 water molecules)
+structure wt4.pdb
+  number 49552
+end structure
