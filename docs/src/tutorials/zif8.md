@@ -13,9 +13,7 @@ and in the liquid; water only in the liquid.
 ```@setup zif8_final
 using Packmol, PDBTools
 dir = mktempdir()
-for file in readdir(joinpath("files", "zif8"))
-    cp(joinpath("files", "zif8", file), joinpath(dir, file))
-end
+Main.copy_tutorial("zif8", dir)
 final = redirect_stdio(stdout = devnull, stderr = devnull) do
     packmol(joinpath(dir, "zif8.inp"))
 end
@@ -141,9 +139,7 @@ The packing (19386 atoms) takes half a second.
 ## Julia script
 
 ```@setup zif8
-for file in readdir(joinpath("files", "zif8"))
-    cp(joinpath("files", "zif8", file), file; force = true)
-end
+Main.copy_tutorial("zif8", ".")
 ```
 
 The crystal, fixed, and the ethanol in its pores:

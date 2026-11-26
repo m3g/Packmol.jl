@@ -123,7 +123,7 @@ triclinic cell, ready for a simulation.
 
 ```@setup zeolite
 for file in ("cha.pdb", "methane.pdb", "co2.pdb")
-    cp(joinpath("files", "zeolite", file), file; force = true)
+    cp(Main.tutorial_file(file), file; force = true)
 end
 ```
 

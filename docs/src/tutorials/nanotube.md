@@ -7,9 +7,7 @@ fills the inside of the tube, and the box around it.
 ```@setup nanotube_final
 using Packmol, PDBTools
 dir = mktempdir()
-for file in readdir(joinpath("files", "nanotube"))
-    cp(joinpath("files", "nanotube", file), joinpath(dir, file))
-end
+Main.copy_tutorial("nanotube", dir)
 final = redirect_stdio(stdout = devnull, stderr = devnull) do
     packmol(joinpath(dir, "nanotube.inp"))
 end
@@ -109,7 +107,7 @@ The packing takes a fraction of a second.
 
 ```@setup nanotube
 for file in ("cnt.pdb", "water.pdb")
-    cp(joinpath("files", "nanotube", file), file; force = true)
+    cp(Main.tutorial_file(file), file; force = true)
 end
 ```
 

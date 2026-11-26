@@ -126,7 +126,7 @@ It packs in about a second with 14 threads.
 ### The nematic phase
 
 ```@setup liquid_crystal
-cp(joinpath("files", "liquid_crystal", "5cb.pdb"), "5cb.pdb"; force = true)
+cp(Main.tutorial_file("5cb.pdb"), "5cb.pdb"; force = true)
 ```
 
 ```@example liquid_crystal

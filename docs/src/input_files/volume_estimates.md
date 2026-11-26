@@ -30,13 +30,9 @@ tutorial (1000 water and 400 urea molecules), at 1.09 g/mL:
 ```@setup volumes
 # The input files of the tutorials used below, each in a directory with the structure
 # files of the tutorials (the packmol_tutorials set of MolSimTestFiles)
-using Packmol, LazyArtifacts
+using Packmol
 for t in ("mixture", "solvprotein", "bilayer")
-    mkpath(t)
-    cp(joinpath("..", "tutorials", "files", t, "$t.inp"), joinpath(t, "$t.inp"); force = true)
-    for f in readdir(Packmol.tutorial_file(""))
-        cp(Packmol.tutorial_file(f), joinpath(t, f); force = true)
-    end
+    Main.copy_tutorial(t, t)
 end
 ```
 

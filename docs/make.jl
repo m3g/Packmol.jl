@@ -26,12 +26,27 @@ input_file(file) = Markdown.MD(Markdown.Code("", read(file, String)))
 #     ```
 #
 # `check = true` only places the molecules (the input's `check_initial_placement`).
+# The structure files of the tutorials are the `packmol_tutorials` set of MolSimTestFiles
+# (a lazy artifact): `tutorial_file(name)` is the path of one of them, and
+# `copy_tutorial(dir, dest)` copies the files of a tutorial (docs/src/tutorials/files/<dir>)
+# and the structure files to the directory `dest`. The pages use them as `Main.tutorial_file`
+# and `Main.copy_tutorial`.
+tutorial_file(name) = Packmol.tutorial_file(name)
+function copy_tutorial(dir, dest)
+    src = joinpath(@__DIR__, "src", "tutorials", "files", dir)
+    mkpath(dest)
+    for f in readdir(src)
+        cp(joinpath(src, f), joinpath(dest, f); force = true)
+    end
+    for f in readdir(Packmol.tutorial_file(""))
+        cp(Packmol.tutorial_file(f), joinpath(dest, f); force = true)
+    end
+    return dest
+end
+
 function pack_tutorial(dir, input; check = false)
     tmp = mktempdir()
-    cp(joinpath(@__DIR__, "src", "tutorials", "files", dir), joinpath(tmp, dir))
-    for f in readdir(Packmol.tutorial_file(""))
-        cp(Packmol.tutorial_file(f), joinpath(tmp, dir, f); force = true)
-    end
+    copy_tutorial(dir, joinpath(tmp, dir))
     return redirect_stdio(stdout = devnull, stderr = devnull) do
         system = read_packmol_input(joinpath(tmp, dir, input))
         system.check_initial_placement = check

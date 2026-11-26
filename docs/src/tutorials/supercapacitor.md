@@ -10,9 +10,7 @@ the charge of the electrode.
 ```@setup supercapacitor_final
 using Packmol, PDBTools
 dir = mktempdir()
-for file in readdir(joinpath("files", "supercapacitor"))
-    cp(joinpath("files", "supercapacitor", file), joinpath(dir, file))
-end
+Main.copy_tutorial("supercapacitor", dir)
 final = redirect_stdio(stdout = devnull, stderr = devnull) do
     packmol(joinpath(dir, "supercapacitor.inp"))
 end
@@ -129,9 +127,7 @@ The packing (11840 atoms) takes about a second.
 ## Julia script
 
 ```@setup supercapacitor
-for file in readdir(joinpath("files", "supercapacitor"))
-    cp(joinpath("files", "supercapacitor", file), file; force = true)
-end
+Main.copy_tutorial("supercapacitor", ".")
 ```
 
 The electrodes, fixed, and the regions between them, in `z`:

@@ -62,7 +62,7 @@ The packing takes a fraction of a second.
 
 ```@setup polymer
 for file in ("polyacrylamide.pdb", "dmf.pdb")
-    cp(joinpath("files", "polymer_dmf", file), file; force = true)
+    cp(Main.tutorial_file(file), file; force = true)
 end
 ```
 

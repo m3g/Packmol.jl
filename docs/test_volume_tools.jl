@@ -2,7 +2,12 @@
 # JavaScript version (docs/test_volume_tools.js):
 #   julia --project docs/test_volume_tools.jl <results.json>
 using Packmol
+using LazyArtifacts: LazyArtifacts # Packmol.tutorial_file
 const files = joinpath(@__DIR__, "src", "tutorials", "files")
+# Each input is copied, with the structure files of the tutorials (the packmol_tutorials
+# set of MolSimTestFiles), to a directory next to the results, where the JavaScript tests
+# read them
+const work = abspath(ARGS[1]) * "_inputs"
 const inputs = [
     "mixture/mixture.inp", "solvprotein/solvprotein.inp", "bilayer/bilayer.inp",
     "nanoliposome/small.inp", "water_drop/drop.inp", "zeolite/zeolite.inp",
@@ -13,7 +18,17 @@ json(x::Real) = isnan(x) ? "\"NaN\"" : string(x)
 open(ARGS[1], "w") do io
     println(io, "[")
     for (k, f) in enumerate(inputs)
-        input = joinpath(files, f)
+        dir = joinpath(work, dirname(f))
+        if !isdir(dir)
+            mkpath(dir)
+            for g in readdir(joinpath(files, dirname(f)))
+                cp(joinpath(files, dirname(f), g), joinpath(dir, g))
+            end
+            for g in readdir(Packmol.tutorial_file(""))
+                cp(Packmol.tutorial_file(g), joinpath(dir, g); force = true)
+            end
+        end
+        input = joinpath(work, f)
         r = redirect_stdout(devnull) do
             free_volume(input; npoints)
         end
