@@ -11,11 +11,11 @@
 using Packmol
 
 # Geometry (Å)
-R = 80.0     # radius of the midplane of the tube, far from the neck
-Rn = 48.0    # radius of the midplane at the neck
-σ = 35.0     # width of the neck
-L = 300.0    # length of the periodic cell, along the tube
-a = 2 * (R + 30 + 15) # side of the cell, perpendicular to the tube
+const R = 80.0     # radius of the midplane of the tube, far from the neck
+const Rn = 48.0    # radius of the midplane at the neck
+const σ = 35.0     # width of the neck
+const L = 300.0    # length of the periodic cell, along the tube
+const a = 2 * (R + 30 + 15) # side of the cell, perpendicular to the tube
 
 # The midplane, r = ρ(z), and its slope
 ρ(z) = R - (R - Rn) * exp(-z^2 / (2σ^2))
@@ -30,7 +30,7 @@ beyond(d) = CustomConstraint(x -> d - h(x))
 within(d) = CustomConstraint(x -> h(x) - d)
 
 # Areas of the surfaces at a distance d of the midplane, and volumes inside them
-zs = range(-L/2, L/2; length = 3001)
+const zs = range(-L/2, L/2; length = 3001)
 area(d) = sum(2π * (ρ(z) + d) * sqrt(1 + dρ(z)^2) for z in zs) * step(zs)
 volume(d) = sum(π * (ρ(z) + d)^2 for z in zs) * step(zs)
 
