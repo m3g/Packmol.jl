@@ -10,7 +10,7 @@ Packmol.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
-Version 100.1.1-DEV
+Version 100.1.1
 ---------------
 - ![BUGFIX][badge-bugfix] `PackmolSystem(...; unitcell)` accepts the cell as `a b c α β γ`
   (a vector or a tuple, as the input keyword), not only as a matrix, and `PackmolSystem(...; pbc)`
