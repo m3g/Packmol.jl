@@ -15,6 +15,7 @@ agent from an illustration.
 | [Water–chloroform interface](interface.md) | Two solvents in adjacent boxes and a fixed molecule at the interface |
 | [Lipid bilayer](bilayer.md) | A POPC bilayer in water, with periodic boundary conditions: lipids oriented by constraints on two of their atoms |
 | [Nanoliposomes](nanoliposome.md) | Two POPC nanoliposomes in water, in a truncated octahedron periodic cell: lipid layers in spherical shells, and how curvature limits how many lipids fit in each leaflet |
+| [Membrane tube with a neck](membrane_neck.md) | A POPC tube with a constriction, periodic along its axis: a shape given by a function, with every layer a custom constraint on the distance to the midplane of the bilayer |
 | [Solvated protein](solvprotein.md) | A fixed protein in water and ions, in a rhombic dodecahedron periodic cell |
 | [Protein in glycerol and water](protein_glycerol.md) | A fixed protein in a mixture, in a periodic box |
 | [Water drop on graphite](water_drop.md) | A fixed surface, and a drop shaped by constraints |

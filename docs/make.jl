@@ -62,6 +62,7 @@ makedocs(
             "Water–chloroform interface" => "tutorials/interface.md",
             "Lipid bilayer" => "tutorials/bilayer.md",
             "Nanoliposomes" => "tutorials/nanoliposome.md",
+            "Membrane tube with a neck" => "tutorials/membrane_neck.md",
             "Solvated protein" => "tutorials/solvprotein.md",
             "Protein in glycerol and water" => "tutorials/protein_glycerol.md",
             "Water drop on graphite" => "tutorials/water_drop.md",
