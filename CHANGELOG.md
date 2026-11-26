@@ -12,6 +12,9 @@ Packmol.jl Changelog
 
 Version 100.1.1-DEV
 ---------------
+- ![BUGFIX][badge-bugfix] `PackmolSystem(...; unitcell)` accepts the cell as `a b c α β γ`
+  (a vector or a tuple, as the input keyword), not only as a matrix, and `PackmolSystem(...; pbc)`
+  is accepted, as in `packmol(sys; ...)`. Both raised a `MethodError`.
 
 Version 100.1.0
 ---------------

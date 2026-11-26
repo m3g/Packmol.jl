@@ -123,3 +123,39 @@ end
         packmol(sys)
     end.status == :packing_ready
 end
+
+@testitem "PackmolSystem: unitcell and pbc as values" setup=[TestFiles] begin
+    using StaticArrays: SVector
+    water = TestFiles.test_file("structure_files/water.pdb")
+    st = structure_type(water; number=10)
+    uc = Packmol.unitcell_matrix(Float64, 20.0, 20.0, 20.0, 90.0, 90.0, 90.0)
+    # a b c α β γ, as a vector or a tuple (as the `unitcell` input keyword)
+    for values in ([20.0, 20.0, 20.0, 90.0, 90.0, 90.0], (20, 20, 20, 90, 90, 90))
+        sys = PackmolSystem([st]; output=tempname() * ".pdb", unitcell=values)
+        @test sys.unitcell ≈ uc
+        @test sys.unitcell_center == SVector(0.0, 0.0, 0.0)
+    end
+    @test_throws ArgumentError PackmolSystem([st]; output=tempname() * ".pdb", unitcell=[20.0, 20.0, 20.0])
+    # a matrix keeps the center given
+    sys = PackmolSystem([st]; output=tempname() * ".pdb", unitcell=uc, unitcell_center=[1.0, 2.0, 3.0])
+    @test sys.unitcell_center == SVector(1.0, 2.0, 3.0)
+    # pbc, as the input keyword
+    sys = PackmolSystem([st]; output=tempname() * ".pdb", pbc=[20.0, 20.0, 20.0])
+    @test sys.unitcell ≈ uc
+    @test sys.unitcell_center == SVector(10.0, 10.0, 10.0)
+    sys = PackmolSystem([st]; output=tempname() * ".pdb", pbc=(:dodecahedral, 0, 0, 0, 30))
+    @test sys.wigner_seitz_cell
+    # a fixed molecule in a cell centered away from the origin
+    fixed = structure_type(water; number=1, fixed=(SVector(50.0, 50.0, 50.0), SVector(0.0, 0.0, 0.0)), center=:geometric)
+    for cell in (uc, [20.0, 20.0, 20.0, 90.0, 90.0, 90.0])
+        sys = PackmolSystem([fixed, st]; output=tempname() * ".pdb", unitcell=cell, unitcell_center=[50.0, 50.0, 50.0])
+        @test sys.unitcell_center == SVector(50.0, 50.0, 50.0)
+        @test redirect_stdout(devnull) do
+            packmol(sys)
+        end.status == :packing_ready
+    end
+    sys = PackmolSystem([st]; output=tempname() * ".pdb", unitcell=[20, 20, 20, 90, 90, 90])
+    @test redirect_stdout(devnull) do
+        packmol(sys)
+    end.status == :packing_ready
+end
