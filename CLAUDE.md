@@ -164,6 +164,18 @@ entry in every pull request that changes the package; the `changelog` workflow c
 (also for changes of the docs, with an INFO note; the `Skip-Changelog` label skips the check
 for changes that need no entry, e.g. of the workflows).
 
+## Release PRs
+
+To prepare the release of version `X.Y.Z` (when the maintainer asks):
+1. create a `release-X.Y.Z` branch from an up-to-date `main`;
+2. set `version = "X.Y.Z"` in `Project.toml` and rename the `Version X.Y.Z-DEV` (or the
+   current development) section of `CHANGELOG.md` to `Version X.Y.Z`;
+3. commit these two files as `set version to X.Y.Z`, push, and open the PR (title
+   `Release X.Y.Z`).
+
+Never merge the release PR, tag, register or publish anything: the maintainer does that
+by hand.
+
 ## Running Tests
 
 The checks a pull request must pass (test suite, executable, docs, and the large tests for

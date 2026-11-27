@@ -10,7 +10,7 @@ Packmol.jl Changelog
 [badge-fix]: https://img.shields.io/badge/Fix-purple.svg
 [badge-info]: https://img.shields.io/badge/Info-gray.svg
 
-Version 100.1.2-DEV
+Version 100.2.0
 ---------------
 - ![FEATURE][badge-feature] `molecular_volume` and `packmol --molecular-volume`: the volume
   of molecules excluded to a probe, as computed by MoloVol.
