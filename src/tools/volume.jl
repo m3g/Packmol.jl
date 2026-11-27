@@ -307,7 +307,6 @@ volume of one molecule. Prints a summary.
 ```julia
 using Packmol, PDBTools
 molecular_volume(read_pdb("protein.pdb"))
-molecular_volume(read_pdb("protein.pdb"); resolution = 0.2) # more precise, slower
 ```
 """
 function molecular_volume(atoms::AbstractVector{<:Atom}; probe::Real=1.4, resolution::Real=0.4)

@@ -85,7 +85,7 @@ accordingly) if custom ions are used and an accurate solution density is require
 
 The solution fills the volume of the box without that of the solute, `solute_volume`: by
 default, its molecular volume (see [`molecular_volume`](@ref)), or a volume given (in Å³
-if unitless; e.g. `molecular_volume(read_pdb(file); resolution = 0.2)`, more precise).
+if unitless).
 
 """
 function SolutionBoxUWI(;

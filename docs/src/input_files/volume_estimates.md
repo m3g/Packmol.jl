@@ -126,14 +126,15 @@ molecules, as the solvent, the volume in the liquid is larger (it includes the e
 between the molecules): the volume at a density is the one for them.
 
 The result lists, for each structure of the input file, the volume of one molecule and of
-all its molecules, and the total. From the command line, `--probe` sets the radius of the
-probe (Å, 1.4 by default; `0` gives the van der Waals volume), and `--resolution` the
-spacing of the grid (Å, 0.4 by default, at which the volume is within about 1.5% of its
-converged value; smaller is more precise and slower):
+all its molecules, and the total. From the command line:
 
 ```
-packmol --molecular-volume --resolution 0.2 input.inp
+packmol --molecular-volume input.inp
 ```
+
+`--probe` sets the radius of the probe (Å, 1.4 by default; `0` gives the van der Waals
+volume), and `--resolution` the spacing of the grid (Å, 0.4 by default, at which the
+volume is within about 1.5% of its converged value).
 
 In Julia, `molecular_volume` takes an input file, a [`PackmolSystem`](@ref), or structure
 files with their numbers of molecules, and the `probe` and `resolution` keywords. For the
