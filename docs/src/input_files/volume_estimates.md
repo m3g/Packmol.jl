@@ -104,12 +104,12 @@ cavities where the probe fits are not part of it.
 
 It is the volume that a large solute takes from the solvent: for a protein, close to the
 volume given by its partial specific volume in water (about 0.73 mL/g), while its mass at
-the density of water gives about 1.4 times that. The solvation [recipes](@ref "Recipes")
+the density of water gives about 1.4 times that. The solvation [recipes](../recipes/index.md)
 subtract it from the volume of the box. For the protein of the [solvated
 protein](@ref "Solvated protein") tutorial:
 
 ```@example volumes
-molecular_volume(["solvprotein/protein.pdb" => 1])
+molecular_volume(["solvprotein/thyroid_receptor.pdb" => 1])
 nothing # hide
 ```
 
