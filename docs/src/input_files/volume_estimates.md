@@ -95,36 +95,34 @@ number of points (`npoints`, 1 million by default).
 
 ## The volume of the molecules
 
-`molecular_volume` computes the volume of each molecule from its atoms, as
-[MoloVol](https://molovol.com) does (Maglic & Lavendomme, J. Appl. Cryst. 55, 1033
-(2022)): the volume from which a spherical probe (of 1.4 Å, the radius of a water
-molecule) is excluded by the van der Waals spheres of the atoms, on a grid. It is the van
-der Waals volume of the atoms and the gaps between them where the probe does not fit;
-cavities where the probe fits are not part of it.
+`molecular_volume` computes the volume of a molecule as the space that a probe of 1.4 Å
+(a water molecule) cannot enter, on a grid of 0.4 Å, as [MoloVol](https://molovol.com)
+does. It is the volume that a solute takes from the solvent: for a protein, close to its
+volume in water, while its mass at 1 g/mL gives about 1.4 times that. The solvation
+[recipes](../recipes/index.md) subtract it from the volume of the box.
 
-It is the volume that a large solute takes from the solvent: for a protein, close to the
-volume given by its partial specific volume in water (about 0.73 mL/g), while its mass at
-the density of water gives about 1.4 times that. The solvation [recipes](../recipes/index.md)
-subtract it from the volume of the box. For the protein of the [solvated
-protein](@ref "Solvated protein") tutorial:
+`packmol --molecular-volume input.inp` lists, for each structure of the input file, the
+volume of one molecule and of all its molecules, and the total. In Julia, the same is
+given by `molecular_volume` of the input file. For the
+[solvated protein](@ref "Solvated protein"):
 
 ```@example volumes
-molecular_volume(["solvprotein/thyroid_receptor.pdb" => 1])
+molecular_volume("solvprotein/solvprotein.inp")
 nothing # hide
 ```
 
-The grid has a spacing of 0.4 Å by default (`resolution`), at which the volume is within
-about 1.5% of the converged one, in a fraction of a second for thousands of atoms. A
-smaller spacing gives a more precise volume, at a cost that grows as its inverse cube.
-(The probes are placed on the surface they can reach and, to reach the bottoms of the
-grooves between the atoms, on its creases, where they touch two or three atoms: without
-these, the volume is 4-5% too large at 0.4 Å.)
-The radii are the van der Waals radii of the elements, so that the volume is that of
-all-atom structures. With `probe = 0`, it is the van der Waals volume.
+and of a single molecule, from its atoms:
 
-For small molecules, the molecular volume is smaller than their volume in the liquid (by
-20 to 40%: it does not include the empty space between the molecules of a liquid), which
-the density of the liquid gives. For the solvent, use [`guess_volume`](@ref).
+```@example volumes
+using PDBTools
+molecular_volume(read_pdb("solvprotein/thyroid_receptor.pdb"))
+```
+
+`--probe` (`probe`) sets the radius of the probe (`0` gives the van der Waals volume), and
+`--resolution` (`resolution`) the spacing of the grid: at 0.4 Å the volume is within about
+1.5% of its converged value. For small molecules, as the solvent, the volume in the liquid
+is larger (it includes the empty space between the molecules): use [`guess_volume`](@ref)
+for them.
 
 ```@docs
 guess_volume
