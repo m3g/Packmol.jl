@@ -45,7 +45,7 @@ Relative to the legacy (Fortran) Packmol:
   from a random placement, are packed at a lower density and compressed, in steps, to the
   density of the input.
 - **Volume estimates**, to compute the numbers of molecules (`--guess-volume`,
-  `--free-volume`), and `check_initial_placement`, to check the constraints before packing.
+  `--free-volume`, `--molecular-volume`), and `check_initial_placement`, to check the constraints before packing.
 - **A Julia API**: systems defined without input files, **recipes** for solvated systems
   and membranes built from target densities and concentrations, user-defined constraints
   ([`CustomConstraint`](@ref)), and the packed atoms in memory, for analysis with

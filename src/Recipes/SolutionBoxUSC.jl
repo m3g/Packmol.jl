@@ -11,6 +11,7 @@ mutable struct SolutionBoxUSC <: Recipe
     solute_molar_mass::Number
     solvent_molar_mass::Number
     cossolvent_molar_mass::Number
+    solute_volume::Number
     # Units of the concentrations given to and shown by this system (e.g. the default
     # units of `concentration` in `write_packmol_input`); see `convert_density_table!`.
     # The density table itself is stored in mol/L.
@@ -29,6 +30,7 @@ _mandatory_keywords(::Type{SolutionBoxUSC}) = (:solute_pdbfile, :solvent_pdbfile
         solute_molar_mass = nothing, # optional
         solvent_molar_mass = nothing, # optional
         cossolvent_molar_mass = nothing, # optional
+        solute_volume = nothing, # optional
     )
 
 Setup a system composed of a solute (U) a solvent (S) and a cossolvent (C). 
@@ -41,6 +43,10 @@ with Unitful units.
 The molar masses of the solute, solvent, and cossolvent can be provided manually. If
 not, they will be computed from the atom types in the PDB file.
 
+The solution fills the volume of the box without that of the solute, `solute_volume`: by
+default, its molecular volume (see [`molecular_volume`](@ref)), or a volume given (in Å³
+if unitless).
+
 """
 function SolutionBoxUSC(;
         solute_pdbfile::String = _missing_keyword(SolutionBoxUSC, :solute_pdbfile), 
@@ -51,6 +57,7 @@ function SolutionBoxUSC(;
         solute_molar_mass::Union{Nothing,<:Number} = nothing,
         solvent_molar_mass::Union{Nothing,<:Number} = nothing,
         cossolvent_molar_mass::Union{Nothing,<:Number} = nothing,
+        solute_volume::Union{Nothing,<:Number} = nothing,
     )
     if unit(density_table[begin, 1]) != NoUnits
         concentration_units = something(concentration_units, UNIT_TYPE_MAP[unit(density_table[begin, 1])])
@@ -70,6 +77,7 @@ function SolutionBoxUSC(;
     solvent_molar_mass = _ensure_unit(solvent_molar_mass, u"g/mol")
     isnothing(cossolvent_molar_mass) && (cossolvent_molar_mass = mass(read_pdb(cossolvent_pdbfile)))
     cossolvent_molar_mass = _ensure_unit(cossolvent_molar_mass, u"g/mol")
+    solute_volume = _solute_volume(solute_pdbfile, solute_volume)
     # Convert concenrations in density table to mol/L
     dtable = DensityTable(
         concentration_units, 
@@ -87,6 +95,7 @@ function SolutionBoxUSC(;
         solute_molar_mass,
         solvent_molar_mass,
         cossolvent_molar_mass,
+        solute_volume,
         concentration_units,
     )
     return system
@@ -190,6 +199,7 @@ function Base.show(io::IO, ::MIME"text/plain", system::SolutionBoxUSC)
             solute: $(system.solute_molar_mass)
             solvent: $(system.solvent_molar_mass)
             cossolvent: $(system.cossolvent_molar_mass)
+        Solute volume: $(system.solute_volume)
         Concentration units: $(system.concentration_units)
         Concentration range: $(first(get_density_table(system)[:, 1])) - $(last(get_density_table(system)[:, 1]))
         Density range: $(first(system.density_table.density)) - $(last(system.density_table.density))
@@ -215,6 +225,7 @@ function _setup(
        solute_molar_mass,
        solvent_molar_mass,
        cossolvent_molar_mass,
+       solute_volume,
     ) = system
 
     # molar masses
@@ -244,9 +255,9 @@ function _setup(
     unitcell, solute_extrema = set_unitcell(system, box_sides, margin, pbc)
     vbox = det(unitcell) * u"Å^3"
 
-    # Solution volume (vbox - vsolute) - vsolute is estimated
-    # as if it had the same mass density of the solution
-    vs = vbox - uconvert(u"Å^3", Mu / ρs / Unitful.Na)
+    # Solution volume: the box without the solute
+    vs = vbox - solute_volume
+    vs <= zero(vs) && throw(ArgumentError("Box is too small to fit the solute (increase margin or box_sides)."))
 
     # number of cossoUnitful.Na * concentration * vslvent molecules: cossolvent concentration × volume of the solution
     nc = round(Int, Unitful.Na * cc_mol * vs)
@@ -283,6 +294,7 @@ function _setup(
 
         Density of solution = $ρ
         Solute molar mass = $Mu
+        Solute volume = $solute_volume
         Cossolvent molar mass = $Mc
         Solvent molar mass = $Ms
 

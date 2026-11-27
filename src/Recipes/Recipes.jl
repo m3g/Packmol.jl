@@ -101,6 +101,15 @@ end
 include("./DensityTable.jl")
 include("./concentration_units.jl")
 
+# The volume of the solute of a solvation recipe (Å³): the one given (in Å³ if unitless), or
+# its molecular volume (`molecular_volume`), which the solvent does not fill
+function _solute_volume(solute_pdbfile::String, solute_volume)
+    v = isnothing(solute_volume) ? molecular_volume(read_pdb(solute_pdbfile)) * u"Å^3" :
+        _ensure_unit(solute_volume, u"Å^3")
+    ustrip(v) < 0 && throw(ArgumentError("The solute volume must be non-negative, got $v."))
+    return uconvert(u"Å^3", v)
+end
+
 # System types
 include("./SolutionBoxUS.jl")
 include("./SolutionBoxUSC.jl")

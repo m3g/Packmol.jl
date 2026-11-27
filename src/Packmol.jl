@@ -49,7 +49,7 @@ function tutorial_file end
 export read_packmol_input
 export write_output
 export packmol
-export guess_volume, free_volume
+export guess_volume, free_volume, molecular_volume
 export voxel_place
 export PackmolSystem
 export StructureType

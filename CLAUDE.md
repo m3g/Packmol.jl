@@ -65,7 +65,7 @@ src/
   polymers/               # flexible molecules (fragment lines, repeat blocks, rotatable bonds;
                           # Julia flexible_structure_type / FlexibleStructureType, fragment)
                           # (types, read_polymer_block, topology, link_fg, placement, output, api)
-  tools/                  # volume.jl (guess_volume, free_volume), shape.jl (shape_descriptors,
+  tools/                  # volume.jl (guess_volume, free_volume, molecular_volume), shape.jl (shape_descriptors,
                           # select_conformations), system_building.jl (builtin_lipid, cross_section)
   Recipes/                # SolutionBoxUS/USC/UWI, Membrane, MembraneProtein, DensityTable,
                           # concentration_units; lipids/ (built-in lipids), test/ (docs data)

@@ -59,6 +59,10 @@ the `solute_molar_mass`/`solvent_molar_mass` keywords. If not, they are
 computed from the atom types in the PDB files, which may fail if the mass of
 some atom type is unknown.
 
+The volume that the solution fills is that of the box without the volume of the solute:
+its molecular volume (see [The volume of the molecules](@ref)), computed when the system
+is set up, or the one given with the `solute_volume` keyword (in Å³ if unitless).
+
 ## Packing the system
 
 The system is built and packed directly, with `packmol`:

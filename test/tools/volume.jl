@@ -21,6 +21,21 @@
     end
     @test g3.volume ≈ g2.volume * 2 rtol = 1e-10
     @test_throws ArgumentError guess_volume([18.0 => 10]; density = 0.0)
+    # A fixed molecule counts with its molecular volume (as the solute of the recipes), the
+    # free ones fill the rest at the density
+    protein = joinpath(Packmol.RecipesDirectory, "test", "data", "poly_h.pdb")
+    sys = PackmolSystem([
+            structure_type(protein; number = 1, fixed = ([0., 0., 0.], [0., 0., 0.]), center = :geometric),
+            structure_type(water; number = 1000, constraints = [InsideCube([-30., -30., -30.], 60.)]),
+        ]; tolerance = 2.0, output = tempname() * ".pdb")
+    g4 = redirect_stdout(devnull) do
+        guess_volume(sys)
+    end
+    vp = redirect_stdout(devnull) do
+        molecular_volume(Packmol.PDBToolsBase.read_pdb(protein))
+    end
+    @test g4.volume ≈ g3.volume + vp rtol = 1e-3
+    @test g4.mass ≈ g3.mass + Packmol.PDBToolsBase.mass(Packmol.PDBToolsBase.read_pdb(protein)) rtol = 1e-3
 end
 
 @testitem "free_volume" begin
@@ -90,4 +105,45 @@ end
         @test p.exitcode == 0
         @test occursin("all tests passed", result)
     end
+end
+
+@testitem "molecular_volume" begin
+    using Packmol
+    import PDBToolsBase
+    using PDBToolsBase: Atom
+    quiet(f) = redirect_stdout(f, devnull)
+    # A single atom: the volume of its sphere (a carbon, of radius 1.7 Å), with any probe
+    c = [Atom(name = "C", x = 0.0f0, y = 0.0f0, z = 0.0f0)]
+    @test molecular_volume(c; probe = 0.0, resolution = 0.1) ≈ 4π / 3 * 1.7^3 rtol = 0.01
+    @test molecular_volume(c; resolution = 0.1) ≈ 4π / 3 * 1.7^3 rtol = 0.01
+    # Two atoms in contact: with the probe, the gap between them is part of the volume
+    cc = [Atom(name = "C", x = 0.0f0, y = 0.0f0, z = 0.0f0), Atom(name = "C", x = 3.4f0, y = 0.0f0, z = 0.0f0)]
+    vdw = molecular_volume(cc; probe = 0.0, resolution = 0.1)
+    @test vdw ≈ 2 * 4π / 3 * 1.7^3 rtol = 0.01
+    @test molecular_volume(cc; resolution = 0.1) > 1.05 * vdw
+    # A ring of atoms around a cavity where the probe fits: the cavity is not part of the
+    # volume, with or without the probe (vdW), in the limit of the excluded gaps
+    ring = [Atom(name = "C", x = Float32(5cos(θ)), y = Float32(5sin(θ)), z = 0.0f0) for θ in range(0, 2π; length = 13)[1:12]]
+    @test molecular_volume(ring; resolution = 0.2) < 1.5 * molecular_volume(ring; probe = 0.0, resolution = 0.2)
+    # A protein: about its volume in solution (0.73 mL/g), and converging with the resolution:
+    # with the probes on the creases of the accessible surface, the default (0.4 Å) is within
+    # 2% of the volume at 0.2 Å (without them, 4-5% larger than the converged one)
+    protein = PDBToolsBase.read_pdb(joinpath(Packmol.RecipesDirectory, "test", "data", "poly_h.pdb"))
+    v4 = molecular_volume(protein)
+    v2 = molecular_volume(protein; resolution = 0.2)
+    @test v4 ≈ v2 rtol = 0.02
+    @test v4 > v2
+    @test v2 ≈ 0.73 * PDBToolsBase.mass(protein) / 0.602214076 rtol = 0.25
+    # Of a system and of structure files with numbers
+    water = joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb")
+    vw = molecular_volume(PDBToolsBase.read_pdb(water))
+    r = quiet(() -> molecular_volume([water => 10]))
+    @test r.volume ≈ 10 * vw
+    @test only(r.molecules).volume ≈ vw
+    sys = PackmolSystem([structure_type(water; number = 10, constraints = [InsideCube([0., 0., 0.], 20.)])];
+        tolerance = 2.0, output = tempname() * ".pdb")
+    @test quiet(() -> molecular_volume(sys)).volume ≈ 10 * vw
+    @test_throws ArgumentError molecular_volume(c; resolution = 0.0)
+    @test_throws ArgumentError molecular_volume(c; probe = -1.0)
+    @test_throws ArgumentError molecular_volume([Atom(name = "X")])
 end

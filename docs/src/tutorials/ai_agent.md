@@ -189,13 +189,18 @@ input files (`write_packmol_input(recipe)`):
 ### Volumes and numbers of molecules
 
 - `guess_volume(input_or_system; density)`, or with pairs `"file.pdb" => number`: the
-  volume of the molecules at a density, and the side of a cube.
+  volume of the free molecules at a density plus the molecular volume of the fixed ones,
+  and the side of a cube.
 - `free_volume(input_or_system)`: the volume of the region of each structure type, given its
   constraints and the fixed molecules, by Monte Carlo, and the density at which its molecules
   fill it. Use it to check the numbers of molecules: water fills its region at about
   1 g/mL; much more means too many molecules.
-- From the command line: `packmol --guess-volume --density d input.inp` and
-  `packmol --free-volume input.inp`.
+- `molecular_volume(atoms)`, or of an input, a system or pairs `"file.pdb" => number`: the
+  volume of each molecule (excluded to a probe of 1.4 Å, on a grid of 0.4 Å by default,
+  `resolution`), about the volume that a large solute (a protein) takes from the solvent
+  (used for the fixed molecules by `guess_volume` and for the solute by the recipes).
+- From the command line: `packmol --guess-volume --density d input.inp`,
+  `packmol --free-volume input.inp` and `packmol --molecular-volume input.inp`.
 
 ### Tools for building systems by hand
 

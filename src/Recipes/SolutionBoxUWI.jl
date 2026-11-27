@@ -3,10 +3,8 @@
 # counterions that neutralize the charge of the solute.
 #
 
-# Reference density of pure water at 25°C, used only as a coarse volume
-# estimate for the solute (mirroring how SolutionBoxUS/SolutionBoxUSC use the
-# pure-solvent density for the same purpose) and as the density assumed when
-# the target ionic concentration falls below the density table's range (i.e.
+# Reference density of pure water at 25°C, the density assumed when the target
+# ionic concentration falls below the density table's range (i.e.
 # indistinguishable from pure water for that purpose).
 const PURE_WATER_DENSITY = 0.9970749u"g/mL"
 
@@ -50,6 +48,7 @@ mutable struct SolutionBoxUWI <: Recipe
     water_molar_mass::typeof(1.0u"g/mol")
     cation_molar_mass::typeof(1.0u"g/mol")
     anion_molar_mass::typeof(1.0u"g/mol")
+    solute_volume::typeof(1.0u"Å^3")
     density_table::DensityTable
 end
 
@@ -70,6 +69,7 @@ _mandatory_keywords(::Type{SolutionBoxUWI}) = (:solute_pdbfile,)
         anion_molar_mass = nothing, # optional
         density_table::Matrix{<:Number} = density_NaCl_aq, # optional
         density_table_units = "mol/kg", # optional
+        solute_volume = nothing, # optional
     )
 
 Setup a system composed of a solute (U), water (W), a cation and an anion (I, for ions).
@@ -82,6 +82,10 @@ concentration, used to size the number of water molecules. It defaults to the de
 aqueous NaCl, appropriate for the default (sodium/chloride) ions; a custom table should be
 provided (as a `concentration_units => density` matrix, with `density_table_units` set
 accordingly) if custom ions are used and an accurate solution density is required.
+
+The solution fills the volume of the box without that of the solute, `solute_volume`: by
+default, its molecular volume (see [`molecular_volume`](@ref)), or a volume given (in Å³
+if unitless).
 
 """
 function SolutionBoxUWI(;
@@ -98,6 +102,7 @@ function SolutionBoxUWI(;
     anion_molar_mass::Union{Nothing,Number}=nothing,
     density_table::Union{Nothing,AbstractMatrix{<:Number}}=nothing,
     density_table_units::String="mol/kg",
+    solute_volume::Union{Nothing,Number}=nothing,
 )
     custom_ions = !isnothing(cation_pdbfile) || !isnothing(anion_pdbfile)
     solute_pdbfile = expanduser(solute_pdbfile)
@@ -161,6 +166,7 @@ function SolutionBoxUWI(;
     isnothing(solute_molar_mass) && (solute_molar_mass = mass(solute))
     solute_molar_mass = _ensure_unit(solute_molar_mass, u"g/mol")
     isnothing(solute_charge) && (solute_charge = round(Int, sum(charge, eachresidue(solute))))
+    solute_volume = _solute_volume(solute_pdbfile, solute_volume)
 
     if isnothing(density_table)
         if custom_ions
@@ -190,6 +196,7 @@ function SolutionBoxUWI(;
         water_molar_mass,
         cation_molar_mass,
         anion_molar_mass,
+        solute_volume,
         dtable,
     )
 end
@@ -209,6 +216,7 @@ function Base.show(io::IO, ::MIME"text/plain", system::SolutionBoxUWI)
             water: $(system.water_molar_mass)
             cation: $(system.cation_molar_mass)
             anion: $(system.anion_molar_mass)
+        Solute volume: $(system.solute_volume)
         Ionic concentration range: $(first(system.density_table.concentration)) - $(last(system.density_table.concentration))
         Density range: $(first(system.density_table.density)) - $(last(system.density_table.density))
     ==================================================================
@@ -272,6 +280,7 @@ function _setup(
        water_molar_mass,
        cation_molar_mass,
        anion_molar_mass,
+       solute_volume,
        density_table,
     ) = system
 
@@ -289,10 +298,8 @@ function _setup(
     unitcell, solute_extrema = set_unitcell(system, box_sides, margin, pbc)
     vbox = det(unitcell) * u"Å^3"
 
-    # Solution volume (vbox - vsolute) - vsolute is estimated as if the solute
-    # had the density of pure water
-    vsolute = uconvert(u"Å^3", solute_molar_mass / PURE_WATER_DENSITY / Unitful.Na)
-    vs = vbox - vsolute
+    # Solution volume: the box without the solute
+    vs = vbox - solute_volume
     vs <= zero(vs) && throw(ArgumentError("Box is too small to fit the solute (increase margin or box_sides)."))
 
     # Number of bulk salt formula units for the target ionic concentration
@@ -357,6 +364,7 @@ function _setup(
         Periodic box (pbc = :$pbc) = $(_unitcell_description(unitcell))
 
         Solute molar mass = $solute_molar_mass
+        Solute volume = $solute_volume
         Solute charge = $solute_charge
 
         Number of water ($(basename(water_pdbfile))) molecules = $nwater

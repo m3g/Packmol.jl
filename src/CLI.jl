@@ -37,6 +37,12 @@ const usage = """
                          density at which they fill it
       --npoints <n>      the number of points of --free-volume (default
                          1000000)
+      --molecular-volume the volume of each molecule of the input (Å³): the
+                         volume excluded to a probe by its atoms, on a grid
+      --probe <r>        the radius of the probe of --molecular-volume (Å,
+                         default 1.4; 0: the van der Waals volume)
+      --resolution <g>   the spacing of the grid of --molecular-volume (Å,
+                         default 0.4)
     """
 
 # Exit codes of Fortran Packmol (src/exit_codes.f90), kept for compatibility
@@ -109,6 +115,9 @@ function (@main)(ARGS)
     free = false
     density = "1.0"
     npoints = "1000000"
+    molecular = false
+    probe = "1.4"
+    resolution = "0.4"
     positional = 0
     i = 1
     while i <= length(ARGS)
@@ -123,9 +132,12 @@ function (@main)(ARGS)
             guess = true
         elseif arg == "--free-volume"
             free = true
+        elseif arg == "--molecular-volume"
+            molecular = true
         elseif (arg == "-i" || arg == "-o" || arg == "-t" || arg == "--threads" ||
                 arg == "-s" || arg == "--seed" ||
-                arg == "--density" || arg == "--npoints") && i < length(ARGS)
+                arg == "--density" || arg == "--npoints" ||
+                arg == "--probe" || arg == "--resolution") && i < length(ARGS)
             if arg == "-i"
                 input_file = ARGS[i+1]
             elseif arg == "-o"
@@ -136,6 +148,10 @@ function (@main)(ARGS)
                 density = ARGS[i+1]
             elseif arg == "--npoints"
                 npoints = ARGS[i+1]
+            elseif arg == "--probe"
+                probe = ARGS[i+1]
+            elseif arg == "--resolution"
+                resolution = ARGS[i+1]
             else
                 nthreads = ARGS[i+1]
             end
@@ -180,7 +196,7 @@ function (@main)(ARGS)
     elseif isnothing(system.nthreads)
         system.nthreads = _env_nthreads()
     end
-    if guess || free
+    if guess || free || molecular
         dens = something(tryparse(Float64, density), -1.0)
         if dens <= 0
             Packmol._eprintln("ERROR: the density (--density) must be a positive number, got: ", density)
@@ -191,11 +207,22 @@ function (@main)(ARGS)
             Packmol._eprintln("ERROR: the number of points (--npoints) must be a positive integer, got: ", npoints)
             return exit_code_command_line_error
         end
+        rprobe = something(tryparse(Float64, probe), -1.0)
+        if rprobe < 0
+            Packmol._eprintln("ERROR: the probe radius (--probe) must be a non-negative number, got: ", probe)
+            return exit_code_command_line_error
+        end
+        spacing = something(tryparse(Float64, resolution), -1.0)
+        if spacing <= 0
+            Packmol._eprintln("ERROR: the resolution (--resolution) must be a positive number, got: ", resolution)
+            return exit_code_command_line_error
+        end
         ntasks_session = Packmol._ntasks[]
         Packmol._ntasks[] = something(system.nthreads, 0)
         try
             guess && Packmol.guess_volume(system; density=dens)
             free && Packmol.free_volume(system; npoints=np)
+            molecular && Packmol.molecular_volume(system; probe=rprobe, resolution=spacing)
         catch e
             return _error_exit(e, exit_code_general_error)
         finally

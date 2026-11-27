@@ -58,6 +58,7 @@
         Molar masses: 
             solute: 5612.791939999981 g mol^-1
             solvent: 18.01534 g mol^-1
+        Solute volume: 7247.552 Å^3
     ==================================================================
     """
 
@@ -70,18 +71,18 @@
     tmp_input_file = tempname()*".inp"
     rm(tmp_input_file, force=true)
     r1 = write_packmol_input(system; margin = 20.0, input = tmp_input_file, debug = true, pbc = :orthorhombic)
-    @test r1[1] == 41543
+    @test r1[1] == 41613
     @test r1[2] ≈ [117.37, 89.79, 118.81]u"Å"
     @test isfile(tmp_input_file)
     rm(tmp_input_file, force=true)
     # :cubic is the default
     r1 = write_packmol_input(system; margin = 20.0, input = tmp_input_file, debug = true)
-    @test r1[1] == 55750
+    @test r1[1] == 55820
     @test r1[2] ≈ [118.81, 118.81, 118.81]u"Å"
     @test isfile(tmp_input_file)
     rm(tmp_input_file, force=true)
     r1 = write_packmol_input(system; margin = 2.0u"nm", input = tmp_input_file, debug = true, pbc = :cubic)
-    @test r1[1] == 55750
+    @test r1[1] == 55820
     @test r1[2] ≈ [118.81, 118.81, 118.81]u"Å"
     @test isfile(tmp_input_file)
     rm(tmp_input_file, force=true)
@@ -176,4 +177,37 @@ end
         @test worst <= 1e-8
         @test worst >= -1e-6 # the smallest such cell: some atom touches the margin
     end
+end
+
+@testitem "solute_volume of the solvation recipes" begin
+    using Packmol
+    using Unitful
+    import PDBToolsBase
+    test_dir = Packmol.RecipesDirectory * "/test"
+    solute = "$test_dir/data/poly_h.pdb"
+    water = "$test_dir/data/water.pdb"
+    # The molecular volume of the solute, by default
+    v = redirect_stdout(devnull) do
+        molecular_volume(PDBToolsBase.read_pdb(solute))
+    end
+    us = SolutionBoxUS(solute_pdbfile = solute, solvent_pdbfile = water, density = 1.0u"g/mL")
+    @test us.solute_volume ≈ v * u"Å^3"
+    uwi = SolutionBoxUWI(solute_pdbfile = solute, solute_charge = 0)
+    @test uwi.solute_volume ≈ v * u"Å^3"
+    # A volume given (Å³ if unitless): the solvent fills the rest of the box
+    input = tempname() * ".inp"
+    nw(us) = redirect_stdout(devnull) do
+        write_packmol_input(us; box_sides = [50.0, 50.0, 50.0], input, debug = true)[1]
+    end
+    us0 = SolutionBoxUS(solute_pdbfile = solute, solvent_pdbfile = water, density = 1.0u"g/mL", solute_volume = 0.0)
+    us1 = SolutionBoxUS(solute_pdbfile = solute, solvent_pdbfile = water, density = 1.0u"g/mL", solute_volume = 1.0u"nm^3")
+    @test us1.solute_volume ≈ 1000.0u"Å^3"
+    nmolar = 1.0 / 18.01534 * 6.02214076e23 * 1e-24 # waters per Å³ at 1 g/mL
+    @test nw(us0) == round(Int, nmolar * 50.0^3)
+    @test nw(us1) == round(Int, nmolar * (50.0^3 - 1000.0))
+    @test nw(us) == round(Int, nmolar * (50.0^3 - v))
+    @test_throws ArgumentError SolutionBoxUS(solute_pdbfile = solute, solvent_pdbfile = water, density = 1.0, solute_volume = -1.0)
+    @test_throws ArgumentError write_packmol_input(
+        SolutionBoxUS(solute_pdbfile = solute, solvent_pdbfile = water, density = 1.0, solute_volume = 1e6);
+        box_sides = [50.0, 50.0, 50.0], input, debug = true)
 end

@@ -158,7 +158,17 @@ end
                 Packmol.free_volume(input_file; npoints=20000)
             end
             @test all(x -> occursin(Packmol._fmt(x.volume, 1), out), r)
+            code, out = run_packmol("--molecular-volume", "--resolution", "0.5", input_file)
+            @test code == 0
+            m = redirect_stdout(devnull) do
+                Packmol.molecular_volume(input_file; resolution=0.5)
+            end
+            @test occursin("Total volume: $(Packmol._fmt(m.volume, 1)) Å³", out)
         end
+        code, _ = run_packmol("--molecular-volume", "--resolution", "0", joinpath(inputs, "water_box.inp"))
+        @test code == 174
+        code, _ = run_packmol("--molecular-volume", "--probe", "-1", joinpath(inputs, "water_box.inp"))
+        @test code == 174
         code, _ = run_packmol("--free-volume", "--npoints", "0", joinpath(inputs, "water_box.inp"))
         @test code == 174
         code, _ = run_packmol("--guess-volume", "--density", "-1", joinpath(inputs, "water_box.inp"))

@@ -17,8 +17,9 @@ Options:
 - `-s N` (or `--seed N`): the seed of the random number generator;
 - `-t N`: the number of threads used (default: `JULIA_NUM_THREADS` if set, otherwise all
   the threads; the input keyword `nthreads` does the same);
-- `--guess-volume` and `--free-volume`: estimate the volume of the system and of the
-  regions of its molecules, without packing it (see [Volume estimates](@ref)).
+- `--guess-volume`, `--free-volume` and `--molecular-volume`: estimate the volume of
+  the system, of the regions of its molecules, and of the molecules themselves, without
+  packing it (see [Volume estimates](@ref)).
 
 Without an input file, a file browser is opened to choose it.
 

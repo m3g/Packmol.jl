@@ -12,6 +12,13 @@ Packmol.jl Changelog
 
 Version 100.1.2-DEV
 ---------------
+- ![FEATURE][badge-feature] `molecular_volume` and `packmol --molecular-volume`: the volume
+  of molecules excluded to a probe, as computed by MoloVol.
+- ![ENHANCEMENT][badge-enhancement] `guess_volume` counts the fixed molecules with their
+  molecular volume, instead of their mass at the density.
+- ![ENHANCEMENT][badge-enhancement] The solvation recipes subtract the molecular volume of the
+  solute from the box, instead of its mass at the density of the solvent (new keyword
+  `solute_volume`). The numbers of solvent molecules change.
 
 Version 100.1.1
 ---------------
