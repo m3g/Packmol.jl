@@ -10,25 +10,15 @@ molecules, and the volume of the molecules themselves. None packs the system. Fr
 command line, with the input file:
 
 ```
-packmol --guess-volume input.inp               # at 1 g/mL
-packmol --guess-volume --density 0.8 input.inp
+packmol --guess-volume input.inp
 packmol --free-volume input.inp
 packmol --molecular-volume input.inp
-packmol --molecular-volume --resolution 0.2 input.inp
 ```
 
 and in Julia, with [`guess_volume`](@ref), [`free_volume`](@ref) and
-[`molecular_volume`](@ref), which take an input file or a [`PackmolSystem`](@ref). Both are also online calculators, in the browser: the
-[volume guesser](@ref "Volume guesser") and the [free volume](@ref "Free volume")
-calculator, at the top of the Recipes tab.
-
-## The volume of the molecules at a density
-
-`guess_volume` sums the masses of the molecules (the fixed ones included) and divides it
-by the density of the system, as the volume guesser of the
-[Packmol web page](https://m3g.github.io/packmol): the result is the volume of the box,
-and the side of a cube of that volume. For the [water and urea](@ref "Water and urea")
-tutorial (1000 water and 400 urea molecules), at 1.09 g/mL:
+[`molecular_volume`](@ref), which print the same summaries. The first two are also
+online calculators, in the browser: the [volume guesser](@ref "Volume guesser") and the
+[free volume](@ref "Free volume") calculator, at the top of the Recipes tab.
 
 ```@setup volumes
 # The input files of the tutorials used below, each in a directory with the structure
@@ -39,14 +29,31 @@ for t in ("mixture", "solvprotein", "bilayer")
 end
 ```
 
+## The volume of the molecules at a density
+
+The sum of the masses of the molecules (the fixed ones included), divided by the density
+of the system, as the volume guesser of the
+[Packmol web page](https://m3g.github.io/packmol): the volume of the box, and the side of
+a cube of that volume.
+
+From the command line, `--density` sets the density (g/mL, 1.0 by default):
+
+```
+packmol --guess-volume --density 1.09 input.inp
+```
+
+In Julia, `guess_volume` takes an input file, a [`PackmolSystem`](@ref), or structure
+files or molar masses (g/mol) with their numbers of molecules, and the `density` keyword.
+For the [water and urea](@ref "Water and urea") tutorial (1000 water and 400 urea
+molecules), at 1.09 g/mL:
+
 ```@example volumes
 using Packmol
 guess_volume("mixture/mixture.inp"; density = 1.09)
 nothing # hide
 ```
 
-which is the cube of 40 Å of the input. The molecules can also be given as structure files
-or molar masses (g/mol), with their numbers:
+which is the cube of 40 Å of the input. The same, with the molecules given directly:
 
 ```@example volumes
 water = "mixture/water.pdb"
@@ -56,15 +63,29 @@ nothing # hide
 
 ## The volume available to each structure type
 
-`free_volume` estimates, by Monte Carlo, the volume of the region of each structure type:
-the fraction of random points of a box that contains the region that satisfy its
-constraints and are farther than the tolerance from the atoms of the fixed molecules. With
-it comes the density at which the molecules of the structure type fill their region: much
-above the density of the liquid, there are too many molecules for the region (and the
-packing will be slow, or fail); much below, too few.
+The volume of the region of each structure type, by Monte Carlo: the fraction of random
+points of a box that contains the region that satisfy its constraints and are farther
+than the tolerance from the atoms of the fixed molecules. With it comes the density at
+which the molecules of the structure type fill their region: much above the density of
+the liquid, there are too many molecules for the region (and the packing will be slow, or
+fail); much below, too few.
 
-For the [solvated protein](@ref "Solvated protein"), the water, sodium and chloride share
-the rhombic dodecahedron, without the volume of the protein:
+The region is that of the constraints that apply to the whole molecule. The constraints of
+some atoms only (in `atoms` blocks) are ignored, so that the volume is an upper bound, and a
+structure type with constraints of some atoms only has no estimate. A structure type whose
+region is not bounded (without periodic boundary conditions, by an `inside` box, cube,
+sphere, cylinder or ellipsoid) has no estimate either. The precision of the estimate is
+given by its standard error, which decreases with the square root of the number of points.
+
+From the command line, `--npoints` sets the number of points (1 000 000 by default):
+
+```
+packmol --free-volume --npoints 500000 input.inp
+```
+
+In Julia, `free_volume` takes an input file or a [`PackmolSystem`](@ref), and the `npoints`
+keyword. For the [solvated protein](@ref "Solvated protein"), the water, sodium and
+chloride share the rhombic dodecahedron, without the volume of the protein:
 
 ```@example volumes
 input = "solvprotein/solvprotein.inp"
@@ -74,37 +95,37 @@ nothing # hide
 
 The water fills its region at 1 g/mL. The densities of structure types that share a region
 add up: the water and the urea of the mixture above, in the same box, are at 0.47 and 0.62
-g/mL, 1.09 g/mL together.
-
-The region is that of the constraints that apply to the whole molecule. The constraints of
-some atoms only (in `atoms` blocks) are ignored, so that the volume is an upper bound, and a
-structure type with constraints of some atoms only has no estimate: in the [lipid
-bilayer](@ref "Lipid bilayer"), the heads and the ends of the chains of the lipids are above
-and below planes, which do not bound a region of the molecules. The water around them has
-its own region:
+g/mL, 1.09 g/mL together. In the [lipid bilayer](@ref "Lipid bilayer"), the heads and the
+ends of the chains of the lipids are above and below planes (constraints of some atoms),
+which do not bound a region of the molecules; the water around them has its own region:
 
 ```@example volumes
 free_volume("bilayer/bilayer.inp"; npoints = 500_000)
 nothing # hide
 ```
 
-A structure type whose region is not bounded (without periodic boundary conditions, by an
-`inside` box, cube, sphere, cylinder or ellipsoid) has no estimate either. The precision of
-the estimate is given by its standard error, which decreases with the square root of the
-number of points (`npoints`, 1 million by default).
-
 ## The volume of the molecules
 
-`molecular_volume` computes the volume of a molecule as the space that a probe of 1.4 Å
-(a water molecule) cannot enter, on a grid of 0.4 Å, as [MoloVol](https://molovol.com)
-does (J. Maglic and R. Lavendomme, J. Appl. Cryst. 55, 1033-1044 (2022),
-[doi:10.1107/S1600576722004988](https://doi.org/10.1107/S1600576722004988)). It is the volume that a solute takes from the solvent: for a protein, close to its
-volume in water, while its mass at 1 g/mL gives about 1.4 times that. The solvation
-[recipes](../recipes/index.md) subtract it from the volume of the box.
+The volume of each molecule, as the space that a spherical probe cannot enter, computed on
+a grid as by [MoloVol](https://molovol.com). With the default probe (1.4 Å, a water
+molecule), it is the volume that a solute takes from the solvent: for a protein, close to
+its volume in water, while its mass at 1 g/mL gives about 1.4 times that. The solvation
+[recipes](../recipes/index.md) subtract it from the volume of the box. For small
+molecules, as the solvent, the volume in the liquid is larger (it includes the empty space
+between the molecules): use the volume at a density for them.
 
-`packmol --molecular-volume input.inp` lists, for each structure of the input file, the
-volume of one molecule and of all its molecules, and the total. In Julia, the same is
-given by `molecular_volume` of the input file. For the
+The result lists, for each structure of the input file, the volume of one molecule and of
+all its molecules, and the total. From the command line, `--probe` sets the radius of the
+probe (Å, 1.4 by default; `0` gives the van der Waals volume), and `--resolution` the
+spacing of the grid (Å, 0.4 by default, at which the volume is within about 1.5% of its
+converged value; smaller is more precise and slower):
+
+```
+packmol --molecular-volume --resolution 0.2 input.inp
+```
+
+In Julia, `molecular_volume` takes an input file, a [`PackmolSystem`](@ref), or structure
+files with their numbers of molecules, and the `probe` and `resolution` keywords. For the
 [solvated protein](@ref "Solvated protein"):
 
 ```@example volumes
@@ -112,18 +133,12 @@ molecular_volume("solvprotein/solvprotein.inp")
 nothing # hide
 ```
 
-and of a single molecule, from its atoms:
+It also gives the volume of a single molecule, from its atoms:
 
 ```@example volumes
 using PDBTools
 molecular_volume(read_pdb("solvprotein/thyroid_receptor.pdb"))
 ```
-
-`--probe` (`probe`) sets the radius of the probe (`0` gives the van der Waals volume), and
-`--resolution` (`resolution`) the spacing of the grid: at 0.4 Å the volume is within about
-1.5% of its converged value. For small molecules, as the solvent, the volume in the liquid
-is larger (it includes the empty space between the molecules): use [`guess_volume`](@ref)
-for them.
 
 ```@docs
 guess_volume

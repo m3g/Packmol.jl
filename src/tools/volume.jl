@@ -273,19 +273,14 @@ end
 The molecular volume (Å³): the volume from which a spherical probe of radius `probe` (Å)
 is excluded by the van der Waals spheres of the atoms (the van der Waals volume and the
 gaps between the atoms where the probe does not fit), computed on a grid of spacing
-`resolution` (Å), as by MoloVol (Maglic & Lavendomme, J. Appl. Cryst. 55, 1033-1044 (2022), https://doi.org/10.1107/S1600576722004988).
-Cavities where the probe fits are not part of the volume, whether they are connected to
-the outside or not. With `probe = 0`, the van der Waals volume.
+`resolution` (Å), as by [MoloVol](https://molovol.com). Cavities where the probe fits are
+not part of the volume. With `probe = 0`, the van der Waals volume.
 
 With the default probe (the radius of a water molecule), the molecular volume of a
-protein is close to its volume in solution (that of its partial specific volume, about
-0.73 mL/g). The radii are the van der Waals radii of the elements (`element_vdw_radius` of
-PDBToolsBase), so that the volume is that of all-atom structures, whose elements are given
-or follow from the names of the atoms. At the default resolution, the volume is within
-about 1.5% of the converged one (slightly larger), at a fraction of a second for thousands
-of atoms; the error decreases with the resolution, at a cost that grows as its inverse
-cube. The probes are placed on the accessible surface and on its creases, where they
-touch two or three atoms, which makes the volume converge fast with the resolution.
+protein is close to its volume in water (about 0.73 mL/g). The radii are the van der Waals
+radii of the elements, so that the volume is that of all-atom structures. At the default
+resolution, the volume is within about 1.5% of its converged value; a smaller one is more
+precise, at a cost that grows as its inverse cube.
 
 Of the atoms of a molecule, returns its volume. Of the structure types of an input file or
 of a `PackmolSystem`, or of pairs of structure files and numbers of molecules (as
