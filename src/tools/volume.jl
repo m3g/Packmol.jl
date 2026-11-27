@@ -16,18 +16,20 @@ _molar_mass(atoms::AbstractVector{<:Atom}) = Float64(PDBToolsBase.mass(atoms))
     guess_volume(system::PackmolSystem; density = 1.0)
     guess_volume(molecules::AbstractVector{<:Pair}; density = 1.0)
 
-The volume (Å³) that the molecules fill at the `density` (g/mL) of the whole system, and
-the side (Å) of a cube of that volume, as the volume guesser of the Packmol web page. The
-molecules are those of an input file or a `PackmolSystem` (fixed ones included), or
-pairs of a structure file or a molar mass (g/mol) and a number of molecules:
+The volume (Å³) of a system, and the side (Å) of a cube of that volume: the volume that
+the free molecules fill at the `density` (g/mL), as the volume guesser of the Packmol web
+page, and the volume of the fixed molecules, their molecular volume (see
+[`molecular_volume`](@ref)), as the solvation recipes count the volume of the solute.
+The molecules are those of an input file or a `PackmolSystem`, or pairs of a structure
+file or a molar mass (g/mol) and a number of molecules (all free):
 
 ```julia
 guess_volume(["water.pdb" => 1000, "urea.pdb" => 400]; density = 1.1)
 guess_volume([18.015 => 1000]) # 1000 water molecules at 1 g/mL
 ```
 
-Returns `(; mass, volume, side)`: the total mass (g/mol, summed over the molecules), the
-volume and the side of the cube, and prints a summary.
+Returns `(; mass, volume, side)`: the total mass (g/mol, summed over all the molecules),
+the volume and the side of the cube, and prints a summary.
 """
 function guess_volume(input_file::String; density::Real=1.0)
     return guess_volume(read_packmol_input(input_file, Val(3), Float64); density)
@@ -37,12 +39,14 @@ function guess_volume(system::PackmolSystem; density::Real=1.0)
     names = String[]
     masses = Float64[]
     numbers = Int[]
+    fixed_volumes = Float64[]
     for st in system.structure_types
         push!(names, basename(st.filename))
         push!(masses, _molar_mass(st.atoms))
         push!(numbers, st.number_of_molecules)
+        push!(fixed_volumes, st.fixed.fixed ? molecular_volume(st.atoms) : NaN)
     end
-    return _guess_volume(names, masses, numbers, Float64(density))
+    return _guess_volume(names, masses, numbers, fixed_volumes, Float64(density))
 end
 
 function guess_volume(molecules::AbstractVector{<:Pair}; density::Real=1.0)
@@ -59,23 +63,33 @@ function guess_volume(molecules::AbstractVector{<:Pair}; density::Real=1.0)
         end
         push!(numbers, Int(number))
     end
-    return _guess_volume(names, masses, numbers, Float64(density))
+    return _guess_volume(names, masses, numbers, fill(NaN, length(names)), Float64(density))
 end
 
-function _guess_volume(names::Vector{String}, masses::Vector{Float64}, numbers::Vector{Int}, density::Float64)
+# The volume of the free molecules at the density, and the molecular volumes of the fixed
+# ones (`fixed_volumes`, the volume of one molecule; NaN for free molecules)
+function _guess_volume(names::Vector{String}, masses::Vector{Float64}, numbers::Vector{Int},
+    fixed_volumes::Vector{Float64}, density::Float64)
     density > 0 || throw(ArgumentError("\n\n    The density must be positive, got $density.\n\n"))
     mass = sum(masses[i] * numbers[i] for i in eachindex(masses); init=0.0)
+    free_mass = sum(masses[i] * numbers[i] for i in eachindex(masses) if isnan(fixed_volumes[i]); init=0.0)
+    fixed_volume = sum(fixed_volumes[i] * numbers[i] for i in eachindex(masses) if !isnan(fixed_volumes[i]); init=0.0)
     # g/mol -> g, then mL -> Å³ (1 mL = 1e24 Å³)
-    volume = mass / _AVOGADRO / density * 1e24
+    volume = free_mass / _AVOGADRO / density * 1e24 + fixed_volume
     side = cbrt(volume)
     _println()
     _println("  Volume guess, at a density of ", _fmt(density, 4), " g/mL:")
     _println()
     for i in eachindex(names)
-        _println("    ", _rpad(names[i], 30), _lpad(string(numbers[i]), 9), " molecules of ", _fmt(masses[i], 2), " g/mol")
+        line = string("    ", _rpad(names[i], 30), _lpad(string(numbers[i]), 9), " molecules of ", _fmt(masses[i], 2), " g/mol")
+        isnan(fixed_volumes[i]) || (line *= string(", fixed: ", _fmt(fixed_volumes[i], 1), " Å³"))
+        _println(line)
     end
     _println()
     _println("  Total mass:   ", _fmt(mass, 2), " g/mol")
+    if fixed_volume > 0
+        _println("  Volume of the fixed molecules: ", _fmt(fixed_volume, 1), " Å³ (molecular volume)")
+    end
     _println("  Volume:       ", _fmt(volume, 1), " Å³")
     _println("  Side of cube: ", _fmt(side, 2), " Å")
     _println()

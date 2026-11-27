@@ -21,6 +21,21 @@
     end
     @test g3.volume ≈ g2.volume * 2 rtol = 1e-10
     @test_throws ArgumentError guess_volume([18.0 => 10]; density = 0.0)
+    # A fixed molecule counts with its molecular volume (as the solute of the recipes), the
+    # free ones fill the rest at the density
+    protein = joinpath(Packmol.RecipesDirectory, "test", "data", "poly_h.pdb")
+    sys = PackmolSystem([
+            structure_type(protein; number = 1, fixed = ([0., 0., 0.], [0., 0., 0.]), center = :geometric),
+            structure_type(water; number = 1000, constraints = [InsideCube([-30., -30., -30.], 60.)]),
+        ]; tolerance = 2.0, output = tempname() * ".pdb")
+    g4 = redirect_stdout(devnull) do
+        guess_volume(sys)
+    end
+    vp = redirect_stdout(devnull) do
+        molecular_volume(Packmol.PDBToolsBase.read_pdb(protein))
+    end
+    @test g4.volume ≈ g3.volume + vp rtol = 1e-3
+    @test g4.mass ≈ g3.mass + Packmol.PDBToolsBase.mass(Packmol.PDBToolsBase.read_pdb(protein)) rtol = 1e-3
 end
 
 @testitem "free_volume" begin

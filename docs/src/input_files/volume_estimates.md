@@ -31,10 +31,11 @@ end
 
 ## The volume of the molecules at a density
 
-The sum of the masses of the molecules (the fixed ones included), divided by the density
-of the system, as the volume guesser of the
-[Packmol web page](https://m3g.github.io/packmol): the volume of the box, and the side of
-a cube of that volume.
+The volume of the box, and the side of a cube of that volume: the mass of the free
+molecules divided by the density, as the volume guesser of the
+[Packmol web page](https://m3g.github.io/packmol), plus the volume of the fixed molecules,
+their [molecular volume](@ref "The volume of the molecules") (as the solvation recipes
+count the volume of the solute).
 
 From the command line, `--density` sets the density (g/mL, 1.0 by default):
 
@@ -53,11 +54,20 @@ guess_volume("mixture/mixture.inp"; density = 1.09)
 nothing # hide
 ```
 
-which is the cube of 40 Å of the input. The same, with the molecules given directly:
+which is the cube of 40 Å of the input. The same, with the molecules given directly (all
+free):
 
 ```@example volumes
 water = "mixture/water.pdb"
 guess_volume([water => 1000, 60.06 => 400]; density = 1.09)
+nothing # hide
+```
+
+For the [solvated protein](@ref "Solvated protein"), the protein is fixed, and counts
+with its molecular volume:
+
+```@example volumes
+guess_volume("solvprotein/solvprotein.inp")
 nothing # hide
 ```
 
@@ -109,10 +119,11 @@ nothing # hide
 The volume of each molecule, as the space that a spherical probe cannot enter, computed on
 a grid as by [MoloVol](https://molovol.com). With the default probe (1.4 Å, a water
 molecule), it is the volume that a solute takes from the solvent: for a protein, close to
-its volume in water, while its mass at 1 g/mL gives about 1.4 times that. The solvation
-[recipes](../recipes/index.md) subtract it from the volume of the box. For small
+its volume in water, while its mass at 1 g/mL gives about 1.4 times that. It is the
+volume of the fixed molecules in the [volume at a density](@ref "The volume of the molecules at a density"),
+and that of the solute in the solvation [recipes](../recipes/index.md). For small
 molecules, as the solvent, the volume in the liquid is larger (it includes the empty space
-between the molecules): use the volume at a density for them.
+between the molecules): the volume at a density is the one for them.
 
 The result lists, for each structure of the input file, the volume of one molecule and of
 all its molecules, and the total. From the command line, `--probe` sets the radius of the

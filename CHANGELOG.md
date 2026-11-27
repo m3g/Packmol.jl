@@ -19,6 +19,9 @@ Version 100.1.2-DEV
   Of the atoms of a molecule, of an input file or a `PackmolSystem`, or of structure files
   with numbers of molecules; from the command line, `packmol --molecular-volume input.inp`
   (with `--probe` and `--resolution`).
+- ![ENHANCEMENT][badge-enhancement] `guess_volume` (and `--guess-volume`) of an input file or
+  system counts the fixed molecules with their molecular volume, instead of their mass at the
+  density, as the solvation recipes count the solute.
 - ![ENHANCEMENT][badge-enhancement] The solvation recipes (`SolutionBoxUS`, `SolutionBoxUSC`,
   `SolutionBoxUWI`) subtract the molecular volume of the solute from the volume of the box,
   instead of its mass at the density of the solvent, which overestimated the volume of

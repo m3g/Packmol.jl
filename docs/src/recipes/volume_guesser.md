@@ -76,7 +76,8 @@ page.
 
 The same estimate is given by [`guess_volume`](@ref) in Julia, which also reads the
 molecules and their numbers from an input file or from structure files, and by
-`packmol --guess-volume input.inp` (see [Volume estimates](@ref)). The volume of the
+`packmol --guess-volume input.inp` (see [Volume estimates](@ref)); with an input file, the
+fixed molecules count with their molecular volume instead of their mass. The volume of the
 region available to the molecules of each structure type of an input, given its
 constraints and fixed molecules, is estimated by the [free volume](@ref "Free volume")
 calculator.
