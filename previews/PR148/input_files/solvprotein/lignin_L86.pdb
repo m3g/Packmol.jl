@@ -1,0 +1,473 @@
+ATOM      1  C6  GUAIL   1       7.394  -5.294   7.992  0.00  0.00      L86  C
+ATOM      2  H6  GUAIL   1       6.727  -6.146   7.974  0.00  0.00      L86  H
+ATOM      3  C2  GUAIL   1       8.009  -3.079   7.201  0.00  0.00      L86  C
+ATOM      4  H2  GUAIL   1       7.771  -2.245   6.555  0.00  0.00      L86  H
+ATOM      5  C3  GUAIL   1       9.083  -3.063   8.100  0.00  0.00      L86  C
+ATOM      6  O3  GUAIL   1      10.004  -2.017   8.196  0.00  0.00      L86  O
+ATOM      7  C10 GUAIL   1       9.923  -0.953   7.229  0.00  0.00      L86  C
+ATOM      8 H101 GUAIL   1      10.731  -0.251   7.443  0.00  0.00      L86  H
+ATOM      9 H102 GUAIL   1      10.051  -1.356   6.222  0.00  0.00      L86  H
+ATOM     10 H103 GUAIL   1       8.964  -0.439   7.313  0.00  0.00      L86  H
+ATOM     11  C4  GUAIL   1       9.300  -4.168   8.966  0.00  0.00      L86  C
+ATOM     12  O4  GUAIL   1      10.337  -4.173   9.880  0.00  0.00      L86  O
+ATOM     13  HO4 GUAIL   1      10.292  -5.000  10.405  0.00  0.00      L86  H
+ATOM     14  C5  GUAIL   1       8.460  -5.279   8.899  0.00  0.00      L86  C
+ATOM     15  H5  GUAIL   1       8.627  -6.127   9.550  0.00  0.00      L86  H
+ATOM     16  C1  GUAIL   1       7.149  -4.189   7.169  0.00  0.00      L86  C
+ATOM     17  C7  GUAIL   1       5.862  -4.160   6.350  0.00  0.00      L86  C
+ATOM     18  H7  GUAIL   1       5.391  -5.156   6.263  0.00  0.00      L86  H
+ATOM     19  O7  GUAIL   1       6.114  -3.697   5.028  0.00  0.00      L86  O
+ATOM     20  HO7 GUAIL   1       5.287  -3.792   4.510  0.00  0.00      L86  H
+ATOM     21  C8  GUAIL   1       4.840  -3.210   7.002  0.00  0.00      L86  C
+ATOM     22  H8  GUAIL   1       5.400  -2.315   7.330  0.00  0.00      L86  H
+ATOM     23  C9  GUAIL   1       4.197  -3.879   8.204  0.00  0.00      L86  C
+ATOM     24  O9  GUAIL   1       3.699  -2.813   9.019  0.00  0.00      L86  O
+ATOM     25  HO9 GUAIL   1       2.975  -2.375   8.523  0.00  0.00      L86  H
+ATOM     26  H91 GUAIL   1       3.413  -4.574   7.902  0.00  0.00      L86  H
+ATOM     27  H92 GUAIL   1       4.940  -4.409   8.801  0.00  0.00      L86  H
+ATOM     28  C6  GUAIL   2       0.892  -0.529   5.979  0.00  0.00      L86  C
+ATOM     29  H6  GUAIL   2      -0.176  -0.664   5.869  0.00  0.00      L86  H
+ATOM     30  C2  GUAIL   2       2.878   0.837   5.860  0.00  0.00      L86  C
+ATOM     31  H2  GUAIL   2       3.366   1.784   5.676  0.00  0.00      L86  H
+ATOM     32  C3  GUAIL   2       3.668  -0.309   6.052  0.00  0.00      L86  C
+ATOM     33  O3  GUAIL   2       5.056  -0.255   6.026  0.00  0.00      L86  O
+ATOM     34  C10 GUAIL   2       5.648   0.168   4.783  0.00  0.00      L86  C
+ATOM     35 H101 GUAIL   2       6.722  -0.029   4.814  0.00  0.00      L86  H
+ATOM     36 H102 GUAIL   2       5.213  -0.392   3.954  0.00  0.00      L86  H
+ATOM     37 H103 GUAIL   2       5.488   1.239   4.642  0.00  0.00      L86  H
+ATOM     38  C4  GUAIL   2       3.038  -1.590   6.153  0.00  0.00      L86  C
+ATOM     39  O4  GUAIL   2       3.797  -2.749   6.056  0.00  0.00      L86  O
+ATOM     40  C5  GUAIL   2       1.651  -1.691   6.160  0.00  0.00      L86  C
+ATOM     41  H5  GUAIL   2       1.154  -2.639   6.318  0.00  0.00      L86  H
+ATOM     42  C1  GUAIL   2       1.495   0.696   5.637  0.00  0.00      L86  C
+ATOM     43  C7  GUAIL   2       0.886   1.447   4.409  0.00  0.00      L86  C
+ATOM     44  H7  GUAIL   2       1.559   1.364   3.536  0.00  0.00      L86  H
+ATOM     45  C8  GUAIL   2       0.733   2.988   4.385  0.00  0.00      L86  C
+ATOM     46  H8  GUAIL   2       1.426   3.363   5.160  0.00  0.00      L86  H
+ATOM     47  C9  GUAIL   2      -0.672   3.494   4.662  0.00  0.00      L86  C
+ATOM     48  O9  GUAIL   2      -0.774   3.591   6.090  0.00  0.00      L86  O
+ATOM     49  HO9 GUAIL   2      -1.408   4.311   6.293  0.00  0.00      L86  H
+ATOM     50  H91 GUAIL   2      -0.764   4.514   4.285  0.00  0.00      L86  H
+ATOM     51  H92 GUAIL   2      -1.452   2.866   4.230  0.00  0.00      L86  H
+ATOM     52  C6  GUAIL   3       0.773   5.745   0.120  0.00  0.00      L86  C
+ATOM     53  H6  GUAIL   3       0.922   6.797  -0.088  0.00  0.00      L86  H
+ATOM     54  C2  GUAIL   3       0.386   3.494  -0.527  0.00  0.00      L86  C
+ATOM     55  H2  GUAIL   3       0.147   2.846  -1.359  0.00  0.00      L86  H
+ATOM     56  C3  GUAIL   3       0.502   3.035   0.775  0.00  0.00      L86  C
+ATOM     57  O3  GUAIL   3       0.523   1.674   0.983  0.00  0.00      L86  O
+ATOM     58  C10 GUAIL   3       0.349   0.850  -0.203  0.00  0.00      L86  C
+ATOM     59 H101 GUAIL   3       0.505  -0.212  -0.003  0.00  0.00      L86  H
+ATOM     60 H102 GUAIL   3      -0.666   0.980  -0.583  0.00  0.00      L86  H
+ATOM     61 H103 GUAIL   3       1.092   1.097  -0.963  0.00  0.00      L86  H
+ATOM     62  C4  GUAIL   3       0.767   3.980   1.842  0.00  0.00      L86  C
+ATOM     63  O4  GUAIL   3       1.292   3.587   3.116  0.00  0.00      L86  O
+ATOM     64  C5  GUAIL   3       0.880   5.339   1.479  0.00  0.00      L86  C
+ATOM     65  H5  GUAIL   3       1.052   6.093   2.236  0.00  0.00      L86  H
+ATOM     66  C1  GUAIL   3       0.582   4.806  -0.914  0.00  0.00      L86  C
+ATOM     67  C7  GUAIL   3       0.659   4.836  -2.479  0.00  0.00      L86  C
+ATOM     68  H7  GUAIL   3      -0.234   4.215  -2.676  0.00  0.00      L86  H
+ATOM     69  C8  GUAIL   3       0.057   5.814  -3.517  0.00  0.00      L86  C
+ATOM     70  H8  GUAIL   3       0.969   6.330  -3.868  0.00  0.00      L86  H
+ATOM     71  C9  GUAIL   3      -0.961   6.907  -3.205  0.00  0.00      L86  C
+ATOM     72  O9  GUAIL   3      -0.469   7.594  -2.050  0.00  0.00      L86  O
+ATOM     73  HO9 GUAIL   3       0.321   8.106  -2.324  0.00  0.00      L86  H
+ATOM     74  H91 GUAIL   3      -1.046   7.582  -4.058  0.00  0.00      L86  H
+ATOM     75  H92 GUAIL   3      -1.941   6.502  -2.951  0.00  0.00      L86  H
+ATOM     76  C6  GUAIL   4       0.561  -2.043   1.448  0.00  0.00      L86  C
+ATOM     77  H6  GUAIL   4       1.377  -2.579   0.981  0.00  0.00      L86  H
+ATOM     78  C2  GUAIL   4      -1.832  -1.528   1.504  0.00  0.00      L86  C
+ATOM     79  H2  GUAIL   4      -2.811  -1.715   1.084  0.00  0.00      L86  H
+ATOM     80  C3  GUAIL   4      -1.613  -0.575   2.493  0.00  0.00      L86  C
+ATOM     81  O3  GUAIL   4      -2.661   0.108   3.130  0.00  0.00      L86  O
+ATOM     82  C10 GUAIL   4      -4.021  -0.210   2.786  0.00  0.00      L86  C
+ATOM     83 H101 GUAIL   4      -4.661   0.388   3.436  0.00  0.00      L86  H
+ATOM     84 H102 GUAIL   4      -4.198   0.071   1.746  0.00  0.00      L86  H
+ATOM     85 H103 GUAIL   4      -4.234  -1.268   2.947  0.00  0.00      L86  H
+ATOM     86  C4  GUAIL   4      -0.302  -0.273   2.907  0.00  0.00      L86  C
+ATOM     87  O4  GUAIL   4      -0.252   0.744   3.856  0.00  0.00      L86  O
+ATOM     88  C5  GUAIL   4       0.857  -0.969   2.323  0.00  0.00      L86  C
+ATOM     89  C1  GUAIL   4      -0.752  -2.238   0.972  0.00  0.00      L86  C
+ATOM     90  C7  GUAIL   4      -0.983  -2.990  -0.351  0.00  0.00      L86  C
+ATOM     91  H7  GUAIL   4      -0.027  -3.167  -0.877  0.00  0.00      L86  H
+ATOM     92  O7  GUAIL   4      -1.782  -2.219  -1.253  0.00  0.00      L86  O
+ATOM     93  HO7 GUAIL   4      -1.291  -1.406  -1.495  0.00  0.00      L86  H
+ATOM     94  C8  GUAIL   4      -1.642  -4.394  -0.202  0.00  0.00      L86  C
+ATOM     95  H8  GUAIL   4      -1.954  -4.600  -1.242  0.00  0.00      L86  H
+ATOM     96  C9  GUAIL   4      -0.620  -5.515   0.023  0.00  0.00      L86  C
+ATOM     97  O9  GUAIL   4      -0.173  -5.454   1.380  0.00  0.00      L86  O
+ATOM     98  HO9 GUAIL   4       0.286  -4.596   1.501  0.00  0.00      L86  H
+ATOM     99  H91 GUAIL   4      -1.109  -6.479  -0.120  0.00  0.00      L86  H
+ATOM    100  H92 GUAIL   4       0.214  -5.432  -0.675  0.00  0.00      L86  H
+ATOM    101  C6  GUAIL   5      -2.596   2.634  -6.493  0.00  0.00      L86  C
+ATOM    102  H6  GUAIL   5      -2.595   2.061  -7.411  0.00  0.00      L86  H
+ATOM    103  C2  GUAIL   5      -3.614   3.180  -4.368  0.00  0.00      L86  C
+ATOM    104  H2  GUAIL   5      -4.445   3.067  -3.683  0.00  0.00      L86  H
+ATOM    105  C3  GUAIL   5      -2.534   3.949  -4.017  0.00  0.00      L86  C
+ATOM    106  O3  GUAIL   5      -2.378   4.164  -2.655  0.00  0.00      L86  O
+ATOM    107  C10 GUAIL   5      -2.677   3.020  -1.808  0.00  0.00      L86  C
+ATOM    108 H101 GUAIL   5      -2.167   3.137  -0.850  0.00  0.00      L86  H
+ATOM    109 H102 GUAIL   5      -3.755   3.009  -1.641  0.00  0.00      L86  H
+ATOM    110 H103 GUAIL   5      -2.354   2.075  -2.250  0.00  0.00      L86  H
+ATOM    111  C4  GUAIL   5      -1.467   4.173  -4.965  0.00  0.00      L86  C
+ATOM    112  O4  GUAIL   5      -0.378   5.056  -4.737  0.00  0.00      L86  O
+ATOM    113  C5  GUAIL   5      -1.520   3.496  -6.200  0.00  0.00      L86  C
+ATOM    114  H5  GUAIL   5      -0.715   3.619  -6.913  0.00  0.00      L86  H
+ATOM    115  C1  GUAIL   5      -3.655   2.491  -5.577  0.00  0.00      L86  C
+ATOM    116  C7  GUAIL   5      -4.840   1.533  -5.548  0.00  0.00      L86  C
+ATOM    117  H7  GUAIL   5      -5.657   2.162  -5.150  0.00  0.00      L86  H
+ATOM    118  C8  GUAIL   5      -5.595   1.012  -6.755  0.00  0.00      L86  C
+ATOM    119  H8  GUAIL   5      -5.241  -0.010  -6.986  0.00  0.00      L86  H
+ATOM    120  C9  GUAIL   5      -5.557   1.955  -7.942  0.00  0.00      L86  C
+ATOM    121  O9  GUAIL   5      -4.670   1.352  -8.893  0.00  0.00      L86  O
+ATOM    122  HO9 GUAIL   5      -4.984   1.589  -9.791  0.00  0.00      L86  H
+ATOM    123  H91 GUAIL   5      -6.544   1.995  -8.405  0.00  0.00      L86  H
+ATOM    124  H92 GUAIL   5      -5.267   2.969  -7.664  0.00  0.00      L86  H
+ATOM    125  C6  GUAIL   6       5.157   4.924  -3.490  0.00  0.00      L86  C
+ATOM    126  H6  GUAIL   6       5.754   5.827  -3.482  0.00  0.00      L86  H
+ATOM    127  C2  GUAIL   6       4.991   2.509  -3.670  0.00  0.00      L86  C
+ATOM    128  H2  GUAIL   6       5.478   1.553  -3.809  0.00  0.00      L86  H
+ATOM    129  C3  GUAIL   6       3.596   2.618  -3.525  0.00  0.00      L86  C
+ATOM    130  O3  GUAIL   6       2.737   1.521  -3.590  0.00  0.00      L86  O
+ATOM    131  C10 GUAIL   6       3.227   0.317  -4.201  0.00  0.00      L86  C
+ATOM    132 H101 GUAIL   6       2.391  -0.385  -4.198  0.00  0.00      L86  H
+ATOM    133 H102 GUAIL   6       3.546   0.515  -5.225  0.00  0.00      L86  H
+ATOM    134 H103 GUAIL   6       4.051  -0.093  -3.613  0.00  0.00      L86  H
+ATOM    135  C4  GUAIL   6       2.989   3.897  -3.289  0.00  0.00      L86  C
+ATOM    136  O4  GUAIL   6       1.625   3.884  -3.082  0.00  0.00      L86  O
+ATOM    137  C5  GUAIL   6       3.765   5.048  -3.336  0.00  0.00      L86  C
+ATOM    138  H5  GUAIL   6       3.323   6.028  -3.219  0.00  0.00      L86  H
+ATOM    139  C1  GUAIL   6       5.772   3.670  -3.612  0.00  0.00      L86  C
+ATOM    140  C7  GUAIL   6       7.205   3.452  -3.382  0.00  0.00      L86  C
+ATOM    141  H7  GUAIL   6       7.486   2.445  -3.053  0.00  0.00      L86  H
+ATOM    142  C8  GUAIL   6       8.233   4.325  -3.389  0.00  0.00      L86  C
+ATOM    143  H8  GUAIL   6       8.087   5.358  -3.724  0.00  0.00      L86  H
+ATOM    144  C9  GUAIL   6       9.619   3.922  -2.966  0.00  0.00      L86  C
+ATOM    145  O9  GUAIL   6      10.522   3.760  -4.059  0.00  0.00      L86  O
+ATOM    146  HO9 GUAIL   6      11.393   3.506  -3.687  0.00  0.00      L86  H
+ATOM    147  H91 GUAIL   6      10.013   4.731  -2.349  0.00  0.00      L86  H
+ATOM    148  H92 GUAIL   6       9.600   3.018  -2.355  0.00  0.00      L86  H
+ATOM    149  C6  GUAIL   7      -4.158  -4.644  -0.034  0.00  0.00      L86  C
+ATOM    150  H6  GUAIL   7      -4.170  -4.777  -1.108  0.00  0.00      L86  H
+ATOM    151  C2  GUAIL   7      -2.953  -4.331   2.043  0.00  0.00      L86  C
+ATOM    152  H2  GUAIL   7      -2.011  -4.182   2.554  0.00  0.00      L86  H
+ATOM    153  C3  GUAIL   7      -4.170  -4.252   2.728  0.00  0.00      L86  C
+ATOM    154  O3  GUAIL   7      -4.271  -4.151   4.112  0.00  0.00      L86  O
+ATOM    155  C10 GUAIL   7      -3.125  -4.518   4.899  0.00  0.00      L86  C
+ATOM    156 H101 GUAIL   7      -3.435  -4.481   5.945  0.00  0.00      L86  H
+ATOM    157 H102 GUAIL   7      -2.807  -5.532   4.649  0.00  0.00      L86  H
+ATOM    158 H103 GUAIL   7      -2.308  -3.813   4.735  0.00  0.00      L86  H
+ATOM    159  C4  GUAIL   7      -5.395  -4.373   2.024  0.00  0.00      L86  C
+ATOM    160  O4  GUAIL   7      -6.617  -4.308   2.665  0.00  0.00      L86  O
+ATOM    161  HO4 GUAIL   7      -7.333  -4.357   1.996  0.00  0.00      L86  H
+ATOM    162  C5  GUAIL   7      -5.378  -4.589   0.649  0.00  0.00      L86  C
+ATOM    163  H5  GUAIL   7      -6.306  -4.701   0.105  0.00  0.00      L86  H
+ATOM    164  C1  GUAIL   7      -2.942  -4.469   0.643  0.00  0.00      L86  C
+ATOM    165  C6  GUAIL   8       4.159   2.331   1.847  0.00  0.00      L86  C
+ATOM    166  H6  GUAIL   8       4.481   3.184   2.429  0.00  0.00      L86  H
+ATOM    167  C2  GUAIL   8       3.811   1.138  -0.225  0.00  0.00      L86  C
+ATOM    168  H2  GUAIL   8       3.914   1.075  -1.300  0.00  0.00      L86  H
+ATOM    169  C3  GUAIL   8       3.257   0.050   0.500  0.00  0.00      L86  C
+ATOM    170  O3  GUAIL   8       3.107  -1.184  -0.082  0.00  0.00      L86  O
+ATOM    171  C10 GUAIL   8       4.190  -1.624  -0.922  0.00  0.00      L86  C
+ATOM    172 H101 GUAIL   8       4.322  -2.693  -0.746  0.00  0.00      L86  H
+ATOM    173 H102 GUAIL   8       3.896  -1.445  -1.957  0.00  0.00      L86  H
+ATOM    174 H103 GUAIL   8       5.127  -1.111  -0.698  0.00  0.00      L86  H
+ATOM    175  C4  GUAIL   8       3.022   0.168   1.921  0.00  0.00      L86  C
+ATOM    176  O4  GUAIL   8       2.224  -0.747   2.726  0.00  0.00      L86  O
+ATOM    177  C5  GUAIL   8       3.609   1.268   2.547  0.00  0.00      L86  C
+ATOM    178  H5  GUAIL   8       3.582   1.417   3.619  0.00  0.00      L86  H
+ATOM    179  C1  GUAIL   8       4.177   2.316   0.454  0.00  0.00      L86  C
+ATOM    180  C7  GUAIL   8       4.602   3.560  -0.193  0.00  0.00      L86  C
+ATOM    181  H7  GUAIL   8       5.347   3.473  -0.993  0.00  0.00      L86  H
+ATOM    182  C8  GUAIL   8       4.202   4.796   0.237  0.00  0.00      L86  C
+ATOM    183  H8  GUAIL   8       3.460   4.825   1.043  0.00  0.00      L86  H
+ATOM    184  C9  GUAIL   8       4.682   6.139  -0.252  0.00  0.00      L86  C
+ATOM    185  O9  GUAIL   8       3.611   6.988  -0.682  0.00  0.00      L86  O
+ATOM    186  HO9 GUAIL   8       3.982   7.873  -0.885  0.00  0.00      L86  H
+ATOM    187  H91 GUAIL   8       5.201   6.649   0.561  0.00  0.00      L86  H
+ATOM    188  H92 GUAIL   8       5.381   6.014  -1.081  0.00  0.00      L86  H
+ATOM    189  C6  GUAIL   9      -8.829  -1.928  -4.731  0.00  0.00      L86  C
+ATOM    190  H6  GUAIL   9      -9.216  -2.898  -5.017  0.00  0.00      L86  H
+ATOM    191  C2  GUAIL   9      -8.565  -0.164  -3.074  0.00  0.00      L86  C
+ATOM    192  H2  GUAIL   9      -8.777   0.207  -2.080  0.00  0.00      L86  H
+ATOM    193  C3  GUAIL   9      -7.802   0.570  -3.991  0.00  0.00      L86  C
+ATOM    194  O3  GUAIL   9      -7.243   1.786  -3.624  0.00  0.00      L86  O
+ATOM    195  C10 GUAIL   9      -6.838   1.959  -2.248  0.00  0.00      L86  C
+ATOM    196 H101 GUAIL   9      -6.223   2.859  -2.202  0.00  0.00      L86  H
+ATOM    197 H102 GUAIL   9      -7.706   2.091  -1.600  0.00  0.00      L86  H
+ATOM    198 H103 GUAIL   9      -6.243   1.112  -1.901  0.00  0.00      L86  H
+ATOM    199  C4  GUAIL   9      -7.548   0.031  -5.313  0.00  0.00      L86  C
+ATOM    200  O4  GUAIL   9      -7.016   0.824  -6.336  0.00  0.00      L86  O
+ATOM    201  C5  GUAIL   9      -8.039  -1.226  -5.653  0.00  0.00      L86  C
+ATOM    202  H5  GUAIL   9      -7.820  -1.672  -6.614  0.00  0.00      L86  H
+ATOM    203  C1  GUAIL   9      -9.113  -1.390  -3.468  0.00  0.00      L86  C
+ATOM    204  C7  GUAIL   9     -10.205  -1.917  -2.645  0.00  0.00      L86  C
+ATOM    205  H7  GUAIL   9      -9.981  -2.373  -1.674  0.00  0.00      L86  H
+ATOM    206  C8  GUAIL   9     -11.484  -1.763  -3.059  0.00  0.00      L86  C
+ATOM    207  H8  GUAIL   9     -11.665  -1.261  -4.016  0.00  0.00      L86  H
+ATOM    208  C9  GUAIL   9     -12.690  -2.153  -2.251  0.00  0.00      L86  C
+ATOM    209  O9  GUAIL   9     -13.613  -2.913  -3.032  0.00  0.00      L86  O
+ATOM    210  HO9 GUAIL   9     -14.408  -3.073  -2.481  0.00  0.00      L86  H
+ATOM    211  H91 GUAIL   9     -12.396  -2.764  -1.397  0.00  0.00      L86  H
+ATOM    212  H92 GUAIL   9     -13.172  -1.244  -1.887  0.00  0.00      L86  H
+ATOM    213  C6  GUAIL  10      -2.079  -2.086  -5.316  0.00  0.00      L86  C
+ATOM    214  H6  GUAIL  10      -1.166  -2.183  -5.889  0.00  0.00      L86  H
+ATOM    215  C2  GUAIL  10      -3.727  -3.005  -3.776  0.00  0.00      L86  C
+ATOM    216  H2  GUAIL  10      -4.073  -3.833  -3.172  0.00  0.00      L86  H
+ATOM    217  C3  GUAIL  10      -4.437  -1.798  -3.841  0.00  0.00      L86  C
+ATOM    218  O3  GUAIL  10      -5.560  -1.527  -3.068  0.00  0.00      L86  O
+ATOM    219  C10 GUAIL  10      -5.731  -2.241  -1.835  0.00  0.00      L86  C
+ATOM    220 H101 GUAIL  10      -6.557  -1.781  -1.289  0.00  0.00      L86  H
+ATOM    221 H102 GUAIL  10      -5.973  -3.284  -2.047  0.00  0.00      L86  H
+ATOM    222 H103 GUAIL  10      -4.822  -2.172  -1.235  0.00  0.00      L86  H
+ATOM    223  C4  GUAIL  10      -3.959  -0.728  -4.650  0.00  0.00      L86  C
+ATOM    224  O4  GUAIL  10      -4.620   0.479  -4.533  0.00  0.00      L86  O
+ATOM    225  C5  GUAIL  10      -2.785  -0.875  -5.393  0.00  0.00      L86  C
+ATOM    226  H5  GUAIL  10      -2.392  -0.094  -6.031  0.00  0.00      L86  H
+ATOM    227  C1  GUAIL  10      -2.543  -3.145  -4.521  0.00  0.00      L86  C
+ATOM    228  C7  GUAIL  10      -1.721  -4.346  -4.397  0.00  0.00      L86  C
+ATOM    229  H7  GUAIL  10      -0.646  -4.198  -4.240  0.00  0.00      L86  H
+ATOM    230  C8  GUAIL  10      -2.183  -5.621  -4.358  0.00  0.00      L86  C
+ATOM    231  H8  GUAIL  10      -3.245  -5.814  -4.548  0.00  0.00      L86  H
+ATOM    232  C9  GUAIL  10      -1.288  -6.804  -4.147  0.00  0.00      L86  C
+ATOM    233  O9  GUAIL  10      -1.904  -7.782  -3.304  0.00  0.00      L86  O
+ATOM    234  HO9 GUAIL  10      -1.264  -8.511  -3.165  0.00  0.00      L86  H
+ATOM    235  H91 GUAIL  10      -1.017  -7.232  -5.114  0.00  0.00      L86  H
+ATOM    236  H92 GUAIL  10      -0.381  -6.494  -3.626  0.00  0.00      L86  H
+CONECT    1   14    2   16
+CONECT    2    1
+CONECT    3   16    4    5
+CONECT    4    3
+CONECT    5    3   11    6
+CONECT    6    5    7
+CONECT    7    6    8    9   10
+CONECT    8    7
+CONECT    9    7
+CONECT   10    7
+CONECT   11    5   12   14
+CONECT   12   11   13
+CONECT   13   12
+CONECT   14    1   11   15
+CONECT   15   14
+CONECT   16    1    3   17
+CONECT   17   16   18   19   21
+CONECT   18   17
+CONECT   19   17   20
+CONECT   20   19
+CONECT   21   17   39   22   23
+CONECT   22   21
+CONECT   23   21   26   27   24
+CONECT   24   23   25
+CONECT   25   24
+CONECT   26   23
+CONECT   27   23
+CONECT   28   40   29   42
+CONECT   29   28
+CONECT   30   42   31   32
+CONECT   31   30
+CONECT   32   30   38   33
+CONECT   33   32   34
+CONECT   34   33   35   36   37
+CONECT   35   34
+CONECT   36   34
+CONECT   37   34
+CONECT   38   32   39   40
+CONECT   39   21   38
+CONECT   40   28   38   41
+CONECT   41   40
+CONECT   42   28   30   43
+CONECT   43   42   87   44   45
+CONECT   44   43
+CONECT   45   43   63   46   47
+CONECT   46   45
+CONECT   47   45   50   51   48
+CONECT   48   47   49
+CONECT   49   48
+CONECT   50   47
+CONECT   51   47
+CONECT   52   64   53   66
+CONECT   53   52
+CONECT   54   66   55   56
+CONECT   55   54
+CONECT   56   54   62   57
+CONECT   57   56   58
+CONECT   58   57   59   60   61
+CONECT   59   58
+CONECT   60   58
+CONECT   61   58
+CONECT   62   56   63   64
+CONECT   63   45   62
+CONECT   64   52   62   65
+CONECT   65   64
+CONECT   66   52   54   67
+CONECT   67   66  136   68   69
+CONECT   68   67
+CONECT   69   67  112   70   71
+CONECT   70   69
+CONECT   71   69   74   75   72
+CONECT   72   71   73
+CONECT   73   72
+CONECT   74   71
+CONECT   75   71
+CONECT   76   88   77   89
+CONECT   77   76
+CONECT   78   89   79   80
+CONECT   79   78
+CONECT   80   78   86   81
+CONECT   81   80   82
+CONECT   82   81   83   84   85
+CONECT   83   82
+CONECT   84   82
+CONECT   85   82
+CONECT   86   80   87   88
+CONECT   87   43   86
+CONECT   88   76   86  176
+CONECT   89   76   78   90
+CONECT   90   89   91   92   94
+CONECT   91   90
+CONECT   92   90   93
+CONECT   93   92
+CONECT   94   90  164   95   96
+CONECT   95   94
+CONECT   96   94   99  100   97
+CONECT   97   96   98
+CONECT   98   97
+CONECT   99   96
+CONECT  100   96
+CONECT  101  113  102  115
+CONECT  102  101
+CONECT  103  115  104  105
+CONECT  104  103
+CONECT  105  103  111  106
+CONECT  106  105  107
+CONECT  107  106  108  109  110
+CONECT  108  107
+CONECT  109  107
+CONECT  110  107
+CONECT  111  105  112  113
+CONECT  112   69  111
+CONECT  113  101  111  114
+CONECT  114  113
+CONECT  115  101  103  116
+CONECT  116  115  224  117  118
+CONECT  117  116
+CONECT  118  116  200  119  120
+CONECT  119  118
+CONECT  120  118  123  124  121
+CONECT  121  120  122
+CONECT  122  121
+CONECT  123  120
+CONECT  124  120
+CONECT  125  137  126  139
+CONECT  126  125
+CONECT  127  139  128  129
+CONECT  128  127
+CONECT  129  127  135  130
+CONECT  130  129  131
+CONECT  131  130  132  133  134
+CONECT  132  131
+CONECT  133  131
+CONECT  134  131
+CONECT  135  129  136  137
+CONECT  136   67  135
+CONECT  137  125  135  138
+CONECT  138  137
+CONECT  139  125  127  140
+CONECT  140  139  141  142
+CONECT  141  140
+CONECT  142  140  143  144
+CONECT  143  142
+CONECT  144  142  147  148  145
+CONECT  145  144  146
+CONECT  146  145
+CONECT  147  144
+CONECT  148  144
+CONECT  149  162  150  164
+CONECT  150  149
+CONECT  151  164  152  153
+CONECT  152  151
+CONECT  153  151  159  154
+CONECT  154  153  155
+CONECT  155  154  156  157  158
+CONECT  156  155
+CONECT  157  155
+CONECT  158  155
+CONECT  159  153  160  162
+CONECT  160  159  161
+CONECT  161  160
+CONECT  162  149  159  163
+CONECT  163  162
+CONECT  164   94  149  151
+CONECT  165  177  166  179
+CONECT  166  165
+CONECT  167  179  168  169
+CONECT  168  167
+CONECT  169  167  175  170
+CONECT  170  169  171
+CONECT  171  170  172  173  174
+CONECT  172  171
+CONECT  173  171
+CONECT  174  171
+CONECT  175  169  176  177
+CONECT  176  175   88
+CONECT  177  165  175  178
+CONECT  178  177
+CONECT  179  165  167  180
+CONECT  180  179  181  182
+CONECT  181  180
+CONECT  182  180  183  184
+CONECT  183  182
+CONECT  184  182  187  188  185
+CONECT  185  184  186
+CONECT  186  185
+CONECT  187  184
+CONECT  188  184
+CONECT  189  201  190  203
+CONECT  190  189
+CONECT  191  203  192  193
+CONECT  192  191
+CONECT  193  191  199  194
+CONECT  194  193  195
+CONECT  195  194  196  197  198
+CONECT  196  195
+CONECT  197  195
+CONECT  198  195
+CONECT  199  193  200  201
+CONECT  200  118  199
+CONECT  201  189  199  202
+CONECT  202  201
+CONECT  203  189  191  204
+CONECT  204  203  205  206
+CONECT  205  204
+CONECT  206  204  207  208
+CONECT  207  206
+CONECT  208  206  211  212  209
+CONECT  209  208  210
+CONECT  210  209
+CONECT  211  208
+CONECT  212  208
+CONECT  213  225  214  227
+CONECT  214  213
+CONECT  215  227  216  217
+CONECT  216  215
+CONECT  217  215  223  218
+CONECT  218  217  219
+CONECT  219  218  220  221  222
+CONECT  220  219
+CONECT  221  219
+CONECT  222  219
+CONECT  223  217  224  225
+CONECT  224  116  223
+CONECT  225  213  223  226
+CONECT  226  225
+CONECT  227  213  215  228
+CONECT  228  227  229  230
+CONECT  229  228
+CONECT  230  228  231  232
+CONECT  231  230
+CONECT  232  230  235  236  233
+CONECT  233  232  234
+CONECT  234  233
+CONECT  235  232
+CONECT  236  232
+END
