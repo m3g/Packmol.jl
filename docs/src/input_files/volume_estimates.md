@@ -97,7 +97,8 @@ number of points (`npoints`, 1 million by default).
 
 `molecular_volume` computes the volume of a molecule as the space that a probe of 1.4 Å
 (a water molecule) cannot enter, on a grid of 0.4 Å, as [MoloVol](https://molovol.com)
-does. It is the volume that a solute takes from the solvent: for a protein, close to its
+does (J. Maglic and R. Lavendomme, J. Appl. Cryst. 55, 1033-1044 (2022),
+[doi:10.1107/S1600576722004988](https://doi.org/10.1107/S1600576722004988)). It is the volume that a solute takes from the solvent: for a protein, close to its
 volume in water, while its mass at 1 g/mL gives about 1.4 times that. The solvation
 [recipes](../recipes/index.md) subtract it from the volume of the box.
 

@@ -273,7 +273,7 @@ end
 The molecular volume (Å³): the volume from which a spherical probe of radius `probe` (Å)
 is excluded by the van der Waals spheres of the atoms (the van der Waals volume and the
 gaps between the atoms where the probe does not fit), computed on a grid of spacing
-`resolution` (Å), as by MoloVol (Maglic & Lavendomme, J. Appl. Cryst. 55, 1033 (2022)).
+`resolution` (Å), as by MoloVol (Maglic & Lavendomme, J. Appl. Cryst. 55, 1033-1044 (2022), https://doi.org/10.1107/S1600576722004988).
 Cavities where the probe fits are not part of the volume, whether they are connected to
 the outside or not. With `probe = 0`, the van der Waals volume.
 
