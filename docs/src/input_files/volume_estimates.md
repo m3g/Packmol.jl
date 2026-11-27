@@ -113,9 +113,12 @@ molecular_volume(["solvprotein/protein.pdb" => 1])
 nothing # hide
 ```
 
-The grid has a spacing of 0.4 Å by default (`resolution`), at which the volume is about
-2% larger than the converged one, in a fraction of a second for thousands of atoms. A
+The grid has a spacing of 0.4 Å by default (`resolution`), at which the volume is within
+about 1.5% of the converged one, in a fraction of a second for thousands of atoms. A
 smaller spacing gives a more precise volume, at a cost that grows as its inverse cube.
+(The probes are placed on the surface they can reach and, to reach the bottoms of the
+grooves between the atoms, on its creases, where they touch two or three atoms: without
+these, the volume is 4-5% too large at 0.4 Å.)
 The radii are the van der Waals radii of the elements, so that the volume is that of
 all-atom structures. With `probe = 0`, it is the van der Waals volume.
 

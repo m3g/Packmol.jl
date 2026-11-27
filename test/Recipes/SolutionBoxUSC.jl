@@ -72,7 +72,7 @@
             solute: 5612.801f0 g mol^-1
             solvent: 46.069218f0 g mol^-1
             cossolvent: 18.01534f0 g mol^-1
-        Solute volume: 7532.672 Å^3
+        Solute volume: 7247.552 Å^3
         Concentration units: x
         Concentration range: 0.0 - 1.0
         Density range: 0.7906 g mL^-1 - 0.9981 g mL^-1
@@ -111,8 +111,8 @@
     # :cubic is the default
     r1 = write_packmol_input(system; concentration = 0.5, margin = 20.0, input = tmp_input_file, debug = true)
     @test isfile(tmp_input_file)
-    @test r1[1] == 13562
-    @test r1[2] == 13562
+    @test r1[1] == 13564
+    @test r1[2] == 13564
     @test r1[3] ≈ [118.81, 118.81, 118.81]u"Å"
 
     # The same concentration in mol/L, given with concentration_units, or with the units
@@ -131,8 +131,8 @@
     rm(tmp_input_file, force=true)
     r1 = write_packmol_input(system; concentration = 0.5, margin = 20.0, input = tmp_input_file, debug = true, pbc = :orthorhombic)
     @test isfile(tmp_input_file)
-    @test r1[1] == 10110
-    @test r1[2] == 10110
+    @test r1[1] == 10112
+    @test r1[2] == 10112
     @test r1[3] ≈ [117.37, 89.79, 118.81]u"Å"
 
     rm(tmp_input_file, force=true)

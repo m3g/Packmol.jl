@@ -281,10 +281,11 @@ With the default probe (the radius of a water molecule), the molecular volume of
 protein is close to its volume in solution (that of its partial specific volume, about
 0.73 mL/g). The radii are the van der Waals radii of the elements (`element_vdw_radius` of
 PDBToolsBase), so that the volume is that of all-atom structures, whose elements are given
-or follow from the names of the atoms. At the default resolution, the volume is a few
-percent larger than the converged one (about 2% for a protein), at a fraction of a second
-for thousands of atoms; the error decreases with the resolution, at a cost that grows as
-its inverse cube.
+or follow from the names of the atoms. At the default resolution, the volume is within
+about 1.5% of the converged one (slightly larger), at a fraction of a second for thousands
+of atoms; the error decreases with the resolution, at a cost that grows as its inverse
+cube. The probes are placed on the accessible surface and on its creases, where they
+touch two or three atoms, which makes the volume converge fast with the resolution.
 
 Of the atoms of a molecule, returns its volume. Of the structure types of an input file or
 of a `PackmolSystem`, or of pairs of structure files and numbers of molecules (as
@@ -372,9 +373,13 @@ end
 # The molecular volume of spheres at `x` of radii `r`, on a grid of spacing `g`: the grid
 # points (voxel centers) that no point of a probe of radius `rp` reaches, with the center
 # of the probe outside all spheres of radii `r + rp` (the probe-occupied space). The
-# centers of the probe are the grid points outside those spheres and next to them,
-# moved to the nearest point of their surface (on the grid points, the volume converges
-# slowly with the resolution). With `rp = 0`, the van der Waals volume.
+# centers of the probe are on the surface of those spheres (the accessible surface): from
+# each grid point outside the spheres and next to them, the nearest point of the surface,
+# and the nearest points of its creases, where it touches two atoms (the circles where two
+# spheres meet) or three (the cusps where three meet), which reach the bottoms of the
+# grooves between the atoms. Without the creases, the probes miss slivers along them, of
+# the width of the spacing: the volume converges linearly with the resolution (4-5% too
+# large at 0.4 Å; 0.1-1.5% with them). With `rp = 0`, the van der Waals volume.
 #
 function _molecular_volume(x::Vector{SVector{3,Float64}}, r::Vector{Float64}, rp::Float64, g::Float64)
     R = r .+ rp
@@ -386,7 +391,7 @@ function _molecular_volume(x::Vector{SVector{3,Float64}}, r::Vector{Float64}, rp
     core = falses(n[1], n[2], n[3])
     _stamp_spheres!(core, x, R, lo, g)
     rp == 0 && return count(core) * g^3
-    # The centers of the probe next to that space, moved to its surface
+    # The centers of the probe next to that space, moved to its surface and creases
     centers = SVector{3,Float64}[]
     @inbounds for k in 2:n[3]-1, j in 2:n[2]-1, i in 2:n[1]-1
         core[i, j, k] && continue
@@ -418,53 +423,116 @@ function _stamp_spheres!(grid::BitArray{3}, x::Vector{SVector{3,Float64}}, r::Ve
 end
 
 # Move each center of the probe (a grid point outside the spheres `R`, next to them) to
-# the nearest point of the surface of the spheres, if that point is outside all other
-# spheres (the probe then touches the atoms)
+# the nearest point of the surface of the spheres (that of the nearest sphere, which is
+# outside all others), and add the nearest points of the creases of the surface: the
+# point of the circle where the nearest two spheres meet, and the point where the
+# nearest three meet, if they are near (within 2g) and outside all other spheres
 function _probe_centers_on_surface!(centers::Vector{SVector{3,Float64}}, x::Vector{SVector{3,Float64}},
     R::Vector{Float64}, lo::SVector{3,Float64}, g::Float64)
     # Cells of the atoms, of side larger than the radii of the spheres and the distances
-    # of the centers to them: the spheres of a center are those of the neighbor cells
+    # of the centers to them: the spheres near a center are those of the cells within two
     side = maximum(R) + 2g
-    nc = SVector{3,Int}(ceil.(Int, (reduce((a, b) -> max.(a, b), x) - lo) ./ side) .+ 2)
+    nc = SVector{3,Int}(ceil.(Int, (reduce((a, b) -> max.(a, b), x) - lo) ./ side) .+ 3)
     cells = [Int[] for _ in 1:prod(nc)]
     lin = LinearIndices((nc[1], nc[2], nc[3]))
     for (i, xi) in enumerate(x)
         c = floor.(Int, (xi - lo) ./ side) .+ 1
         push!(cells[lin[c[1], c[2], c[3]]], i)
     end
-    for (ic, p) in enumerate(centers)
+    near = Int[]
+    creases = SVector{3,Float64}[]
+    for ic in eachindex(centers)
+        p = centers[ic]
         c = floor.(Int, (p - lo) ./ side) .+ 1
-        best = 0
-        dbest = Inf
-        for dk in -1:1, dj in -1:1, di in -1:1
+        empty!(near)
+        for dk in -2:2, dj in -2:2, di in -2:2
             a, b, d = c[1] + di, c[2] + dj, c[3] + dk
             (1 <= a <= nc[1] && 1 <= b <= nc[2] && 1 <= d <= nc[3]) || continue
-            for i in cells[lin[a, b, d]]
-                dist = norm(p - x[i]) - R[i]
-                if dist < dbest
-                    best = i
-                    dbest = dist
-                end
+            append!(near, cells[lin[a, b, d]])
+        end
+        isempty(near) && continue
+        # The three nearest spheres (distances to their surfaces)
+        i1, i2, i3 = 0, 0, 0
+        d1, d2, d3 = Inf, Inf, Inf
+        for i in near
+            dist = norm(p - x[i]) - R[i]
+            if dist < d1
+                i3, d3 = i2, d2
+                i2, d2 = i1, d1
+                i1, d1 = i, dist
+            elseif dist < d2
+                i3, d3 = i2, d2
+                i2, d2 = i, dist
+            elseif dist < d3
+                i3, d3 = i, dist
             end
         end
-        best == 0 && continue
-        u = p - x[best]
-        q = x[best] + R[best] * u / norm(u)
-        outside = true
-        cq = floor.(Int, (q - lo) ./ side) .+ 1
-        for dk in -1:1, dj in -1:1, di in -1:1
-            a, b, d = cq[1] + di, cq[2] + dj, cq[3] + dk
-            (1 <= a <= nc[1] && 1 <= b <= nc[2] && 1 <= d <= nc[3]) || continue
-            for i in cells[lin[a, b, d]]
-                i == best && continue
-                if sum(abs2, q - x[i]) < (R[i] - 1e-9)^2
-                    outside = false
-                    break
-                end
-            end
-            outside || break
+        centers[ic] = x[i1] + R[i1] * (p - x[i1]) / norm(p - x[i1])
+        i2 == 0 && continue
+        found, q = _crease_point(p, x[i1], R[i1], x[i2], R[i2])
+        if found && norm(q - p) < 2g && !_inside_spheres(q, x, R, near, i1, i2, 0)
+            push!(creases, q)
         end
-        outside && (centers[ic] = q)
+        i3 == 0 && continue
+        found, q = _cusp_point(p, x[i1], R[i1], x[i2], R[i2], x[i3], R[i3])
+        if found && norm(q - p) < 2g && !_inside_spheres(q, x, R, near, i1, i2, i3)
+            push!(creases, q)
+        end
     end
+    append!(centers, creases)
     return centers
+end
+
+# Whether `q` is inside one of the spheres `near`, other than `i`, `j` and `k`
+function _inside_spheres(q::SVector{3,Float64}, x::Vector{SVector{3,Float64}}, R::Vector{Float64},
+    near::Vector{Int}, i::Int, j::Int, k::Int)
+    for l in near
+        (l == i || l == j || l == k) && continue
+        sum(abs2, q - x[l]) < (R[l] - 1e-9)^2 && return true
+    end
+    return false
+end
+
+# The point nearest to `p` of the circle where the spheres (xi, Ri) and (xj, Rj) meet
+# (`false` as the first value if they do not meet)
+function _crease_point(p::SVector{3,Float64}, xi::SVector{3,Float64}, Ri::Float64,
+    xj::SVector{3,Float64}, Rj::Float64)
+    v = xj - xi
+    d = norm(v)
+    (d >= Ri + Rj || d <= abs(Ri - Rj)) && return false, p
+    n = v / d
+    a = (d^2 + Ri^2 - Rj^2) / (2d)
+    h = sqrt(max(Ri^2 - a^2, 0.0))
+    center = xi + a * n
+    w = p - center
+    w = w - dot(w, n) * n
+    nw = norm(w)
+    nw < 1e-12 && return false, p
+    return true, center + h * w / nw
+end
+
+# The point nearest to `p` of the two where the spheres (x1, R1), (x2, R2) and (x3, R3)
+# meet (`false` as the first value if they do not meet)
+function _cusp_point(p::SVector{3,Float64}, x1::SVector{3,Float64}, R1::Float64,
+    x2::SVector{3,Float64}, R2::Float64, x3::SVector{3,Float64}, R3::Float64)
+    ex = x2 - x1
+    d = norm(ex)
+    d < 1e-12 && return false, p
+    ex = ex / d
+    i = dot(ex, x3 - x1)
+    ey = x3 - x1 - i * ex
+    ney = norm(ey)
+    ney < 1e-12 && return false, p
+    ey = ey / ney
+    ez = cross(ex, ey)
+    j = dot(ey, x3 - x1)
+    X = (R1^2 - R2^2 + d^2) / (2d)
+    Y = (R1^2 - R3^2 + i^2 + j^2) / (2j) - i / j * X
+    z2 = R1^2 - X^2 - Y^2
+    z2 < 0 && return false, p
+    z = sqrt(z2)
+    base = x1 + X * ex + Y * ey
+    a = base + z * ez
+    b = base - z * ez
+    return true, (norm(a - p) < norm(b - p) ? a : b)
 end

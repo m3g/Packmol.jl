@@ -110,11 +110,14 @@ end
     # volume, with or without the probe (vdW), in the limit of the excluded gaps
     ring = [Atom(name = "C", x = Float32(5cos(θ)), y = Float32(5sin(θ)), z = 0.0f0) for θ in range(0, 2π; length = 13)[1:12]]
     @test molecular_volume(ring; resolution = 0.2) < 1.5 * molecular_volume(ring; probe = 0.0, resolution = 0.2)
-    # A protein: about its volume in solution (0.73 mL/g), and converging with the resolution
+    # A protein: about its volume in solution (0.73 mL/g), and converging with the resolution:
+    # with the probes on the creases of the accessible surface, the default (0.4 Å) is within
+    # 2% of the volume at 0.2 Å (without them, 4-5% larger than the converged one)
     protein = PDBToolsBase.read_pdb(joinpath(Packmol.RecipesDirectory, "test", "data", "poly_h.pdb"))
     v4 = molecular_volume(protein)
     v2 = molecular_volume(protein; resolution = 0.2)
-    @test v4 ≈ v2 rtol = 0.03
+    @test v4 ≈ v2 rtol = 0.02
+    @test v4 > v2
     @test v2 ≈ 0.73 * PDBToolsBase.mass(protein) / 0.602214076 rtol = 0.25
     # Of a system and of structure files with numbers
     water = joinpath(Packmol.RecipesDirectory, "test", "data", "water.pdb")

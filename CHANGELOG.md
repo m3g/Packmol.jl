@@ -13,7 +13,9 @@ Packmol.jl Changelog
 Version 100.1.2-DEV
 ---------------
 - ![FEATURE][badge-feature] `molecular_volume`: the volume of molecules excluded to a probe
-  (1.4 Å by default), computed on a grid (`resolution`, 0.4 Å by default), as by MoloVol.
+  (1.4 Å by default), computed on a grid (`resolution`, 0.4 Å by default), as by MoloVol; with
+  probes also on the creases of the accessible surface (touching two or three atoms), within
+  about 1.5% of the converged volume at the default resolution.
   Of the atoms of a molecule, of an input file or a `PackmolSystem`, or of structure files
   with numbers of molecules; from the command line, `packmol --molecular-volume input.inp`
   (with `--probe` and `--resolution`).

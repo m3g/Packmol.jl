@@ -58,7 +58,7 @@
         Molar masses: 
             solute: 5612.791939999981 g mol^-1
             solvent: 18.01534 g mol^-1
-        Solute volume: 7532.672 Å^3
+        Solute volume: 7247.552 Å^3
     ==================================================================
     """
 
@@ -71,18 +71,18 @@
     tmp_input_file = tempname()*".inp"
     rm(tmp_input_file, force=true)
     r1 = write_packmol_input(system; margin = 20.0, input = tmp_input_file, debug = true, pbc = :orthorhombic)
-    @test r1[1] == 41603
+    @test r1[1] == 41613
     @test r1[2] ≈ [117.37, 89.79, 118.81]u"Å"
     @test isfile(tmp_input_file)
     rm(tmp_input_file, force=true)
     # :cubic is the default
     r1 = write_packmol_input(system; margin = 20.0, input = tmp_input_file, debug = true)
-    @test r1[1] == 55810
+    @test r1[1] == 55820
     @test r1[2] ≈ [118.81, 118.81, 118.81]u"Å"
     @test isfile(tmp_input_file)
     rm(tmp_input_file, force=true)
     r1 = write_packmol_input(system; margin = 2.0u"nm", input = tmp_input_file, debug = true, pbc = :cubic)
-    @test r1[1] == 55810
+    @test r1[1] == 55820
     @test r1[2] ≈ [118.81, 118.81, 118.81]u"Å"
     @test isfile(tmp_input_file)
     rm(tmp_input_file, force=true)
