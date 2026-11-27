@@ -98,8 +98,9 @@ In input files and on the command line:
   molecules with [Rotatable bonds](@ref);
 - [Packing by compression](@ref) (`use_compression`), for systems too dense to pack from
   a random placement;
-- `--guess-volume` and `--free-volume`, to estimate the volumes of the system and of the
-  regions of its molecules (see [Volume estimates](@ref)).
+- `--guess-volume`, `--free-volume` and `--molecular-volume`, to estimate the volumes of
+  the system, of the regions of its molecules, and of the molecules (see [Volume
+  estimates](@ref)).
 
 From Julia only: systems defined without input files (see
 [Defining systems in Julia](julia_api/index.md)), the [Recipes](recipes/index.md) (solvated

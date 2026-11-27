@@ -8,6 +8,7 @@ mutable struct SolutionBoxUS <: Recipe
     density::Quantity
     solute_molar_mass::Quantity
     solvent_molar_mass::Quantity
+    solute_volume::Quantity
 end
 
 #
@@ -93,6 +94,7 @@ _mandatory_keywords(::Type{SolutionBoxUS}) = (:solute_pdbfile, :solvent_pdbfile,
         density::Union{Quantity,Real}, # density, using Unitful units, or assumed to be g/mL
         solute_molar_mass = nothing, # optional
         solvent_molar_mass = nothing, # optional
+        solute_volume = nothing, # optional
     )
 
 Setup a system composed of a solute (U) and a solvent (S). 
@@ -101,6 +103,10 @@ The mass or molar density can be provided. If unitless specified, the density wi
 
 If the molar masses are not provided, they will be computed from the atom types in the PDB file.
 
+The solvent fills the volume of the box without that of the solute, `solute_volume`: by
+default, its molecular volume (see [`molecular_volume`](@ref)), or a volume given (in Å³
+if unitless; e.g. `molecular_volume(read_pdb(file); resolution = 0.2)`, more precise).
+
 """
 function SolutionBoxUS(;
         solute_pdbfile::String = _missing_keyword(SolutionBoxUS, :solute_pdbfile), 
@@ -108,6 +114,7 @@ function SolutionBoxUS(;
         density::Number = _missing_keyword(SolutionBoxUS, :density), # density, using Unitful units, or assumed to be g/mL
         solute_molar_mass::Union{Nothing,Number} = nothing,
         solvent_molar_mass::Union{Nothing,Number} = nothing,
+        solute_volume::Union{Nothing,Number} = nothing,
     )
     if unit(density) == NoUnits
         @warn "Density units not provided, assuming g/mL." _file=nothing _line=nothing
@@ -121,6 +128,7 @@ function SolutionBoxUS(;
     solvent_molar_mass = _ensure_unit(solvent_molar_mass, u"g/mol")
     # Convert density in mol/L to g/mL
     unit(density) == u"mol/L" && (density = uconvert(u"g/mL", density * solvent_molar_mass))
+    solute_volume = _solute_volume(solute_pdbfile, solute_volume)
     # Construct system
     system = SolutionBoxUS(
         solute_pdbfile,
@@ -128,6 +136,7 @@ function SolutionBoxUS(;
         density,
         solute_molar_mass,
         solvent_molar_mass,
+        solute_volume,
     )
     return system
 end
@@ -144,6 +153,7 @@ function Base.show(io::IO, ::MIME"text/plain", system::SolutionBoxUS)
         Molar masses: 
             solute: $(system.solute_molar_mass)
             solvent: $(system.solvent_molar_mass)
+        Solute volume: $(system.solute_volume)
     ==================================================================
     """))
 end
@@ -159,7 +169,7 @@ function _setup(
     margin::Union{<:Number,Nothing},
     pbc::Symbol,
 )
-    (; solvent_pdbfile, solute_molar_mass, solvent_molar_mass) = system
+    (; solvent_pdbfile, solute_molar_mass, solvent_molar_mass, solute_volume) = system
 
     # molar masses (g/mol)
     Mp = solute_molar_mass
@@ -178,9 +188,9 @@ function _setup(
     unitcell, solute_extrema = set_unitcell(system, box_sides, margin, pbc)
     vbox = det(unitcell) * u"Å^3"
 
-    # Solution volume (vbox - vsolute) - vsolute is estimated
-    # as if it had the same mass density of the pure solvent
-    vs = vbox - uconvert(u"Å^3", Mp / ρs / Unitful.Na)
+    # Solution volume: the box without the solute
+    vs = vbox - solute_volume
+    vs <= zero(vs) && throw(ArgumentError("Box is too small to fit the solute (increase margin or box_sides)."))
 
     # number of solvent molecules (molecules/Å³ * Å³)
     ns = round(Int, cs * vs)
@@ -203,6 +213,7 @@ function _setup(
         Periodic box (pbc = :$pbc) = $(_unitcell_description(unitcell))
 
         Solute molar mass = $Mp
+        Solute volume = $solute_volume
         Solvent molar mass = $Mw
 
         Number of solvent ($(basename(solvent_pdbfile))) molecules = $ns

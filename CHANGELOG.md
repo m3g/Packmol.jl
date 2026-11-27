@@ -12,6 +12,17 @@ Packmol.jl Changelog
 
 Version 100.1.2-DEV
 ---------------
+- ![FEATURE][badge-feature] `molecular_volume`: the volume of molecules excluded to a probe
+  (1.4 Å by default), computed on a grid (`resolution`, 0.4 Å by default), as by MoloVol.
+  Of the atoms of a molecule, of an input file or a `PackmolSystem`, or of structure files
+  with numbers of molecules; from the command line, `packmol --molecular-volume input.inp`
+  (with `--probe` and `--resolution`).
+- ![ENHANCEMENT][badge-enhancement] The solvation recipes (`SolutionBoxUS`, `SolutionBoxUSC`,
+  `SolutionBoxUWI`) subtract the molecular volume of the solute from the volume of the box,
+  instead of its mass at the density of the solvent, which overestimated the volume of
+  proteins by about 40% and that of dense solutes (metal particles) many times. The volume can
+  be given with the new `solute_volume` keyword. The numbers of solvent molecules change
+  slightly (0.1% more water for the protein of the tests in a box with a margin of 20 Å).
 
 Version 100.1.1
 ---------------

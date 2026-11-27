@@ -3,19 +3,22 @@ CollapsedDocStrings = true
 ```
 # Volume estimates
 
-Two estimates help to choose the numbers of molecules, or the size of the box, of an
-input: the volume that the molecules fill at a given density, and the volume of the region
+Three estimates help to choose the numbers of molecules, or the size of the box, of an
+input: the volume that the molecules fill at a given density, the volume of the region
 available to the molecules of each structure type, given its constraints and the fixed
-molecules. Neither packs the system. From the command line, with the input file:
+molecules, and the volume of the molecules themselves. None packs the system. From the
+command line, with the input file:
 
 ```
 packmol --guess-volume input.inp               # at 1 g/mL
 packmol --guess-volume --density 0.8 input.inp
 packmol --free-volume input.inp
+packmol --molecular-volume input.inp
+packmol --molecular-volume --resolution 0.2 input.inp
 ```
 
-and in Julia, with [`guess_volume`](@ref) and [`free_volume`](@ref), which take an input
-file or a [`PackmolSystem`](@ref). Both are also online calculators, in the browser: the
+and in Julia, with [`guess_volume`](@ref), [`free_volume`](@ref) and
+[`molecular_volume`](@ref), which take an input file or a [`PackmolSystem`](@ref). Both are also online calculators, in the browser: the
 [volume guesser](@ref "Volume guesser") and the [free volume](@ref "Free volume")
 calculator, at the top of the Recipes tab.
 
@@ -90,7 +93,38 @@ A structure type whose region is not bounded (without periodic boundary conditio
 the estimate is given by its standard error, which decreases with the square root of the
 number of points (`npoints`, 1 million by default).
 
+## The volume of the molecules
+
+`molecular_volume` computes the volume of each molecule from its atoms, as
+[MoloVol](https://molovol.com) does (Maglic & Lavendomme, J. Appl. Cryst. 55, 1033
+(2022)): the volume from which a spherical probe (of 1.4 Å, the radius of a water
+molecule) is excluded by the van der Waals spheres of the atoms, on a grid. It is the van
+der Waals volume of the atoms and the gaps between them where the probe does not fit;
+cavities where the probe fits are not part of it.
+
+It is the volume that a large solute takes from the solvent: for a protein, close to the
+volume given by its partial specific volume in water (about 0.73 mL/g), while its mass at
+the density of water gives about 1.4 times that. The solvation [recipes](@ref "Recipes")
+subtract it from the volume of the box. For the protein of the [solvated
+protein](@ref "Solvated protein") tutorial:
+
+```@example volumes
+molecular_volume(["solvprotein/protein.pdb" => 1])
+nothing # hide
+```
+
+The grid has a spacing of 0.4 Å by default (`resolution`), at which the volume is about
+2% larger than the converged one, in a fraction of a second for thousands of atoms. A
+smaller spacing gives a more precise volume, at a cost that grows as its inverse cube.
+The radii are the van der Waals radii of the elements, so that the volume is that of
+all-atom structures. With `probe = 0`, it is the van der Waals volume.
+
+For small molecules, the molecular volume is smaller than their volume in the liquid (by
+20 to 40%: it does not include the empty space between the molecules of a liquid), which
+the density of the liquid gives. For the solvent, use [`guess_volume`](@ref).
+
 ```@docs
 guess_volume
 free_volume
+molecular_volume
 ```

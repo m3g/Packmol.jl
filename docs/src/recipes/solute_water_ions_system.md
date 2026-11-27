@@ -62,6 +62,10 @@ Custom cation/anion PDB files can be given with the `cation_pdbfile`/
 matching `density_table` should then be provided too, since the default one
 is specific to NaCl.
 
+The volume that the solution fills is that of the box without the volume of the solute:
+its molecular volume (see [The volume of the molecules](@ref)), computed when the system
+is set up, or the one given with the `solute_volume` keyword (in Å³ if unitless).
+
 ## Packing the system
 
 The system is built and packed directly, at a target ionic concentration:

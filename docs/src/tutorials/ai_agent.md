@@ -194,8 +194,11 @@ input files (`write_packmol_input(recipe)`):
   constraints and the fixed molecules, by Monte Carlo, and the density at which its molecules
   fill it. Use it to check the numbers of molecules: water fills its region at about
   1 g/mL; much more means too many molecules.
-- From the command line: `packmol --guess-volume --density d input.inp` and
-  `packmol --free-volume input.inp`.
+- `molecular_volume(atoms)`, or of an input, a system or pairs `"file.pdb" => number`: the
+  volume of each molecule (excluded to a probe of 1.4 Å, on a grid of 0.4 Å by default,
+  `resolution`), about the volume that a large solute (a protein) takes from the solvent.
+- From the command line: `packmol --guess-volume --density d input.inp`,
+  `packmol --free-volume input.inp` and `packmol --molecular-volume input.inp`.
 
 ### Tools for building systems by hand
 

@@ -98,7 +98,8 @@ system = SolutionBoxUSC(
 ```
 
 As with `SolutionBoxUS`, molar masses are computed from the PDB files unless
-given explicitly.
+given explicitly, and the volume of the solute is its molecular volume unless given
+with `solute_volume`.
 
 ## Packing the system
 
