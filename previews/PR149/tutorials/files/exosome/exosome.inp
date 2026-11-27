@@ -1,0 +1,108 @@
+#
+# An exosome: an extracellular vesicle of 51 nm, with 40 copies of each of the
+# tetraspanins CD81 and CD9 in an asymmetric bilayer, 8 complexes of Argonaute-2 with
+# a miRNA and 2 nucleosomes inside, and water and NaCl (0.15 mol/L) inside and outside,
+# in a truncated octahedron. All atoms, written as mmCIF.
+#
+tolerance 2.0
+output exosome.cif
+pbc octahedral 0. 0. 0. 580.0
+periodic_boundary_style octahedral
+
+# To write only the initial placement of the molecules to the output file,
+# without packing them (to check the constraints), uncomment the line below.
+
+# check_initial_placement
+
+# The proteins, packed by proteins.inp, fixed
+structure proteins.cif
+  number 1
+  fixed 0. 0. 0. 0. 0. 0.
+end structure
+
+# Inner leaflet: POPE
+structure pope.cif
+  number 4055
+  atoms 1
+    inside sphere 0. 0. 0. 199.7
+  end atoms
+  atoms 79 122
+    outside sphere 0. 0. 0. 222.0
+  end atoms
+end structure
+
+# Inner leaflet: POPS
+structure pops.cif
+  number 2028
+  atoms 1
+    inside sphere 0. 0. 0. 200.1
+  end atoms
+  atoms 81 124
+    outside sphere 0. 0. 0. 222.0
+  end atoms
+end structure
+
+# Inner leaflet: POPC
+structure popc.cif
+  number 2028
+  atoms 1
+    inside sphere 0. 0. 0. 199.9
+  end atoms
+  atoms 88 131
+    outside sphere 0. 0. 0. 222.0
+  end atoms
+end structure
+
+# Outer leaflet: POPC
+structure popc.cif
+  number 6691
+  atoms 88 131
+    inside sphere 0. 0. 0. 234.0
+  end atoms
+  atoms 1
+    outside sphere 0. 0. 0. 256.1
+  end atoms
+end structure
+
+# Outer leaflet: DPPC
+structure dppc.cif
+  number 3346
+  atoms 84 127
+    inside sphere 0. 0. 0. 234.0
+  end atoms
+  atoms 1
+    outside sphere 0. 0. 0. 255.8
+  end atoms
+end structure
+
+# The lumen: water and ions
+structure water.cif
+  number 1008127
+  inside sphere 0. 0. 0. 196.7
+end structure
+
+structure sodium.cif
+  number 4955
+  inside sphere 0. 0. 0. 196.7
+end structure
+
+structure chloride.cif
+  number 2747
+  inside sphere 0. 0. 0. 196.7
+end structure
+
+# Outside: water and ions
+structure water.cif
+  number 2583306
+  outside sphere 0. 0. 0. 258.1
+end structure
+
+structure sodium.cif
+  number 7065
+  outside sphere 0. 0. 0. 258.1
+end structure
+
+structure chloride.cif
+  number 7025
+  outside sphere 0. 0. 0. 258.1
+end structure
